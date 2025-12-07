@@ -4,6 +4,7 @@ namespace Tests;
 
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Mockery;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -17,7 +18,29 @@ abstract class TestCase extends BaseTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        // Run migrations in app test database, not prompted
+        
+        // Mock console output to prevent confirmation prompts
+        $this->mockConsoleOutput();
+        
+        // Disable all interactive prompts
+        if (class_exists(\Laravel\Prompts\Prompt::class)) {
+            \Laravel\Prompts\Prompt::preventInteraction();
+        }
+    }
+
+    /**
+     * Mock console output to prevent Mockery confirmation issues
+     */
+    protected function mockConsoleOutput(): void
+    {
+        try {
+            $mockConsole = Mockery::mock('overload:Symfony\Component\Console\Style\SymfonyStyle')
+                ->shouldReceive('askQuestion')
+                ->andReturnNull()
+                ->getMock();
+        } catch (\Exception $e) {
+            // Already mocked or not available
+        }
     }
 
     protected function disableExceptionHandling()

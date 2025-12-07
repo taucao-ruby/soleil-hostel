@@ -238,7 +238,9 @@ LUA;
         $resetAfterMin = 0;
 
         foreach ($limits as $limit) {
-            $storeKey = "{$key}:{$limit['type']}";
+            $type = $limit['type'];
+            $id = $limit['id'] ?? '';
+            $storeKey = $id ? "{$key}:{$type}:{$id}" : "{$key}:{$type}";
             $now = time();
 
             if ($limit['type'] === 'sliding_window') {
@@ -265,6 +267,7 @@ LUA;
                     $allowed = false;
                     $oldest = min($this->memoryStore[$storeKey]);
                     $resetAfterMin = max($resetAfterMin, $oldest + $window - $now);
+                    $remaining = 0;
                 }
             } elseif ($limit['type'] === 'token_bucket') {
                 $capacity = $limit['capacity'] ?? 10;
@@ -329,8 +332,12 @@ LUA;
             Log::error('Failed to reset rate limit', ['key' => $key, 'error' => $e->getMessage()]);
         }
 
-        // Reset in-memory store
-        unset($this->memoryStore[$key]);
+        // Reset in-memory store - remove all entries for this key
+        foreach ($this->memoryStore as $storeKey => $value) {
+            if (str_starts_with($storeKey, "{$key}:")) {
+                unset($this->memoryStore[$storeKey]);
+            }
+        }
     }
 
     /**
@@ -411,6 +418,8 @@ LUA;
     private function buildRedisKey(string $key, array $limit): string
     {
         $type = $limit['type'] ?? 'unknown';
-        return self::REDIS_PREFIX . "{$key}:{$type}";
+        $id = $limit['id'] ?? '';
+        $suffix = $id ? ":{$type}:{$id}" : ":{$type}";
+        return self::REDIS_PREFIX . "{$key}{$suffix}";
     }
 }

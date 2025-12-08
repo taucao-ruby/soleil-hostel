@@ -240,7 +240,8 @@ git push origin main
 
 ```
 ❌ 7 compilation errors
-❌ Missing @playwright/test module
+❌ Missing @playwright/t
+est module
 ❌ Cannot run E2E tests
 ❌ Cannot build for production
 ❌ CI/CD pipeline blocked

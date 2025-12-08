@@ -36,7 +36,10 @@ class Booking extends Model
      * Dùng HTML Purifier whitelist, chứ không phải regex blacklist
      * (Regex XSS = 99% bypass. HTML Purifier = 0% bypass)
      */
-    protected array $purifiable = ['guest_name'];
+    public function getPurifiableFields()
+    {
+        return ['guest_name'];
+    }
 
     // ===== CONSTANTS =====
     public const STATUS_PENDING = 'pending';

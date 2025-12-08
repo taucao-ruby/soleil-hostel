@@ -54,16 +54,28 @@ class StoreBookingRequest extends FormRequest
 
     /**
      * Get the validated data from the request.
-     * 
-     * ✅ HTML Purifier: Sanitize guest_name to prevent XSS
-     * Uses whitelist approach (safe) not blacklist (regex) ❌
-     * 
-     * @return array<string, mixed>
+     *
+     * Purify HTML fields (guest_name) to prevent XSS. Uses HTML Purifier whitelist.
+     *
+     * Signature must match the parent `FormRequest::validated($key = null, $default = null)`.
+     *
+     * @param  mixed  $key
+     * @param  mixed  $default
+     * @return mixed
      */
-    public function validated(): array
+    public function validated($key = null, $default = null)
     {
-        // Purify HTML fields using FormRequest macro
-        // This is safe because it uses HTML Purifier whitelist
-        return $this->purify(['guest_name']);
+        $data = parent::validated($key, $default);
+
+        // If a specific key was requested, return it directly (parent handles default)
+        if ($key !== null) {
+            return $data;
+        }
+
+        if (is_array($data) && array_key_exists('guest_name', $data) && $data['guest_name'] !== null) {
+            $data['guest_name'] = \App\Services\HtmlPurifierService::purify($data['guest_name']);
+        }
+
+        return $data;
     }
 }

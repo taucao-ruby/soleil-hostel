@@ -43,6 +43,10 @@ class CreateBookingConcurrencyTest extends TestCase
         // Tạo 2 test users
         $this->user1 = User::factory()->create(['email' => 'user1@test.com']);
         $this->user2 = User::factory()->create(['email' => 'user2@test.com']);
+
+        // Create and set token for user1
+        $token = $this->user1->createToken('test-token');
+        $this->withHeader('Authorization', 'Bearer ' . $token->plainTextToken);
     }
 
     /**

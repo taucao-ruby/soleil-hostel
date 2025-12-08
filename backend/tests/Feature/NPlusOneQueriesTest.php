@@ -25,7 +25,8 @@ class NPlusOneQueriesTest extends TestCase
         }
 
         // Login and count queries
-        $this->actingAs($user);
+        $token = $user->createToken('test-token');
+        $this->withHeader('Authorization', 'Bearer ' . $token->plainTextToken);
 
         $this->assertQueryCount(function () {
             $this->getJson('/api/bookings')->assertOk();
@@ -58,8 +59,9 @@ class NPlusOneQueriesTest extends TestCase
         $room = Room::factory()->create();
         Booking::factory(5)->create(['room_id' => $room->id]);
 
-        $this->assertQueryCount(function () {
-            $this->getJson("/api/rooms/{$room->id}")->assertOk();
+        $roomId = $room->id;
+        $this->assertQueryCount(function () use ($roomId) {
+            $this->getJson("/api/rooms/{$roomId}")->assertOk();
         }, expectedCount: 2, tolerance: 1); // 1 for room + 1 for active_bookings count
     }
 
@@ -71,10 +73,12 @@ class NPlusOneQueriesTest extends TestCase
         $user = User::factory()->create();
         $booking = Booking::factory()->create(['user_id' => $user->id]);
 
-        $this->actingAs($user);
+        $token = $user->createToken('test-token');
+        $this->withHeader('Authorization', 'Bearer ' . $token->plainTextToken);
 
-        $this->assertQueryCount(function () {
-            $this->getJson("/api/bookings/{$booking->id}")->assertOk();
+        $bookingId = $booking->id;
+        $this->assertQueryCount(function () use ($bookingId) {
+            $this->getJson("/api/bookings/{$bookingId}")->assertOk();
         }, expectedCount: 3, tolerance: 1); // 1 for booking + 1 for room + 1 for user
     }
 
@@ -86,11 +90,13 @@ class NPlusOneQueriesTest extends TestCase
         $user = User::factory()->create();
         $room = Room::factory()->create();
 
-        $this->actingAs($user);
+        $token = $user->createToken('test-token');
+        $this->withHeader('Authorization', 'Bearer ' . $token->plainTextToken);
 
-        $this->assertQueryCount(function () {
+        $roomId = $room->id;
+        $this->assertQueryCount(function () use ($roomId) {
             $this->postJson('/api/bookings', [
-                'room_id' => $room->id,
+                'room_id' => $roomId,
                 'check_in' => now()->addDay()->format('Y-m-d'),
                 'check_out' => now()->addDays(3)->format('Y-m-d'),
                 'guest_name' => 'Test Guest',
@@ -107,10 +113,12 @@ class NPlusOneQueriesTest extends TestCase
         $user = User::factory()->create();
         $booking = Booking::factory()->create(['user_id' => $user->id]);
 
-        $this->actingAs($user);
+        $token = $user->createToken('test-token');
+        $this->withHeader('Authorization', 'Bearer ' . $token->plainTextToken);
 
-        $this->assertQueryCount(function () {
-            $this->putJson("/api/bookings/{$booking->id}", [
+        $bookingId = $booking->id;
+        $this->assertQueryCount(function () use ($bookingId) {
+            $this->putJson("/api/bookings/{$bookingId}", [
                 'check_in' => now()->addDays(5)->format('Y-m-d'),
                 'check_out' => now()->addDays(7)->format('Y-m-d'),
             ])->assertOk();
@@ -125,10 +133,12 @@ class NPlusOneQueriesTest extends TestCase
         $user = User::factory()->create();
         $booking = Booking::factory()->create(['user_id' => $user->id]);
 
-        $this->actingAs($user);
+        $token = $user->createToken('test-token');
+        $this->withHeader('Authorization', 'Bearer ' . $token->plainTextToken);
 
-        $this->assertQueryCount(function () {
-            $this->deleteJson("/api/bookings/{$booking->id}")->assertNoContent();
+        $bookingId = $booking->id;
+        $this->assertQueryCount(function () use ($bookingId) {
+            $this->deleteJson("/api/bookings/{$bookingId}")->assertNoContent();
         }, expectedCount: 3, tolerance: 1); // Find + Delete + Event dispatch
     }
 

@@ -44,6 +44,12 @@ class ConcurrentBookingTest extends TestCase
             'password' => bcrypt('password123'),
         ]);
 
+        // Create a Sanctum token for the user
+        $token = $this->user->createToken('test-token');
+        
+        // Authenticate with the token
+        $this->withHeader('Authorization', 'Bearer ' . $token->plainTextToken);
+
         // Create test room
         $this->room = Room::factory()->create([
             'name' => 'Deluxe Room',
@@ -320,8 +326,8 @@ class ConcurrentBookingTest extends TestCase
         }
 
         // Exactly 1 should succeed (first), others blocked by pessimistic locking
-        $this->assertEqual(1, $successCount, "Expected 1 successful booking, got {$successCount}");
-        $this->assertEqual(9, $failureCount, "Expected 9 failed bookings, got {$failureCount}");
+        $this->assertEquals(1, $successCount, "Expected 1 successful booking, got {$successCount}");
+        $this->assertEquals(9, $failureCount, "Expected 9 failed bookings, got {$failureCount}");
 
         // Verify only 1 booking in database
         $this->assertEquals(1, Booking::where('room_id', $this->room->id)->count());

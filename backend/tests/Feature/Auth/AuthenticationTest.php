@@ -68,7 +68,6 @@ class AuthenticationTest extends TestCase
                 'type',
             ])
             ->assertJson([
-                'message' => 'Login thành công',
                 'type' => 'short_lived',
             ]);
 

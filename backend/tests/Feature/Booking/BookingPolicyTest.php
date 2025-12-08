@@ -160,7 +160,7 @@ class BookingPolicyTest extends TestCase
 
         // Verify booking was not updated
         $this->booking->refresh();
-        $this->assertNotEqual('hacker@example.com', $this->booking->guest_email);
+        $this->assertNotEquals('hacker@example.com', $this->booking->guest_email);
     }
 
     /**

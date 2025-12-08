@@ -28,7 +28,10 @@ abstract class TestCase extends BaseTestCase
      */
     public function actingAs($user, $guard = null)
     {
-        if ($user && $guard === 'sanctum') {
+        if (!$user) {
+            return $this;
+        }
+        if ($guard === 'sanctum') {
             // Create a Sanctum token and add it to request headers
             $token = $user->createToken('test-token');
             $this->withHeader('Authorization', 'Bearer ' . $token->plainTextToken);

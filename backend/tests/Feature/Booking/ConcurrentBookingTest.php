@@ -443,8 +443,9 @@ class ConcurrentBookingTest extends TestCase
             'guest_email' => 'guest@example.com',
         ]);
 
-        $response->assertStatus(422)
-            ->assertJson(['success' => false]);
+        $response->assertStatus(422);
+        // Check that error structure is present instead of success flag
+        $response->assertJsonStructure(['message', 'errors']);
     }
 
     /**

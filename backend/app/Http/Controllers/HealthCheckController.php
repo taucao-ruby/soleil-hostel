@@ -96,6 +96,9 @@ class HealthCheckController extends Controller
             // Silently fail detailed Redis stats
         }
 
-        return response(json_encode($data), $health->status(), $health->headers());
+        return response(json_encode($data), $health->getStatusCode(), [
+            'Content-Type' => 'application/json',
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+        ]);
     }
 }

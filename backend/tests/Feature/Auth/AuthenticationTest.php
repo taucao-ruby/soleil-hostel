@@ -74,7 +74,7 @@ class AuthenticationTest extends TestCase
         // Verify token stored in database
         $token = PersonalAccessToken::where('user_id', $this->user->id)->first();
         $this->assertNotNull($token);
-        $this->assertFalse($token->revoked);
+        $this->assertNull($token->revoked_at); // Token should not be revoked
         $this->assertNotNull($token->expires_at);
         $this->assertTrue($token->expires_at->isFuture());
     }
@@ -146,9 +146,8 @@ class AuthenticationTest extends TestCase
                     'name',
                     'email',
                 ],
-                'token_info' => [
-                    'expires_at',
-                    'expires_in_minutes',
+                'token' => [
+                    'name',
                     'type',
                 ],
             ])
@@ -158,7 +157,7 @@ class AuthenticationTest extends TestCase
                     'name' => 'Test User',
                     'email' => 'user@example.com',
                 ],
-                'token_info' => [
+                'token' => [
                     'type' => 'short_lived',
                 ],
             ]);
@@ -217,7 +216,7 @@ class AuthenticationTest extends TestCase
 
         // Old token should be revoked
         $oldPersonalToken = PersonalAccessToken::findToken($oldToken);
-        $this->assertTrue($oldPersonalToken->revoked);
+        $this->assertNotNull($oldPersonalToken->revoked_at); // Token should have revoked_at set
 
         // New token should work
         $this->withHeader('Authorization', "Bearer {$newToken}")

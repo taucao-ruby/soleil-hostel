@@ -115,7 +115,7 @@ class HttpOnlyTokenController extends Controller
             ceil($expiresInMinutes / 60),  // minutes
             '/',  // path
             config('session.domain'),  // domain
-            env('APP_ENV') === 'production',  // secure (HTTPS only in production)
+            config('app.env') === 'production',  // secure (HTTPS only in production)
             true,  // httpOnly (⚡ XSS cannot steal via JavaScript)
             false,  // raw
             'strict'  // sameSite (⚡ CSRF protected, no cross-site sending)
@@ -219,7 +219,7 @@ class HttpOnlyTokenController extends Controller
             ceil($expiresInMinutes / 60),  // minutes
             '/',  // path
             config('session.domain'),  // domain
-            env('APP_ENV') === 'production',  // secure
+            config('app.env') === 'production',  // secure
             true,  // httpOnly
             false,  // raw
             'strict'  // sameSite
@@ -257,7 +257,7 @@ class HttpOnlyTokenController extends Controller
             -1,  // minutes (expire immediately)
             '/',  // path
             config('session.domain'),  // domain
-            env('APP_ENV') === 'production',  // secure
+            config('app.env') === 'production',  // secure
             true,  // httpOnly
             false,  // raw
             'strict'  // sameSite

@@ -25,17 +25,18 @@ class BookingRateLimitTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function test_booking_rate_limit_3_per_minute_per_user(): void
     {
-        $this->actingAs($this->user);
+        // Use Sanctum guard for API authentication
+        $this->actingAs($this->user, 'sanctum');
 
         // Attempt 3 bookings within 1 minute (should succeed or fail gracefully)
         for ($i = 0; $i < 3; $i++) {
             $response = $this->post('/api/bookings', [
                 'room_id' => $this->room->id,
-                'check_in' => now()->addDays(1)->format('Y-m-d'),
-                'check_out' => now()->addDays(3)->format('Y-m-d'),
-                'guest_name' => 'Test Guest',
-                'guest_email' => 'guest@example.com',
-                'guest_phone' => '+84912345678',
+                'check_in' => now()->addDays(1 + $i * 5)->format('Y-m-d'),
+                'check_out' => now()->addDays(3 + $i * 5)->format('Y-m-d'),
+                'guest_name' => 'Test Guest ' . $i,
+                'guest_email' => 'guest' . $i . '@example.com',
+                'guest_phone' => '+8491234567' . $i,
             ]);
 
             // Should not be rate limited yet
@@ -45,11 +46,11 @@ class BookingRateLimitTest extends TestCase
         // 4th attempt should be rate limited
         $response = $this->post('/api/bookings', [
             'room_id' => $this->room->id,
-            'check_in' => now()->addDays(1)->format('Y-m-d'),
-            'check_out' => now()->addDays(3)->format('Y-m-d'),
-            'guest_name' => 'Test Guest',
-            'guest_email' => 'guest@example.com',
-            'guest_phone' => '+84912345678',
+            'check_in' => now()->addDays(50)->format('Y-m-d'),
+            'check_out' => now()->addDays(52)->format('Y-m-d'),
+            'guest_name' => 'Test Guest 4',
+            'guest_email' => 'guest4@example.com',
+            'guest_phone' => '+84912345674',
         ]);
 
         $this->assertEquals(429, $response->status());
@@ -62,7 +63,7 @@ class BookingRateLimitTest extends TestCase
         $user2 = User::factory()->create();
 
         // User 1: Make 3 requests (hit limit)
-        $this->actingAs($user1);
+        $this->actingAs($user1, 'sanctum');
         for ($i = 0; $i < 3; $i++) {
             $this->post('/api/bookings', [
                 'room_id' => $this->room->id,
@@ -75,7 +76,7 @@ class BookingRateLimitTest extends TestCase
         }
 
         // User 2: Should have fresh limit
-        $this->actingAs($user2);
+        $this->actingAs($user2, 'sanctum');
         $response = $this->post('/api/bookings', [
             'room_id' => $this->room->id,
             'check_in' => now()->addDays(10)->format('Y-m-d'),

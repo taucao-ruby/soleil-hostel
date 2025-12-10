@@ -11,7 +11,6 @@ abstract class TestCase extends BaseTestCase
     
     protected $withoutMiddleware = [
         \App\Http\Middleware\VerifyCsrfToken::class,
-        \App\Http\Middleware\CheckTokenNotRevokedAndNotExpired::class,
     ];
 
     protected function setUp(): void
@@ -30,6 +29,12 @@ abstract class TestCase extends BaseTestCase
     public function actingAs($user, $guard = null)
     {
         if (!$user) {
+            // Clear the Authorization header to logout
+            $this->headers = array_filter(
+                $this->headers,
+                fn($key) => $key !== 'Authorization',
+                ARRAY_FILTER_USE_KEY
+            );
             return $this;
         }
         if ($guard === 'sanctum') {

@@ -176,9 +176,10 @@ class BookingPolicyTest extends TestCase
             ->assertJson(['success' => true]);
 
         // Verify booking was deleted or marked as cancelled
+        $freshBooking = $this->booking->fresh();
         $this->assertTrue(
-            $this->booking->fresh()->status === Booking::STATUS_CANCELLED ||
-            $this->booking->fresh() === null
+            $freshBooking === null ||
+            $freshBooking->status === Booking::STATUS_CANCELLED
         );
     }
 

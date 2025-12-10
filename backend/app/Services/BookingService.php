@@ -15,6 +15,16 @@ class BookingService
     private const CACHE_TAG_USER = 'user-bookings';
 
     /**
+     * Check if cache supports tagging
+     * Array cache (used in tests) doesn't support tags
+     */
+    private function supportsTags(): bool
+    {
+        $store = Cache::getStore();
+        return method_exists($store, 'tags');
+    }
+
+    /**
      * Get user's bookings - CACHED
      * 
      * Cache Strategy:
@@ -27,6 +37,21 @@ class BookingService
     {
         $cacheKey = "bookings:user:{$userId}:page-{$page}";
 
+        // If cache doesn't support tags (e.g., array driver in tests), skip tagging
+        if (!$this->supportsTags()) {
+            return Cache::remember(
+                $cacheKey,
+                self::CACHE_TTL_USER_BOOKINGS,
+                fn() => Booking::where('user_id', $userId)
+                    ->with(['room' => function ($q) {
+                        $q->select(['id', 'name', 'price']);
+                    }])
+                    ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'guest_name', 'guest_email', 'nights', 'created_at', 'updated_at'])
+                    ->orderBy('check_in', 'desc')
+                    ->get()
+            );
+        }
+
         return Cache::tags([self::CACHE_TAG_USER, "user-bookings-{$userId}"])
             ->remember(
                 $cacheKey,
@@ -35,7 +60,7 @@ class BookingService
                     ->with(['room' => function ($q) {
                         $q->select(['id', 'name', 'price']);
                     }])
-                    ->select(['id', 'room_id', 'check_in', 'check_out', 'status', 'created_at'])
+                    ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'guest_name', 'guest_email', 'nights', 'created_at', 'updated_at'])
                     ->orderBy('check_in', 'desc')
                     ->get()
             );
@@ -53,12 +78,23 @@ class BookingService
     {
         $cacheKey = "bookings:id:{$bookingId}";
 
+        // If cache doesn't support tags, skip tagging
+        if (!$this->supportsTags()) {
+            return Cache::remember(
+                $cacheKey,
+                self::CACHE_TTL_BOOKING,
+                fn() => Booking::with(['room', 'user'])
+                    ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'guest_name', 'guest_email', 'nights', 'created_at', 'updated_at'])
+                    ->find($bookingId)
+            );
+        }
+
         return Cache::tags([self::CACHE_TAG_BOOKINGS, "booking-{$bookingId}"])
             ->remember(
                 $cacheKey,
                 self::CACHE_TTL_BOOKING,
                 fn() => Booking::with(['room', 'user'])
-                    ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'created_at'])
+                    ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'guest_name', 'guest_email', 'nights', 'created_at', 'updated_at'])
                     ->find($bookingId)
             );
     }
@@ -69,20 +105,33 @@ class BookingService
 
     public function invalidateUserBookings(int $userId): void
     {
-        Cache::tags(["user-bookings-{$userId}"])->flush();
+        if ($this->supportsTags()) {
+            Cache::tags(["user-bookings-{$userId}"])->flush();
+        } else {
+            Cache::forget("bookings:user:{$userId}:page-1");
+        }
         Log::info("Cache invalidated for user {$userId} bookings");
     }
 
     public function invalidateBooking(int $bookingId, int $userId): void
     {
-        Cache::tags(["booking-{$bookingId}"])->flush();
+        if ($this->supportsTags()) {
+            Cache::tags(["booking-{$bookingId}"])->flush();
+        } else {
+            Cache::forget("bookings:id:{$bookingId}");
+        }
         $this->invalidateUserBookings($userId);
         Log::info("Cache invalidated for booking {$bookingId}");
     }
 
     public function invalidateAllBookings(): void
     {
-        Cache::tags([self::CACHE_TAG_BOOKINGS])->flush();
+        if ($this->supportsTags()) {
+            Cache::tags([self::CACHE_TAG_BOOKINGS])->flush();
+        } else {
+            // For array cache, just clear all bookings keys
+            Cache::flush();
+        }
         Log::info("Cache invalidated for all bookings");
     }
 }

@@ -125,11 +125,11 @@ class BookingController extends Controller
             // Store original booking for event
             $originalBooking = $booking->replicate();
 
-            // Gọi service update
+            // Gọi service update - convert strings to Carbon dates
             $booking = $this->createBookingService->update(
                 booking: $booking,
-                checkIn: $validated['check_in'],
-                checkOut: $validated['check_out'],
+                checkIn: \Carbon\Carbon::createFromFormat('Y-m-d', $validated['check_in'])->startOfDay(),
+                checkOut: \Carbon\Carbon::createFromFormat('Y-m-d', $validated['check_out'])->startOfDay(),
                 additionalData: []
             );
 
@@ -178,7 +178,7 @@ class BookingController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Booking deleted successfully',
-        ], 204);
+        ], 200);
     }
 }
 

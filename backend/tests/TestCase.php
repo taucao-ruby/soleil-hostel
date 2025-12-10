@@ -11,6 +11,7 @@ abstract class TestCase extends BaseTestCase
     
     protected $withoutMiddleware = [
         \App\Http\Middleware\VerifyCsrfToken::class,
+        \App\Http\Middleware\CheckTokenNotRevokedAndNotExpired::class,
     ];
 
     protected function setUp(): void

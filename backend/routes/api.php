@@ -100,10 +100,10 @@ Route::middleware(['check_token_valid'])->group(function () {
     // ========== BOOKING ENDPOINTS ==========
     Route::post('/bookings', [BookingController::class, 'store'])->middleware('throttle:10,1');
     Route::get('/bookings', [BookingController::class, 'index']);
-    Route::get('/bookings/{id}', [BookingController::class, 'show']);
-    Route::put('/bookings/{id}', [BookingController::class, 'update'])->middleware('throttle:10,1');
-    Route::patch('/bookings/{id}', [BookingController::class, 'update'])->middleware('throttle:10,1');
-    Route::delete('/bookings/{id}', [BookingController::class, 'destroy'])->middleware('throttle:10,1');
+    Route::get('/bookings/{booking}', [BookingController::class, 'show']);
+    Route::put('/bookings/{booking}', [BookingController::class, 'update'])->middleware('throttle:10,1');
+    Route::patch('/bookings/{booking}', [BookingController::class, 'update'])->middleware('throttle:10,1');
+    Route::delete('/bookings/{booking}', [BookingController::class, 'destroy'])->middleware('throttle:10,1');
 });
 
 

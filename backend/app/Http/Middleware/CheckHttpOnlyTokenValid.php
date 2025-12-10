@@ -33,16 +33,14 @@ class CheckHttpOnlyTokenValid
         $tokenIdentifier = $request->cookie($cookieName);
 
         // Fallback: Try to extract from Cookie header for testing compatibility
-        if (!$tokenIdentifier) {
+        if (!$tokenIdentifier && $request->hasHeader('Cookie')) {
             $cookieHeader = $request->header('Cookie');
-            if ($cookieHeader && strpos($cookieHeader, $cookieName) !== false) {
-                // Parse cookie header: "name=value; other=value"
-                $cookies = explode('; ', $cookieHeader);
-                foreach ($cookies as $cookie) {
-                    if (strpos($cookie, $cookieName . '=') === 0) {
-                        $tokenIdentifier = substr($cookie, strlen($cookieName . '='));
-                        break;
-                    }
+            // Parse cookie header: "name=value; other=value"
+            $cookies = array_map('trim', explode(';', $cookieHeader));
+            foreach ($cookies as $cookie) {
+                if (strpos($cookie, $cookieName . '=') === 0) {
+                    $tokenIdentifier = substr($cookie, strlen($cookieName . '='));
+                    break;
                 }
             }
         }

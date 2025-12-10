@@ -24,6 +24,32 @@ class RoomAvailabilityCache
      */
     private const TTL_SECONDS = 60;
 
+    private static ?bool $cacheSupportsTagsCache = null;
+
+    /**
+     * Check if cache supports tagging
+     * Array cache (used in tests) doesn't support tags
+     */
+    private function supportsTags(): bool
+    {
+        if (self::$cacheSupportsTagsCache !== null) {
+            return self::$cacheSupportsTagsCache;
+        }
+        
+        try {
+            // Try to create a dummy tag to see if it's supported
+            Cache::tags(['dummy-check'])->get('dummy-key');
+            self::$cacheSupportsTagsCache = true;
+        } catch (\BadMethodCallException $e) {
+            self::$cacheSupportsTagsCache = false;
+        } catch (\Exception $e) {
+            // If any other exception occurs, return true to be safe
+            self::$cacheSupportsTagsCache = true;
+        }
+        
+        return self::$cacheSupportsTagsCache;
+    }
+
     /**
      * Get available rooms with caching
      * Returns from cache within TTL, else queries database and caches result
@@ -34,6 +60,15 @@ class RoomAvailabilityCache
         ?int $capacity = null
     ): Collection {
         $cacheKey = $this->buildCacheKey($checkIn, $checkOut, $capacity);
+
+        if (!$this->supportsTags()) {
+            // Fallback to basic cache (for tests)
+            return Cache::remember(
+                $cacheKey,
+                self::TTL_SECONDS,
+                fn() => $this->queryAvailableRooms($checkIn, $checkOut, $capacity)
+            );
+        }
 
         // ← Cache Hit (fast path)
         if (Cache::tags([self::TAG_ROOM_AVAILABILITY])->has($cacheKey)) {
@@ -63,6 +98,19 @@ class RoomAvailabilityCache
     ): array {
         $cacheKey = "room_{$room->id}_{$checkIn->format('Y-m-d')}_{$checkOut->format('Y-m-d')}";
 
+        if (!$this->supportsTags()) {
+            // Fallback to basic cache
+            return Cache::remember(
+                $cacheKey,
+                self::TTL_SECONDS,
+                fn () => [
+                    'room_id' => $room->id,
+                    'is_available' => $this->isRoomAvailable($room, $checkIn, $checkOut),
+                    'booked_dates' => $this->getBookedDates($room, $checkIn, $checkOut),
+                ]
+            );
+        }
+
         return Cache::tags([
             self::TAG_ROOM_AVAILABILITY,
             self::TAG_ROOM_PREFIX . $room->id,
@@ -84,10 +132,15 @@ class RoomAvailabilityCache
     public function invalidateRoomAvailability(int $roomId): bool
     {
         try {
-            Cache::tags([
-                self::TAG_ROOM_AVAILABILITY,
-                self::TAG_ROOM_PREFIX . $roomId,
-            ])->flush();
+            if ($this->supportsTags()) {
+                Cache::tags([
+                    self::TAG_ROOM_AVAILABILITY,
+                    self::TAG_ROOM_PREFIX . $roomId,
+                ])->flush();
+            } else {
+                // For non-tag caches, do a full flush (not ideal but necessary)
+                Cache::flush();
+            }
 
             return true;
         } catch (\Exception $e) {
@@ -102,7 +155,12 @@ class RoomAvailabilityCache
     public function invalidateAllAvailability(): bool
     {
         try {
-            Cache::tags([self::TAG_ROOM_AVAILABILITY])->flush();
+            if ($this->supportsTags()) {
+                Cache::tags([self::TAG_ROOM_AVAILABILITY])->flush();
+            } else {
+                // For non-tag caches, do a full flush
+                Cache::flush();
+            }
             return true;
         } catch (\Exception $e) {
             \Log::warning("Failed to invalidate all room cache: {$e->getMessage()}");
@@ -213,3 +271,4 @@ class RoomAvailabilityCache
             ->toArray();
     }
 }
+

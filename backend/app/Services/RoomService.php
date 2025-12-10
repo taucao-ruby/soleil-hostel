@@ -13,6 +13,32 @@ class RoomService
     private const CACHE_TTL_AVAILABILITY = 30;   // 30 seconds
     private const CACHE_TAG_ROOMS = 'rooms';
     private const CACHE_TAG_AVAILABILITY = 'availability';
+    
+    private static ?bool $cacheSupportsTagsCache = null;
+
+    /**
+     * Check if cache supports tagging
+     * Array cache (used in tests) doesn't support tags
+     */
+    private function supportsTags(): bool
+    {
+        if (self::$cacheSupportsTagsCache !== null) {
+            return self::$cacheSupportsTagsCache;
+        }
+        
+        try {
+            // Try to create a dummy tag to see if it's supported
+            Cache::tags(['dummy-check'])->get('dummy-key');
+            self::$cacheSupportsTagsCache = true;
+        } catch (\BadMethodCallException $e) {
+            self::$cacheSupportsTagsCache = false;
+        } catch (\Exception $e) {
+            // If any other exception occurs, return true to be safe
+            self::$cacheSupportsTagsCache = true;
+        }
+        
+        return self::$cacheSupportsTagsCache;
+    }
 
     /**
      * Get all active rooms with availability - CACHED
@@ -25,6 +51,14 @@ class RoomService
     public function getAllRoomsWithAvailability(): Collection
     {
         $cacheKey = 'rooms:list:all:active';
+
+        if (!$this->supportsTags()) {
+            return Cache::remember(
+                $cacheKey,
+                self::CACHE_TTL_ROOMS,
+                fn() => $this->fetchRoomsFromDB()
+            );
+        }
 
         return Cache::tags([self::CACHE_TAG_ROOMS])
             ->remember(
@@ -46,6 +80,16 @@ class RoomService
     public function getRoomById(int $roomId): ?Room
     {
         $cacheKey = "rooms:id:{$roomId}";
+
+        if (!$this->supportsTags()) {
+            return Cache::remember(
+                $cacheKey,
+                self::CACHE_TTL_ROOMS,
+                fn() => Room::with('bookings')
+                    ->select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'created_at', 'updated_at'])
+                    ->find($roomId)
+            );
+        }
 
         return Cache::tags([self::CACHE_TAG_ROOMS, "room-{$roomId}"])
             ->remember(
@@ -71,25 +115,34 @@ class RoomService
         $cacheKey = "rooms:availability:{$roomId}:{$checkIn}:{$checkOut}";
 
         try {
-            // Try to acquire lock to prevent thundering herd
-            $lockKey = "rooms:availability:lock:{$roomId}";
-            $lock = Cache::lock($lockKey, 5);
+            if ($this->supportsTags()) {
+                // Try to acquire lock to prevent thundering herd
+                $lockKey = "rooms:availability:lock:{$roomId}";
+                $lock = Cache::lock($lockKey, 5);
 
-            if ($lock->get()) {
-                $result = Cache::tags([self::CACHE_TAG_AVAILABILITY, "availability-room-{$roomId}"])
-                    ->remember(
-                        $cacheKey,
-                        self::CACHE_TTL_AVAILABILITY,
-                        fn() => $this->checkOverlappingBookings($roomId, $checkIn, $checkOut)
-                    );
+                if ($lock->get()) {
+                    $result = Cache::tags([self::CACHE_TAG_AVAILABILITY, "availability-room-{$roomId}"])
+                        ->remember(
+                            $cacheKey,
+                            self::CACHE_TTL_AVAILABILITY,
+                            fn() => $this->checkOverlappingBookings($roomId, $checkIn, $checkOut)
+                        );
 
-                $lock->release();
-                return $result;
+                    $lock->release();
+                    return $result;
+                }
+
+                // If lock acquisition fails, fallback to DB (prevent cascading failures)
+                Log::warning("Cache lock failed for room availability", ['room_id' => $roomId]);
+                return $this->checkOverlappingBookings($roomId, $checkIn, $checkOut);
+            } else {
+                // For array cache (tests), just use simple remember without tags
+                return Cache::remember(
+                    $cacheKey,
+                    self::CACHE_TTL_AVAILABILITY,
+                    fn() => $this->checkOverlappingBookings($roomId, $checkIn, $checkOut)
+                );
             }
-
-            // If lock acquisition fails, fallback to DB (prevent cascading failures)
-            Log::warning("Cache lock failed for room availability", ['room_id' => $roomId]);
-            return $this->checkOverlappingBookings($roomId, $checkIn, $checkOut);
 
         } catch (\Exception $e) {
             Log::error("Cache availability check failed: {$e->getMessage()}");
@@ -109,6 +162,29 @@ class RoomService
     public function getRoomDetailWithBookings(int $roomId): ?array
     {
         $cacheKey = "rooms:detail:{$roomId}:bookings";
+
+        if (!$this->supportsTags()) {
+            return Cache::remember(
+                $cacheKey,
+                self::CACHE_TTL_AVAILABILITY,
+                function () use ($roomId) {
+                    $room = Room::with(['bookings' => function ($q) {
+                        $q->where('status', 'confirmed')
+                          ->select(['id', 'room_id', 'check_in', 'check_out', 'status']);
+                    }])->find($roomId);
+
+                    if (!$room) return null;
+
+                    return [
+                        'room' => $room->only(['id', 'name', 'price', 'max_guests']),
+                        'bookings' => $room->bookings->map(fn($b) => [
+                            'check_in' => $b->check_in->format('Y-m-d'),
+                            'check_out' => $b->check_out->format('Y-m-d'),
+                        ]),
+                    ];
+                }
+            );
+        }
 
         return Cache::tags([self::CACHE_TAG_AVAILABILITY, "availability-room-{$roomId}"])
             ->remember(
@@ -139,21 +215,35 @@ class RoomService
 
     public function invalidateRoom(int $roomId): void
     {
-        // Invalidate specific room + availability
-        Cache::tags([self::CACHE_TAG_ROOMS, "room-{$roomId}"])->flush();
-        Cache::tags(["availability-room-{$roomId}"])->flush();
+        if ($this->supportsTags()) {
+            // Invalidate specific room + availability
+            Cache::tags([self::CACHE_TAG_ROOMS, "room-{$roomId}"])->flush();
+            Cache::tags(["availability-room-{$roomId}"])->flush();
+        } else {
+            Cache::forget("rooms:id:{$roomId}");
+            Cache::forget('rooms:list:all:active');
+        }
         Log::info("Cache invalidated for room {$roomId}");
     }
 
     public function invalidateAllRooms(): void
     {
-        Cache::tags([self::CACHE_TAG_ROOMS])->flush();
+        if ($this->supportsTags()) {
+            Cache::tags([self::CACHE_TAG_ROOMS])->flush();
+        } else {
+            Cache::forget('rooms:list:all:active');
+            Cache::flush();
+        }
         Log::info("Cache invalidated for all rooms");
     }
 
     public function invalidateAvailability(int $roomId): void
     {
-        Cache::tags(["availability-room-{$roomId}"])->flush();
+        if ($this->supportsTags()) {
+            Cache::tags(["availability-room-{$roomId}"])->flush();
+        } else {
+            Cache::flush(); // Simple flush for array cache
+        }
         Log::info("Cache invalidated for room {$roomId} availability");
     }
 

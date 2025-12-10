@@ -293,49 +293,40 @@ class CreateBookingConcurrencyTest extends TestCase
     /**
      * Test 7: Booking update với overlapping dates bị reject
      * 
-     * NOTE: Skipped due to policy registration issue in test environment.
-     * The overlap detection logic is tested in unit tests and feature tests 1-6 cover the main cases.
-     * In production, this works correctly when authorized user attempts update.
+     * Verify that updating a booking to overlap with an existing booking is rejected
      */
     public function test_booking_update_with_overlap_is_rejected(): void
     {
-        $this->markTestSkipped('Policy binding tested elsewhere; feature test coverage sufficient');
-    }
-
-    // Uncomment below to test update with overlap when policy is properly mocked
-    /*
-    public function test_booking_update_with_overlap_is_rejected_old(): void
-    {
-        // Create 2 bookings for same user (user1)
-        $checkIn1 = Carbon::tomorrow()->addDays(1)->toDateString();
-        $checkOut1 = Carbon::tomorrow()->addDays(4)->toDateString();
-
-        Booking::create([
+        // Create first booking
+        $booking1 = Booking::create([
             'room_id' => $this->room->id,
-            'check_in' => $checkIn1,
-            'check_out' => $checkOut1,
-            'guest_name' => 'First Booking',
-            'guest_email' => 'first@example.com',
+            'check_in' => Carbon::tomorrow()->addDays(1)->toDateString(),
+            'check_out' => Carbon::tomorrow()->addDays(5)->toDateString(),
+            'guest_name' => 'Guest 1',
+            'guest_email' => 'guest1@example.com',
             'user_id' => $this->user1->id,
             'status' => 'confirmed',
         ]);
 
-        // Second booking for user1 (different dates)
+        // Create second booking for same user that won't overlap
         $booking2 = Booking::create([
             'room_id' => $this->room->id,
             'check_in' => Carbon::tomorrow()->addDays(10)->toDateString(),
             'check_out' => Carbon::tomorrow()->addDays(12)->toDateString(),
-            'guest_name' => 'Second Booking',
-            'guest_email' => 'second@example.com',
+            'guest_name' => 'Guest 2',
+            'guest_email' => 'guest2@example.com',
             'user_id' => $this->user1->id,
-            'status' => 'confirmed',
+            'status' => 'pending',
         ]);
 
-        // User1 try to update booking2 to overlap với booking1
+        // Try to update booking2 to overlap with booking1
         $response = $this->actingAs($this->user1, 'sanctum')
-            ->patchJson("/api/bookings/{$booking2->id}", [
-                'check_in' => $checkIn1,
-                'check_out' => $checkOut1,
+            ->putJson("/api/bookings/{$booking2->id}", [
+                'room_id' => $this->room->id,
+                'check_in' => Carbon::tomorrow()->addDays(3)->toDateString(),
+                'check_out' => Carbon::tomorrow()->addDays(7)->toDateString(),
+                'guest_name' => 'Updated Guest',
+                'guest_email' => 'updated@example.com',
             ]);
 
         // Should reject with 422 due to overlap
@@ -346,7 +337,6 @@ class CreateBookingConcurrencyTest extends TestCase
         $booking2->refresh();
         $this->assertEquals(Carbon::tomorrow()->addDays(10)->toDateString(), $booking2->check_in->toDateString());
     }
-    */
 
     /**
      * Test 8: Multiple rooms không ảnh hưởng booking của nhau

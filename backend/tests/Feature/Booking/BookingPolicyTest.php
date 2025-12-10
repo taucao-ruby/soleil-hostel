@@ -240,17 +240,15 @@ class BookingPolicyTest extends TestCase
      */
     public function test_admin_can_view_any_booking(): void
     {
-        // This depends on whether admin override is implemented in BookingPolicy
+        // Admin should NOT be able to view other user's bookings
+        // unless explicitly given admin override in the policy
         // Current implementation: Only owner can view
-        // If admin override is needed, update BookingPolicy to:
-        // return $user->id === $booking->user_id || $user->role === 'admin';
 
         $response = $this->actingAs($this->admin, 'sanctum')
             ->getJson("/api/bookings/{$this->booking->id}");
 
-        // Currently expects 403 because policy doesn't have admin override
-        // Uncomment below if admin override is added to policy
-        // $response->assertStatus(200);
+        // Admin is not the owner, so should get 403 Forbidden
+        $response->assertStatus(403);
     }
 
     /**

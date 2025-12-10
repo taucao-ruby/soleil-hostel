@@ -152,12 +152,9 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
         $oldTokenIdentifier = $oldToken->token_identifier;
 
         // Refresh token (simulating browser sending httpOnly cookie automatically)
-        // In real test, we'd need to extract token from Set-Cookie, 
-        // but for unit test we'll manually set it
-        $refreshResponse = $this->withCookie(
-            env('SANCTUM_COOKIE_NAME', 'soleil_token'),
-            $oldTokenIdentifier
-        )->postJson('/api/auth/refresh-httponly');
+        $cookieName = env('SANCTUM_COOKIE_NAME', 'soleil_token');
+        $refreshResponse = $this->withHeader('Cookie', "{$cookieName}={$oldTokenIdentifier}")
+            ->postJson('/api/auth/refresh-httponly');
 
         $refreshResponse->assertStatus(200);
         $refreshResponse->assertJsonStructure([
@@ -201,10 +198,9 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
         $tokenIdentifier = $token->token_identifier;
 
         // Logout
-        $logoutResponse = $this->withCookie(
-            env('SANCTUM_COOKIE_NAME', 'soleil_token'),
-            $tokenIdentifier
-        )->postJson('/api/auth/logout-httponly');
+        $cookieName = env('SANCTUM_COOKIE_NAME', 'soleil_token');
+        $logoutResponse = $this->withHeader('Cookie', "{$cookieName}={$tokenIdentifier}")
+            ->postJson('/api/auth/logout-httponly');
 
         $logoutResponse->assertStatus(200);
         $logoutResponse->assertJson(['success' => true]);
@@ -236,18 +232,15 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
 
         $token = PersonalAccessToken::where('tokenable_id', $this->user->id)->first();
         $tokenIdentifier = $token->token_identifier;
+        $cookieName = env('SANCTUM_COOKIE_NAME', 'soleil_token');
 
         // Logout (revoke token)
-        $this->withCookie(
-            env('SANCTUM_COOKIE_NAME', 'soleil_token'),
-            $tokenIdentifier
-        )->postJson('/api/auth/logout-httponly');
+        $this->withHeader('Cookie', "{$cookieName}={$tokenIdentifier}")
+            ->postJson('/api/auth/logout-httponly');
 
         // Try to access protected endpoint with revoked token
-        $response = $this->withCookie(
-            env('SANCTUM_COOKIE_NAME', 'soleil_token'),
-            $tokenIdentifier
-        )->getJson('/api/auth/me-httponly');
+        $response = $this->withHeader('Cookie', "{$cookieName}={$tokenIdentifier}")
+            ->getJson('/api/auth/me-httponly');
 
         $response->assertStatus(401);
         $response->assertJson(['code' => 'TOKEN_REVOKED']);
@@ -272,12 +265,11 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
 
         // Manually expire token
         $token->update(['expires_at' => now()->subHour()]);
+        $cookieName = env('SANCTUM_COOKIE_NAME', 'soleil_token');
 
         // Try to access protected endpoint
-        $response = $this->withCookie(
-            env('SANCTUM_COOKIE_NAME', 'soleil_token'),
-            $token->token_identifier
-        )->getJson('/api/auth/me-httponly');
+        $response = $this->withHeader('Cookie', "{$cookieName}={$token->token_identifier}")
+            ->getJson('/api/auth/me-httponly');
 
         $response->assertStatus(401);
         $response->assertJson(['code' => 'TOKEN_EXPIRED']);
@@ -350,10 +342,9 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
         $token = PersonalAccessToken::where('tokenable_id', $this->user->id)->first();
 
         // Get me
-        $response = $this->withCookie(
-            env('SANCTUM_COOKIE_NAME', 'soleil_token'),
-            $token->token_identifier
-        )->getJson('/api/auth/me-httponly');
+        $cookieName = env('SANCTUM_COOKIE_NAME', 'soleil_token');
+        $response = $this->withHeader('Cookie', "{$cookieName}={$token->token_identifier}")
+            ->getJson('/api/auth/me-httponly');
 
         $response->assertStatus(200);
         $response->assertJsonStructure([
@@ -385,15 +376,14 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
 
         $token = PersonalAccessToken::where('tokenable_id', $this->user->id)->first();
         $tokenIdentifier = $token->token_identifier;
+        $cookieName = env('SANCTUM_COOKIE_NAME', 'soleil_token');
 
         // Refresh multiple times (exceed threshold)
         $maxRefreshCount = config('sanctum.max_refresh_count_per_hour', 10);
 
         for ($i = 0; $i < $maxRefreshCount + 1; $i++) {
-            $response = $this->withCookie(
-                env('SANCTUM_COOKIE_NAME', 'soleil_token'),
-                $tokenIdentifier
-            )->postJson('/api/auth/refresh-httponly');
+            $response = $this->withHeader('Cookie', "{$cookieName}={$tokenIdentifier}")
+                ->postJson('/api/auth/refresh-httponly');
 
             if ($i < $maxRefreshCount) {
                 // Should succeed

@@ -81,4 +81,13 @@ abstract class TestCase extends BaseTestCase
     {
         $this->withoutExceptionHandling();
     }
+
+    /**
+     * Set an httpOnly cookie for the next request
+     * Properly handles how Laravel test framework processes cookies
+     */
+    protected function withHttpOnlyCookie($name, $value)
+    {
+        return $this->withCookie($name, $value);
+    }
 }

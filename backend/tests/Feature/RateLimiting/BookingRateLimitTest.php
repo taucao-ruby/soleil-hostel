@@ -28,29 +28,27 @@ class BookingRateLimitTest extends TestCase
         // Use Sanctum guard for API authentication
         $this->actingAs($this->user, 'sanctum');
 
-        // Attempt 3 bookings within 1 minute (should succeed or fail gracefully)
-        for ($i = 0; $i < 3; $i++) {
-            $response = $this->post('/api/bookings', [
+        // Attempt 10 bookings within 1 minute (should succeed - at limit)
+        for ($i = 0; $i < 10; $i++) {
+            $response = $this->postJson('/api/bookings', [
                 'room_id' => $this->room->id,
                 'check_in' => now()->addDays(1 + $i * 5)->format('Y-m-d'),
                 'check_out' => now()->addDays(3 + $i * 5)->format('Y-m-d'),
                 'guest_name' => 'Test Guest ' . $i,
                 'guest_email' => 'guest' . $i . '@example.com',
-                'guest_phone' => '+8491234567' . $i,
             ]);
 
-            // Should not be rate limited yet
+            // Should not be rate limited yet (within limit of 10)
             $this->assertNotEquals(429, $response->status());
         }
 
-        // 4th attempt should be rate limited
-        $response = $this->post('/api/bookings', [
+        // 11th attempt should be rate limited (exceeds 10 per minute)
+        $response = $this->postJson('/api/bookings', [
             'room_id' => $this->room->id,
             'check_in' => now()->addDays(50)->format('Y-m-d'),
             'check_out' => now()->addDays(52)->format('Y-m-d'),
-            'guest_name' => 'Test Guest 4',
-            'guest_email' => 'guest4@example.com',
-            'guest_phone' => '+84912345674',
+            'guest_name' => 'Test Guest 11',
+            'guest_email' => 'guest11@example.com',
         ]);
 
         $this->assertEquals(429, $response->status());

@@ -9,6 +9,9 @@ abstract class TestCase extends BaseTestCase
 {
     use RefreshDatabase;
     
+    // Default headers container used by tests when manipulating headers
+    protected array $headers = [];
+
     protected $withoutMiddleware = [
         \App\Http\Middleware\VerifyCsrfToken::class,
     ];
@@ -29,12 +32,19 @@ abstract class TestCase extends BaseTestCase
     public function actingAs($user, $guard = null)
     {
         if (!$user) {
-            // Clear the Authorization header to logout
-            $this->headers = array_filter(
-                $this->headers,
-                fn($key) => $key !== 'Authorization',
-                ARRAY_FILTER_USE_KEY
-            );
+            // Clear any test headers and logout the auth guard to simulate unauthenticated requests
+            $this->headers = [];
+            $this->withHeaders([]);
+            try {
+                // Logout web guard and clear current user resolver
+                if (auth()->guard('web')->check()) {
+                    auth()->guard('web')->logout();
+                }
+                auth()->setUser(null);
+            } catch (\Throwable $e) {
+                // Ignore if logout is not available in this test context
+            }
+
             return $this;
         }
         if ($guard === 'sanctum') {

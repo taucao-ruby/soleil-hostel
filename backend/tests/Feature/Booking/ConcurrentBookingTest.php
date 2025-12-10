@@ -479,21 +479,36 @@ class ConcurrentBookingTest extends TestCase
      */
     public function test_unauthorized_cannot_create_booking(): void
     {
-        // Logout
-        $this->actingAs(null);
-
+        // Make the request explicitly without an Authorization header (override server params)
         $checkIn = Carbon::now()->addDays(5)->startOfDay();
         $checkOut = $checkIn->clone()->addDays(2);
 
-        $response = $this->postJson('/api/bookings', [
+        $payload = [
             'room_id' => $this->room->id,
             'check_in' => $checkIn->toDateString(),
             'check_out' => $checkOut->toDateString(),
             'guest_name' => 'Guest',
             'guest_email' => 'guest@example.com',
-        ]);
+        ];
 
-        $response->assertStatus(401);
+        // Ensure application auth/session are cleared for this unauthenticated request
+        try {
+            auth()->logout();
+            auth()->setUser(null);
+        } catch (\Throwable $e) {
+            // ignore
+        }
+
+        try {
+            session()->flush();
+        } catch (\Throwable $e) {
+            // ignore if session not available
+        }
+
+        // Use low-level call to ensure no Authorization header is sent
+        $response = $this->call('POST', '/api/bookings', $payload, [], [], ['HTTP_AUTHORIZATION' => '']);
+
+        $this->assertEquals(401, $response->getStatusCode());
     }
 
     /**

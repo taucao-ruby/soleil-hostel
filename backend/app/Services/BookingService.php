@@ -13,6 +13,8 @@ class BookingService
     private const CACHE_TTL_BOOKING = 600;        // 10 minutes
     private const CACHE_TAG_BOOKINGS = 'bookings';
     private const CACHE_TAG_USER = 'user-bookings';
+    
+    private static ?bool $cacheSupportsTagsCache = null;
 
     /**
      * Check if cache supports tagging
@@ -20,8 +22,22 @@ class BookingService
      */
     private function supportsTags(): bool
     {
-        $store = Cache::getStore();
-        return method_exists($store, 'tags');
+        if (self::$cacheSupportsTagsCache !== null) {
+            return self::$cacheSupportsTagsCache;
+        }
+        
+        try {
+            // Try to create a dummy tag to see if it's supported
+            Cache::tags(['dummy-check'])->get('dummy-key');
+            self::$cacheSupportsTagsCache = true;
+        } catch (\BadMethodCallException $e) {
+            self::$cacheSupportsTagsCache = false;
+        } catch (\Exception $e) {
+            // If any other exception occurs, return true to be safe
+            self::$cacheSupportsTagsCache = true;
+        }
+        
+        return self::$cacheSupportsTagsCache;
     }
 
     /**
@@ -44,7 +60,7 @@ class BookingService
                 self::CACHE_TTL_USER_BOOKINGS,
                 fn() => Booking::where('user_id', $userId)
                     ->with(['room' => function ($q) {
-                        $q->select(['id', 'name', 'price']);
+                        $q->select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'created_at', 'updated_at']);
                     }])
                     ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'guest_name', 'guest_email', 'nights', 'created_at', 'updated_at'])
                     ->orderBy('check_in', 'desc')
@@ -58,7 +74,7 @@ class BookingService
                 self::CACHE_TTL_USER_BOOKINGS,
                 fn() => Booking::where('user_id', $userId)
                     ->with(['room' => function ($q) {
-                        $q->select(['id', 'name', 'price']);
+                        $q->select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'created_at', 'updated_at']);
                     }])
                     ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'guest_name', 'guest_email', 'nights', 'created_at', 'updated_at'])
                     ->orderBy('check_in', 'desc')

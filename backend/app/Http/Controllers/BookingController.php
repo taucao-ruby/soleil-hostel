@@ -126,11 +126,15 @@ class BookingController extends Controller
             $originalBooking = $booking->replicate();
 
             // Gọi service update - convert strings to Carbon dates
+            // Pass guest_name and guest_email via additionalData
             $booking = $this->createBookingService->update(
                 booking: $booking,
                 checkIn: \Carbon\Carbon::createFromFormat('Y-m-d', $validated['check_in'])->startOfDay(),
                 checkOut: \Carbon\Carbon::createFromFormat('Y-m-d', $validated['check_out'])->startOfDay(),
-                additionalData: []
+                additionalData: [
+                    'guest_name' => $validated['guest_name'] ?? $booking->guest_name,
+                    'guest_email' => $validated['guest_email'] ?? $booking->guest_email,
+                ]
             );
 
             // Dispatch event for cache invalidation

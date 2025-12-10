@@ -22,8 +22,11 @@ class UpdateBookingRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'room_id' => 'required|integer|exists:rooms,id',
             'check_in' => 'required|date_format:Y-m-d|after:today',
             'check_out' => 'required|date_format:Y-m-d|after:check_in',
+            'guest_name' => 'required|string|max:255',
+            'guest_email' => 'required|email|max:255',
         ];
     }
 

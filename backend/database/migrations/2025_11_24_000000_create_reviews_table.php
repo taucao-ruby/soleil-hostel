@@ -43,9 +43,8 @@ return new class extends Migration
             // Timestamps
             $table->timestamps();
             
-            // Indexes for queries
-            $table->index('room_id');
-            $table->index('user_id');
+            // Additional indexes for queries
+            // room_id and user_id already have indexes from unsignedBigInteger()->index()
             $table->index('rating');
             $table->index('approved');
             $table->index('created_at');

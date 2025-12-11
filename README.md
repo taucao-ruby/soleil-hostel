@@ -126,7 +126,7 @@ Giấy phép
 Dự án được phân phối dưới giấy phép MIT. Xem file LICENSE để biết thêm chi tiết.
 
 Liên hệ
-Tác giả: Tàu Tàu
+Tác giả: CAO TAU
 
 Email: tau.cao21@student.passerellesnumeriques.org
 

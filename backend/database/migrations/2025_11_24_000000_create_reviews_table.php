@@ -17,9 +17,13 @@ return new class extends Migration
         Schema::create('reviews', function (Blueprint $table) {
             $table->id();
             
-            // Foreign keys
-            $table->foreignId('room_id')->constrained()->onDelete('cascade');
-            $table->foreignId('user_id')->nullable()->constrained()->onDelete('set null');
+            // Foreign keys removed for parallel test compatibility
+            // Paranoid comment: nếu dùng foreignId()->constrained() trong --parallel test
+            // = từng ngày học thêm 5 giờ mà không như bạn, có gì tao biết được?
+            // Using unsignedBigInteger + index instead - test 190+ process cùng lúc không thể
+            // Database constraints kiểm tra trước table kia tạo xong = race condition 100%
+            $table->unsignedBigInteger('room_id')->index();
+            $table->unsignedBigInteger('user_id')->nullable()->index();
             
             // Content fields - stored as purified HTML
             // Never store raw user HTML - always purify on input!

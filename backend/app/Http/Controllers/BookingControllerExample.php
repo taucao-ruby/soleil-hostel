@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Log;
  * ├─ Zero known bypasses
  * └─ Industry-standard (used in Drupal, WordPress)
  */
-class BookingController extends Controller
+class BookingControllerExample extends Controller
 {
     /**
      * Display a listing of bookings (admin)

@@ -1,5 +1,7 @@
 <?php
 
+namespace Tests\Feature;
+
 use Tests\TestCase;
 use App\Models\Booking;
 use App\Models\Room;

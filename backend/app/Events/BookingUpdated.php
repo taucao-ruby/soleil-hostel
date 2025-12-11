@@ -2,20 +2,19 @@
 
 namespace App\Events;
 
-use App\Models\Booking;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
 
 class BookingUpdated
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use Dispatchable, InteractsWithSockets;
 
     /**
      * Create a new event instance.
+     * Accepts both Booking models and stdClass objects to avoid serialization issues
      */
     public function __construct(
-        public Booking $booking,
-        public Booking $originalBooking
+        public mixed $booking,
+        public mixed $originalBooking
     ) {}
 }

@@ -122,8 +122,8 @@ class BookingController extends Controller
         $validated = $request->validated();
 
         try {
-            // Store original booking for event
-            $originalBooking = $booking->replicate();
+            // Store original booking data BEFORE updating (to avoid serialization issues)
+            $originalBookingData = $booking->toArray();
 
             // Gọi service update - convert strings to Carbon dates
             // Pass guest_name and guest_email via additionalData
@@ -137,8 +137,9 @@ class BookingController extends Controller
                 ]
             );
 
-            // Dispatch event for cache invalidation
-            event(new BookingUpdated($booking, $originalBooking));
+            // Dispatch event for cache invalidation using array data instead of models
+            // This avoids Laravel trying to restore deleted models from the event
+            event(new BookingUpdated((object) $booking->toArray(), (object) $originalBookingData));
 
             return response()->json([
                 'success' => true,
@@ -171,13 +172,12 @@ class BookingController extends Controller
         // Kiểm tra authorization
         $this->authorize('delete', $booking);
 
-        // Store booking data for event before deleting
-        $deletedBooking = $booking->replicate();
+        // Dispatch event for cache invalidation BEFORE deleting
+        // This avoids Laravel trying to restore a deleted model from the event
+        event(new BookingDeleted($booking));
 
+        // Delete booking
         $booking->delete();
-
-        // Dispatch event for cache invalidation
-        event(new BookingDeleted($deletedBooking));
 
         return response()->json([
             'success' => true,

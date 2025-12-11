@@ -27,7 +27,8 @@ class CheckTokenNotRevokedAndNotExpired
     public function handle(Request $request, Closure $next)
     {
         // If user is already authenticated (e.g., in tests), allow the request through
-        if ($request->user('web')) {
+        // Check both 'web' guard (traditional auth) and 'sanctum' guard (API tests)
+        if ($request->user('web') || $request->user('sanctum')) {
             return $next($request);
         }
 

@@ -6,9 +6,18 @@ use Tests\TestCase;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 
 class NPlusOneQueriesTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        
+        // Clear all caches to ensure fresh database queries are counted
+        Cache::flush();
+    }
+
     /**
      * Assert that no N+1 queries occur during booking index
      */

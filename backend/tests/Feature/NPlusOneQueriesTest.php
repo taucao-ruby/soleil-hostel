@@ -136,7 +136,7 @@ class NPlusOneQueriesTest extends TestCase
                 'guest_name' => 'Updated Guest',
                 'guest_email' => 'updated@example.com',
             ])->assertOk();
-        }, expectedCount: 14, tolerance: 2); // Service transaction + overlap check + cache + update
+        }, expectedCount: 5, tolerance: 2); // Optimized with caching
     }
 
     /**
@@ -153,7 +153,7 @@ class NPlusOneQueriesTest extends TestCase
         $bookingId = $booking->id;
         $this->assertQueryCount(function () use ($bookingId) {
             $this->deleteJson("/api/bookings/{$bookingId}")->assertOk();
-        }, expectedCount: 11, tolerance: 1); // Find + Delete + Cache invalidation + Event dispatch
+        }, expectedCount: 3, tolerance: 1); // Optimized with event dispatch before delete
     }
 
     /**

@@ -38,9 +38,14 @@ php artisan test tests/Feature/Auth/AuthenticationTest.php::test_login_success
 
 ```
 Total Tests:      206
-├─ Passing:       204 ✅
-├─ Skipped:       2
-└─ Failing:       0 (in production environment)
+├─ Passing:       190 ✅
+├─ Failed:        14 (API endpoint issues)
+├─ Skipped:       2 (Framework limitation)
+└─ Status:        ✅ Ready for development
+
+Test Result:
+  190 passed + 14 failed + 2 skipped = 206 total
+  Pass rate: 92.2% (190/206)
 
 Categories:
 ├─ Authentication        43 tests
@@ -51,6 +56,39 @@ Categories:
 ├─ Cache Operations      20+ tests
 ├─ Health Check          6 tests
 └─ Unit Tests            20+ tests
+```
+
+---
+
+## ⚠️ Known Test Failures
+
+### Current Status
+
+- **14 tests failing** - API endpoint issues (mainly DELETE /api/bookings/{id} returning 404)
+- **2 tests skipped** - Framework limitation (cookie propagation in middleware)
+- **190 tests passing** - Core functionality working
+
+### Failing Tests Overview
+
+The failing tests are in the booking cancellation flow where the DELETE endpoint returns 404 instead of 200. This indicates the booking deletion endpoint needs to be reviewed and fixed.
+
+**Affected Tests:**
+
+- `Booking\ConcurrentBookingTest::booking_cancellation_frees_up_room`
+- `Booking\*` tests that attempt DELETE operations
+- `Security\*` tests that depend on booking operations
+
+### How to Debug Failures
+
+```bash
+# Run just the failing tests with verbose output
+php artisan test --filter=booking_cancellation -v
+
+# Run a specific category to identify issues
+php artisan test tests/Feature/Booking/ -v
+
+# Use stop-on-failure to debug the first failure
+php artisan test --stop-on-failure -v
 ```
 
 ---
@@ -660,12 +698,18 @@ php artisan test --coverage --min=90
 ## ✅ Status
 
 - ✅ 206 tests available
-- ✅ 204 passing (98.1%)
+- ✅ 190 passing (92.2%)
+- ✅ 14 failing (API endpoint issues - requires fixing)
 - ✅ 2 skipped (framework limitation)
-- ✅ 0 failing in correct environment
-- ✅ >95% code coverage
 - ✅ Parallel execution enabled
 - ✅ CI/CD integration ready
+- ⚠️ Some booking endpoints need fixes (DELETE /api/bookings/{id})
+
+**Next Steps:**
+
+1. Fix booking deletion endpoint to return proper status codes
+2. Verify all 14 failing tests pass after fixes
+3. Reach 100% pass rate (206/206 tests)
 
 ---
 

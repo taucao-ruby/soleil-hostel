@@ -58,7 +58,7 @@ class NPlusOneQueriesTest extends TestCase
 
         $this->assertQueryCount(function () {
             $this->getJson('/api/rooms')->assertOk();
-        }, expectedCount: 3, tolerance: 1); // Account for cache checks and query variance
+        }, expectedCount: 1, tolerance: 1); // Single query with caching optimizations
     }
 
     /**
@@ -72,7 +72,7 @@ class NPlusOneQueriesTest extends TestCase
         $roomId = $room->id;
         $this->assertQueryCount(function () use ($roomId) {
             $this->getJson("/api/rooms/{$roomId}")->assertOk();
-        }, expectedCount: 4, tolerance: 1); // Account for relationships and cache checks
+        }, expectedCount: 2, tolerance: 1); // Query for room + relationships with caching
     }
 
     /**
@@ -89,7 +89,7 @@ class NPlusOneQueriesTest extends TestCase
         $bookingId = $booking->id;
         $this->assertQueryCount(function () use ($bookingId) {
             $this->getJson("/api/bookings/{$bookingId}")->assertOk();
-        }, expectedCount: 6, tolerance: 1); // Account for relationships and middleware checks
+        }, expectedCount: 4, tolerance: 1); // Booking + room relationships with caching
     }
 
     /**
@@ -112,7 +112,7 @@ class NPlusOneQueriesTest extends TestCase
                 'guest_name' => 'Test Guest',
                 'guest_email' => 'test@example.com',
             ])->assertCreated();
-        }, expectedCount: 14, tolerance: 2); // Service transaction + overlap check + cache + insert
+        }, expectedCount: 6, tolerance: 2); // Create booking with pessimistic locking + event dispatch
     }
 
     /**

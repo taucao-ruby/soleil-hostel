@@ -57,13 +57,9 @@ class CacheInvalidationOnBookingTest extends TestCase
         $this->cache->getAvailableRooms($checkIn, $checkOut, 2);
 
         $cacheKey = "rooms_availability_{$checkIn->format('Y-m-d')}_{$checkOut->format('Y-m-d')}_2";
-        try {
-            $hasCache = Cache::tags(['room_availability'])->has($cacheKey);
-        } catch (\BadMethodCallException $e) {
-            // Tags not supported, check with basic cache
-            $hasCache = Cache::has($cacheKey);
-        }
-        $this->assertTrue($hasCache);
+        // Check if cache exists using basic cache since array cache doesn't support tags
+        $hasCache = Cache::has($cacheKey);
+        $this->assertTrue($hasCache, "Cache should be populated after getAvailableRooms call");
 
         // Create booking and trigger event
         $booking = Booking::factory()->create([
@@ -75,13 +71,8 @@ class CacheInvalidationOnBookingTest extends TestCase
         $this->cache->invalidateRoomAvailability($this->room->id);
 
         // Cache should be invalidated
-        try {
-            $stillExists = Cache::tags(['room_availability'])->has($cacheKey);
-        } catch (\BadMethodCallException $e) {
-            // Tags not supported, check with basic cache
-            $stillExists = Cache::has($cacheKey);
-        }
-        $this->assertFalse($stillExists);
+        $stillExists = Cache::has($cacheKey);
+        $this->assertFalse($stillExists, "Cache should be invalidated after booking creation");
     }
 
     #[\PHPUnit\Framework\Attributes\Test]

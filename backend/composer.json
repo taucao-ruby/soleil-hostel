@@ -13,6 +13,7 @@
         "ezyang/htmlpurifier": "^4.17"
     },
     "require-dev": {
+        "brianium/paratest": "^7.8",
         "fakerphp/faker": "^1.23",
         "laravel/pail": "^1.2.2",
         "laravel/pint": "^1.13",

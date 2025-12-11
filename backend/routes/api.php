@@ -65,21 +65,20 @@ Route::post('/contact', [ContactController::class, 'store'])->middleware('thrott
 
 // ========== PROTECTED ROUTES (Require valid token) ==========
 // 
-// Our custom middleware:
-// 1. check_token_valid - Check token exists, not expired + not revoked
+// Using Laravel Sanctum 'sanctum' middleware for API authentication
 //
 // Nếu token invalid (expired/revoked) → 401 Unauthorized
 // Frontend sẽ nhận 401 → tự động gọi refresh endpoint
 //
 
-Route::middleware(['check_httponly_token'])->group(function () {
-    // NEW: httpOnly cookie authentication endpoints (with custom middleware)
+// httpOnly cookie authentication endpoints (with auth:sanctum middleware)
+Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/auth/refresh-httponly', [HttpOnlyTokenController::class, 'refresh']);
     Route::post('/auth/logout-httponly', [HttpOnlyTokenController::class, 'logout']);
     Route::get('/auth/me-httponly', [HttpOnlyTokenController::class, 'me']);
 });
 
-Route::middleware(['check_token_valid'])->group(function () {
+Route::middleware(['auth:sanctum'])->group(function () {
     // ========== AUTH ENDPOINTS (Legacy) ==========
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::post('/auth/refresh', [AuthController::class, 'refresh']);

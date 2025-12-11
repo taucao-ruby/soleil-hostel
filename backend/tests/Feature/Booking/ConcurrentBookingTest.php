@@ -342,8 +342,8 @@ class ConcurrentBookingTest extends TestCase
         $checkIn = Carbon::now()->addDays(5)->startOfDay();
         $checkOut = $checkIn->clone()->addDays(3);
 
-        // First booking
-        $booking1Response = $this->postJson('/api/bookings', [
+        // First booking (must be authenticated)
+        $booking1Response = $this->actingAs($this->user, 'sanctum')->postJson('/api/bookings', [
             'room_id' => $this->room->id,
             'check_in' => $checkIn->toDateString(),
             'check_out' => $checkOut->toDateString(),
@@ -351,6 +351,7 @@ class ConcurrentBookingTest extends TestCase
             'guest_email' => 'guest1@example.com',
         ]);
 
+        $booking1Response->assertStatus(201);
         $booking1Id = $booking1Response->json('data.id');
 
         // Try to book same dates - should fail
@@ -363,8 +364,8 @@ class ConcurrentBookingTest extends TestCase
         ]);
         $response2->assertStatus(422);
 
-        // Cancel first booking
-        $this->deleteJson("/api/bookings/{$booking1Id}")
+        // Cancel first booking (must be authenticated)
+        $this->actingAs($this->user, 'sanctum')->deleteJson("/api/bookings/{$booking1Id}")
             ->assertStatus(200);
 
         // Now booking same dates should succeed

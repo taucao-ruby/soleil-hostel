@@ -10,7 +10,6 @@ RUN apt-get update && apt-get install -y \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
-    php artisan migrate --force \
   && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 
 # Install composer (copy from official composer image)

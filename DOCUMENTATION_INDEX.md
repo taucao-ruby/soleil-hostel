@@ -2,6 +2,17 @@
 
 **Soleil Hostel - Complete Documentation Guide**
 
+**Last Updated:** December 12, 2025
+
+---
+
+## 🎯 START HERE
+
+1. **[PROJECT_STATUS.md](./PROJECT_STATUS.md)** ⭐ - Current status (206 tests ✅, CI/CD ✅)
+2. **[SESSION_DECEMBER_12_2025.md](./SESSION_DECEMBER_12_2025.md)** 🆕 - Latest fixes and improvements
+3. **[README.md](./README.md)** - Project overview
+4. **[README.dev.md](./README.dev.md)** - Developer setup
+
 ---
 
 ## 🚀 Getting Started
@@ -17,6 +28,14 @@
 
 - **[QUICK_START.md](./QUICK_START.md)** - Fast track to get running
 - **[QUICK_REFERENCE.md](./QUICK_REFERENCE.md)** - Common commands and workflows
+
+### Recent Updates
+
+- **[SESSION_DECEMBER_12_2025.md](./SESSION_DECEMBER_12_2025.md)** 🆕 - December 12 session summary
+  - 13 CI/CD issues fixed
+  - 6 skipped tests resolved
+  - 57 outdated docs removed
+  - All 206 tests passing
 
 ---
 

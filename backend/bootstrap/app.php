@@ -20,6 +20,8 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         // ========== Register global middleware ==========
+        // CORS must run first to handle preflight requests
+        $middleware->prepend(\App\Http\Middleware\Cors::class);
         // SecurityHeaders must run early in the pipeline (before response is finalized)
         $middleware->prepend(\App\Http\Middleware\SecurityHeaders::class);
     })

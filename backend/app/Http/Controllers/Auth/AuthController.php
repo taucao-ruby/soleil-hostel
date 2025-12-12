@@ -390,6 +390,21 @@ class AuthController
     {
         $user = $request->user();
         
+        // If $request->user() is null, try to get from the auth guard
+        if (!$user) {
+            $user = auth()->user();
+        }
+        
+        // If still null, try sanctum guard
+        if (!$user) {
+            $user = auth()->guard('sanctum')->user();
+        }
+        
+        // Last resort - check if there's an accessToken on the request/auth context
+        if (!$user) {
+            throw new \Illuminate\Auth\AuthenticationException('User not authenticated');
+        }
+        
         // Try to get the current access token
         $token = $user->currentAccessToken();
         

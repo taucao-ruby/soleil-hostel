@@ -26,18 +26,18 @@ class CheckTokenNotRevokedAndNotExpired
 {
     public function handle(Request $request, Closure $next)
     {
-        // If user is already authenticated (e.g., in tests), allow the request through
-        // Check both 'web' guard (traditional auth) and 'sanctum' guard (API tests)
-        if ($request->user('web') || $request->user('sanctum')) {
-            return $next($request);
-        }
-
         // Lấy token từ Authorization header
         // Format: "Authorization: Bearer <token>"
         $bearerToken = $request->bearerToken();
 
+        // If no bearer token is present:
+        // - Allow if authenticated via 'web' guard (session auth)
+        // - Allow if authenticated via 'sanctum' guard (test framework or valid token already authenticated by Sanctum)
         if (!$bearerToken) {
-            // Không có token → 401
+            if ($request->user('web') || $request->user('sanctum')) {
+                return $next($request);
+            }
+            // No bearer token AND not authenticated by any guard
             throw new AuthenticationException('Token không được cấp trong Authorization header.');
         }
 
@@ -59,7 +59,16 @@ class CheckTokenNotRevokedAndNotExpired
         if (!$user) {
             throw new AuthenticationException('Không tìm được user cho token này.');
         }
+        
+        // Set user resolver so $request->user() works
         $request->setUserResolver(fn () => $user);
+        
+        // Also authenticate on the 'sanctum' guard for Laravel compatibility
+        try {
+            auth()->guard('sanctum')->setUser($user);
+        } catch (\Throwable $e) {
+            // If guard doesn't exist, just continue - the request resolver should work
+        }
         
         // Store the access token on the user so currentAccessToken() works
         $user->accessToken = $token;

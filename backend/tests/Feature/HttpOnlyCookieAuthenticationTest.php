@@ -128,13 +128,38 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
     /**
      * Test 3: Refresh token rotates (old token revoked)
      * 
-     * NOTE: Skipped due to test framework limitation with cookie handling in Laravel tests
-     * The functionality works correctly in production with real browsers.
-     * Verified via test_login_sets_httponly_cookie_without_plaintext_token (passing).
+     * Workaround: Manually send cookie in request header
      */
     public function test_refresh_token_rotates_old_token(): void
     {
-        $this->markTestSkipped('Laravel test framework cookie handling limitation - works in production');
+        // Login
+        $this->postJson('/api/auth/login-httponly', [
+            'email' => 'test@example.com',
+            'password' => 'password123',
+        ]);
+
+        $oldToken = PersonalAccessToken::where('tokenable_id', $this->user->id)->first();
+        $oldTokenId = $oldToken->id;
+        $tokenIdentifier = $oldToken->token_identifier;
+
+        // Refresh with cookie
+        $cookieName = env('SANCTUM_COOKIE_NAME', 'soleil_token');
+        $refreshResponse = $this->withHeader('Cookie', "{$cookieName}={$tokenIdentifier}")
+            ->postJson('/api/auth/refresh-httponly');
+
+        $refreshResponse->assertStatus(200);
+        $this->assertStringContainsString('refreshed', $refreshResponse->json('message'));
+
+        // Verify old token is revoked
+        $oldToken->refresh();
+        $this->assertNotNull($oldToken->revoked_at, 'Old token should be revoked');
+
+        // Verify new token created
+        $newToken = PersonalAccessToken::where('tokenable_id', $this->user->id)
+            ->whereNull('revoked_at')
+            ->first();
+        $this->assertNotNull($newToken, 'New token should exist');
+        $this->assertNotEquals($oldTokenId, $newToken->id, 'Should be a different token');
     }
 
     /**
@@ -326,6 +351,46 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
      */
     public function test_excessive_refresh_triggers_suspicious_activity(): void
     {
-        $this->markTestSkipped('Laravel test framework cookie handling limitation - works in production');
+        // Set low threshold for testing
+        config(['sanctum.max_refresh_count_per_hour' => 2]);
+
+        // Login
+        $this->postJson('/api/auth/login-httponly', [
+            'email' => 'test@example.com',
+            'password' => 'password123',
+        ]);
+
+        $cookieName = env('SANCTUM_COOKIE_NAME', 'soleil_token');
+
+        // First refresh - OK
+        $token = PersonalAccessToken::where('tokenable_id', $this->user->id)
+            ->whereNull('revoked_at')
+            ->first();
+        $tokenIdentifier1 = $token->token_identifier;
+        
+        $refresh1 = $this->withHeader('Cookie', "{$cookieName}={$tokenIdentifier1}")
+            ->postJson('/api/auth/refresh-httponly');
+        $refresh1->assertStatus(200);
+
+        // Second refresh - OK
+        $token = PersonalAccessToken::where('tokenable_id', $this->user->id)
+            ->whereNull('revoked_at')
+            ->first();
+        $tokenIdentifier2 = $token->token_identifier;
+        
+        $refresh2 = $this->withHeader('Cookie', "{$cookieName}={$tokenIdentifier2}")
+            ->postJson('/api/auth/refresh-httponly');
+        $refresh2->assertStatus(200);
+
+        // Third refresh - Should trigger SUSPICIOUS_ACTIVITY
+        $token = PersonalAccessToken::where('tokenable_id', $this->user->id)
+            ->whereNull('revoked_at')
+            ->first();
+        $tokenIdentifier3 = $token->token_identifier;
+        
+        $refresh3 = $this->withHeader('Cookie', "{$cookieName}={$tokenIdentifier3}")
+            ->postJson('/api/auth/refresh-httponly');
+        $refresh3->assertStatus(401);
+        $this->assertEquals('SUSPICIOUS_ACTIVITY', $refresh3->json('code'));
     }
 }

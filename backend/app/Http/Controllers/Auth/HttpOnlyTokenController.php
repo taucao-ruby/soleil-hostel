@@ -153,9 +153,8 @@ class HttpOnlyTokenController extends Controller
         
         // ========== Check Suspicious Activity ==========
         // Detect token refresh abuse (possible token theft)
-        $oldToken->incrementRefreshCount();
-
-        if ($oldToken->refresh_count > config('sanctum.max_refresh_count_per_hour', 10)) {
+        // Check BEFORE incrementing to catch the threshold exactly
+        if ($oldToken->refresh_count >= config('sanctum.max_refresh_count_per_hour', 10)) {
             $oldToken->revoke();
 
             return response()->json([
@@ -164,6 +163,8 @@ class HttpOnlyTokenController extends Controller
                 'code' => 'SUSPICIOUS_ACTIVITY',
             ], 401);
         }
+
+        $oldToken->incrementRefreshCount();
 
         // ========== Create New Token ==========
         $user = $oldToken->tokenable;
@@ -186,14 +187,14 @@ class HttpOnlyTokenController extends Controller
             'token' => $newTokenHash,
             'token_identifier' => $newTokenIdentifier,
             'token_hash' => $newTokenHash,
-            'abilities' => $oldToken->attributes['abilities'],
+            'abilities' => json_encode($oldToken->abilities ?? ['*']),
             'tokenable_id' => $user->id,
             'tokenable_type' => 'App\\Models\\User',
             'expires_at' => $expiresAt->toDateTimeString(),
             'type' => $tokenType,
             'device_id' => $oldToken->device_id,
             'device_fingerprint' => $oldToken->device_fingerprint,
-            'refresh_count' => 0,  // Reset refresh count for new token
+            'refresh_count' => $oldToken->refresh_count,  // Carry over refresh count to track total refreshes
             'last_rotated_at' => now()->toDateTimeString(),
             'created_at' => now()->toDateTimeString(),
             'updated_at' => now()->toDateTimeString(),

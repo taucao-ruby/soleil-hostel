@@ -51,7 +51,9 @@ class CacheInvalidationOnBookingTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function test_cache_invalidation_listener_executes(): void
     {
-        $this->markTestSkipped('Flaky in parallel - array cache not shared across processes');
+        // Use database cache for test consistency
+        config(['cache.default' => 'database']);
+        
         // Seed cache first
         $checkIn = now()->addDays(1);
         $checkOut = now()->addDays(3);

@@ -107,17 +107,17 @@ jobs:
       - name: 🧪 Rate Limiter Tests
         working-directory: ./backend
         run: |
-          php artisan test tests/Feature/RateLimiting/ --verbose
+          php artisan test tests/Feature/RateLimiting/
 
       - name: 🧪 Cache Tests
         working-directory: ./backend
         run: |
-          php artisan test tests/Feature/Cache/ --verbose
+          php artisan test tests/Feature/Cache/
 
       - name: 🧪 Health Check Tests
         working-directory: ./backend
         run: |
-          php artisan test tests/Feature/HealthCheck/ --verbose
+          php artisan test tests/Feature/HealthCheck/
 
   # ========== FRONTEND BUILD ==========
   frontend:

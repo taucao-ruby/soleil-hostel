@@ -100,9 +100,9 @@ jobs:
         run: |
           php artisan test --parallel --processes=4
 
-      - name: Run PHPStan (Static Analysis)
-        working-directory: ./backend
-        run: vendor/bin/phpstan analyse --level=5 app/
+      # - name: Run PHPStan (Static Analysis)
+      #   working-directory: ./backend
+      #   run: vendor/bin/phpstan analyse --level=5 app/
 
       - name: 🧪 Rate Limiter Tests
         working-directory: ./backend

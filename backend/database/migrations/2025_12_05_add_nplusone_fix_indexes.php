@@ -47,9 +47,9 @@ return new class extends Migration
         });
 
         Schema::table('rooms', function (Blueprint $table) {
-            // For with('availability_bookings') eager loading
-            if (!Schema::connection($this->getConnection())->getConnection()->getSchemaBuilder()->hasIndex('rooms', 'rooms_active_index')) {
-                $table->index('is_active');
+            // For filtering by room status
+            if (!Schema::connection($this->getConnection())->getConnection()->getSchemaBuilder()->hasIndex('rooms', 'rooms_status_index')) {
+                $table->index('status');
             }
         });
 
@@ -77,7 +77,7 @@ return new class extends Migration
         });
 
         Schema::table('rooms', function (Blueprint $table) {
-            $table->dropIndexIfExists('rooms_active_index');
+            $table->dropIndexIfExists('rooms_status_index');
         });
 
         Schema::table('users', function (Blueprint $table) {

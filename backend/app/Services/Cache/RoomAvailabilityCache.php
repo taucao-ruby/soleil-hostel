@@ -228,7 +228,7 @@ class RoomAvailabilityCache
         ?int $capacity = null
     ): Collection {
         $query = Room::query()
-            ->where('is_active', true)
+            ->where('status', 'available')
             ->whereDoesntHave('bookings', function ($q) use ($checkIn, $checkOut) {
                 $q->where('status', '!=', 'cancelled')
                   ->whereBetween('check_out', [$checkIn, $checkOut])

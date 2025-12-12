@@ -170,17 +170,6 @@ git push origin feature/my-feature
 
 Tạo Pull Request
 
-📄 Giấy phép 
-Dự án được phát hành theo giấy phép MIT.
-Xem file LICENSE để biết chi tiết.
-
-📬 Liên hệ
-Tác giả: Ngọc Tàu
-Email: tau.cao21@student.passerellesnumeriques.org
-GitHub: https://github.com/taucao-ruby
-Dự án được phát hành theo giấy phép MIT.
-Xem file LICENSE để biết chi tiết.
-
 🧭 Feature Roadmap (Lộ trình phát triển)
 ✅ Hoàn thành
 
@@ -276,5 +265,15 @@ Toàn bộ API quan trọng có test coverage
 CI chạy test tự động trong mỗi pull request
 
 Đảm bảo không merge code lỗi vào branch main
+
+
+📬 Liên hệ
+Tác giả: Ngọc Tàu
+Email: tau.cao21@student.passerellesnumeriques.org
+GitHub: https://github.com/taucao-ruby
+
+📄 Giấy phép 
+Dự án được phát hành theo giấy phép MIT.
+Xem file LICENSE để biết chi tiết.
 
 

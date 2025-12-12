@@ -73,7 +73,6 @@ class User extends Authenticatable
             'token' => hash('sha256', $token),
             'abilities' => $abilitiesJson,
             'expires_at' => $expiresAt,
-            'user_id' => $this->getKey(),
             'created_at' => now(),
             'updated_at' => now(),
         ]);

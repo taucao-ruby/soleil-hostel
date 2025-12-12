@@ -82,7 +82,8 @@ class AuthController
         // Nếu enabled, logout tất cả device khác khi login device mới
         if (config('sanctum.single_device_login')) {
             // Revoke tất cả token chưa revoke/hết hạn của user
-            PersonalAccessToken::where('user_id', $user->id)
+            PersonalAccessToken::where('tokenable_id', $user->id)
+                ->where('tokenable_type', 'App\\Models\\User')
                 ->notExpired()
                 ->notRevoked()
                 ->each(fn($token) => $token->revoke());
@@ -110,7 +111,6 @@ class AuthController
             'type' => $tokenType,
             'device_id' => $deviceId,
             'refresh_count' => 0,
-            'user_id' => $user->id,
             'tokenable_id' => $user->id,
             'tokenable_type' => 'App\\Models\\User',
             'created_at' => now()->toDateTimeString(),
@@ -239,7 +239,6 @@ class AuthController
             'device_id' => $oldToken->device_id,
             'remember_token_id' => $oldToken->remember_token_id,
             'refresh_count' => $oldToken->refresh_count, // Copy refresh count to track token chain
-            'user_id' => $user->id,
             'tokenable_id' => $user->id,
             'tokenable_type' => 'App\\Models\\User',
             'created_at' => now()->toDateTimeString(),

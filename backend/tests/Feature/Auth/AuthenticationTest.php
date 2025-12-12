@@ -72,7 +72,9 @@ class AuthenticationTest extends TestCase
             ]);
 
         // Verify token stored in database
-        $token = PersonalAccessToken::where('user_id', $this->user->id)->first();
+        $token = PersonalAccessToken::where('tokenable_id', $this->user->id)
+            ->where('tokenable_type', 'App\\Models\\User')
+            ->first();
         $this->assertNotNull($token);
         $this->assertNull($token->revoked_at); // Token should not be revoked
         $this->assertNotNull($token->expires_at);
@@ -96,7 +98,9 @@ class AuthenticationTest extends TestCase
             ->assertJsonStructure(['message', 'errors']);
 
         // No token should be created
-        $token = PersonalAccessToken::where('user_id', $this->user->id)->first();
+        $token = PersonalAccessToken::where('tokenable_id', $this->user->id)
+            ->where('tokenable_type', 'App\\Models\\User')
+            ->first();
         $this->assertNull($token);
     }
 
@@ -116,7 +120,9 @@ class AuthenticationTest extends TestCase
             ->assertJsonStructure(['message']);
 
         // No token should be created
-        $token = PersonalAccessToken::where('user_id', $this->user->id)->first();
+        $token = PersonalAccessToken::where('tokenable_id', $this->user->id)
+            ->where('tokenable_type', 'App\\Models\\User')
+            ->first();
         $this->assertNull($token);
     }
 
@@ -342,7 +348,9 @@ class AuthenticationTest extends TestCase
             ->assertJson(['type' => 'long_lived']);
 
         // Verify token expires in ~30 days
-        $token = PersonalAccessToken::where('user_id', $this->user->id)->first();
+        $token = PersonalAccessToken::where('tokenable_id', $this->user->id)
+            ->where('tokenable_type', 'App\\Models\\User')
+            ->first();
         $this->assertNotNull($token);
         
         $expiresInDays = abs($token->expires_at->diffInDays(now()));

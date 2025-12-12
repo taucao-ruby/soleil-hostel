@@ -76,10 +76,9 @@ class TokenExpirationTest extends TestCase
             ]);
 
         // Verify token in database
-        $token = PersonalAccessToken::where(
-            'user_id',
-            $this->user->id
-        )->first();
+        $token = PersonalAccessToken::where('tokenable_id', $this->user->id)
+            ->where('tokenable_type', 'App\\Models\\User')
+            ->first();
 
         $this->assertNotNull($token);
         $this->assertNotNull($token->expires_at);
@@ -288,7 +287,8 @@ class TokenExpirationTest extends TestCase
 
         // Verify tất cả token revoked
         $this->assertTrue(
-            PersonalAccessToken::where('user_id', $this->user->id)
+            PersonalAccessToken::where('tokenable_id', $this->user->id)
+                ->where('tokenable_type', 'App\\Models\\User')
                 ->notRevoked()
                 ->count() === 0
         );

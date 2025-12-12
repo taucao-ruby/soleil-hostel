@@ -43,7 +43,7 @@ return new class extends Migration {
             $table->index('expires_at');
             $table->index('revoked_at');
             $table->index('device_id');
-            $table->index(['user_id', 'type']);
+            $table->index(['tokenable_id', 'tokenable_type', 'type']);
         });
     }
 
@@ -56,7 +56,7 @@ return new class extends Migration {
             $table->dropIndex(['expires_at']);
             $table->dropIndex(['revoked_at']);
             $table->dropIndex(['device_id']);
-            $table->dropIndex(['user_id', 'type']);
+            $table->dropIndex(['tokenable_id', 'tokenable_type', 'type']);
             
             $table->dropColumn([
                 'expires_at',

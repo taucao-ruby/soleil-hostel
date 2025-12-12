@@ -61,12 +61,11 @@ jobs:
           cd backend
           cp .env.example .env.testing
           php artisan key:generate --env=testing
-          php artisan config:cache --env=testing
 
       - name: Setup Database
         run: |
           cd backend
-          php artisan migrate --env=testing --database=testing
+          php artisan migrate --env=testing --database=testing --force
         env:
           DB_CONNECTION: testing
           DB_HOST: 127.0.0.1
@@ -74,6 +73,10 @@ jobs:
           DB_DATABASE: soleil_hostel_test
           DB_USERNAME: root
           DB_PASSWORD: root
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
+          CACHE_DRIVER: redis
+          SESSION_DRIVER: redis
 
       - name: Run N+1 Query Tests
         run: |

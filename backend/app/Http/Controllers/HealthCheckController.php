@@ -43,9 +43,8 @@ class HealthCheckController extends Controller
 
         // ========== REDIS CHECK ==========
         try {
-            // Use default connection and ping
-            $redis = Redis::connection();
-            $redis->ping();
+            // Ping Redis directly
+            Redis::ping();
 
             $health['services']['redis'] = [
                 'status' => 'up',
@@ -85,8 +84,7 @@ class HealthCheckController extends Controller
 
         // Add detailed Redis info
         try {
-            $redis = Redis::connection();
-            $info = $redis->info('stats');
+            $info = Redis::info('stats');
 
             $data['services']['redis']['stats'] = [
                 'connected_clients' => $info['connected_clients'] ?? 'N/A',

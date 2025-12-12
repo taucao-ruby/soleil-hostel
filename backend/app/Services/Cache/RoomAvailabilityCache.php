@@ -238,7 +238,7 @@ class RoomAvailabilityCache
             });
 
         if ($capacity) {
-            $query->where('capacity', '>=', $capacity);
+            $query->where('max_guests', '>=', $capacity);
         }
 
         return $query->orderBy('price')->get();

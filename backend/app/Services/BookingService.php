@@ -62,7 +62,7 @@ class BookingService
                     ->with(['room' => function ($q) {
                         $q->select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'created_at', 'updated_at']);
                     }])
-                    ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'guest_name', 'guest_email', 'nights', 'created_at', 'updated_at'])
+                    ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'guest_name', 'guest_email', 'created_at', 'updated_at'])
                     ->orderBy('check_in', 'desc')
                     ->get()
             );
@@ -76,7 +76,7 @@ class BookingService
                     ->with(['room' => function ($q) {
                         $q->select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'created_at', 'updated_at']);
                     }])
-                    ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'guest_name', 'guest_email', 'nights', 'created_at', 'updated_at'])
+                    ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'guest_name', 'guest_email', 'created_at', 'updated_at'])
                     ->orderBy('check_in', 'desc')
                     ->get()
             );
@@ -100,7 +100,7 @@ class BookingService
                 $cacheKey,
                 self::CACHE_TTL_BOOKING,
                 fn() => Booking::with(['room', 'user'])
-                    ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'guest_name', 'guest_email', 'nights', 'created_at', 'updated_at'])
+                    ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'guest_name', 'guest_email', 'created_at', 'updated_at'])
                     ->find($bookingId)
             );
         }
@@ -110,7 +110,7 @@ class BookingService
                 $cacheKey,
                 self::CACHE_TTL_BOOKING,
                 fn() => Booking::with(['room', 'user'])
-                    ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'guest_name', 'guest_email', 'nights', 'created_at', 'updated_at'])
+                    ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'guest_name', 'guest_email', 'created_at', 'updated_at'])
                     ->find($bookingId)
             );
     }

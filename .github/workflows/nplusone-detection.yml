@@ -86,6 +86,10 @@ jobs:
           DB_DATABASE: soleil_hostel_test
           DB_USERNAME: root
           DB_PASSWORD: root
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
+          CACHE_DRIVER: redis
+          SESSION_DRIVER: redis
           QUERY_DETECTOR_ENABLED: true
           QUERY_DETECTOR_THRESHOLD: 50
 

@@ -43,12 +43,13 @@ class HealthCheckController extends Controller
 
         // ========== REDIS CHECK ==========
         try {
-            Redis::connection('cache')->ping();
-            Redis::connection('rate_limit')->ping();
+            // Use default connection and ping
+            $redis = Redis::connection();
+            $redis->ping();
 
             $health['services']['redis'] = [
                 'status' => 'up',
-                'connections' => ['cache', 'rate_limit'],
+                'connections' => ['default'],
             ];
         } catch (\Exception $e) {
             $health['status'] = 'unhealthy';
@@ -84,8 +85,8 @@ class HealthCheckController extends Controller
 
         // Add detailed Redis info
         try {
-            $cacheConnection = Redis::connection('cache');
-            $info = $cacheConnection->info('stats');
+            $redis = Redis::connection();
+            $info = $redis->info('stats');
 
             $data['services']['redis']['stats'] = [
                 'connected_clients' => $info['connected_clients'] ?? 'N/A',

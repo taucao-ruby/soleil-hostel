@@ -279,10 +279,10 @@ Vai trò của tác giả:
 - Chịu trách nhiệm hoàn toàn cho chất lượng cuối cùng
 
 
-###📬 Liên hệ - Contact
+##📬 Liên hệ - Contact
 Tác giả: Ngọc Tàu
 Email: tau.cao21@student.passerellesnumeriques.org
 GitHub: https://github.com/taucao-ruby
 
-###📄 Giấy phép - License
+##📄 Giấy phép - License
 This project is licensed under the **[MIT License](./LICENSE)**.

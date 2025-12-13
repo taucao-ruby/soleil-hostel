@@ -54,7 +54,7 @@ const HomePage: React.FC = () => {
         <div className="absolute inset-0 bg-gradient-to-r from-blue-900/80 to-blue-600/70"></div>
 
         {/* Content */}
-        <div className="relative z-10 px-4 mx-auto text-center max-w-4xl">
+        <div className="relative z-10 max-w-4xl px-4 mx-auto text-center">
           <h1 className="mb-6 text-5xl font-extrabold text-white drop-shadow-lg animate-fade-in md:text-7xl">
             Welcome to <span className="text-yellow-400">Soleil Hostel</span>
           </h1>
@@ -304,7 +304,7 @@ const HomePage: React.FC = () => {
 
       {/* CTA Section */}
       <section className="px-4 py-20 text-white bg-gradient-to-r from-blue-600 to-blue-700">
-        <div className="mx-auto text-center max-w-4xl">
+        <div className="max-w-4xl mx-auto text-center">
           <h2 className="mb-6 text-4xl font-bold">Ready to Book Your Stay?</h2>
           <p className="mb-8 text-xl text-blue-100">
             Join thousands of happy guests who chose Soleil Hostel for their perfect getaway.

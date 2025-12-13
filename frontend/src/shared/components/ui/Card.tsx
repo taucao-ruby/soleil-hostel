@@ -4,6 +4,14 @@ import React from 'react'
  * Card Component
  *
  * Reusable card container with optional header and footer.
+ * Uses compound component pattern for flexible composition.
+ *
+ * Usage:
+ * <Card hover>
+ *   <Card.Header>Title</Card.Header>
+ *   <Card.Content>Body content</Card.Content>
+ *   <Card.Footer>Footer content</Card.Footer>
+ * </Card>
  */
 
 interface CardProps {
@@ -12,7 +20,22 @@ interface CardProps {
   hover?: boolean
 }
 
-const Card: React.FC<CardProps> = ({ children, className = '', hover = false }) => {
+interface CardHeaderProps {
+  children: React.ReactNode
+  className?: string
+}
+
+interface CardContentProps {
+  children: React.ReactNode
+  className?: string
+}
+
+interface CardFooterProps {
+  children: React.ReactNode
+  className?: string
+}
+
+const CardRoot = ({ children, className = '', hover = false }: CardProps) => {
   return (
     <div
       className={`bg-white rounded-xl shadow-md overflow-hidden ${
@@ -24,36 +47,23 @@ const Card: React.FC<CardProps> = ({ children, className = '', hover = false }) 
   )
 }
 
-interface CardHeaderProps {
-  children: React.ReactNode
-  className?: string
-}
-
-const CardHeader: React.FC<CardHeaderProps> = ({ children, className = '' }) => {
+const CardHeader = ({ children, className = '' }: CardHeaderProps) => {
   return <div className={`px-6 py-4 border-b border-gray-200 ${className}`}>{children}</div>
 }
 
-interface CardContentProps {
-  children: React.ReactNode
-  className?: string
-}
-
-const CardContent: React.FC<CardContentProps> = ({ children, className = '' }) => {
+const CardContent = ({ children, className = '' }: CardContentProps) => {
   return <div className={`px-6 py-4 ${className}`}>{children}</div>
 }
 
-interface CardFooterProps {
-  children: React.ReactNode
-  className?: string
-}
-
-const CardFooter: React.FC<CardFooterProps> = ({ children, className = '' }) => {
+const CardFooter = ({ children, className = '' }: CardFooterProps) => {
   return <div className={`px-6 py-4 border-t border-gray-200 ${className}`}>{children}</div>
 }
 
-// Compound component pattern
-Card.Header = CardHeader
-Card.Content = CardContent
-Card.Footer = CardFooter
+// Compound component with proper TypeScript typing
+const Card = Object.assign(CardRoot, {
+  Header: CardHeader,
+  Content: CardContent,
+  Footer: CardFooter,
+})
 
 export default Card

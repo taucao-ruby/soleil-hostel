@@ -110,10 +110,11 @@ const BookingForm: React.FC = () => {
       setTimeout(() => {
         navigate('/dashboard')
       }, 2000)
-    } catch (err: any) {
+    } catch (err) {
       console.error('Booking failed:', err)
       const errorMessage =
-        err?.response?.data?.message || 'Failed to create booking. Please try again.'
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Failed to create booking. Please try again.'
       setErrors({ submit: errorMessage })
     } finally {
       setLoading(false)
@@ -129,7 +130,7 @@ const BookingForm: React.FC = () => {
     const { name, value } = e.target
 
     // Convert to appropriate type
-    let parsedValue: any = value
+    let parsedValue: string | number | null = value
     if (name === 'room_id' || name === 'number_of_guests') {
       parsedValue = value ? parseInt(value, 10) : null
     }

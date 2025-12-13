@@ -29,7 +29,7 @@ const DashboardPage = () => (
  * Suspense Wrapper Component
  * Wraps lazy-loaded components with Suspense boundary
  */
-const withSuspense = (Component: React.LazyExoticComponent<React.ComponentType<any>>) => {
+const withSuspense = (Component: React.LazyExoticComponent<React.ComponentType>) => {
   return (
     <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Loading..." />}>
       <Component />

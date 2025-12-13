@@ -132,7 +132,9 @@ soleil-hostel/
 │
 └── README.md
 
-📚 Chi tiết tài liệu kỹ thuật: xem docs/README.md
+📚 **Technical Documentation:**  
+→ **[Go to docs/README.md](./docs/README.md)**
+
 
 ---
 
@@ -165,6 +167,7 @@ cp .env.example .env
 php artisan key:generate
 php artisan migrate --seed
 php artisan serve
+```
 
 🤝 Đóng góp vào dự án
 Mọi đóng góp đều được hoan nghênh:

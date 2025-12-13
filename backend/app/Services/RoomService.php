@@ -253,8 +253,7 @@ class RoomService
 
     private function fetchRoomsFromDB(): Collection
     {
-        return Room::where('status', 'active')
-            ->select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'created_at'])
+        return Room::select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'created_at', 'updated_at'])
             ->orderBy('name')
             ->get();
     }

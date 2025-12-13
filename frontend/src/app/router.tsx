@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import ProtectedRoute from '@/features/auth/ProtectedRoute'
 import LoadingSpinner from '@/shared/components/feedback/LoadingSpinner'
+import Layout from './Layout'
 
 // Eager-loaded pages (critical for initial render)
 import HomePage from '@/pages/HomePage'
@@ -40,51 +41,60 @@ const withSuspense = (Component: React.LazyExoticComponent<React.ComponentType>)
 /**
  * Router Configuration
  *
- * Uses React Router v7 with createBrowserRouter.
+ * Uses React Router v7 with createBrowserRouter and nested routes.
  *
- * Routes:
+ * Layout Route (parent):
+ * - Provides Header + Outlet + Footer structure
+ * - Allows Header to use useNavigate() inside Router context
+ *
+ * Child Routes:
  * - / : Public home page
  * - /login : Login page
  * - /register : Register page
- * - /dashboard : Protected dashboard (requires auth)
- *
- * Protected Routes:
- * Wrapped with <ProtectedRoute> component to require authentication.
+ * - /rooms : Room list
+ * - /booking : Protected booking form
+ * - /dashboard : Protected dashboard
  */
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <HomePage />,
-  },
-  {
-    path: '/login',
-    element: withSuspense(LoginPage),
-  },
-  {
-    path: '/register',
-    element: withSuspense(RegisterPage),
-  },
-  {
-    path: '/rooms',
-    element: withSuspense(RoomList),
-  },
-  {
-    path: '/booking',
-    element: (
-      <ProtectedRoute>
-        <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Loading..." />}>
-          <BookingForm />
-        </Suspense>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/dashboard',
-    element: (
-      <ProtectedRoute>
-        <DashboardPage />
-      </ProtectedRoute>
-    ),
+    element: <Layout />,
+    children: [
+      {
+        index: true,
+        element: <HomePage />,
+      },
+      {
+        path: 'login',
+        element: withSuspense(LoginPage),
+      },
+      {
+        path: 'register',
+        element: withSuspense(RegisterPage),
+      },
+      {
+        path: 'rooms',
+        element: withSuspense(RoomList),
+      },
+      {
+        path: 'booking',
+        element: (
+          <ProtectedRoute>
+            <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Loading..." />}>
+              <BookingForm />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'dashboard',
+        element: (
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        ),
+      },
+    ],
   },
 ])
 

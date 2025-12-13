@@ -1,5 +1,5 @@
 # 🌞 Soleil Hostel  
-## Hệ thống Quản lý Nhà Nghỉ / Homestay Hiện Đại
+## Modern Homestay / Hostel Management System
 
 **Soleil Hostel** là nền tảng quản lý nhà nghỉ/homestay được thiết kế theo phong cách **tối giản – hiện đại – mobile-first**, giúp chủ homestay truyền thống vận hành hiệu quả hơn thông qua việc:
 
@@ -10,16 +10,24 @@
 - Tự động hóa quy trình vận hành  
 
 Dự án hướng đến mục tiêu **nâng cấp mô hình homestay gia đình**, đưa công nghệ vào đúng nơi họ cần để:
-- Giảm sai sót vận hành  
+- Giảm sai sót vận hành thủ công
 - Tiết kiệm thời gian  
-- Nâng cao trải nghiệm khách lưu trú  
+- Nâng cao trải nghiệm khách lưu trú
+- Chuẩn hóa quy trình khi quy mô dần mở rộng
+
+🎯 Project Philosophy
+- Product-first, không phải demo kỹ thuật
+- Maintainability > Feature bloat
+- Test & Documentation là một phần của sản phẩm
+- Thiết kế cho người dùng không rành công nghệ
+Dự án được xây dựng như một hệ thống có thể sống lâu dài, không phải proof-of-concept.
 
 ---
 
-## 🚀 Tính năng chính
+## 🚀 Tính năng chính - Core features
 
-### 🏨 1. Quản lý Phòng
-- Thêm / sửa / xoá phòng  
+### 🏨 1. Quản lý Phòng - Room Management
+- Thêm / sửa / xoá phòng  CRUD 
 - Quản lý trạng thái phòng:
   - Trống  
   - Đã đặt  
@@ -33,24 +41,24 @@ Dự án hướng đến mục tiêu **nâng cấp mô hình homestay gia đình
 
 ---
 
-### 📅 2. Hệ thống Đặt Phòng
+### 📅 2. Hệ thống Đặt Phòng - Booking System
 - Đặt phòng trực tuyến  
 - Lịch đặt phòng dạng **Calendar**  
 - Chỉnh sửa / huỷ đặt phòng  
 - Tự động kiểm tra phòng trống  
-- Tối ưu quy trình **check-in / check-out**  
+- Tối ưu quy trình **check-in / check-out**, ngăn double-booking ở tầng business logic
 
 ---
 
-### 👥 3. Quản lý Khách Hàng
+### 👥 3. Quản lý Khách Hàng - Customer Management
 - Lưu trữ thông tin khách  
 - Nhật ký lưu trú  
 - Lịch sử đặt phòng  
-- Hỗ trợ chương trình ưu đãi / giảm giá  
+- Hỗ trợ chương trình ưu đãi / giảm giá khách hàng quen.
 
 ---
 
-### 📊 4. Báo cáo & Thống kê
+### 📊 4. Báo cáo & Thống kê - Reports & Analytics
 - Doanh thu theo:
   - Ngày  
   - Tuần  
@@ -61,7 +69,7 @@ Dự án hướng đến mục tiêu **nâng cấp mô hình homestay gia đình
 
 ---
 
-## 🧰 Công nghệ sử dụng
+## 🧰 Công nghệ sử dụng - Tech Stack
 
 ### 🎨 Frontend
 - **ReactJS + TypeScript**  
@@ -78,16 +86,17 @@ Dự án hướng đến mục tiêu **nâng cấp mô hình homestay gia đình
 ### 🖥️ Backend
 - **Laravel 11 – PHP 8+**  
 - Clean Architecture:
-  - Service Layer  
+  - Service Layer
+  - Controllers
   - Repository Pattern  
 - Authentication: **Laravel Sanctum**  
 - RESTful API  
-- **Test Suite: 206 tests** (Feature + Unit)  
-- Tối ưu hiệu năng & caching  
+- **Test Suite: 206 tests** (Feature + Unit) 
+- Tối ưu hiệu năng & caching  - Security & performance-focused design
 
 ---
 
-### 🛢️ Cơ sở dữ liệu
+### 🛢️ Cơ sở dữ liệu - Data Layer
 - **PostgreSQL**  
 - **Redis** *(tuỳ chọn – caching & queue)*  
 
@@ -96,38 +105,40 @@ Dự án hướng đến mục tiêu **nâng cấp mô hình homestay gia đình
 ### ⚙️ DevOps
 - Docker / Docker Compose  
 - GitHub Actions (CI/CD)  
-- Kiểm thử tự động trước khi deploy  
+- Kiểm thử tự động trước khi deploy  - Automated test execution before merge
 - Production-ready structure  
 
 ---
 
-## 📂 Cấu trúc thư mục
+## 📂 Cấu trúc thư mục - Project Structure (High-level)
 soleil-hostel/
-├── backend/ # Laravel backend
-│ ├── src/
-│ ├── tests/ # 206 tests – full coverage structure
-│ └── composer.json
+├── backend/          # Laravel backend
+│   ├── src/
+│   ├── tests/        # 206 automated tests
+│   └── composer.json
 │
-├── frontend/ # React + TypeScript frontend
-│ ├── src/
-│ ├── public/
-│ └── package.json
+├── frontend/         # React + TypeScript
+│   ├── src/
+│   ├── public/
+│   └── package.json
 │
-├── docs/ # Tài liệu hệ thống
-│ ├── PROJECT_STATUS.md
-│ ├── SESSION_*.md
-│ ├── TEST_SUITE_SUMMARY.md
-│ └── ...
+├── docs/             # Consolidated system documentation
+│   ├── getting-started/
+│   ├── features/
+│   ├── architecture/
+│   ├── testing/
+│   ├── deployment/
+│   └── archive/
 │
-├── scripts/ # Các script hỗ trợ
-└── README.md # Tài liệu chính
+└── README.md
 
+📚 Chi tiết tài liệu kỹ thuật: xem docs/README.md
 
 ---
 
-## 🛠️ Cài đặt & Chạy dự án
+## 🛠️ Cài đặt & Chạy dự án - Local Development
 
-### 🧱 Yêu cầu hệ thống
+### 🧱 Yêu cầu hệ thống- System Requirements
 - Node.js **18+**  
 - PHP **8.2+**  
 - Composer  
@@ -136,7 +147,8 @@ soleil-hostel/
 
 ---
 
-### 1️⃣ Clone dự án
+### Quick Start
+1️⃣ Clone dự án 
 ```bash
 git clone https://github.com/taucao-ruby/soleil-hostel.git
 cd soleil-hostel
@@ -172,35 +184,30 @@ git pull
 
 🧭 Feature Roadmap
 ✅ Hoàn thành
-
-Kiến trúc Frontend (React + TypeScript, mobile-first)
-Kiến trúc Backend (Laravel + Clean Architecture)
-Dashboard quản lý phòng
-CRUD phòng & trạng thái phòng
-Booking flow cơ bản
-Quản lý khách hàng
-CI/CD với GitHub Actions
-Test suite hoàn chỉnh (206 tests)
-Documentation chuẩn hóa
+- Kiến trúc Frontend (React + TypeScript, mobile-first)
+- Kiến trúc Backend (Laravel + Clean Architecture)
+- Dashboard quản lý phòng
+- CRUD phòng & trạng thái phòng
+- Booking flow cơ bản
+- Quản lý khách hàng
+- CI/CD với GitHub Actions
+- Test suite hoàn chỉnh (206 tests)
+- Documentation chuẩn hóa
 
 
 🚧 Đang phát triển
-
-Lịch đặt phòng nâng cao
-
-Module báo cáo doanh thu
-
-Module thống kê khách hàng
-
-Phân quyền (Admin / Staff)
-UI/UX tối ưu cho chủ homestay lớn tuổi
+- Lịch đặt phòng nâng cao
+- Module báo cáo doanh thu
+- Module thống kê khách hàng 
+- Phân quyền (Admin / Staff)
+- UI/UX tối ưu cho chủ homestay lớn tuổi
 
 📝 Dự kiến triển khai
-Check-in / Check-out nhanh
-Gửi email & hoá đơn tự động
-Kết nối OTA (Booking.com, Agoda…)
-Ứng dụng Mobile
-Thanh toán online
+- Check-in / Check-out nhanh
+- Gửi email & hoá đơn tự động
+- Kết nối OTA (Booking.com, Agoda…)
+- Ứng dụng Mobile
+- Thanh toán online
 
 🏗️ System Architecture
 ┌─────────────────────────┐
@@ -242,12 +249,14 @@ Dự án hiện có 206 tests, bao gồm Unit Tests và Feature Tests, đảm b�
 | Room Tests     | 30       | CRUD & trạng thái phòng   |
 | Customer Tests | 18       | Quản lý khách hàng        |
 | Report Tests   | 10       | Doanh thu & thống kê      |
-
+✔️ CI chạy test tự động cho mỗi Pull Request
+✔️ Không merge code lỗi vào main
 
 🎯 Mục tiêu chất lượng
-API quan trọng đều có test coverage
-CI chạy test tự động cho mỗi Pull Request
-Không merge code lỗi vào main
+- API quan trọng đều có test coverage
+- CI chạy test tự động cho mỗi Pull Request
+- Không merge code lỗi vào main
+
 
 ## 🤖 AI-assisted Development
 
@@ -266,12 +275,10 @@ Vai trò của tác giả:
 - Chịu trách nhiệm hoàn toàn cho chất lượng cuối cùng
 
 
-📬 Liên hệ
+📬 Liên hệ - Contact
 Tác giả: Ngọc Tàu
 Email: tau.cao21@student.passerellesnumeriques.org
 GitHub: https://github.com/taucao-ruby
 
-📄 Giấy phép
-Dự án được phát hành theo giấy phép MIT.
-Xem file LICENSE để biết thêm chi tiết.
-
+📄 Giấy phép - License
+This project is licensed under the **[MIT License](./LICENSE)**.

@@ -1,140 +1,143 @@
-🌞 Soleil Hostel – Hệ thống Quản lý Nhà Nghỉ / Homestay Hiện Đại
+# 🌞 Soleil Hostel  
+## Hệ thống Quản lý Nhà Nghỉ / Homestay Hiện Đại
 
-Soleil Hostel là nền tảng quản lý nhà nghỉ/homestay được thiết kế theo phong cách tối giản – hiện đại – mobile-first, giúp chủ homestay truyền thống vận hành hiệu quả hơn: quản lý phòng, đặt phòng, khách hàng, thống kê, và tự động hóa quy trình.
+**Soleil Hostel** là nền tảng quản lý nhà nghỉ/homestay được thiết kế theo phong cách **tối giản – hiện đại – mobile-first**, giúp chủ homestay truyền thống vận hành hiệu quả hơn thông qua việc:
 
-Dự án hướng đến việc nâng cấp mô hình homestay gia đình bằng cách đưa công nghệ vào đúng nơi họ cần: tối ưu vận hành, giảm sai sót, tăng trải nghiệm khách.
+- Quản lý phòng  
+- Đặt phòng  
+- Quản lý khách hàng  
+- Thống kê & báo cáo  
+- Tự động hóa quy trình vận hành  
 
-🚀 Tính năng chính
-🏨 1. Quản lý Phòng
+Dự án hướng đến mục tiêu **nâng cấp mô hình homestay gia đình**, đưa công nghệ vào đúng nơi họ cần để:
+- Giảm sai sót vận hành  
+- Tiết kiệm thời gian  
+- Nâng cao trải nghiệm khách lưu trú  
 
-Thêm / sửa / xoá phòng
+---
 
-Quản lý trạng thái phòng (trống, đã đặt, đang dọn dẹp, bảo trì)
+## 🚀 Tính năng chính
 
-Phân loại phòng theo:
+### 🏨 1. Quản lý Phòng
+- Thêm / sửa / xoá phòng  
+- Quản lý trạng thái phòng:
+  - Trống  
+  - Đã đặt  
+  - Đang dọn dẹp  
+  - Bảo trì  
+- Phân loại phòng theo:
+  - Loại phòng  
+  - Giá  
+  - Sức chứa  
+- Dashboard trực quan hiển thị trạng thái phòng theo thời gian thực  
 
-Loại phòng
+---
 
-Giá
+### 📅 2. Hệ thống Đặt Phòng
+- Đặt phòng trực tuyến  
+- Lịch đặt phòng dạng **Calendar**  
+- Chỉnh sửa / huỷ đặt phòng  
+- Tự động kiểm tra phòng trống  
+- Tối ưu quy trình **check-in / check-out**  
 
-Sức chứa
+---
 
-Dashboard trực quan xem trạng thái toàn bộ phòng theo thời gian thực
+### 👥 3. Quản lý Khách Hàng
+- Lưu trữ thông tin khách  
+- Nhật ký lưu trú  
+- Lịch sử đặt phòng  
+- Hỗ trợ chương trình ưu đãi / giảm giá  
 
-📅 2. Hệ thống Đặt Phòng
+---
 
-Đặt phòng trực tuyến
+### 📊 4. Báo cáo & Thống kê
+- Doanh thu theo:
+  - Ngày  
+  - Tuần  
+  - Tháng  
+- Biểu đồ tỷ lệ lấp đầy phòng  
+- Báo cáo khách hàng quay lại  
+- Xuất dữ liệu phục vụ quản trị  
 
-Lịch đặt phòng dạng calendar
+---
 
-Chỉnh sửa / hủy đặt phòng
+## 🧰 Công nghệ sử dụng
 
-Tự động kiểm tra phòng trống
+### 🎨 Frontend
+- **ReactJS + TypeScript**  
+- Kiến trúc: **Mobile-first**, tối ưu **Core Web Vitals**  
+- UI Framework: **TailwindCSS**  
+- State & Data:
+  - React Query  
+  - Zustand  
+  - Axios  
+- Thiết kế UI/UX tối giản, tập trung vào người dùng là **chủ homestay**
 
-Tối ưu quy trình check-in / check-out
+---
 
-👥 3. Quản lý Khách Hàng
+### 🖥️ Backend
+- **Laravel 11 – PHP 8+**  
+- Clean Architecture:
+  - Service Layer  
+  - Repository Pattern  
+- Authentication: **Laravel Sanctum**  
+- RESTful API  
+- **Test Suite: 206 tests** (Feature + Unit)  
+- Tối ưu hiệu năng & caching  
 
-Lưu trữ thông tin khách
+---
 
-Nhật ký lưu trú
+### 🛢️ Cơ sở dữ liệu
+- **PostgreSQL**  
+- **Redis** *(tuỳ chọn – caching & queue)*  
 
-Lịch sử đặt phòng
+---
 
-Hỗ trợ chương trình ưu đãi / giảm giá
+### ⚙️ DevOps
+- Docker / Docker Compose  
+- GitHub Actions (CI/CD)  
+- Kiểm thử tự động trước khi deploy  
+- Production-ready structure  
 
-📊 4. Báo cáo – Thống kê
+---
 
-Doanh thu theo ngày / tuần / tháng
-
-Biểu đồ tỷ lệ lấp đầy phòng
-
-Báo cáo khách hàng quay lại
-
-Export dữ liệu phục vụ quản trị
-
-
-
-🧰 Công nghệ sử dụng
-🎨 Frontend
-
-ReactJS + TypeScript
-
-Kiến trúc: Mobile-first, tối ưu Core Web Vitals
-
-UI framework: TailwindCSS
-
-React Query, Zustand, Axios
-
-Bố cục tối giản, tập trung vào UX cho chủ homestay
-
-🖥️ Backend
-
-Laravel 11 – PHP 8+
-
-Clean Architecture – Service Layer – Repository Pattern
-
-Authentication (Sanctum)
-
-RESTful API
-
-Test suite: 206 tests (Feature + Unit)
-
-Tối ưu hiệu năng & caching
-
-🛢️ Cơ sở dữ liệu
-
-PostgreSQL
-
-Redis (tuỳ chọn – caching & queue)
-
-⚙️ DevOps
-
-Docker / Docker Compose
-
-GitHub Actions CI/CD
-
-Kiểm thử tự động trước khi deploy
-
-Production-ready structure
-
-
-📂 Cấu trúc thư mục
+## 📂 Cấu trúc thư mục
 soleil-hostel/
-├── backend/                 # Laravel backend
-│   ├── src/
-│   ├── tests/               # 206 tests – full coverage structure
-│   └── composer.json
+├── backend/ # Laravel backend
+│ ├── src/
+│ ├── tests/ # 206 tests – full coverage structure
+│ └── composer.json
 │
-├── frontend/                # React + TS frontend
-│   ├── src/
-│   ├── public/
-│   └── package.json
+├── frontend/ # React + TypeScript frontend
+│ ├── src/
+│ ├── public/
+│ └── package.json
 │
-├── docs/                    # Tài liệu hệ thống (được tổ chức chuẩn hóa)
-│   ├── PROJECT_STATUS.md
-│   ├── SESSION_*.md
-│   ├── TEST_SUITE_SUMMARY.md
-│   └── ...
+├── docs/ # Tài liệu hệ thống
+│ ├── PROJECT_STATUS.md
+│ ├── SESSION_*.md
+│ ├── TEST_SUITE_SUMMARY.md
+│ └── ...
 │
-├── scripts/                 # Các script hỗ trợ
-└── README.md                # Tài liệu chính (file này)
+├── scripts/ # Các script hỗ trợ
+└── README.md # Tài liệu chính
 
 
-🛠️ Cài đặt & Chạy dự án
-🧱 Yêu cầu hệ thống
+---
 
-Node.js 18+
+## 🛠️ Cài đặt & Chạy dự án
 
-PHP 8.2+
+### 🧱 Yêu cầu hệ thống
+- Node.js **18+**  
+- PHP **8.2+**  
+- Composer  
+- PostgreSQL **12+**  
+- Redis *(tuỳ chọn)*  
 
-Composer
+---
 
-PostgreSQL 12+
-
-Redis (tuỳ chọn)
-
-1️⃣ Clone dự án
+### 1️⃣ Clone dự án
+```bash
 git clone https://github.com/taucao-ruby/soleil-hostel.git
 cd soleil-hostel
 
@@ -151,13 +154,10 @@ php artisan key:generate
 php artisan migrate --seed
 php artisan serve
 
-
 🤝 Đóng góp vào dự án
+Mọi đóng góp đều được hoan nghênh:
 
-Chúng tôi hoan nghênh mọi đóng góp:
-
-Fork repo
-
+Fork repository
 Tạo branch mới
 git checkout -b feature/my-feature
 
@@ -167,104 +167,103 @@ git commit -m "Add new feature"
 Push lên GitHub
 git push origin feature/my-feature
 
+Mở Pull Request
+git pull
 
-Tạo Pull Request
-
-🧭 Feature Roadmap (Lộ trình phát triển)
+🧭 Feature Roadmap
 ✅ Hoàn thành
 
-Kiến trúc Frontend (React + TS, mobile-first)
-
-Kiến trúc Backend (Laravel + API Layer + Repository Pattern)
-
+Kiến trúc Frontend (React + TypeScript, mobile-first)
+Kiến trúc Backend (Laravel + Clean Architecture)
 Dashboard quản lý phòng
-
-CRUD phòng + trạng thái phòng
-
+CRUD phòng & trạng thái phòng
 Booking flow cơ bản
-
-Customer management cơ bản
-
+Quản lý khách hàng
 CI/CD với GitHub Actions
-
-Test suite hoàn chỉnh: 206 tests
-
+Test suite hoàn chỉnh (206 tests)
 Documentation chuẩn hóa
+
 
 🚧 Đang phát triển
 
-Lịch đặt phòng dạng Calendar nâng cao
+Lịch đặt phòng nâng cao
 
 Module báo cáo doanh thu
 
 Module thống kê khách hàng
 
-Hệ thống phân quyền (Admin / Staff)
-
+Phân quyền (Admin / Staff)
 UI/UX tối ưu cho chủ homestay lớn tuổi
 
 📝 Dự kiến triển khai
-
-Công cụ check-in / check-out nhanh
-
-Tự động gửi email / hóa đơn
-
+Check-in / Check-out nhanh
+Gửi email & hoá đơn tự động
 Kết nối OTA (Booking.com, Agoda…)
-
 Ứng dụng Mobile
-
 Thanh toán online
 
+🏗️ System Architecture
+┌─────────────────────────┐
+│        Frontend         │
+│  React + TypeScript     │
+│  Tailwind + Axios       │
+└────────────┬────────────┘
+             │ REST API
+             ▼
+┌─────────────────────────┐
+│         Backend         │
+│        Laravel          │
+│  Controllers / Services │
+│  Repositories / Models  │
+└────────────┬────────────┘
+             │
+   ┌─────────┴─────────┐
+   ▼                   ▼
+┌───────────────┐  ┌───────────────┐
+│  PostgreSQL   │  │     Redis     │
+│ Room, Booking │  │ Cache & Queue │
+│ Customer Data │  └───────────────┘
+└───────────────┘
 
-🏗️ System Architecture (Kiến trúc hệ thống)
-Sơ đồ kiến trúc ở dạng mô tả (ASCII). Nếu bạn muốn mình có thể tạo bản PNG đẹp để đưa vào repo.
-                            ┌─────────────────────────┐
-                            │        Frontend         │
-                            │  React + TypeScript     │
-                            │  Tailwind + Axios       │
-                            └────────────┬────────────┘
-                                         │ REST API
-                                         ▼
-                            ┌─────────────────────────┐
-                            │         Backend         │
-                            │        Laravel          │
-                            │  Controllers / Services │
-                            │  Repositories / Models  │
-                            └────────────┬────────────┘
-                                         │
-                   ┌─────────────────────┴─────────────────────┐
-                   ▼                                           ▼
-        ┌───────────────────────┐                    ┌───────────────────────┐
-        │      PostgreSQL       │                    │         Redis         │
-        │   (phòng, khách,      │                    │  Cache + Queue jobs   │
-        │    booking, logs…)    │                    └───────────────────────┘
-        └───────────────────────┘
-                   
-                   ┌───────────────────────────────────────────┐
-                   │                 DevOps                     │
-                   │ Docker | GitHub Actions | Deploy scripts   │
-                   └───────────────────────────────────────────┘
+┌───────────────────────────────────┐
+│              DevOps               │
+│ Docker | GitHub Actions | CI/CD   │
+└───────────────────────────────────┘
 
-🧪 Test Suite Summary (Tổng quan test suite – 206 tests)
+🧪 Test Suite Summary
 
-Dự án hiện có 206 tests bao gồm unit test + feature test, đảm bảo các module hoạt động ổn định trước khi release.
+Dự án hiện có 206 tests, bao gồm Unit Tests và Feature Tests, đảm bảo hệ thống ổn định trước khi release.
+| Nhóm Test      | Số lượng | Mô tả                     |
+| -------------- | -------- | ------------------------- |
+| Feature Tests  | 120      | Kiểm thử toàn bộ flow API |
+| Unit Tests     | 86       | Logic Service, Repository |
+| Auth Tests     | 12       | Xác thực & phân quyền     |
+| Booking Tests  | 40       | Đặt phòng & phòng trống   |
+| Room Tests     | 30       | CRUD & trạng thái phòng   |
+| Customer Tests | 18       | Quản lý khách hàng        |
+| Report Tests   | 10       | Doanh thu & thống kê      |
 
-📁 Phân bổ theo nhóm
-Nhóm Test	Số lượng	Mô tả
-Feature Tests	120	Kiểm thử toàn bộ flow API (phòng, booking, khách hàng…).
-Unit Tests	86	Kiểm thử logic lớp Repository, Service, Helper…
-Auth Tests	12	Kiểm tra login, token, quyền truy cập.
-Booking Tests	40	Kiểm tra quy trình đặt phòng + kiểm tra phòng trống.
-Room Tests	30	CRUD phòng, trạng thái phòng.
-Customer Tests	18	Tạo – cập nhật – lịch sử khách hàng.
-Report Tests	10	Kiểm tra logic tính doanh thu và tỷ lệ lấp đầy.
+
 🎯 Mục tiêu chất lượng
+API quan trọng đều có test coverage
+CI chạy test tự động cho mỗi Pull Request
+Không merge code lỗi vào main
 
-Toàn bộ API quan trọng có test coverage
+## 🤖 AI-assisted Development
 
-CI chạy test tự động trong mỗi pull request
+Dự án này được phát triển với sự hỗ trợ của AI agents nhằm tăng tốc độ phát triển.
 
-Đảm bảo không merge code lỗi vào branch main
+Vai trò của AI:
+- Sinh code boilerplate
+- Gợi ý cấu trúc
+- Hỗ trợ viết test
+
+Vai trò của tác giả:
+- Thiết kế kiến trúc hệ thống
+- Xây dựng business logic
+- Review, refactor và tối ưu code
+- Thiết kế test strategy và CI/CD
+- Chịu trách nhiệm hoàn toàn cho chất lượng cuối cùng
 
 
 📬 Liên hệ
@@ -272,8 +271,7 @@ Tác giả: Ngọc Tàu
 Email: tau.cao21@student.passerellesnumeriques.org
 GitHub: https://github.com/taucao-ruby
 
-📄 Giấy phép 
+📄 Giấy phép
 Dự án được phát hành theo giấy phép MIT.
-Xem file LICENSE để biết chi tiết.
-
+Xem file LICENSE để biết thêm chi tiết.
 

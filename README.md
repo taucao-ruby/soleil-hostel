@@ -169,7 +169,7 @@ php artisan migrate --seed
 php artisan serve
 ```
 
-🤝 Đóng góp vào dự án
+###🤝 Đóng góp vào dự án
 Mọi đóng góp đều được hoan nghênh:
 
 Fork repository
@@ -185,8 +185,8 @@ git push origin feature/my-feature
 Mở Pull Request
 git pull
 
-🧭 Feature Roadmap
-✅ Hoàn thành
+###🧭 Feature Roadmap
+##✅ Hoàn thành
 - Kiến trúc Frontend (React + TypeScript, mobile-first)
 - Kiến trúc Backend (Laravel + Clean Architecture)
 - Dashboard quản lý phòng
@@ -198,21 +198,21 @@ git pull
 - Documentation chuẩn hóa
 
 
-🚧 Đang phát triển
+##🚧 Đang phát triển
 - Lịch đặt phòng nâng cao
 - Module báo cáo doanh thu
 - Module thống kê khách hàng 
 - Phân quyền (Admin / Staff)
 - UI/UX tối ưu cho chủ homestay lớn tuổi
 
-📝 Dự kiến triển khai
+##📝 Dự kiến triển khai
 - Check-in / Check-out nhanh
 - Gửi email & hoá đơn tự động
 - Kết nối OTA (Booking.com, Agoda…)
 - Ứng dụng Mobile
 - Thanh toán online
 
-🏗️ System Architecture
+##🏗️ System Architecture
 ┌─────────────────────────┐
 │        Frontend         │
 │  React + TypeScript     │
@@ -240,7 +240,7 @@ git pull
 │ Docker | GitHub Actions | CI/CD   │
 └───────────────────────────────────┘
 
-🧪 Test Suite Summary
+##🧪 Test Suite Summary
 
 Dự án hiện có 206 tests, bao gồm Unit Tests và Feature Tests, đảm bảo hệ thống ổn định trước khi release.
 | Nhóm Test      | Số lượng | Mô tả                     |
@@ -256,7 +256,7 @@ Dự án hiện có 206 tests, bao gồm Unit Tests và Feature Tests, đảm b�
 ✔️ CI chạy test tự động cho mỗi Pull Request
 ✔️ Không merge code lỗi vào main
 
-🎯 Mục tiêu chất lượng
+##🎯 Mục tiêu chất lượng
 - API quan trọng đều có test coverage
 - CI chạy test tự động cho mỗi Pull Request
 - Không merge code lỗi vào main
@@ -279,10 +279,10 @@ Vai trò của tác giả:
 - Chịu trách nhiệm hoàn toàn cho chất lượng cuối cùng
 
 
-📬 Liên hệ - Contact
+###📬 Liên hệ - Contact
 Tác giả: Ngọc Tàu
 Email: tau.cao21@student.passerellesnumeriques.org
 GitHub: https://github.com/taucao-ruby
 
-📄 Giấy phép - License
+###📄 Giấy phép - License
 This project is licensed under the **[MIT License](./LICENSE)**.

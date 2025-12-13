@@ -10,279 +10,311 @@
 - Tự động hóa quy trình vận hành  
 
 Dự án hướng đến mục tiêu **nâng cấp mô hình homestay gia đình**, đưa công nghệ vào đúng nơi họ cần để:
-- Giảm sai sót vận hành thủ công
-- Tiết kiệm thời gian  
-- Nâng cao trải nghiệm khách lưu trú
-- Chuẩn hóa quy trình khi quy mô dần mở rộng
 
-🎯 Project Philosophy
-- Product-first, không phải demo kỹ thuật
-- Maintainability > Feature bloat
-- Test & Documentation là một phần của sản phẩm
-- Thiết kế cho người dùng không rành công nghệ
+- Giảm sai sót vận hành thủ công  
+- Tiết kiệm thời gian  
+- Nâng cao trải nghiệm khách lưu trú  
+- Chuẩn hóa quy trình khi quy mô dần mở rộng  
+
+---
+
+## 🎯 Project Philosophy
+
+- Product-first, không phải demo kỹ thuật  
+- Maintainability > Feature bloat  
+- Test & Documentation là một phần của sản phẩm  
+- Thiết kế cho người dùng không rành công nghệ  
+
 Dự án được xây dựng như một hệ thống có thể sống lâu dài, không phải proof-of-concept.
 
 ---
 
-## 🚀 Tính năng chính - Core features
+## 🚀 Core Features
 
-### 🏨 1. Quản lý Phòng - Room Management
-- Thêm / sửa / xoá phòng  CRUD 
-- Quản lý trạng thái phòng:
+### 🏨 1. Room Management
+- CRUD phòng (thêm / sửa / xoá)  
+- Quản lý trạng thái:
   - Trống  
   - Đã đặt  
   - Đang dọn dẹp  
   - Bảo trì  
-- Phân loại phòng theo:
+- Phân loại theo:
   - Loại phòng  
   - Giá  
   - Sức chứa  
-- Dashboard trực quan hiển thị trạng thái phòng theo thời gian thực  
+- Dashboard trạng thái phòng theo thời gian thực  
 
 ---
 
-### 📅 2. Hệ thống Đặt Phòng - Booking System
+### 📅 2. Booking System
 - Đặt phòng trực tuyến  
 - Lịch đặt phòng dạng **Calendar**  
-- Chỉnh sửa / huỷ đặt phòng  
+- Chỉnh sửa / huỷ booking  
 - Tự động kiểm tra phòng trống  
-- Tối ưu quy trình **check-in / check-out**, ngăn double-booking ở tầng business logic
+- Ngăn **double-booking** ở tầng business logic  
+- Tối ưu quy trình **check-in / check-out**
 
 ---
 
-### 👥 3. Quản lý Khách Hàng - Customer Management
+### 👥 3. Customer Management
 - Lưu trữ thông tin khách  
 - Nhật ký lưu trú  
 - Lịch sử đặt phòng  
-- Hỗ trợ chương trình ưu đãi / giảm giá khách hàng quen.
+- Nền tảng cho ưu đãi & khách hàng thân thiết  
 
 ---
 
-### 📊 4. Báo cáo & Thống kê - Reports & Analytics
-- Doanh thu theo:
-  - Ngày  
-  - Tuần  
-  - Tháng  
+### 📊 4. Reports & Analytics
+- Doanh thu theo ngày / tuần / tháng  
 - Biểu đồ tỷ lệ lấp đầy phòng  
 - Báo cáo khách hàng quay lại  
 - Xuất dữ liệu phục vụ quản trị  
 
 ---
 
-## 🧰 Công nghệ sử dụng - Tech Stack
+## 🧰 Tech Stack
 
 ### 🎨 Frontend
 - **ReactJS + TypeScript**  
-- Kiến trúc: **Mobile-first**, tối ưu **Core Web Vitals**  
-- UI Framework: **TailwindCSS**  
-- State & Data:
-  - React Query  
-  - Zustand  
-  - Axios  
-- Thiết kế UI/UX tối giản, tập trung vào người dùng là **chủ homestay**
+- Mobile-first, tối ưu **Core Web Vitals**  
+- **TailwindCSS**  
+- React Query, Zustand, Axios  
+- UI/UX tối giản, tập trung vào **chủ homestay**
 
 ---
 
 ### 🖥️ Backend
-- **Laravel 11 – PHP 8+**  
+- **Laravel 11 – PHP 8.2+**  
 - Clean Architecture:
-  - Service Layer
-  - Controllers
+  - Controllers  
+  - Service Layer  
   - Repository Pattern  
 - Authentication: **Laravel Sanctum**  
 - RESTful API  
-- **Test Suite: 206 tests** (Feature + Unit) 
-- Tối ưu hiệu năng & caching  - Security & performance-focused design
+- **206 automated tests** (Feature + Unit)  
+- Security & performance-focused design  
 
 ---
 
-### 🛢️ Cơ sở dữ liệu - Data Layer
+### 🛢️ Data Layer
 - **PostgreSQL**  
-- **Redis** *(tuỳ chọn – caching & queue)*  
+- **Redis** *(optional – cache & queue)*  
 
 ---
 
 ### ⚙️ DevOps
-- Docker / Docker Compose  
+- Docker & Docker Compose  
 - GitHub Actions (CI/CD)  
-- Kiểm thử tự động trước khi deploy  - Automated test execution before merge
+- Automated test execution before merge  
 - Production-ready structure  
 
 ---
 
-## 📂 Cấu trúc thư mục - Project Structure (High-level)
+## 📂 Project Structure (High-level)
 soleil-hostel/
-├── backend/          # Laravel backend
-│   ├── src/
-│   ├── tests/        # 206 automated tests
-│   └── composer.json
+├── backend/ # Laravel backend
+│ ├── src/
+│ ├── tests/ # 206 automated tests
+│ └── composer.json
 │
-├── frontend/         # React + TypeScript
-│   ├── src/
-│   ├── public/
-│   └── package.json
+├── frontend/ # React + TypeScript
+│ ├── src/
+│ ├── public/
+│ └── package.json
 │
-├── docs/             # Consolidated system documentation
-│   ├── getting-started/
-│   ├── features/
-│   ├── architecture/
-│   ├── testing/
-│   ├── deployment/
-│   └── archive/
+├── docs/ # Consolidated system documentation
+│ ├── getting-started/
+│ ├── features/
+│ ├── architecture/
+│ ├── testing/
+│ ├── deployment/
+│ └── archive/
 │
 └── README.md
+
 
 📚 **Technical Documentation:**  
 → **[Go to docs/README.md](./docs/README.md)**
 
-
 ---
 
-## 🛠️ Cài đặt & Chạy dự án - Local Development
+## 🛠️ Local Development
 
-### 🧱 Yêu cầu hệ thống- System Requirements
+### 🧱 System Requirements
 - Node.js **18+**  
 - PHP **8.2+**  
 - Composer  
 - PostgreSQL **12+**  
-- Redis *(tuỳ chọn)*  
+- Redis *(optional)*  
 
 ---
 
-### Quick Start
-1️⃣ Clone dự án 
+### 🚀 Quick Start
+
+#### 1️⃣ Clone repository
 ```bash
 git clone https://github.com/taucao-ruby/soleil-hostel.git
 cd soleil-hostel
 
-2️⃣ Cài đặt Frontend
+####2️⃣ Frontend
 cd frontend
 npm install
 npm run dev
 
-3️⃣ Cài đặt Backend
+####3️⃣ Backend
 cd ../backend
 composer install
 cp .env.example .env
 php artisan key:generate
 php artisan migrate --seed
 php artisan serve
-```
 
-###🤝 Đóng góp vào dự án
+####🤝 Contributing
 Mọi đóng góp đều được hoan nghênh:
-
-Fork repository
-Tạo branch mới
+# Create new branch
 git checkout -b feature/my-feature
 
-Commit thay đổi
+# Commit changes
 git commit -m "Add new feature"
 
-Push lên GitHub
+# Push branch
 git push origin feature/my-feature
 
-Mở Pull Request
-git pull
+Sau đó mở Pull Request trên GitHub.
+```
 
-###🧭 Feature Roadmap
-##✅ Hoàn thành
-- Kiến trúc Frontend (React + TypeScript, mobile-first)
-- Kiến trúc Backend (Laravel + Clean Architecture)
-- Dashboard quản lý phòng
-- CRUD phòng & trạng thái phòng
-- Booking flow cơ bản
-- Quản lý khách hàng
-- CI/CD với GitHub Actions
-- Test suite hoàn chỉnh (206 tests)
-- Documentation chuẩn hóa
+## 🧭 Roadmap
 
+### ✅ Completed
+- Frontend architecture (React + TypeScript, mobile-first)
+- Backend architecture (Laravel + Clean Architecture)
+- Room dashboard & CRUD
+- Core booking flow
+- Customer management
+- CI/CD with GitHub Actions
+- Full test suite (206 tests)
+- Documentation consolidation & cleanup
 
-##🚧 Đang phát triển
-- Lịch đặt phòng nâng cao
-- Module báo cáo doanh thu
-- Module thống kê khách hàng 
-- Phân quyền (Admin / Staff)
-- UI/UX tối ưu cho chủ homestay lớn tuổi
+---
 
-##📝 Dự kiến triển khai
-- Check-in / Check-out nhanh
-- Gửi email & hoá đơn tự động
-- Kết nối OTA (Booking.com, Agoda…)
-- Ứng dụng Mobile
-- Thanh toán online
+### 🚧 In Progress
+- Advanced booking calendar  
+- Revenue & analytics modules  
+- Customer statistics module  
+- Role-based access (Admin / Staff)  
+- UX optimization for non-technical / elderly homestay owners  
 
-##🏗️ System Architecture
-┌─────────────────────────┐
-│        Frontend         │
-│  React + TypeScript     │
-│  Tailwind + Axios       │
-└────────────┬────────────┘
-             │ REST API
-             ▼
-┌─────────────────────────┐
-│         Backend         │
-│        Laravel          │
-│  Controllers / Services │
-│  Repositories / Models  │
-└────────────┬────────────┘
-             │
-   ┌─────────┴─────────┐
-   ▼                   ▼
-┌───────────────┐  ┌───────────────┐
-│  PostgreSQL   │  │     Redis     │
-│ Room, Booking │  │ Cache & Queue │
-│ Customer Data │  └───────────────┘
-└───────────────┘
+---
 
-┌───────────────────────────────────┐
-│              DevOps               │
-│ Docker | GitHub Actions | CI/CD   │
-└───────────────────────────────────┘
+### 📝 Planned
+- Fast check-in / check-out flow  
+- Automated email & invoice sending  
+- OTA integration (Booking.com, Agoda…)  
+- Mobile application  
+- Online payment integration  
 
-##🧪 Test Suite Summary
+---
 
-Dự án hiện có 206 tests, bao gồm Unit Tests và Feature Tests, đảm bảo hệ thống ổn định trước khi release.
-| Nhóm Test      | Số lượng | Mô tả                     |
-| -------------- | -------- | ------------------------- |
-| Feature Tests  | 120      | Kiểm thử toàn bộ flow API |
-| Unit Tests     | 86       | Logic Service, Repository |
-| Auth Tests     | 12       | Xác thực & phân quyền     |
-| Booking Tests  | 40       | Đặt phòng & phòng trống   |
-| Room Tests     | 30       | CRUD & trạng thái phòng   |
-| Customer Tests | 18       | Quản lý khách hàng        |
-| Report Tests   | 10       | Doanh thu & thống kê      |
+## 🏗️ System Architecture
 
-✔️ CI chạy test tự động cho mỗi Pull Request
-✔️ Không merge code lỗi vào main
+┌───────────────────────────────────────┐
+│ Frontend                              │
+│ React + TypeScript                    │
+│ TailwindCSS + Axios                   │
+│ Mobile-first UI/UX                    │
+└───────────────────┬───────────────────┘
+                    │ REST API (JSON)
+                    ▼
+┌───────────────────────────────────────┐
+│ Backend                               │
+│ Laravel                               │
+│ Controllers │ Services │ Repositories │
+│ Clean Architecture                    │
+└───────────────────┬───────────────────┘
+                    │
+        ┌───────────┴───────────┐
+        ▼                       ▼
+┌───────────────────────┐ ┌───────────────────────┐
+│ PostgreSQL            │ │ Redis                 │
+│ Rooms / Bookings      │ │ Cache / Queue         │
+│ Customers / Reports   │ │ Performance Boost     │
+└───────────────────────┘ └───────────────────────┘
 
-##🎯 Mục tiêu chất lượng
-- API quan trọng đều có test coverage
-- CI chạy test tự động cho mỗi Pull Request
-- Không merge code lỗi vào main
+┌───────────────────────────────────────┐
+│ DevOps                                │
+│ Docker │ GitHub Actions │ CI / CD     │
+│ Automated Tests & Deployments         │
+└───────────────────────────────────────┘
 
+## 🧪 Test Suite Summary
+
+Dự án hiện có **206 automated tests**, bao gồm **Unit Tests** và **Feature Tests**, đảm bảo hệ thống ổn định trước khi release.
+
+| Nhóm Test        | Số lượng | Mô tả                         |
+|------------------|----------|-------------------------------|
+| Feature Tests    | 120      | Kiểm thử toàn bộ flow API     |
+| Unit Tests       | 86       | Logic Service, Repository     |
+| Auth Tests       | 12       | Xác thực & phân quyền         |
+| Booking Tests    | 40       | Đặt phòng & phòng trống       |
+| Room Tests       | 30       | CRUD & trạng thái phòng       |
+| Customer Tests   | 18       | Quản lý khách hàng            |
+| Report Tests     | 10       | Doanh thu & thống kê          |
+
+✔️ CI chạy test tự động cho mỗi Pull Request  
+✔️ Không merge code lỗi vào `main`
+
+## 🎯 Quality Goals
+
+Soleil Hostel được xây dựng với mục tiêu **ổn định – dễ bảo trì – sẵn sàng production**, không đánh đổi chất lượng để lấy tốc độ ngắn hạn.
+
+### Quality Principles
+- **Correctness first**: Tính đúng nghiệp vụ quan trọng hơn tối ưu sớm
+- **Test-driven confidence**: Test là hàng rào bảo vệ hệ thống
+- **Fail fast, fix early**: Phát hiện lỗi sớm trong CI thay vì production
+- **Maintainability over cleverness**: Code dễ đọc > code thông minh nhưng khó hiểu
+
+### Quality Standards
+- Tất cả **critical APIs** đều có test coverage
+- Business logic nằm ở **Service Layer**, không nằm trong Controller
+- Không cho phép **double-booking** ở mọi kịch bản
+- Validation & authorization được kiểm soát chặt chẽ
+- Không merge code khi:
+  - Test fail
+  - CI không pass
+  - Vi phạm coding standards
+
+---
 
 ## 🤖 AI-assisted Development
 
-Dự án này được phát triển với sự hỗ trợ của AI agents nhằm tăng tốc độ phát triển.
+Dự án được phát triển với sự hỗ trợ của **AI agents** nhằm tăng tốc độ phát triển,  
+nhưng **AI không thay thế tư duy kỹ thuật và trách nhiệm của con người**.
 
-Vai trò của AI:
+### AI được sử dụng để:
 - Sinh code boilerplate
-- Gợi ý cấu trúc
-- Hỗ trợ viết test
+- Gợi ý cấu trúc thư mục & module
+- Hỗ trợ viết test và refactor
+- Hỗ trợ phân tích edge cases
 
-Vai trò của tác giả:
-- Thiết kế kiến trúc hệ thống
-- Xây dựng business logic
+### Trách nhiệm của tác giả:
+- Thiết kế kiến trúc tổng thể
+- Xây dựng & kiểm soát business logic
 - Review, refactor và tối ưu code
-- Thiết kế test strategy và CI/CD
-- Chịu trách nhiệm hoàn toàn cho chất lượng cuối cùng
+- Thiết kế test strategy & CI/CD pipeline
+- Chịu trách nhiệm **100%** cho chất lượng cuối cùng của sản phẩm
 
+---
 
-##📬 Liên hệ - Contact
-Tác giả: Ngọc Tàu
-Email: tau.cao21@student.passerellesnumeriques.org
-GitHub: https://github.com/taucao-ruby
+## 📬 Contact
 
-##📄 Giấy phép - License
+**Author:** Ngọc Tàu  
+**Email:** tau.cao21@student.passerellesnumeriques.org  
+**GitHub:** https://github.com/taucao-ruby  
+
+---
+
+## 📄 License
+
 This project is licensed under the **[MIT License](./LICENSE)**.
+
+

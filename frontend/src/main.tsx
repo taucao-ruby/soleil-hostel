@@ -1,7 +1,15 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
+import 'react-toastify/dist/ReactToastify.css'
 import App from './App.tsx'
+import ErrorBoundary from './components/ErrorBoundary'
+import { initWebVitals } from './utils/webVitals'
+
+// Initialize Web Vitals monitoring for performance tracking
+if (import.meta.env.PROD) {
+  initWebVitals()
+}
 
 function mountApp() {
   const container = document.getElementById('root')
@@ -15,7 +23,9 @@ function mountApp() {
 
   createRoot(container).render(
     <StrictMode>
-      <App />
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
     </StrictMode>
   )
 }

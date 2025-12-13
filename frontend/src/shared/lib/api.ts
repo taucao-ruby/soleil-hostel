@@ -85,7 +85,16 @@ api.interceptors.response.use(
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
 
     // Only handle 401 errors once per request
+    // AND only if user has csrf_token (meaning they were logged in)
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+      // Check if user has csrf token (indicates previous login)
+      const hasCsrfToken = !!getCsrfToken()
+
+      // If no csrf token, user was never logged in - don't try refresh
+      if (!hasCsrfToken) {
+        return Promise.reject(error)
+      }
+
       originalRequest._retry = true
 
       try {
@@ -105,14 +114,24 @@ api.interceptors.response.use(
       } catch (refreshError) {
         // ========== REFRESH FAILED ==========
         // Token is invalid/expired/revoked - force logout
-        console.error('Token refresh failed:', refreshError)
+        // Note: 401 on refresh is expected when user is not logged in
+        const isAxiosError = (error: unknown): error is AxiosError => {
+          return (error as AxiosError).isAxiosError === true
+        }
+
+        // Only log if it's not a 401 (401 means not logged in - expected)
+        if (!isAxiosError(refreshError) || refreshError.response?.status !== 401) {
+          console.error('Token refresh failed:', refreshError)
+        }
 
         // Clear all auth data
         sessionStorage.clear()
         localStorage.clear()
 
-        // Redirect to login page
-        if (typeof window !== 'undefined') {
+        // Only redirect if user was trying to access protected route
+        // Don't redirect on public pages (home, rooms list, etc.)
+        const isPublicRoute = originalRequest.url?.match(/\/(rooms|$)/)
+        if (typeof window !== 'undefined' && !isPublicRoute) {
           window.location.href = '/login'
         }
 

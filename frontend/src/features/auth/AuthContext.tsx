@@ -69,13 +69,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    *
    * Flow:
    * 1. Component mounts
-   * 2. Call GET /auth/me-httponly
-   * 3. Browser automatically sends httpOnly cookie
-   * 4. Backend validates token → returns user data
-   * 5. If 401: Token expired/invalid → user stays null
+   * 2. Check if csrf_token exists (indicates previous login)
+   * 3. If yes: Call GET /auth/me-httponly
+   * 4. Browser automatically sends httpOnly cookie
+   * 5. Backend validates token → returns user data
+   * 6. If 401: Token expired/invalid → user stays null
    */
   useEffect(() => {
     const validateToken = async () => {
+      // Only validate if we have a csrf token (indicates previous login session)
+      const csrfToken = sessionStorage.getItem('csrf_token')
+
+      if (!csrfToken) {
+        // No csrf token = user never logged in
+        setLoading(false)
+        return
+      }
+
       try {
         const response = await api.get<{ user: User }>('/auth/me-httponly')
         setUser(response.data.user)
@@ -84,7 +94,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // No valid token - user not authenticated
         setUser(null)
         const error = err as { response?: { status?: number } }
-        console.warn('Token validation failed:', error?.response?.status)
+        // Only log if it's not a 401 (401 is expected when token expired)
+        if (error?.response?.status !== 401) {
+          console.warn('Token validation failed:', error?.response?.status)
+        }
+        // Clear invalid csrf token
+        sessionStorage.removeItem('csrf_token')
       } finally {
         setLoading(false)
       }

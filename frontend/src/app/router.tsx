@@ -1,13 +1,16 @@
-import React from 'react'
+import React, { Suspense, lazy } from 'react'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import ProtectedRoute from '@/features/auth/ProtectedRoute'
+import LoadingSpinner from '@/shared/components/feedback/LoadingSpinner'
 
-// Pages
+// Eager-loaded pages (critical for initial render)
 import HomePage from '@/pages/HomePage'
-import LoginPage from '@/features/auth/LoginPage'
-import RegisterPage from '@/features/auth/RegisterPage'
-import RoomList from '@/features/rooms/RoomList'
-import BookingForm from '@/features/booking/BookingForm'
+
+// Lazy-loaded pages (code splitting for better performance)
+const LoginPage = lazy(() => import('@/features/auth/LoginPage'))
+const RegisterPage = lazy(() => import('@/features/auth/RegisterPage'))
+const RoomList = lazy(() => import('@/features/rooms/RoomList'))
+const BookingForm = lazy(() => import('@/features/booking/BookingForm'))
 
 // Placeholder Dashboard
 const DashboardPage = () => (
@@ -21,6 +24,18 @@ const DashboardPage = () => (
     </div>
   </div>
 )
+
+/**
+ * Suspense Wrapper Component
+ * Wraps lazy-loaded components with Suspense boundary
+ */
+const withSuspense = (Component: React.LazyExoticComponent<React.ComponentType<any>>) => {
+  return (
+    <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Loading..." />}>
+      <Component />
+    </Suspense>
+  )
+}
 
 /**
  * Router Configuration
@@ -43,21 +58,23 @@ export const router = createBrowserRouter([
   },
   {
     path: '/login',
-    element: <LoginPage />,
+    element: withSuspense(LoginPage),
   },
   {
     path: '/register',
-    element: <RegisterPage />,
+    element: withSuspense(RegisterPage),
   },
   {
     path: '/rooms',
-    element: <RoomList />,
+    element: withSuspense(RoomList),
   },
   {
     path: '/booking',
     element: (
       <ProtectedRoute>
-        <BookingForm />
+        <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Loading..." />}>
+          <BookingForm />
+        </Suspense>
       </ProtectedRoute>
     ),
   },

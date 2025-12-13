@@ -252,6 +252,7 @@ Dự án hiện có 206 tests, bao gồm Unit Tests và Feature Tests, đảm b�
 | Room Tests     | 30       | CRUD & trạng thái phòng   |
 | Customer Tests | 18       | Quản lý khách hàng        |
 | Report Tests   | 10       | Doanh thu & thống kê      |
+
 ✔️ CI chạy test tự động cho mỗi Pull Request
 ✔️ Không merge code lỗi vào main
 

@@ -47,6 +47,8 @@ return new class extends Migration
 
     /**
      * PostgreSQL-specific migration using native ENUM type.
+     * Note: PostgreSQL DDL statements have implicit commits, so we avoid
+     * wrapping them in transactions which can cause "no active transaction" errors.
      */
     private function migratePostgreSQL(): void
     {
@@ -54,29 +56,27 @@ return new class extends Migration
         $enumValuesSQL = "'" . implode("', '", $enumValues) . "'";
         $defaultRole = UserRole::default()->value;
 
-        DB::transaction(function () use ($enumValuesSQL, $defaultRole) {
-            // Step 1: Create PostgreSQL ENUM type if not exists
-            DB::statement("
-                DO $$ BEGIN
-                    CREATE TYPE user_role_enum AS ENUM ({$enumValuesSQL});
-                EXCEPTION
-                    WHEN duplicate_object THEN NULL;
-                END $$;
-            ");
+        // Step 1: Create PostgreSQL ENUM type if not exists
+        // Must be outside transaction for proper handling
+        DB::statement("
+            DO $$ BEGIN
+                CREATE TYPE user_role_enum AS ENUM ({$enumValuesSQL});
+            EXCEPTION
+                WHEN duplicate_object THEN NULL;
+            END $$;
+        ");
 
-            // Step 2: Add temporary column with new ENUM type
-            DB::statement("
-                ALTER TABLE users 
-                ADD COLUMN IF NOT EXISTS role_new user_role_enum DEFAULT '{$defaultRole}'::user_role_enum
-            ");
+        // Step 2: Add temporary column with new ENUM type
+        DB::statement("
+            ALTER TABLE users 
+            ADD COLUMN IF NOT EXISTS role_new user_role_enum DEFAULT '{$defaultRole}'::user_role_enum
+        ");
 
-            // Step 3: Migrate data with priority: is_admin > existing role > default
-            // Priority logic:
-            //   - is_admin = true → 'admin'
-            //   - role = 'admin' → 'admin' (preserve existing)
-            //   - role = 'moderator' → 'moderator' (preserve existing)
-            //   - role = 'user' → 'user'
-            //   - role = 'guest' or NULL or invalid → 'user' (normalize)
+        // Step 3: Migrate data with priority: is_admin > existing role > default
+        // Check if is_admin column exists first
+        $hasIsAdmin = Schema::hasColumn('users', 'is_admin');
+        
+        if ($hasIsAdmin) {
             DB::statement("
                 UPDATE users SET role_new = 
                     CASE
@@ -86,21 +86,32 @@ return new class extends Migration
                         ELSE '{$defaultRole}'::user_role_enum
                     END
             ");
+        } else {
+            DB::statement("
+                UPDATE users SET role_new = 
+                    CASE
+                        WHEN role IN ('admin') THEN 'admin'::user_role_enum
+                        WHEN role IN ('moderator') THEN 'moderator'::user_role_enum
+                        ELSE '{$defaultRole}'::user_role_enum
+                    END
+            ");
+        }
 
-            // Step 4: Drop old columns and rename new column
-            DB::statement('ALTER TABLE users DROP COLUMN IF EXISTS role');
-            DB::statement('ALTER TABLE users RENAME COLUMN role_new TO role');
+        // Step 4: Drop old columns and rename new column
+        DB::statement('ALTER TABLE users DROP COLUMN IF EXISTS role');
+        DB::statement('ALTER TABLE users RENAME COLUMN role_new TO role');
 
-            // Step 5: Add NOT NULL constraint
-            DB::statement("ALTER TABLE users ALTER COLUMN role SET NOT NULL");
-            DB::statement("ALTER TABLE users ALTER COLUMN role SET DEFAULT '{$defaultRole}'::user_role_enum");
+        // Step 5: Add NOT NULL constraint
+        DB::statement("ALTER TABLE users ALTER COLUMN role SET NOT NULL");
+        DB::statement("ALTER TABLE users ALTER COLUMN role SET DEFAULT '{$defaultRole}'::user_role_enum");
 
-            // Step 6: Drop is_admin column
+        // Step 6: Drop is_admin column if exists
+        if ($hasIsAdmin) {
             DB::statement('ALTER TABLE users DROP COLUMN IF EXISTS is_admin');
+        }
 
-            // Step 7: Add index for role queries
-            DB::statement('CREATE INDEX IF NOT EXISTS users_role_idx ON users (role)');
-        });
+        // Step 7: Add index for role queries
+        DB::statement('CREATE INDEX IF NOT EXISTS users_role_idx ON users (role)');
     }
 
     /**
@@ -209,28 +220,27 @@ return new class extends Migration
 
     /**
      * PostgreSQL rollback.
+     * Note: Avoid transactions for DDL statements.
      */
     private function rollbackPostgreSQL(): void
     {
-        DB::transaction(function () {
-            // Step 1: Add back is_admin column
-            DB::statement('ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false');
+        // Step 1: Add back is_admin column
+        DB::statement('ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false');
 
-            // Step 2: Populate is_admin from role
-            DB::statement("
-                UPDATE users SET is_admin = (role::text = 'admin')
-            ");
+        // Step 2: Populate is_admin from role
+        DB::statement("
+            UPDATE users SET is_admin = (role::text = 'admin')
+        ");
 
-            // Step 3: Convert role back to VARCHAR
-            DB::statement('ALTER TABLE users DROP COLUMN role');
-            DB::statement("ALTER TABLE users ADD COLUMN role VARCHAR(255) DEFAULT 'guest'");
+        // Step 3: Convert role back to VARCHAR
+        DB::statement('ALTER TABLE users DROP COLUMN IF EXISTS role');
+        DB::statement("ALTER TABLE users ADD COLUMN role VARCHAR(255) DEFAULT 'guest'");
 
-            // Step 4: Drop the ENUM type
-            DB::statement('DROP TYPE IF EXISTS user_role_enum');
+        // Step 4: Drop the ENUM type
+        DB::statement('DROP TYPE IF EXISTS user_role_enum');
 
-            // Step 5: Drop index
-            DB::statement('DROP INDEX IF EXISTS users_role_idx');
-        });
+        // Step 5: Drop index
+        DB::statement('DROP INDEX IF EXISTS users_role_idx');
     }
 
     /**

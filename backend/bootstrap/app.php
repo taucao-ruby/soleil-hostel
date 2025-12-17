@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'check_token_valid' => \App\Http\Middleware\CheckTokenNotRevokedAndNotExpired::class,
             'check_httponly_token' => \App\Http\Middleware\CheckHttpOnlyTokenValid::class,
+            'role' => \App\Http\Middleware\EnsureUserHasRole::class,
         ]);
 
         // ========== Register global middleware ==========

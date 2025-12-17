@@ -54,9 +54,15 @@ class User extends Authenticatable
     }
 
     // ===== ROLE HELPER METHODS (RBAC) =====
+    // 
+    // SECURITY: All role checks MUST use these methods.
+    // NEVER compare $user->role to strings directly.
+    // The role attribute is cast to UserRole enum for type safety.
 
     /**
-     * Check if the user is an admin.
+     * Check if the user has the ADMIN role.
+     * 
+     * Use for: Full administrative access, user management, system config.
      */
     public function isAdmin(): bool
     {
@@ -64,15 +70,21 @@ class User extends Authenticatable
     }
 
     /**
-     * Check if the user is a moderator.
+     * Check if the user has moderator-level access or higher.
+     * 
+     * Returns true for: MODERATOR, ADMIN
+     * Use for: Content moderation, viewing all bookings, approving reviews.
      */
     public function isModerator(): bool
     {
-        return $this->role === UserRole::MODERATOR;
+        return $this->isAtLeast(UserRole::MODERATOR);
     }
 
     /**
-     * Check if the user is a regular user.
+     * Check if the user is a regular user (lowest privilege level).
+     * 
+     * Returns true ONLY for: USER
+     * Use for: Checking if user has no elevated privileges.
      */
     public function isUser(): bool
     {
@@ -80,32 +92,56 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if the user has the exact specified role.
+     * 
+     * Type-safe single role check using the UserRole enum.
+     * 
+     * @param UserRole $role The role to check against
+     */
+    public function hasRole(UserRole $role): bool
+    {
+        return $this->role === $role;
+    }
+
+    /**
+     * Check if the user has any of the specified roles.
+     * 
+     * Type-safe multi-role check. Useful for policies that allow
+     * multiple roles to perform an action.
+     * 
+     * @param array<UserRole> $roles Array of UserRole enum cases
+     * 
+     * @example $user->hasAnyRole([UserRole::ADMIN, UserRole::MODERATOR])
+     */
+    public function hasAnyRole(array $roles): bool
+    {
+        return in_array($this->role, $roles, true);
+    }
+
+    /**
      * Check if the user has at least the given role level.
      * 
-     * Hierarchy: USER (1) < MODERATOR (2) < ADMIN (3)
+     * Role Hierarchy (lowest to highest):
+     *   USER (1) < MODERATOR (2) < ADMIN (3)
      * 
-     * Example: $user->isAtLeast(UserRole::MODERATOR) 
-     *          returns true for MODERATOR and ADMIN
+     * This enables "role inheritance" - higher roles inherit lower role permissions.
+     * 
+     * @param UserRole $role The minimum role level required
+     * 
+     * @example $user->isAtLeast(UserRole::MODERATOR) // true for MODERATOR and ADMIN
      */
     public function isAtLeast(UserRole $role): bool
     {
-        $levels = [
+        static $levels = null;
+        
+        // Cache level mapping for performance
+        $levels ??= [
             UserRole::USER->value => 1,
             UserRole::MODERATOR->value => 2,
             UserRole::ADMIN->value => 3,
         ];
 
         return $levels[$this->role->value] >= $levels[$role->value];
-    }
-
-    /**
-     * Check if user has any of the given roles.
-     * 
-     * @param UserRole ...$roles
-     */
-    public function hasAnyRole(UserRole ...$roles): bool
-    {
-        return in_array($this->role, $roles, true);
     }
 
     /**

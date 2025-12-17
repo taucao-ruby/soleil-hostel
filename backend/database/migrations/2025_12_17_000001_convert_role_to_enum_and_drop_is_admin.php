@@ -116,45 +116,45 @@ return new class extends Migration
 
     /**
      * Generic migration for SQLite/MySQL (testing environments).
+     * Note: Avoid transactions for DDL statements to prevent
+     * "no active transaction" or table locking issues.
      */
     private function migrateGeneric(): void
     {
         $defaultRole = UserRole::default()->value;
+        $driver = Schema::getConnection()->getDriverName();
 
-        DB::transaction(function () use ($defaultRole) {
-            // Check if is_admin column exists
-            $hasIsAdmin = Schema::hasColumn('users', 'is_admin');
-            $hasRole = Schema::hasColumn('users', 'role');
+        // Check if columns exist
+        $hasIsAdmin = Schema::hasColumn('users', 'is_admin');
+        $hasRole = Schema::hasColumn('users', 'role');
 
-            if ($hasRole) {
-                // Step 1: Migrate data from is_admin to role
-                if ($hasIsAdmin) {
-                    DB::table('users')
-                        ->where('is_admin', true)
-                        ->update(['role' => UserRole::ADMIN->value]);
-                }
-
-                // Step 2: Normalize invalid roles to 'user'
-                DB::table('users')
-                    ->whereNull('role')
-                    ->orWhereNotIn('role', UserRole::values())
-                    ->update(['role' => $defaultRole]);
-            }
-
-            // Step 3: Drop is_admin if exists (SQLite needs recreate table)
+        if ($hasRole) {
+            // Step 1: Migrate data from is_admin to role
             if ($hasIsAdmin) {
-                $driver = Schema::getConnection()->getDriverName();
-                
-                if ($driver === 'sqlite') {
-                    // SQLite: recreate table without is_admin
-                    $this->recreateSqliteTableWithoutIsAdmin();
-                } else {
-                    Schema::table('users', function ($table) {
-                        $table->dropColumn('is_admin');
-                    });
-                }
+                DB::table('users')
+                    ->where('is_admin', true)
+                    ->update(['role' => UserRole::ADMIN->value]);
             }
-        });
+
+            // Step 2: Normalize invalid roles to 'user'
+            DB::table('users')
+                ->whereNull('role')
+                ->orWhereNotIn('role', UserRole::values())
+                ->update(['role' => $defaultRole]);
+        }
+
+        // Step 3: Drop is_admin if exists
+        if ($hasIsAdmin) {
+            if ($driver === 'sqlite') {
+                // SQLite: recreate table without is_admin
+                $this->recreateSqliteTableWithoutIsAdmin();
+            } else {
+                // MySQL and others: standard drop column
+                Schema::table('users', function ($table) {
+                    $table->dropColumn('is_admin');
+                });
+            }
+        }
     }
 
     /**

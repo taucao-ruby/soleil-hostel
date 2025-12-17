@@ -73,10 +73,11 @@ Booking system cho Soleil Hostel:
 3. **Policy-based Authorization:** Dùng Laravel policies cho IDOR prevention
 
    ```php
-   // app/Policies/BookingPolicy.php
+   // app/Policies/BookingPolicy.php (Updated Dec 17, 2025)
    public function view(User $user, Booking $booking): bool {
-       return $user->id === $booking->user_id || $user->is_admin;
+       return $user->id === $booking->user_id || $user->isAdmin();
    }
+   // ✅ Now uses type-safe isAdmin() helper instead of is_admin boolean
    ```
 
 4. **Input Sanitization:** HTML Purifier (không regex blacklist)

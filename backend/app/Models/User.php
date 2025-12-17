@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\UserRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Builder;
@@ -48,7 +49,63 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'role' => UserRole::class,
         ];
+    }
+
+    // ===== ROLE HELPER METHODS (RBAC) =====
+
+    /**
+     * Check if the user is an admin.
+     */
+    public function isAdmin(): bool
+    {
+        return $this->role === UserRole::ADMIN;
+    }
+
+    /**
+     * Check if the user is a moderator.
+     */
+    public function isModerator(): bool
+    {
+        return $this->role === UserRole::MODERATOR;
+    }
+
+    /**
+     * Check if the user is a regular user.
+     */
+    public function isUser(): bool
+    {
+        return $this->role === UserRole::USER;
+    }
+
+    /**
+     * Check if the user has at least the given role level.
+     * 
+     * Hierarchy: USER (1) < MODERATOR (2) < ADMIN (3)
+     * 
+     * Example: $user->isAtLeast(UserRole::MODERATOR) 
+     *          returns true for MODERATOR and ADMIN
+     */
+    public function isAtLeast(UserRole $role): bool
+    {
+        $levels = [
+            UserRole::USER->value => 1,
+            UserRole::MODERATOR->value => 2,
+            UserRole::ADMIN->value => 3,
+        ];
+
+        return $levels[$this->role->value] >= $levels[$role->value];
+    }
+
+    /**
+     * Check if user has any of the given roles.
+     * 
+     * @param UserRole ...$roles
+     */
+    public function hasAnyRole(UserRole ...$roles): bool
+    {
+        return in_array($this->role, $roles, true);
     }
 
     /**

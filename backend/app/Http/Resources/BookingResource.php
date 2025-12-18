@@ -32,6 +32,16 @@ class BookingResource extends JsonResource
             
             'created_at' => $this->created_at->toIso8601String(),
             'updated_at' => $this->updated_at->toIso8601String(),
+            
+            // ===== SOFT DELETE INFO (Admin views only) =====
+            // These fields are only present for trashed bookings
+            'is_trashed' => $this->when($this->trashed(), true),
+            'deleted_at' => $this->when($this->trashed(), fn() => $this->deleted_at?->toIso8601String()),
+            'deleted_by' => $this->whenLoaded('deletedBy', fn() => [
+                'id' => $this->deletedBy->id,
+                'name' => $this->deletedBy->name,
+                'email' => $this->deletedBy->email,
+            ]),
         ];
     }
 }

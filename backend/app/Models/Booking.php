@@ -8,11 +8,12 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Traits\Purifiable;
 
 class Booking extends Model
 {
-    use HasFactory, Purifiable;
+    use HasFactory, Purifiable, SoftDeletes;
 
     protected $fillable = [
         'room_id',
@@ -22,11 +23,13 @@ class Booking extends Model
         'guest_email',
         'status',
         'user_id',
+        'deleted_by',
     ];
 
     protected $casts = [
         'check_in' => 'date',
         'check_out' => 'date',
+        'deleted_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -205,5 +208,88 @@ class Booking extends Model
     public function scopeWithLock(Builder $query): Builder
     {
         return $query->lockForUpdate();
+    }
+
+    // ===== SOFT DELETE METHODS =====
+
+    /**
+     * Get the user who deleted the booking.
+     */
+    public function deletedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'deleted_by');
+    }
+
+    /**
+     * Soft delete with audit trail - records who deleted and when.
+     * 
+     * @param int|null $deletedByUserId User ID who performed deletion
+     * @return bool
+     */
+    public function softDeleteWithAudit(?int $deletedByUserId = null): bool
+    {
+        $this->deleted_by = $deletedByUserId ?? auth()->id();
+        $this->save();
+        
+        return $this->delete();
+    }
+
+    /**
+     * Restore a soft deleted booking and clear audit columns.
+     * 
+     * @return bool
+     */
+    public function restoreWithAudit(): bool
+    {
+        $this->deleted_by = null;
+        
+        return $this->restore();
+    }
+
+    /**
+     * Scope: Include only soft deleted bookings (for admin trash view).
+     */
+    public function scopeOnlyTrashed(Builder $query): Builder
+    {
+        return $query->onlyTrashed();
+    }
+
+    /**
+     * Scope: Include both active and soft deleted bookings.
+     */
+    public function scopeWithTrashed(Builder $query): Builder
+    {
+        return $query->withTrashed();
+    }
+
+    /**
+     * Check if this booking is soft deleted.
+     */
+    public function isTrashed(): bool
+    {
+        return $this->trashed();
+    }
+
+    /**
+     * Scope: Filter overlapping bookings including soft deleted ones.
+     * Use this for historical reports where deleted bookings matter.
+     */
+    public function scopeOverlappingBookingsIncludingTrashed(
+        Builder $query,
+        int $roomId,
+        $checkIn,
+        $checkOut,
+        ?int $excludeBookingId = null
+    ): Builder {
+        $checkIn = $checkIn instanceof Carbon ? $checkIn : Carbon::parse($checkIn);
+        $checkOut = $checkOut instanceof Carbon ? $checkOut : Carbon::parse($checkOut);
+
+        return $query
+            ->withTrashed()
+            ->where('room_id', $roomId)
+            ->whereIn('status', self::ACTIVE_STATUSES)
+            ->where('check_in', '<', $checkOut)
+            ->where('check_out', '>', $checkIn)
+            ->when($excludeBookingId, fn(Builder $q) => $q->where('id', '!=', $excludeBookingId));
     }
 }

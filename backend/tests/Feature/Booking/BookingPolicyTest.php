@@ -165,7 +165,7 @@ class BookingPolicyTest extends TestCase
 
     /**
      * Test 6: Owner can delete own booking
-     * ✅ DELETE /api/bookings/{id} - owner can delete
+     * ✅ DELETE /api/bookings/{id} - owner can delete (soft delete)
      */
     public function test_owner_can_delete_own_booking(): void
     {
@@ -175,12 +175,15 @@ class BookingPolicyTest extends TestCase
         $response->assertStatus(200)
             ->assertJson(['success' => true]);
 
-        // Verify booking was deleted or marked as cancelled
-        $freshBooking = $this->booking->fresh();
-        $this->assertTrue(
-            $freshBooking === null ||
-            $freshBooking->status === Booking::STATUS_CANCELLED
-        );
+        // With soft deletes, booking is excluded from normal queries
+        // but still exists in database with deleted_at set
+        $freshBooking = Booking::find($this->booking->id);
+        $this->assertNull($freshBooking, 'Soft deleted booking should not appear in normal queries');
+
+        // Verify booking still exists in database (soft deleted)
+        $trashedBooking = Booking::withTrashed()->find($this->booking->id);
+        $this->assertNotNull($trashedBooking, 'Booking should still exist as soft deleted');
+        $this->assertNotNull($trashedBooking->deleted_at, 'Booking should have deleted_at set');
     }
 
     /**

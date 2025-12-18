@@ -114,4 +114,28 @@ class BookingFactory extends Factory
             'check_out' => $checkOut,
         ]);
     }
+
+    /**
+     * Create a soft deleted booking.
+     * 
+     * @param User|null $deletedBy User who deleted the booking
+     */
+    public function trashed(?User $deletedBy = null): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'deleted_at' => Carbon::now()->subDays($this->faker->numberBetween(1, 30)),
+            'deleted_by' => $deletedBy?->id ?? User::factory(),
+        ]);
+    }
+
+    /**
+     * Create a soft deleted booking with specific deletion date.
+     */
+    public function trashedAt(Carbon $deletedAt, ?User $deletedBy = null): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'deleted_at' => $deletedAt,
+            'deleted_by' => $deletedBy?->id ?? User::factory(),
+        ]);
+    }
 }

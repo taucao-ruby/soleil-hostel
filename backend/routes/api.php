@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\AuthController as TokenAuthController;
 use App\Http\Controllers\Auth\HttpOnlyTokenController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\AdminBookingController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\HealthCheckController;
 use App\Http\Controllers\CspViolationReportController;
@@ -104,6 +105,28 @@ Route::middleware(['check_token_valid'])->group(function () {
     Route::put('/bookings/{booking}', [BookingController::class, 'update'])->middleware('throttle:10,1');
     Route::patch('/bookings/{booking}', [BookingController::class, 'update'])->middleware('throttle:10,1');
     Route::delete('/bookings/{booking}', [BookingController::class, 'destroy'])->middleware('throttle:10,1');
+
+    // ========== ADMIN BOOKING ENDPOINTS (Soft Delete Management) ==========
+    // All routes require admin role via middleware
+    Route::prefix('admin/bookings')->middleware('role:admin')->group(function () {
+        // View all bookings including trashed
+        Route::get('/', [AdminBookingController::class, 'index']);
+        
+        // View only trashed bookings (Trash view)
+        Route::get('/trashed', [AdminBookingController::class, 'trashed']);
+        
+        // View specific trashed booking
+        Route::get('/trashed/{id}', [AdminBookingController::class, 'showTrashed']);
+        
+        // Restore a soft deleted booking
+        Route::post('/{id}/restore', [AdminBookingController::class, 'restore']);
+        
+        // Bulk restore multiple bookings
+        Route::post('/restore-bulk', [AdminBookingController::class, 'restoreBulk']);
+        
+        // Permanently delete (force delete) - GDPR "right to be forgotten"
+        Route::delete('/{id}/force', [AdminBookingController::class, 'forceDelete']);
+    });
 });
 
 

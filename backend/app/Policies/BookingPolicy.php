@@ -50,4 +50,31 @@ class BookingPolicy
     {
         return $user->isAtLeast(UserRole::MODERATOR);
     }
+
+    /**
+     * Determine whether the user can view trashed (soft deleted) bookings.
+     * Only admins can view trashed bookings for audit purposes.
+     */
+    public function viewTrashed(User $user): bool
+    {
+        return $user->isAdmin();
+    }
+
+    /**
+     * Determine whether the user can restore a soft deleted booking.
+     * Only admins can restore bookings.
+     */
+    public function restore(User $user, Booking $booking): bool
+    {
+        return $user->isAdmin();
+    }
+
+    /**
+     * Determine whether the user can permanently delete a booking.
+     * Only admins can force delete (for GDPR "right to be forgotten").
+     */
+    public function forceDelete(User $user, Booking $booking): bool
+    {
+        return $user->isAdmin();
+    }
 }

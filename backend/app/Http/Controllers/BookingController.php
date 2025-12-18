@@ -165,7 +165,13 @@ class BookingController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Remove the specified resource from storage (soft delete).
+     * 
+     * Uses soft delete to preserve audit trail - booking data is NOT permanently removed.
+     * Records who deleted the booking and when for compliance.
+     * 
+     * Regular users: Can only soft delete their own bookings
+     * Admins: Can soft delete any booking
      */
     public function destroy(Booking $booking): JsonResponse
     {
@@ -176,12 +182,12 @@ class BookingController extends Controller
         // This avoids Laravel trying to restore a deleted model from the event
         event(new BookingDeleted($booking));
 
-        // Delete booking
-        $booking->delete();
+        // Soft delete booking with audit trail (records deleted_by)
+        $this->bookingService->softDelete($booking, auth()->id());
 
         return response()->json([
             'success' => true,
-            'message' => 'Booking deleted successfully',
+            'message' => 'Booking cancelled successfully',
         ], 200);
     }
 }

@@ -26,8 +26,8 @@ class RoomResource extends JsonResource
             // Booking count - always loaded via withCount('activeBookings')
             'active_bookings_count' => $this->active_bookings_count ?? 0,
             
-            'created_at' => $this->created_at->toIso8601String(),
-            'updated_at' => $this->updated_at->toIso8601String(),
+            'created_at' => $this->when($this->created_at !== null, fn() => $this->created_at->toIso8601String()),
+            'updated_at' => $this->when($this->updated_at !== null, fn() => $this->updated_at->toIso8601String()),
         ];
     }
 }

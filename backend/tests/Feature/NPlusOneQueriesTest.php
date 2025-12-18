@@ -151,9 +151,10 @@ class NPlusOneQueriesTest extends TestCase
         $this->actingAs($user, 'sanctum');
 
         $bookingId = $booking->id;
+        // Soft delete adds an extra UPDATE query for deleted_by + deleted_at
         $this->assertQueryCount(function () use ($bookingId) {
             $this->deleteJson("/api/bookings/{$bookingId}")->assertOk();
-        }, expectedCount: 3, tolerance: 2); // Optimized with event dispatch + middleware
+        }, expectedCount: 4, tolerance: 2); // Optimized with event dispatch + middleware + soft delete audit
     }
 
     /**

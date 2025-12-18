@@ -1,25 +1,23 @@
 # Soleil Hostel - Project Status
 
-**Last Updated:** December 18, 2025
+**Last Updated:** January 2025
 
 ## 🎉 Current Status: Production Ready ✅
 
-All 253 tests passing, 0 skipped, 775 assertions verified.  
+All 296 tests passing, 0 skipped, 890 assertions verified.  
 All GitHub Actions CI/CD workflows passing.  
-Documentation cleaned and organized.
-
-**Latest Session:** See [SESSION_DECEMBER_12_2025.md](SESSION_DECEMBER_12_2025.md) for detailed fixes applied today.
+Documentation restructured and organized in `docs/` folder.
 
 ---
 
 ## 📊 Test Results Summary
 
 ```
-✅ 253 tests passed
+✅ 296 tests passed
 ❌ 0 tests failed
 ⏭️  0 tests skipped
-📋 775 assertions
-⏱️  Duration: ~8.6 seconds
+📋 890 assertions
+⏱️  Duration: ~9 seconds
 ```
 
 ---
@@ -61,28 +59,34 @@ Documentation cleaned and organized.
 
 ## 📁 Key Documentation
 
-### Quick Start
+📚 **Full Documentation:** → **[docs/README.md](./docs/README.md)**
 
-- [README.md](./README.md) - Project overview & setup
-- [README.dev.md](./README.dev.md) - Developer guide
-- [ENVIRONMENT_SETUP_GUIDE.md](./ENVIRONMENT_SETUP_GUIDE.md) - Complete setup instructions
+```
+docs/
+├── README.md                    # Documentation index
+├── guides/                      # Setup & testing guides
+│   ├── ENVIRONMENT_SETUP.md
+│   └── TESTING.md
+├── architecture/                # System design
+│   ├── README.md
+│   └── DATABASE.md
+├── features/                    # Feature documentation
+│   ├── AUTHENTICATION.md
+│   ├── BOOKING.md
+│   ├── ROOMS.md
+│   ├── RBAC.md
+│   └── CACHING.md
+└── security/                    # Security documentation
+    ├── HEADERS.md
+    ├── XSS_PROTECTION.md
+    └── RATE_LIMITING.md
+```
 
-### Testing
+### Quick References
 
-- [TEST_EXECUTION_QUICK_GUIDE.md](./TEST_EXECUTION_QUICK_GUIDE.md) - How to run tests
-- [MASTER_TEST_DOCUMENTATION_INDEX.md](./MASTER_TEST_DOCUMENTATION_INDEX.md) - Complete test documentation
-
-### Security
-
-- [COMPREHENSIVE_SECURITY_AUDIT.md](./COMPREHENSIVE_SECURITY_AUDIT.md) - Security assessment
-- [HTTPONLY_COOKIE_QUICKSTART.md](./HTTPONLY_COOKIE_QUICKSTART.md) - Cookie auth guide
-
-### Features
-
-- [RATE_LIMITING_FINAL_SUMMARY.md](./RATE_LIMITING_FINAL_SUMMARY.md) - Rate limiting documentation
-- [REDIS_CACHE_QUICKSTART.md](./REDIS_CACHE_QUICKSTART.md) - Cache implementation
-- [N_PLUS_ONE_COMPLETE.md](./N_PLUS_ONE_COMPLETE.md) - Query optimization
-- [DATABASE_INDEX_OPTIMIZATION.md](./DATABASE_INDEX_OPTIMIZATION.md) - Database index strategy 🆕
+- [docs/guides/ENVIRONMENT_SETUP.md](./docs/guides/ENVIRONMENT_SETUP.md) - Setup guide
+- [docs/guides/TESTING.md](./docs/guides/TESTING.md) - Testing guide
+- [docs/security/README.md](./docs/security/README.md) - Security overview
 
 ---
 
@@ -162,7 +166,7 @@ Fixed 13 GitHub Actions issues:
 
 ### Phase 5: Testing & Quality ✅
 
-- Comprehensive test suite (253 tests)
+- Comprehensive test suite (296 tests)
 - Security tests
 - Performance tests
 - Integration tests
@@ -187,6 +191,15 @@ Fixed 13 GitHub Actions issues:
 - PostgreSQL exclusion constraint for overlap prevention
 - Partial index for active bookings only
 - 60 booking tests passing
+
+### Phase 8: Optimistic Locking & Documentation ✅ (January 2025)
+
+- Room model with optimistic locking (`lock_version`)
+- Version conflict detection & handling
+- 24 optimistic locking tests
+- Full documentation restructure
+- New `docs/` directory with organized documentation
+- Consolidated 25+ scattered files into 15 organized docs
 
 ---
 

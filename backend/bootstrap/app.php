@@ -5,6 +5,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Authorization\AuthorizationException;
+use App\Exceptions\OptimisticLockException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -27,6 +28,16 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend(\App\Http\Middleware\SecurityHeaders::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
+        // ========== Optimistic Lock Conflict ==========
+        // Return 409 Conflict when concurrent modification is detected
+        // Client should refresh data and retry the operation
+        $exceptions->render(function (OptimisticLockException $e) {
+            return response()->json([
+                'error' => 'resource_out_of_date',
+                'message' => 'The room has been modified by another user. Please refresh and try again.',
+            ], 409);
+        });
+
         // Handle authorization exceptions
         $exceptions->render(function (AuthorizationException $e) {
             return response()->json([

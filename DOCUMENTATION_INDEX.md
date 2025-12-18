@@ -2,7 +2,7 @@
 
 **Soleil Hostel - Complete Documentation Guide**
 
-**Last Updated:** December 17, 2025
+**Last Updated:** December 18, 2025
 
 ---
 
@@ -79,6 +79,7 @@
 
 ## ⚡ Performance
 
+- **[DATABASE_INDEX_OPTIMIZATION.md](./DATABASE_INDEX_OPTIMIZATION.md)** 🆕 - Database index strategy for bookings/rooms
 - **[REDIS_CACHE_IMPLEMENTATION.md](./REDIS_CACHE_IMPLEMENTATION.md)** - Redis cache setup & usage
 - **[N_PLUS_ONE_COMPLETE.md](./N_PLUS_ONE_COMPLETE.md)** - N+1 query prevention guide
 
@@ -120,14 +121,18 @@
 
 ## 📊 Document Statistics
 
-- **Total Active Documents**: 28 root + 7 subdirectory = **35 files**
+- **Total Active Documents**: 29 root + 7 subdirectory = **36 files**
 - **Deleted This Session**: 19 redundant files
-- **Last Cleanup**: December 17, 2025
+- **Last Cleanup**: December 18, 2025
 
 ---
 
-## 🔄 Recent Changes (Dec 17, 2025)
+## 🔄 Recent Changes (Dec 18, 2025)
 
+- ✅ **Database Index Optimization** - Optimized indexes for bookings & rooms tables
+  - Added `idx_bookings_availability` for 90% availability queries
+  - Added PostgreSQL exclusion constraint for double-booking prevention
+  - Reduced index bloat, improved write performance
 - ✅ RBAC refactor completed (47 new tests)
 - ✅ Documentation consolidation:
   - HttpOnly Cookie: 5 files → 1 file

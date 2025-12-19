@@ -8,7 +8,6 @@
 | ---------------------------------------------- | ---------------------------- |
 | [DATABASE.md](./DATABASE.md)                   | Schema, indexes, constraints |
 | [API.md](./API.md)                             | Complete API reference       |
-| [FRONTEND.md](./FRONTEND.md)                   | Frontend architecture        |
 | [MIDDLEWARE.md](./MIDDLEWARE.md)               | Middleware pipeline          |
 | [EVENTS.md](./EVENTS.md)                       | Events & listeners           |
 | [POLICIES.md](./POLICIES.md)                   | Authorization policies       |

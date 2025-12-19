@@ -72,7 +72,8 @@ docs/
 │   └── security/                     # Security documentation
 │       ├── HEADERS.md                # Security headers
 │       ├── XSS_PROTECTION.md         # HTML Purifier
-│       └── RATE_LIMITING.md          # Rate limiting
+│       ├── RATE_LIMITING.md          # Rate limiting
+│       └── README.md                 # Security overview
 └── frontend/                         # Frontend documentation
     ├── README.md                     # Frontend index
     └── ARCHITECTURE.md               # React architecture

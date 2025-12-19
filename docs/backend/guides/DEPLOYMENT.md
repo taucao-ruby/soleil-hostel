@@ -8,7 +8,7 @@
 | -------- | -------------- | ---- | --------------------- |
 | backend  | Laravel 11     | 8000 | API server            |
 | frontend | Vite + React   | 5173 | Web application       |
-| db       | MySQL 8.0      | 3306 | Primary database      |
+| db       | PostgreSQL 15  | 5432 | Primary database      |
 | redis    | Redis 7 Alpine | 6379 | Cache, queue, session |
 
 ---
@@ -37,16 +37,16 @@ docker-compose up -d --build
 # .env (root directory)
 
 # Database
-MYSQL_ROOT_PASSWORD=root
-MYSQL_DATABASE=homestay
-MYSQL_PASSWORD=root
+POSTGRES_DB=soleil_hostel
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=secret
 
 # App
 APP_ENV=local
 APP_DEBUG=true
 
 # Database connection
-DB_CONNECTION=mysql
+DB_CONNECTION=pgsql
 DB_HOST=db
 DB_PORT=3306
 DB_DATABASE=homestay
@@ -227,8 +227,8 @@ docker-compose logs db
 # Restart database
 docker-compose restart db
 
-# Access MySQL CLI
-docker-compose exec db mysql -u root -p
+# Access PostgreSQL CLI
+docker-compose exec db psql -U postgres -d soleil_hostel
 ```
 
 ### Redis connection issues

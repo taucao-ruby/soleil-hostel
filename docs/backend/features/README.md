@@ -9,7 +9,7 @@
 | Authentication  | ✅     | 26    | [AUTHENTICATION.md](./AUTHENTICATION.md) |
 | Booking System  | ✅     | 60    | [BOOKING.md](./BOOKING.md)               |
 | Room Management | ✅     | 24    | [ROOMS.md](./ROOMS.md)                   |
-| Reviews         | ✅     | -     | [REVIEWS.md](./REVIEWS.md)               |
+| Reviews         | ✅     | 48    | [REVIEWS.md](./REVIEWS.md)               |
 | RBAC            | ✅     | 47    | [RBAC.md](./RBAC.md)                     |
 | Redis Caching   | ✅     | 6     | [CACHING.md](./CACHING.md)               |
 

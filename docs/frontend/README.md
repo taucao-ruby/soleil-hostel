@@ -7,9 +7,6 @@
 | Document                             | Description           |
 | ------------------------------------ | --------------------- |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Frontend architecture |
-| [COMPONENTS.md](./COMPONENTS.md)     | Component library     |
-| [API_CLIENT.md](./API_CLIENT.md)     | API integration       |
-| [TESTING.md](./TESTING.md)           | Frontend testing      |
 
 ---
 

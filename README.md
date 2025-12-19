@@ -98,7 +98,7 @@ Dự án được xây dựng như một hệ thống có thể sống lâu dài
   - Repository Pattern
 - Authentication: **Laravel Sanctum**
 - RESTful API
-- **206 automated tests** (Feature + Unit)
+- **296 automated tests** (Feature + Unit)
 - Security & performance-focused design
 
 ---
@@ -124,7 +124,7 @@ Dự án được xây dựng như một hệ thống có thể sống lâu dài
 soleil-hostel/
 ├── backend/ # Laravel backend
 │ ├── src/
-│ ├── tests/ # 206 automated tests
+│ ├── tests/ # 296 automated tests
 │ └── composer.json
 │
 ├── frontend/ # React + TypeScript
@@ -166,22 +166,32 @@ soleil-hostel/
 ```bash
 git clone https://github.com/taucao-ruby/soleil-hostel.git
 cd soleil-hostel
+```
 
-####2️⃣ Frontend
+#### 2️⃣ Frontend
+
+```bash
 cd frontend
 npm install
 npm run dev
+```
 
-####3️⃣ Backend
+#### 3️⃣ Backend
+
+```bash
 cd ../backend
 composer install
 cp .env.example .env
 php artisan key:generate
 php artisan migrate --seed
 php artisan serve
+```
 
-####🤝 Contributing
+#### 🤝 Contributing
+
 Mọi đóng góp đều được hoan nghênh:
+
+```bash
 # Create new branch
 git checkout -b feature/my-feature
 
@@ -190,9 +200,9 @@ git commit -m "Add new feature"
 
 # Push branch
 git push origin feature/my-feature
+```
 
 Sau đó mở Pull Request trên GitHub.
-```
 
 ## 🧭 Roadmap
 
@@ -204,7 +214,7 @@ Sau đó mở Pull Request trên GitHub.
 - Core booking flow
 - Customer management
 - CI/CD with GitHub Actions
-- Full test suite (206 tests)
+- Full test suite (296 tests)
 - Documentation consolidation & cleanup
 
 ---

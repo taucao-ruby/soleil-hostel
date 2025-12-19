@@ -1,17 +1,17 @@
 # 📚 Soleil Hostel Documentation
 
-> **Last Updated:** December 18, 2025 | **Tests:** 296 passed | **Status:** Production Ready ✅
+> **Last Updated:** December 19, 2025 | **Tests:** 296 passed (890 assertions) | **Status:** Production Ready ✅
 
 ## Quick Navigation
 
-| I want to...                       | Go to                                        |
-| ---------------------------------- | -------------------------------------------- |
-| **Get started quickly**            | [Quick Start](#quick-start)                  |
-| **Set up development environment** | [Setup Guide](./guides/ENVIRONMENT_SETUP.md) |
-| **Run tests**                      | [Testing Guide](./guides/TESTING.md)         |
-| **Understand the architecture**    | [Architecture](./architecture/README.md)     |
-| **Implement a feature**            | [Feature Docs](./features/README.md)         |
-| **Check security**                 | [Security Docs](./security/README.md)        |
+| I want to...                       | Go to                                                |
+| ---------------------------------- | ---------------------------------------------------- |
+| **Get started quickly**            | [Quick Start](#quick-start)                          |
+| **Database schema**                | [Database Docs](./DATABASE.md)                       |
+| **Backend documentation**          | [Backend Docs](./backend/README.md)                  |
+| **Frontend documentation**         | [Frontend Docs](./frontend/README.md)                |
+| **Set up development environment** | [Setup Guide](./backend/guides/ENVIRONMENT_SETUP.md) |
+| **Run tests**                      | [Testing Guide](./backend/guides/TESTING.md)         |
 
 ---
 
@@ -45,29 +45,37 @@ cd backend && php artisan test
 
 ```
 docs/
-├── README.md                    # This file
-├── guides/                      # How-to guides
-│   ├── ENVIRONMENT_SETUP.md     # Dev environment setup
-│   ├── TESTING.md               # Testing guide
-│   └── DEPLOYMENT.md            # Deployment guide
-├── architecture/                # System design
-│   ├── README.md                # Architecture overview
-│   ├── DATABASE.md              # Database schema & indexes
-│   └── API.md                   # API reference
-├── features/                    # Feature documentation
-│   ├── README.md                # Feature index
-│   ├── AUTHENTICATION.md        # Auth (Bearer + HttpOnly Cookie)
-│   ├── BOOKING.md               # Booking system (double-booking prevention, soft deletes)
-│   ├── ROOMS.md                 # Room management (optimistic locking)
-│   ├── RBAC.md                  # Role-based access control
-│   └── CACHING.md               # Redis cache layer
-├── security/                    # Security documentation
-│   ├── README.md                # Security overview
-│   ├── HEADERS.md               # Security headers (CSP, HSTS, etc.)
-│   ├── XSS_PROTECTION.md        # HTML Purifier
-│   └── RATE_LIMITING.md         # Rate limiting system
-└── api/                         # API documentation
-    └── postman/                 # Postman collections
+├── README.md                         # This file
+├── DATABASE.md                       # Database schema & indexes
+├── backend/                          # Backend documentation
+│   ├── README.md                     # Backend index
+│   ├── architecture/                 # System design
+│   │   ├── API.md                    # Complete API reference
+│   │   ├── MIDDLEWARE.md             # Middleware pipeline
+│   │   ├── EVENTS.md                 # Events & listeners
+│   │   ├── POLICIES.md               # Authorization policies
+│   │   ├── JOBS.md                   # Queue jobs
+│   │   └── TRAITS_EXCEPTIONS.md      # Traits & exceptions
+│   ├── features/                     # Feature documentation
+│   │   ├── AUTHENTICATION.md         # Auth (Bearer + HttpOnly)
+│   │   ├── BOOKING.md                # Booking system
+│   │   ├── ROOMS.md                  # Room management
+│   │   ├── REVIEWS.md                # Reviews + XSS protection
+│   │   ├── RBAC.md                   # Role-based access
+│   │   └── CACHING.md                # Redis cache layer
+│   ├── guides/                       # How-to guides
+│   │   ├── ENVIRONMENT_SETUP.md      # Dev environment
+│   │   ├── TESTING.md                # Testing guide
+│   │   ├── PERFORMANCE.md            # Octane & N+1
+│   │   ├── DEPLOYMENT.md             # Docker & deployment
+│   │   └── COMMANDS.md               # Artisan commands
+│   └── security/                     # Security documentation
+│       ├── HEADERS.md                # Security headers
+│       ├── XSS_PROTECTION.md         # HTML Purifier
+│       └── RATE_LIMITING.md          # Rate limiting
+└── frontend/                         # Frontend documentation
+    ├── README.md                     # Frontend index
+    └── ARCHITECTURE.md               # React architecture
 ```
 
 ---

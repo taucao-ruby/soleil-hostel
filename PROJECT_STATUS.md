@@ -1,6 +1,6 @@
 # Soleil Hostel - Project Status
 
-**Last Updated:** January 2025
+**Last Updated:** December 19, 2025
 
 ## 🎉 Current Status: Production Ready ✅
 
@@ -17,7 +17,7 @@ Documentation restructured and organized in `docs/` folder.
 ❌ 0 tests failed
 ⏭️  0 tests skipped
 📋 890 assertions
-⏱️  Duration: ~9 seconds
+⏱️  Duration: ~53 seconds
 ```
 
 ---
@@ -112,8 +112,8 @@ Fixed 13 GitHub Actions issues:
 ### 📚 Documentation Cleanup
 
 - Removed 57 outdated/redundant documentation files
-- Created comprehensive session summary: [SESSION_DECEMBER_12_2025.md](SESSION_DECEMBER_12_2025.md)
-- Organized remaining documentation in [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)
+- All documentation organized in `docs/` folder
+- See [docs/README.md](./docs/README.md) for full documentation index
 
 ### 🔧 Bug Fixes
 
@@ -192,12 +192,13 @@ Fixed 13 GitHub Actions issues:
 - Partial index for active bookings only
 - 60 booking tests passing
 
-### Phase 8: Optimistic Locking & Documentation ✅ (January 2025)
+### Phase 8: Optimistic Locking & Documentation ✅ (December 19, 2025)
 
 - Room model with optimistic locking (`lock_version`)
 - Version conflict detection & handling
 - 24 optimistic locking tests
 - Full documentation restructure
+- Consolidated 26+ scattered docs into organized `docs/` folder
 - New `docs/` directory with organized documentation
 - Consolidated 25+ scattered files into 15 organized docs
 
@@ -303,8 +304,9 @@ php artisan migrate:rollback
 
 ### Test Execution
 
-- **Total Tests**: 253
-- **Execution Time**: ~8.6 seconds
+- **Total Tests**: 296
+- **Assertions**: 890
+- **Execution Time**: ~53 seconds
 - **Parallel Execution**: Supported
 - **Success Rate**: 100%
 

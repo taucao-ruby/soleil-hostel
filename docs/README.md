@@ -1,6 +1,6 @@
 # 📚 Soleil Hostel Documentation
 
-> **Last Updated:** January 2, 2026 | **Tests:** 296 passed (890 assertions) | **Status:** Production Ready & Running ✅
+> **Last Updated:** January 2, 2026 | **Tests:** 306 passed (941 assertions) | **Status:** Production Ready & Running ✅
 
 ## Quick Navigation
 
@@ -68,13 +68,15 @@ docs/
 │   │   ├── ROOMS.md                  # Room management
 │   │   ├── REVIEWS.md                # Reviews + XSS protection
 │   │   ├── RBAC.md                   # Role-based access
-│   │   └── CACHING.md                # Redis cache layer
+│   │   ├── CACHING.md                # Redis cache layer
+│   │   └── OPTIMISTIC_LOCKING.md     # Concurrency control
 │   ├── guides/                       # How-to guides
 │   │   ├── ENVIRONMENT_SETUP.md      # Dev environment
 │   │   ├── TESTING.md                # Testing guide
 │   │   ├── PERFORMANCE.md            # Octane & N+1
 │   │   ├── DEPLOYMENT.md             # Docker & deployment
-│   │   └── COMMANDS.md               # Artisan commands
+│   │   ├── COMMANDS.md               # Artisan commands
+│   │   └── MONITORING_LOGGING.md     # Observability & logging
 │   └── security/                     # Security documentation
 │       ├── HEADERS.md                # Security headers
 │       ├── XSS_PROTECTION.md         # HTML Purifier
@@ -109,7 +111,8 @@ docs/
 | XSS Protection   | ✅ Complete             | 48 tests      |
 | Rate Limiting    | ✅ Complete             | 15 tests      |
 | Caching          | ✅ Complete             | 6 tests       |
-| **Total**        | **✅ Production Ready** | **296 tests** |
+| Monitoring       | ✅ Complete             | 10 tests      |
+| **Total**        | **✅ Production Ready** | **306 tests** |
 
 ---
 
@@ -166,6 +169,15 @@ docs/
 - N+1 query prevention
 - Optimized database indexes
 - Parallel testing
+
+### 📊 Monitoring & Logging
+
+- Correlation ID request tracing (X-Correlation-ID)
+- Performance logging (duration, memory)
+- Kubernetes-style health probes
+- Sentry error tracking
+- Structured JSON logging
+- Sensitive data masking
 
 ---
 

@@ -98,7 +98,7 @@ Dự án được xây dựng như một hệ thống có thể sống lâu dài
   - Repository Pattern
 - Authentication: **Laravel Sanctum**
 - RESTful API
-- **296 automated tests** (Feature + Unit)
+- **306 automated tests** (Feature + Unit)
 - Security & performance-focused design
 
 ---
@@ -143,8 +143,8 @@ soleil-hostel/
 │   ├── resources/                    # Views & Assets
 │   ├── routes/                       # API Routes
 │   ├── storage/                      # File Storage
-│   ├── tests/                        # 296 Automated Tests
-│   │   ├── Feature/                  # Feature Tests (246)
+│   ├── tests/                        # 306 Automated Tests
+│   │   ├── Feature/                  # Feature Tests (256)
 │   │   └── Unit/                     # Unit Tests (50)
 │   ├── composer.json                 # PHP Dependencies
 │   ├── phpunit.xml                   # Test Configuration

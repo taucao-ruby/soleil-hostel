@@ -1,6 +1,6 @@
 # 📚 Soleil Hostel Documentation
 
-> **Last Updated:** December 19, 2025 | **Tests:** 296 passed (890 assertions) | **Status:** Production Ready ✅
+> **Last Updated:** January 2, 2026 | **Tests:** 296 passed (890 assertions) | **Status:** Production Ready & Running ✅
 
 ## Quick Navigation
 
@@ -22,18 +22,24 @@
 git clone <repo>
 cd soleil-hostel
 
-# 2. Backend
+# 2. Backend Setup
 cd backend
 composer install
 cp .env.example .env
 php artisan key:generate
-php artisan migrate
-php artisan serve
+php artisan migrate:fresh --seed
 
-# 3. Frontend (new terminal)
+# Start backend server (PHP built-in dev server)
+php -S 127.0.0.1:8000 -t public public/index.php
+# Backend running at: http://127.0.0.1:8000
+
+# 3. Frontend Setup (new terminal)
 cd frontend
-npm install
-npm run dev
+npm ci
+
+# Start frontend dev server (Vite)
+npx vite --port 5173
+# Frontend running at: http://localhost:5173
 
 # 4. Run tests
 cd backend && php artisan test
@@ -75,8 +81,18 @@ docs/
 │       ├── RATE_LIMITING.md          # Rate limiting
 │       └── README.md                 # Security overview
 └── frontend/                         # Frontend documentation
-    ├── README.md                     # Frontend index
-    └── ARCHITECTURE.md               # React architecture
+    ├── README.md                     # Frontend overview
+    ├── ARCHITECTURE.md               # Main architecture document
+    ├── APP_LAYER.md                  # App configuration layer
+    ├── FEATURES_LAYER.md             # Feature modules
+    ├── SERVICES_LAYER.md             # API services
+    ├── SHARED_LAYER.md               # Shared components
+    ├── TYPES_LAYER.md                # TypeScript types
+    ├── UTILS_LAYER.md                # Utility functions
+    ├── CONFIGURATION.md              # Build & dev config
+    ├── TESTING.md                    # Frontend testing
+    ├── PERFORMANCE_SECURITY.md       # Performance & security
+    └── DEPLOYMENT.md                 # Frontend deployment
 ```
 
 ---

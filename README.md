@@ -171,9 +171,18 @@ soleil-hostel/
 │   │   ├── features/                 # Feature Documentation
 │   │   ├── guides/                   # How-to Guides
 │   │   └── security/                 # Security Documentation
-│   ├── frontend/                     # Frontend Documentation
-│   │   ├── ARCHITECTURE.md           # Frontend Architecture
-│   │   └── README.md                 # Frontend Overview
+│   ├── frontend/                     # Frontend Documentation (12 modular files)
+│   │   ├── ARCHITECTURE.md           # Main Architecture
+│   │   ├── APP_LAYER.md              # App Layer
+│   │   ├── FEATURES_LAYER.md         # Features
+│   │   ├── SERVICES_LAYER.md         # API Services
+│   │   ├── SHARED_LAYER.md           # Shared Components
+│   │   ├── TYPES_LAYER.md            # TypeScript Types
+│   │   ├── UTILS_LAYER.md            # Utilities
+│   │   ├── CONFIGURATION.md          # Configuration
+│   │   ├── TESTING.md                # Testing Guide
+│   │   ├── PERFORMANCE_SECURITY.md   # Performance & Security
+│   │   └── DEPLOYMENT.md             # Deployment
 │   ├── DATABASE.md                   # Database Schema & Migrations
 │   └── README.md                     # Documentation Index
 │
@@ -219,8 +228,9 @@ cd soleil-hostel
 
 ```bash
 cd frontend
-npm install
-npm run dev
+npm ci
+npx vite --port 5173
+# Frontend will be available at: http://localhost:5173
 ```
 
 #### 3️⃣ Backend
@@ -230,8 +240,11 @@ cd ../backend
 composer install
 cp .env.example .env
 php artisan key:generate
-php artisan migrate --seed
-php artisan serve
+php artisan migrate:fresh --seed
+
+# Start PHP development server
+php -S 127.0.0.1:8000 -t public public/index.php
+# Backend API available at: http://127.0.0.1:8000
 ```
 
 #### 🤝 Contributing
@@ -263,6 +276,8 @@ Sau đó mở Pull Request trên GitHub.
 - CI/CD with GitHub Actions
 - Full test suite (296 tests)
 - Documentation consolidation & cleanup
+- Frontend documentation restructured into 12 modular files (January 2, 2026)
+- Both servers verified running successfully
 
 ---
 

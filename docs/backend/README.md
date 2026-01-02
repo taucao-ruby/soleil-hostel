@@ -41,13 +41,14 @@
 
 ### Guides
 
-| Document                                              | Description         |
-| ----------------------------------------------------- | ------------------- |
-| [ENVIRONMENT_SETUP.md](./guides/ENVIRONMENT_SETUP.md) | Dev environment     |
-| [TESTING.md](./guides/TESTING.md)                     | Testing guide       |
-| [PERFORMANCE.md](./guides/PERFORMANCE.md)             | Octane & N+1        |
-| [DEPLOYMENT.md](./guides/DEPLOYMENT.md)               | Docker & deployment |
-| [COMMANDS.md](./guides/COMMANDS.md)                   | Artisan commands    |
+| Document                                                | Description             |
+| ------------------------------------------------------- | ----------------------- |
+| [ENVIRONMENT_SETUP.md](./guides/ENVIRONMENT_SETUP.md)   | Dev environment         |
+| [TESTING.md](./guides/TESTING.md)                       | Testing guide           |
+| [PERFORMANCE.md](./guides/PERFORMANCE.md)               | Octane & N+1            |
+| [DEPLOYMENT.md](./guides/DEPLOYMENT.md)                 | Docker & deployment     |
+| [COMMANDS.md](./guides/COMMANDS.md)                     | Artisan commands        |
+| [MONITORING_LOGGING.md](./guides/MONITORING_LOGGING.md) | Observability & logging |
 
 ### Security
 

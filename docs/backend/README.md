@@ -29,14 +29,15 @@
 
 ### Features
 
-| Document                                          | Description              |
-| ------------------------------------------------- | ------------------------ |
-| [AUTHENTICATION.md](./features/AUTHENTICATION.md) | Auth (Bearer + HttpOnly) |
-| [BOOKING.md](./features/BOOKING.md)               | Booking system           |
-| [ROOMS.md](./features/ROOMS.md)                   | Room management          |
-| [REVIEWS.md](./features/REVIEWS.md)               | Reviews + XSS protection |
-| [RBAC.md](./features/RBAC.md)                     | Role-based access        |
-| [CACHING.md](./features/CACHING.md)               | Redis cache layer        |
+| Document                                                  | Description                   |
+| --------------------------------------------------------- | ----------------------------- |
+| [AUTHENTICATION.md](./features/AUTHENTICATION.md)         | Auth (Bearer + HttpOnly)      |
+| [BOOKING.md](./features/BOOKING.md)                       | Booking system                |
+| [ROOMS.md](./features/ROOMS.md)                           | Room management               |
+| [REVIEWS.md](./features/REVIEWS.md)                       | Reviews + XSS protection      |
+| [RBAC.md](./features/RBAC.md)                             | Role-based access             |
+| [CACHING.md](./features/CACHING.md)                       | Redis cache layer             |
+| [OPTIMISTIC_LOCKING.md](./features/OPTIMISTIC_LOCKING.md) | Concurrency control for rooms |
 
 ### Guides
 

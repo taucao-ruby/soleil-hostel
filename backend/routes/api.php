@@ -10,6 +10,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\AdminBookingController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\HealthCheckController;
+use App\Http\Controllers\HealthController;
 use App\Http\Controllers\CspViolationReportController;
 
 /*
@@ -28,6 +29,13 @@ use App\Http\Controllers\CspViolationReportController;
 // ========== HEALTH CHECK ==========
 Route::get('/health', [HealthCheckController::class, 'check']);
 Route::get('/health/detailed', [HealthCheckController::class, 'detailed']);
+
+// ========== KUBERNETES/DOCKER HEALTH PROBES ==========
+Route::prefix('health')->group(function () {
+    Route::get('/live', [HealthController::class, 'liveness'])->name('health.liveness');
+    Route::get('/ready', [HealthController::class, 'readiness'])->name('health.readiness');
+    Route::get('/full', [HealthController::class, 'detailed'])->name('health.full');
+});
 
 // Health check
 Route::get('ping', function() {

@@ -1,5 +1,8 @@
 <?php
 
+use App\Logging\ContextProcessor;
+use App\Logging\JsonFormatter;
+use App\Logging\SensitiveDataProcessor;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
@@ -38,6 +41,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Query Logging Configuration
+    |--------------------------------------------------------------------------
+    |
+    | These options control database query logging behavior.
+    |
+    */
+
+    'log_queries' => env('LOG_QUERIES', false),
+    'log_all_queries' => env('LOG_ALL_QUERIES', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Log Channels
     |--------------------------------------------------------------------------
     |
@@ -71,6 +86,91 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
+        ],
+
+        /*
+        |--------------------------------------------------------------------------
+        | JSON Formatted Channels (for production/log aggregation)
+        |--------------------------------------------------------------------------
+        */
+
+        'json' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/json/laravel.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'formatter' => JsonFormatter::class,
+            'processors' => [
+                ContextProcessor::class,
+                SensitiveDataProcessor::class,
+                PsrLogMessageProcessor::class,
+            ],
+        ],
+
+        /*
+        |--------------------------------------------------------------------------
+        | Performance Logging Channel
+        |--------------------------------------------------------------------------
+        */
+
+        'performance' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/performance/performance.log'),
+            'level' => 'info',
+            'days' => 7,
+            'formatter' => JsonFormatter::class,
+            'processors' => [
+                ContextProcessor::class,
+                PsrLogMessageProcessor::class,
+            ],
+        ],
+
+        /*
+        |--------------------------------------------------------------------------
+        | Query Logging Channel
+        |--------------------------------------------------------------------------
+        */
+
+        'query' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/query/queries.log'),
+            'level' => 'debug',
+            'days' => 3,
+            'formatter' => JsonFormatter::class,
+            'processors' => [
+                ContextProcessor::class,
+                SensitiveDataProcessor::class,
+                PsrLogMessageProcessor::class,
+            ],
+        ],
+
+        /*
+        |--------------------------------------------------------------------------
+        | Security Logging Channel
+        |--------------------------------------------------------------------------
+        */
+
+        'security' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/security/security.log'),
+            'level' => 'info',
+            'days' => 30,
+            'formatter' => JsonFormatter::class,
+            'processors' => [
+                ContextProcessor::class,
+                SensitiveDataProcessor::class,
+                PsrLogMessageProcessor::class,
+            ],
+        ],
+
+        /*
+        |--------------------------------------------------------------------------
+        | Sentry Channel (for error tracking)
+        |--------------------------------------------------------------------------
+        */
+
+        'sentry' => [
+            'driver' => 'sentry',
         ],
 
         'slack' => [

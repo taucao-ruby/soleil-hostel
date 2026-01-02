@@ -19,13 +19,19 @@ return Application::configure(basePath: dirname(__DIR__))
             'check_token_valid' => \App\Http\Middleware\CheckTokenNotRevokedAndNotExpired::class,
             'check_httponly_token' => \App\Http\Middleware\CheckHttpOnlyTokenValid::class,
             'role' => \App\Http\Middleware\EnsureUserHasRole::class,
+            'correlation_id' => \App\Http\Middleware\AddCorrelationId::class,
+            'log_performance' => \App\Http\Middleware\LogPerformance::class,
         ]);
 
         // ========== Register global middleware ==========
-        // CORS must run first to handle preflight requests
+        // Correlation ID should run first for request tracing
+        $middleware->prepend(\App\Http\Middleware\AddCorrelationId::class);
+        // CORS must run early to handle preflight requests
         $middleware->prepend(\App\Http\Middleware\Cors::class);
         // SecurityHeaders must run early in the pipeline (before response is finalized)
         $middleware->prepend(\App\Http\Middleware\SecurityHeaders::class);
+        // Performance logging runs at the end to capture full request duration
+        $middleware->append(\App\Http\Middleware\LogPerformance::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // ========== Optimistic Lock Conflict ==========

@@ -1,6 +1,6 @@
 # 📚 Soleil Hostel Documentation
 
-> **Last Updated:** January 2, 2026 | **Tests:** 306 passed (941 assertions) | **Status:** Production Ready & Running ✅
+> **Last Updated:** January 2, 2026 | **Tests:** 365 passed (1093 assertions) | **Status:** Production Ready & Running ✅
 
 ## Quick Navigation
 
@@ -105,14 +105,14 @@ docs/
 | ---------------- | ----------------------- | ------------- |
 | Authentication   | ✅ Complete             | 26 tests      |
 | Booking System   | ✅ Complete             | 60 tests      |
-| Room Management  | ✅ Complete             | 24 tests      |
+| Room Management  | ✅ Complete             | 83 tests      |
 | RBAC             | ✅ Complete             | 47 tests      |
 | Security Headers | ✅ Complete             | 14 tests      |
 | XSS Protection   | ✅ Complete             | 48 tests      |
 | Rate Limiting    | ✅ Complete             | 15 tests      |
 | Caching          | ✅ Complete             | 6 tests       |
 | Monitoring       | ✅ Complete             | 10 tests      |
-| **Total**        | **✅ Production Ready** | **306 tests** |
+| **Total**        | **✅ Production Ready** | **365 tests** |
 
 ---
 

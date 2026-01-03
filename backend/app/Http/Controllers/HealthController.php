@@ -13,14 +13,29 @@ use Illuminate\Support\Facades\Redis;
  *
  * Provides endpoints for load balancers, monitoring systems,
  * and container orchestration health checks.
+ *
+ * FAILURE SEMANTICS for Soleil Hostel Booking System:
+ * ================================================
+ * - Database: CRITICAL - 503 if down (booking engine, optimistic locking, money paths)
+ * - Cache: DEGRADED - 200 with warning (system still operable, reduced performance)
+ * - Queue: DEGRADED - 200 with warning (async jobs delayed, OTA sync may lag)
+ *
+ * This aligns with the booking-critical invariant: "No database = no bookings"
  */
 class HealthController extends Controller
 {
+    /**
+     * Component criticality levels for failure semantics.
+     */
+    private const CRITICAL_COMPONENTS = ['database'];
+    private const DEGRADED_COMPONENTS = ['cache', 'queue', 'redis'];
+
     /**
      * Basic liveness probe.
      *
      * Returns 200 if the application is running.
      * Used by Kubernetes/Docker for liveness checks.
+     * This is a "shallow" check - just verifies the app process is alive.
      *
      * @return \Illuminate\Http\JsonResponse
      */
@@ -35,8 +50,13 @@ class HealthController extends Controller
     /**
      * Readiness probe with dependency checks.
      *
-     * Returns 200 only if all critical dependencies are available.
+     * Returns 200 only if CRITICAL dependencies are available.
+     * Non-critical component failures result in 200 with 'degraded' status.
      * Used by Kubernetes for readiness checks.
+     *
+     * FAILURE SEMANTICS:
+     * - Database down → 503 (system unhealthy, cannot accept requests)
+     * - Cache/Queue down → 200 degraded (system operable but impaired)
      *
      * @return \Illuminate\Http\JsonResponse
      */
@@ -48,21 +68,53 @@ class HealthController extends Controller
             'redis' => $this->checkRedis(),
         ];
 
+        // Determine overall status based on criticality
+        $criticalHealthy = $this->areCriticalComponentsHealthy($checks);
         $allHealthy = ! in_array(false, array_column($checks, 'healthy'));
-        $status = $allHealthy ? 'ok' : 'degraded';
-        $statusCode = $allHealthy ? 200 : 503;
+
+        if (! $criticalHealthy) {
+            $status = 'unhealthy';
+            $statusCode = 503;
+        } elseif (! $allHealthy) {
+            $status = 'degraded';
+            $statusCode = 200; // Still accept traffic, but warn
+        } else {
+            $status = 'ok';
+            $statusCode = 200;
+        }
 
         return response()->json([
             'status' => $status,
             'timestamp' => now()->toIso8601String(),
             'checks' => $checks,
+            'failure_semantics' => [
+                'critical' => self::CRITICAL_COMPONENTS,
+                'degraded' => self::DEGRADED_COMPONENTS,
+            ],
         ], $statusCode);
+    }
+
+    /**
+     * Check if all critical components are healthy.
+     *
+     * @param array<string, array> $checks
+     * @return bool
+     */
+    private function areCriticalComponentsHealthy(array $checks): bool
+    {
+        foreach (self::CRITICAL_COMPONENTS as $component) {
+            if (isset($checks[$component]) && ! $checks[$component]['healthy']) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
      * Detailed health check with metrics.
      *
      * Provides comprehensive health information for monitoring dashboards.
+     * Includes all component checks, system metrics, and degradation info.
      *
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
@@ -77,9 +129,22 @@ class HealthController extends Controller
             'queue' => $this->checkQueue(),
         ];
 
+        $criticalHealthy = $this->areCriticalComponentsHealthy($checks);
         $allHealthy = ! in_array(false, array_column($checks, 'healthy'));
         $healthyCount = count(array_filter(array_column($checks, 'healthy')));
         $totalCount = count($checks);
+
+        // Determine status based on criticality
+        if (! $criticalHealthy) {
+            $status = 'unhealthy';
+            $statusCode = 503;
+        } elseif (! $allHealthy) {
+            $status = 'degraded';
+            $statusCode = 200;
+        } else {
+            $status = 'ok';
+            $statusCode = 200;
+        }
 
         $metrics = [
             'uptime_seconds' => $this->getUptimeSeconds(),
@@ -89,8 +154,16 @@ class HealthController extends Controller
             'laravel_version' => app()->version(),
         ];
 
+        // Identify degraded components for alerting
+        $degradedComponents = [];
+        foreach (self::DEGRADED_COMPONENTS as $component) {
+            if (isset($checks[$component]) && ! $checks[$component]['healthy']) {
+                $degradedComponents[] = $component;
+            }
+        }
+
         return response()->json([
-            'status' => $allHealthy ? 'ok' : 'degraded',
+            'status' => $status,
             'timestamp' => now()->toIso8601String(),
             'app' => [
                 'name' => config('app.name'),
@@ -102,9 +175,73 @@ class HealthController extends Controller
                 'healthy' => $healthyCount,
                 'total' => $totalCount,
                 'percentage' => round(($healthyCount / $totalCount) * 100, 1),
+                'degraded_components' => $degradedComponents,
+            ],
+            'failure_semantics' => [
+                'critical' => self::CRITICAL_COMPONENTS,
+                'degraded' => self::DEGRADED_COMPONENTS,
+                'note' => 'Database failure = 503 (booking engine down). Cache/Queue failure = 200 degraded (still operable).',
             ],
             'metrics' => $metrics,
-        ], $allHealthy ? 200 : 503);
+        ], $statusCode);
+    }
+
+    /**
+     * Individual database health check endpoint.
+     *
+     * CRITICAL component - 503 if unhealthy.
+     * The booking system cannot operate without database (optimistic locking, money paths).
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function database(): JsonResponse
+    {
+        $check = $this->checkDatabase();
+
+        return response()->json([
+            'component' => 'database',
+            'criticality' => 'critical',
+            'timestamp' => now()->toIso8601String(),
+            ...$check,
+        ], $check['healthy'] ? 200 : 503);
+    }
+
+    /**
+     * Individual cache health check endpoint.
+     *
+     * DEGRADED component - 200 even if unhealthy (system still operable).
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function cache(): JsonResponse
+    {
+        $check = $this->checkCache();
+
+        return response()->json([
+            'component' => 'cache',
+            'criticality' => 'degraded',
+            'timestamp' => now()->toIso8601String(),
+            ...$check,
+        ], 200); // Always 200 - degraded component
+    }
+
+    /**
+     * Individual queue health check endpoint.
+     *
+     * DEGRADED component - 200 even if unhealthy (async jobs delayed, OTA sync may lag).
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function queue(): JsonResponse
+    {
+        $check = $this->checkQueue();
+
+        return response()->json([
+            'component' => 'queue',
+            'criticality' => 'degraded',
+            'timestamp' => now()->toIso8601String(),
+            ...$check,
+        ], 200); // Always 200 - degraded component
     }
 
     /**

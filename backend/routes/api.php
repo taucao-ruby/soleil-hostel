@@ -31,10 +31,21 @@ Route::get('/health', [HealthCheckController::class, 'check']);
 Route::get('/health/detailed', [HealthCheckController::class, 'detailed']);
 
 // ========== KUBERNETES/DOCKER HEALTH PROBES ==========
+// Failure Semantics: DB=CRITICAL (503), Cache/Queue=DEGRADED (200 with warning)
 Route::prefix('health')->group(function () {
+    // Liveness: Is the app process alive? (shallow check)
     Route::get('/live', [HealthController::class, 'liveness'])->name('health.liveness');
+    
+    // Readiness: Can the app accept traffic? (checks critical deps)
     Route::get('/ready', [HealthController::class, 'readiness'])->name('health.readiness');
+    
+    // Full: Detailed health for monitoring dashboards
     Route::get('/full', [HealthController::class, 'detailed'])->name('health.full');
+    
+    // Individual component checks for granular monitoring
+    Route::get('/db', [HealthController::class, 'database'])->name('health.database');
+    Route::get('/cache', [HealthController::class, 'cache'])->name('health.cache');
+    Route::get('/queue', [HealthController::class, 'queue'])->name('health.queue');
 });
 
 // Health check

@@ -159,6 +159,13 @@ Fixed 13 GitHub Actions issues:
 - Full documentation in [OPTIMISTIC_LOCKING.md](./docs/backend/features/OPTIMISTIC_LOCKING.md)
 - Production-ready with backward compatibility for legacy data
 
+### 🧹 DRY Cache Tag Support Refactor (January 4, 2026)
+
+- Extracted `HasCacheTagSupport` trait from 4 caching services
+- Eliminated ~80 lines of duplicated `supportsTags()` code
+- Uses Laravel's native `Cache::supportsTags()` facade
+- Updated caching documentation in [docs/backend/features/CACHING.md](./docs/backend/features/CACHING.md)
+
 ---
 
 ## 🎯 Project Milestones
@@ -240,6 +247,16 @@ Fixed 13 GitHub Actions issues:
 - **Sentry Integration**: Error tracking installed
 - **Logging Channels**: json, performance, query, security, sentry
 - **10 new tests** for monitoring infrastructure
+
+### Phase 10: DRY Cache Tag Support Refactor ✅ (January 4, 2026)
+
+- Extracted `HasCacheTagSupport` trait to eliminate duplicate `supportsTags()` methods
+- Trait location: `app/Traits/HasCacheTagSupport.php`
+- Uses Laravel's native `Cache::supportsTags()` facade
+- Refactored 4 services: `RoomService`, `RoomAvailabilityService`, `BookingService`, `RoomAvailabilityCache`
+- Removed ~80 lines of duplicated code
+- All 224 cache-related tests passing
+- Zero behavior change - 100% backward compatible
 
 ---
 

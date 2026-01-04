@@ -2,6 +2,7 @@
 
 namespace App\Services\Cache;
 
+use App\Traits\HasCacheTagSupport;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Collection;
 use App\Models\Room;
@@ -9,6 +10,8 @@ use Carbon\Carbon;
 
 class RoomAvailabilityCache
 {
+    use HasCacheTagSupport;
+
     /**
      * Cache tag for room availability
      */
@@ -23,32 +26,6 @@ class RoomAvailabilityCache
      * Default cache TTL (60 seconds)
      */
     private const TTL_SECONDS = 60;
-
-    private static ?bool $cacheSupportsTagsCache = null;
-
-    /**
-     * Check if cache supports tagging
-     * Array cache (used in tests) doesn't support tags
-     */
-    private function supportsTags(): bool
-    {
-        if (self::$cacheSupportsTagsCache !== null) {
-            return self::$cacheSupportsTagsCache;
-        }
-        
-        try {
-            // Try to create a dummy tag to see if it's supported
-            Cache::tags(['dummy-check'])->get('dummy-key');
-            self::$cacheSupportsTagsCache = true;
-        } catch (\BadMethodCallException $e) {
-            self::$cacheSupportsTagsCache = false;
-        } catch (\Exception $e) {
-            // If any other exception occurs, return true to be safe
-            self::$cacheSupportsTagsCache = true;
-        }
-        
-        return self::$cacheSupportsTagsCache;
-    }
 
     /**
      * Get available rooms with caching

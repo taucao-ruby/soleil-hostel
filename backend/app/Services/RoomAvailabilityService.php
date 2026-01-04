@@ -3,11 +3,14 @@
 namespace App\Services;
 
 use App\Models\Room;
+use App\Traits\HasCacheTagSupport;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 
 class RoomAvailabilityService
 {
+    use HasCacheTagSupport;
+
     /**
      * Cache TTL in seconds (1 hour)
      */
@@ -17,32 +20,6 @@ class RoomAvailabilityService
      * Cache tag for room availability
      */
     private const CACHE_TAG = 'room-availability';
-    
-    private static ?bool $cacheSupportsTagsCache = null;
-
-    /**
-     * Check if cache supports tagging
-     * Array cache (used in tests) doesn't support tags
-     */
-    private function supportsTags(): bool
-    {
-        if (self::$cacheSupportsTagsCache !== null) {
-            return self::$cacheSupportsTagsCache;
-        }
-        
-        try {
-            // Try to create a dummy tag to see if it's supported
-            Cache::tags(['dummy-check'])->get('dummy-key');
-            self::$cacheSupportsTagsCache = true;
-        } catch (\BadMethodCallException $e) {
-            self::$cacheSupportsTagsCache = false;
-        } catch (\Exception $e) {
-            // If any other exception occurs, return true to be safe
-            self::$cacheSupportsTagsCache = true;
-        }
-        
-        return self::$cacheSupportsTagsCache;
-    }
 
     /**
      * Get all active rooms with availability info (cached)

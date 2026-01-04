@@ -3,44 +3,21 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use App\Traits\HasCacheTagSupport;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class BookingService
 {
+    use HasCacheTagSupport;
+
     private const CACHE_TTL_USER_BOOKINGS = 300;  // 5 minutes
     private const CACHE_TTL_BOOKING = 600;        // 10 minutes
     private const CACHE_TTL_TRASHED = 180;        // 3 minutes (shorter for admin views)
     private const CACHE_TAG_BOOKINGS = 'bookings';
     private const CACHE_TAG_USER = 'user-bookings';
     private const CACHE_TAG_TRASHED = 'trashed-bookings';
-    
-    private static ?bool $cacheSupportsTagsCache = null;
-
-    /**
-     * Check if cache supports tagging
-     * Array cache (used in tests) doesn't support tags
-     */
-    private function supportsTags(): bool
-    {
-        if (self::$cacheSupportsTagsCache !== null) {
-            return self::$cacheSupportsTagsCache;
-        }
-        
-        try {
-            // Try to create a dummy tag to see if it's supported
-            Cache::tags(['dummy-check'])->get('dummy-key');
-            self::$cacheSupportsTagsCache = true;
-        } catch (\BadMethodCallException $e) {
-            self::$cacheSupportsTagsCache = false;
-        } catch (\Exception $e) {
-            // If any other exception occurs, return true to be safe
-            self::$cacheSupportsTagsCache = true;
-        }
-        
-        return self::$cacheSupportsTagsCache;
-    }
 
     /**
      * Get user's bookings - CACHED

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Exceptions\OptimisticLockException;
 use App\Models\Room;
+use App\Traits\HasCacheTagSupport;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -11,36 +12,12 @@ use Illuminate\Support\Facades\Log;
 
 class RoomService
 {
+    use HasCacheTagSupport;
+
     private const CACHE_TTL_ROOMS = 60;          // 1 minute
     private const CACHE_TTL_AVAILABILITY = 30;   // 30 seconds
     private const CACHE_TAG_ROOMS = 'rooms';
     private const CACHE_TAG_AVAILABILITY = 'availability';
-    
-    private static ?bool $cacheSupportsTagsCache = null;
-
-    /**
-     * Check if cache supports tagging
-     * Array cache (used in tests) doesn't support tags
-     */
-    private function supportsTags(): bool
-    {
-        if (self::$cacheSupportsTagsCache !== null) {
-            return self::$cacheSupportsTagsCache;
-        }
-        
-        try {
-            // Try to create a dummy tag to see if it's supported
-            Cache::tags(['dummy-check'])->get('dummy-key');
-            self::$cacheSupportsTagsCache = true;
-        } catch (\BadMethodCallException $e) {
-            self::$cacheSupportsTagsCache = false;
-        } catch (\Exception $e) {
-            // If any other exception occurs, return true to be safe
-            self::$cacheSupportsTagsCache = true;
-        }
-        
-        return self::$cacheSupportsTagsCache;
-    }
 
     /**
      * Get all active rooms with availability - CACHED

@@ -47,8 +47,9 @@
 ### ⚡ Caching
 
 - Redis-based with event-driven invalidation
-- Tag-based cache management
+- Tag-based cache management via `HasCacheTagSupport` trait
 - Fallback to database cache
+- Uses Laravel's native `Cache::supportsTags()` detection
 
 ### ⭐ Reviews
 

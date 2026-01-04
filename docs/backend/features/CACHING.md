@@ -20,26 +20,48 @@ Soleil Hostel uses Redis for caching with automatic invalidation when data chang
 
 ---
 
+## HasCacheTagSupport Trait
+
+All caching services use the `HasCacheTagSupport` trait for tag support detection:
+
+```php
+// app/Traits/HasCacheTagSupport.php
+namespace App\Traits;
+
+use Illuminate\Support\Facades\Cache;
+
+trait HasCacheTagSupport
+{
+    /**
+     * Check if the cache driver supports tagging.
+     */
+    protected function supportsTags(): bool
+    {
+        return Cache::supportsTags();
+    }
+}
+```
+
+**Services using this trait:**
+
+- `RoomService`
+- `RoomAvailabilityService`
+- `BookingService`
+- `RoomAvailabilityCache`
+
+---
+
 ## RoomService Implementation
 
 ```php
 class RoomService
 {
+    use HasCacheTagSupport;
+
     private const CACHE_TTL_ROOMS = 60;          // 1 minute
     private const CACHE_TTL_AVAILABILITY = 30;   // 30 seconds
     private const CACHE_TAG_ROOMS = 'rooms';
     private const CACHE_TAG_AVAILABILITY = 'availability';
-
-    // Auto-detect if cache supports tags (Redis yes, Array no)
-    private function supportsTags(): bool
-    {
-        try {
-            Cache::tags(['dummy-check'])->get('dummy-key');
-            return true;
-        } catch (\BadMethodCallException $e) {
-            return false;
-        }
-    }
 
     public function getAllRoomsWithAvailability(): Collection
     {

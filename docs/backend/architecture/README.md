@@ -13,6 +13,7 @@
 | [POLICIES.md](./POLICIES.md)                   | Authorization policies       |
 | [JOBS.md](./JOBS.md)                           | Queue jobs                   |
 | [TRAITS_EXCEPTIONS.md](./TRAITS_EXCEPTIONS.md) | Traits, macros & exceptions  |
+| [REPOSITORIES.md](./REPOSITORIES.md)           | Repository pattern (Booking) |
 
 ---
 
@@ -29,11 +30,11 @@
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         BACKEND (Laravel 11)                        │
 ├─────────────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                 │
-│  │ Controllers │→ │  Services   │→ │   Models    │                 │
-│  └─────────────┘  └─────────────┘  └─────────────┘                 │
-│         │                │                │                         │
-│         ▼                ▼                ▼                         │
+│  ┌─────────────┐  ┌─────────────┐  ┌──────────────┐  ┌───────────┐ │
+│  │ Controllers │→ │  Services   │→ │ Repositories │→ │  Models   │ │
+│  └─────────────┘  └─────────────┘  └──────────────┘  └───────────┘ │
+│         │                │                │                │        │
+│         ▼                ▼                ▼                ▼        │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                 │
 │  │ Middleware  │  │   Events    │  │  Policies   │                 │
 │  │ - Auth      │  │ - Booking*  │  │ - Booking   │                 │
@@ -67,6 +68,13 @@
 - Database transactions
 - Event dispatching
 
+### Repositories
+
+- Pure data access abstraction
+- Decouple business logic from Eloquent
+- Enable testability via interface mocking
+- No business rules or validation
+
 ### Models
 
 - Eloquent ORM entities
@@ -88,6 +96,43 @@
 ---
 
 ## Key Design Patterns
+
+### Repository Pattern
+
+```php
+// Interface defines contract
+interface BookingRepositoryInterface
+{
+    public function findById(int $id): ?Booking;
+    public function create(array $data): Booking;
+    public function findOverlappingBookingsWithLock(int $roomId, $checkIn, $checkOut): Collection;
+}
+
+// Service injects repository interface
+class CreateBookingService
+{
+    public function __construct(
+        private BookingRepositoryInterface $bookingRepository
+    ) {}
+
+    public function create(...): Booking
+    {
+        return DB::transaction(function () {
+            $conflicts = $this->bookingRepository
+                ->findOverlappingBookingsWithLock($roomId, $checkIn, $checkOut);
+
+            if ($conflicts->isNotEmpty()) {
+                throw new RuntimeException('Room already booked');
+            }
+
+            return $this->bookingRepository->create($data);
+        });
+    }
+}
+
+// Binding in AppServiceProvider::register()
+$this->app->bind(BookingRepositoryInterface::class, EloquentBookingRepository::class);
+```
 
 ### Service Layer Pattern
 

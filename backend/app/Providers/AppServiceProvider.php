@@ -10,6 +10,8 @@ use App\Policies\BookingPolicy;
 use App\Policies\RoomPolicy;
 use App\Directives\PurifyDirective;
 use App\Macros\FormRequestPurifyMacro;
+use App\Repositories\Contracts\BookingRepositoryInterface;
+use App\Repositories\EloquentBookingRepository;
 use Laravel\Sanctum\Sanctum;
 
 class AppServiceProvider extends ServiceProvider
@@ -24,7 +26,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Bind BookingRepositoryInterface to EloquentBookingRepository
+        // This enables dependency injection of the repository in services/controllers
+        $this->app->bind(
+            BookingRepositoryInterface::class,
+            EloquentBookingRepository::class
+        );
     }
 
     /**

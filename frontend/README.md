@@ -1,54 +1,107 @@
-# React + TypeScript + Vite
+# 🎨 Soleil Hostel Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> **Last Updated:** January 4, 2026 | **React:** 19.0.0 | **TypeScript:** 5.x | **Status:** Production Ready ✅
 
-Currently, two official plugins are available:
+## 🎯 Overview
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+The Soleil Hostel frontend is a **modern, production-ready web application** built with React 19 and TypeScript, featuring a feature-sliced architecture for maximum maintainability and scalability.
 
-## Expanding the ESLint configuration
+### Key Features
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- ✅ **Modern Stack**: React 19 + TypeScript + Vite
+- ✅ **Feature-Sliced Design**: Modular architecture for scalability
+- ✅ **Authentication**: Dual-mode (Bearer Token + HttpOnly Cookie)
+- ✅ **Professional UI**: shadcn/ui-inspired component library
+- ✅ **Responsive Design**: Mobile-first approach with TailwindCSS
+- ✅ **Type Safety**: Full TypeScript coverage with strict mode
+- ✅ **Performance**: Code splitting with React.lazy + Suspense
+- ✅ **Accessibility**: WCAG 2.1 Level AA compliant
+- ✅ **Testing**: Playwright E2E tests ready
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Node.js 18+ or higher
+- npm or yarn
+
+### Installation
+
+```bash
+# 1. Install dependencies
+npm ci
+
+# 2. Configure environment (optional)
+# Create .env file if needed for custom API URL
+echo "VITE_API_URL=http://127.0.0.1:8000" > .env
+
+# 3. Start development server
+npm run dev
+# Or with specific port:
+npx vite --port 5173
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Frontend will be available at: http://localhost:5173
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Build for Production
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+```bash
+# Build optimized production bundle
+npm run build
+
+# Preview production build
+npm run preview
 ```
+
+---
+
+## 📂 Project Structure
+
+```
+frontend/
+├── public/              # Static assets
+├── src/
+│   ├── app/             # Application core
+│   │   ├── App.tsx      # Root component with layout
+│   │   ├── providers.tsx # AuthProvider wrapper
+│   │   └── router.tsx   # React Router v7 with lazy loading
+│   │
+│   ├── features/        # Feature modules (business logic)
+│   │   ├── auth/        # Authentication feature
+│   │   ├── rooms/       # Room management feature
+│   │   └── booking/     # Booking feature
+│   │
+│   ├── shared/          # Shared resources
+│   │   ├── components/  # Reusable components
+│   │   ├── lib/         # Library configurations
+│   │   └── utils/       # Utility functions
+│   │
+│   ├── pages/           # Page components
+│   └── main.tsx         # Application entry point
+│
+├── tests/               # E2E tests (Playwright)
+├── package.json         # Dependencies & scripts
+├── vite.config.ts       # Vite configuration
+└── tsconfig.json        # TypeScript configuration
+```
+
+---
+
+## 📚 Documentation
+
+Full documentation available in the `docs/` folder:
+
+- [Frontend Architecture](../docs/frontend/ARCHITECTURE.md)
+- [App Layer](../docs/frontend/APP_LAYER.md)
+- [Features Layer](../docs/frontend/FEATURES_LAYER.md)
+- [Testing Guide](../docs/frontend/TESTING.md)
+- [Performance & Security](../docs/frontend/PERFORMANCE_SECURITY.md)
+- [Deployment Guide](../docs/frontend/DEPLOYMENT.md)
+
+---
+
+**Status**: ✅ Production Ready  
+**Frontend URL**: http://localhost:5173  
+**Backend API**: http://127.0.0.1:8000

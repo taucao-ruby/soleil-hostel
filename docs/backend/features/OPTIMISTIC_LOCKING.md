@@ -24,7 +24,7 @@ The Soleil Hostel booking system implements **optimistic locking** to prevent ra
 
 ### The "Lost Update" Problem
 
-```
+```text
 Timeline:
 ┌─────────────────────────────────────────────────────────────────────┐
 │ User A reads Room (price: $100)                              t=0   │
@@ -38,7 +38,7 @@ Result: User B's update to $120 is silently lost.
 
 ### With Optimistic Locking
 
-```
+```text
 Timeline:
 ┌─────────────────────────────────────────────────────────────────────┐
 │ User A reads Room (price: $100, lock_version: 5)             t=0   │
@@ -884,7 +884,7 @@ async function updateRoom(roomId: number, data: RoomUpdateData): Promise<Room> {
 
 For booking updates that affect room state, two strategies:
 
-**A. Parent Version Check (Recommended for Soleil)**
+#### A. Parent Version Check (Recommended for Soleil)
 
 ```php
 // When creating a booking, check room hasn't changed

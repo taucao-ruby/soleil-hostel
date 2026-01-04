@@ -98,7 +98,7 @@ Dự án được xây dựng như một hệ thống có thể sống lâu dài
   - Repository Pattern
 - Authentication: **Laravel Sanctum**
 - RESTful API
-- **419 automated tests** (Feature + Unit)
+- **435 automated tests** (Feature + Unit)
 - Security & performance-focused design
 
 ---
@@ -143,9 +143,9 @@ soleil-hostel/
 │   ├── resources/                    # Views & Assets
 │   ├── routes/                       # API Routes
 │   ├── storage/                      # File Storage
-│   ├── tests/                        # 419 Automated Tests
-│   │   ├── Feature/                  # Feature Tests (365)
-│   │   └── Unit/                     # Unit Tests (54)
+│   ├── tests/                        # 435 Automated Tests
+│   │   ├── Feature/                  # Feature Tests (383)
+│   │   └── Unit/                     # Unit Tests (52)
 │   ├── composer.json                 # PHP Dependencies
 │   ├── phpunit.xml                   # Test Configuration
 │   └── artisan                       # Laravel CLI
@@ -270,14 +270,16 @@ Sau đó mở Pull Request trên GitHub.
 
 - Frontend architecture (React + TypeScript, mobile-first)
 - Backend architecture (Laravel + Clean Architecture)
-- Room dashboard & CRUD
-- Core booking flow
+- Room dashboard & CRUD with optimistic locking
+- Core booking flow with pessimistic locking
 - Customer management
 - CI/CD with GitHub Actions
-- Full test suite (296 tests)
+- Full test suite (435 tests, 1295 assertions)
 - Documentation consolidation & cleanup
 - Frontend documentation restructured into 12 modular files (January 2, 2026)
+- Backend documentation fully organized
 - Both servers verified running successfully
+- Optimistic locking for room concurrency control (January 2026)
 
 ---
 

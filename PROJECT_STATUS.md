@@ -166,6 +166,15 @@ Fixed 13 GitHub Actions issues:
 - Uses Laravel's native `Cache::supportsTags()` facade
 - Updated caching documentation in [docs/backend/features/CACHING.md](./docs/backend/features/CACHING.md)
 
+### 📝 AuthController FormRequest Refactor (January 4, 2026)
+
+- Extracted inline validation from `AuthController` into dedicated Form Request classes
+- Created `App\Http\Requests\Auth\RegisterRequest` with exact validation rules
+- Created `App\Http\Requests\Auth\LoginRequest` with exact validation rules
+- Zero behavioral change - 100% backward compatible
+- Improved code organization and testability
+- Follows Laravel best practices for validation
+
 ---
 
 ## 🎯 Project Milestones
@@ -257,6 +266,16 @@ Fixed 13 GitHub Actions issues:
 - Removed ~80 lines of duplicated code
 - All 224 cache-related tests passing
 - Zero behavior change - 100% backward compatible
+
+### Phase 11: AuthController FormRequest Refactor ✅ (January 4, 2026)
+
+- Extracted validation logic from `AuthController` into Form Request classes
+- `Auth/RegisterRequest`: name, email, password validation
+- `Auth/LoginRequest`: email, password validation
+- AuthController now uses type-hinted Form Requests
+- Replaced inline `$request->validate()` with `$request->validated()`
+- Zero behavior change - all existing tests passing
+- Follows Laravel best practices for separation of concerns
 
 ---
 

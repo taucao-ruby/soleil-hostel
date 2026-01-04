@@ -13,6 +13,41 @@ Soleil Hostel supports two authentication modes:
 
 ---
 
+## Form Request Validation
+
+Authentication endpoints use dedicated Form Request classes for validation:
+
+### RegisterRequest
+
+**Location**: `app/Http/Requests/Auth/RegisterRequest.php`
+
+```php
+public function rules(): array
+{
+    return [
+        'name' => 'required|string|max:255',
+        'email' => 'required|email|unique:users,email',
+        'password' => 'required|string|min:8|confirmed',
+    ];
+}
+```
+
+### LoginRequest
+
+**Location**: `app/Http/Requests/Auth/LoginRequest.php`
+
+```php
+public function rules(): array
+{
+    return [
+        'email' => 'required|email',
+        'password' => 'required|string',
+    ];
+}
+```
+
+---
+
 ## Token Lifecycle
 
 ```

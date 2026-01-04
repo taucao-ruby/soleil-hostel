@@ -23,6 +23,7 @@
 - Token expiration & rotation
 - Multi-device support
 - Suspicious activity detection
+- **Form Request validation** via `Auth/RegisterRequest` and `Auth/LoginRequest`
 
 ### 📅 Booking System
 

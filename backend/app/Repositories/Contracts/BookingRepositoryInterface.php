@@ -53,6 +53,9 @@ interface BookingRepositoryInterface
     /**
      * Find a booking by ID with specified relations.
      * 
+     * Derived from: BookingService::getBookingById()
+     *   Booking::with(['room', 'user'])->find($bookingId)
+     * 
      * @param int $id Booking ID
      * @param array $relations Relations to eager load (e.g., ['room', 'user'])
      * @return Booking|null
@@ -89,6 +92,10 @@ interface BookingRepositoryInterface
     /**
      * Get bookings for a specific user.
      * 
+     * NOTE: Currently all observed usages include orderBy('check_in', 'desc').
+     * This base method kept for flexibility; prefer getByUserIdOrderedByCheckIn()
+     * for consistency with existing service patterns.
+     * 
      * @param int $userId User ID
      * @param array $columns Columns to select
      * @param array $relations Relations to eager load
@@ -102,6 +109,9 @@ interface BookingRepositoryInterface
 
     /**
      * Get bookings for a user ordered by check-in date descending.
+     * 
+     * Derived from: BookingService::getUserBookings()
+     *   Booking::where('user_id', $userId)->with([...])->orderBy('check_in', 'desc')->get()
      * 
      * @param int $userId User ID
      * @param array $columns Columns to select
@@ -138,6 +148,9 @@ interface BookingRepositoryInterface
     /**
      * Check if overlapping bookings exist (faster than fetching all).
      * 
+     * Derived from: AdminBookingController::restore(), restoreBulk()
+     *   Booking::overlappingBookings(...)->exists()
+     * 
      * @param int $roomId Room ID
      * @param Carbon|\DateTimeInterface|string $checkIn Check-in date
      * @param Carbon|\DateTimeInterface|string $checkOut Check-out date
@@ -157,6 +170,9 @@ interface BookingRepositoryInterface
      * CRITICAL for race condition prevention in high-concurrency scenarios.
      * Must be used within a database transaction.
      * 
+     * Derived from: CreateBookingService::createBookingWithLocking()
+     *   Booking::query()->overlappingBookings()->withLock()->get()
+     * 
      * @param int $roomId Room ID
      * @param Carbon|\DateTimeInterface|string $checkIn Check-in date
      * @param Carbon|\DateTimeInterface|string $checkOut Check-out date
@@ -169,6 +185,28 @@ interface BookingRepositoryInterface
         $checkOut,
         ?int $excludeBookingId = null
     ): Collection;
+
+    /**
+     * Check if overlapping bookings exist with pessimistic lock (FOR UPDATE).
+     * 
+     * CRITICAL for race condition prevention in high-concurrency scenarios.
+     * Must be used within a database transaction.
+     * 
+     * Derived from: CreateBookingService::update()
+     *   Booking::query()->overlappingBookings()->withLock()->exists()
+     * 
+     * @param int $roomId Room ID
+     * @param Carbon|\DateTimeInterface|string $checkIn Check-in date
+     * @param Carbon|\DateTimeInterface|string $checkOut Check-out date
+     * @param int|null $excludeBookingId Booking ID to exclude
+     * @return bool True if overlap exists
+     */
+    public function hasOverlappingBookingsWithLock(
+        int $roomId,
+        $checkIn,
+        $checkOut,
+        ?int $excludeBookingId = null
+    ): bool;
 
     // ========== SOFT DELETE QUERIES ==========
 
@@ -209,6 +247,9 @@ interface BookingRepositoryInterface
      * Get trashed bookings older than specified date.
      * Used for retention policy enforcement.
      * 
+     * Derived from: PruneOldSoftDeletedBookings command
+     *   Booking::onlyTrashed()->where('deleted_at', '<', $cutoffDate)
+     * 
      * @param Carbon $cutoffDate Delete records older than this date
      * @return Collection
      */
@@ -219,6 +260,9 @@ interface BookingRepositoryInterface
     /**
      * Get all bookings including trashed (for admin view).
      * 
+     * Derived from: AdminBookingController::index()
+     *   Booking::withTrashed()->with([...])->get()
+     * 
      * @param array $relations Relations to eager load
      * @return Collection
      */
@@ -227,6 +271,10 @@ interface BookingRepositoryInterface
     /**
      * Get bookings with common relations loaded (room, user).
      * Uses optimized column selection to prevent N+1.
+     * 
+     * NOTE: Relies on existing Booking::withCommonRelations() scope.
+     * Currently not actively used in services/controllers, but kept for
+     * consistency with documented model scope usage patterns.
      * 
      * @return Collection
      */

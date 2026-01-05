@@ -165,6 +165,21 @@ class EloquentBookingRepository implements BookingRepositoryInterface
             ->get();
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    public function hasOverlappingBookingsWithLock(
+        int $roomId,
+        $checkIn,
+        $checkOut,
+        ?int $excludeBookingId = null
+    ): bool {
+        return Booking::query()
+            ->overlappingBookings($roomId, $checkIn, $checkOut, $excludeBookingId)
+            ->withLock()
+            ->exists();
+    }
+
     // ========== SOFT DELETE QUERIES ==========
 
     /**
@@ -239,6 +254,9 @@ class EloquentBookingRepository implements BookingRepositoryInterface
 
     /**
      * {@inheritDoc}
+     * 
+     * NOTE: Relies on existing Booking::withCommonRelations() scope
+     * defined in App\Models\Booking (lines 71-82).
      */
     public function getWithCommonRelations(): Collection
     {

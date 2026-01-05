@@ -63,6 +63,7 @@ public function getByUserIdOrderedByCheckIn(int $userId, array $columns = ['*'],
 public function findOverlappingBookings(int $roomId, $checkIn, $checkOut, ?int $excludeBookingId = null): Collection;
 public function hasOverlappingBookings(int $roomId, $checkIn, $checkOut, ?int $excludeBookingId = null): bool;
 public function findOverlappingBookingsWithLock(int $roomId, $checkIn, $checkOut, ?int $excludeBookingId = null): Collection;
+public function hasOverlappingBookingsWithLock(int $roomId, $checkIn, $checkOut, ?int $excludeBookingId = null): bool;
 ```
 
 ### Soft Delete Operations
@@ -79,9 +80,13 @@ public function getTrashedOlderThan(Carbon $cutoffDate): Collection;
 
 ```php
 public function getAllWithTrashed(array $relations = []): Collection;
-public function getWithCommonRelations(): Collection;
+public function getWithCommonRelations(): Collection;  // Relies on existing Booking::withCommonRelations() scope
 public function query(): Builder;
 ```
+
+> **Note:** `getWithCommonRelations()` relies on the existing `Booking::withCommonRelations()` scope
+> defined in `App\Models\Booking`. Currently not actively used in services/controllers, but kept
+> for consistency with documented model scope usage patterns.
 
 ---
 

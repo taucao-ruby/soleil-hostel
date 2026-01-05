@@ -59,19 +59,6 @@ class EloquentRoomRepository implements RoomRepositoryInterface
     }
 
     /**
-     * Find a room by ID (simple find).
-     *
-     * Reproduces: Room::find($roomId)
-     *
-     * @param int $roomId
-     * @return Room|null
-     */
-    public function findById(int $roomId): ?Room
-    {
-        return Room::find($roomId);
-    }
-
-    /**
      * Get all rooms ordered by name.
      *
      * Reproduces: Room::select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'created_at', 'updated_at'])
@@ -97,20 +84,22 @@ class EloquentRoomRepository implements RoomRepositoryInterface
      *     ->where('check_out', '>', $checkIn)
      *     ->exists()
      *
+     * IMPORTANT: If room does not exist, this will throw an Error (call to member
+     * function on null) - this preserves the original behavior exactly.
+     *
      * @param int $roomId
      * @param string $checkIn
      * @param string $checkOut
      * @return bool True if overlapping bookings exist
+     * @throws \Error If room does not exist
      */
     public function hasOverlappingConfirmedBookings(int $roomId, string $checkIn, string $checkOut): bool
     {
-        $room = Room::find($roomId);
-
-        if ($room === null) {
-            return false;
-        }
-
-        return $room->bookings()
+        // Intentionally not checking for null - matches original behavior
+        // Original: Room::find($roomId)->bookings()->...
+        // If room is null, this throws Error (same as original)
+        return Room::find($roomId)
+            ->bookings()
             ->where('status', 'confirmed')
             ->where('check_in', '<', $checkOut)
             ->where('check_out', '>', $checkIn)

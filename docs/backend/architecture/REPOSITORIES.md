@@ -90,7 +90,6 @@ public function query(): Builder;
 ### Query Methods
 
 ```php
-public function findById(int $roomId): ?Room;
 public function findByIdWithBookings(int $roomId): ?Room;
 public function findByIdWithConfirmedBookings(int $roomId): ?Room;
 public function getAllOrderedByName(): Collection;
@@ -99,6 +98,7 @@ public function getAllOrderedByName(): Collection;
 ### Availability Check
 
 ```php
+// Throws \Error if room does not exist (preserves original behavior)
 public function hasOverlappingConfirmedBookings(int $roomId, string $checkIn, string $checkOut): bool;
 ```
 

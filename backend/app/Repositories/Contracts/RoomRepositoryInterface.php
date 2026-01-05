@@ -40,16 +40,6 @@ interface RoomRepositoryInterface
     public function findByIdWithConfirmedBookings(int $roomId): ?Room;
 
     /**
-     * Find a room by ID (simple find).
-     *
-     * Mirrors: Room::find($roomId)
-     *
-     * @param int $roomId
-     * @return Room|null
-     */
-    public function findById(int $roomId): ?Room;
-
-    /**
      * Get all rooms ordered by name.
      *
      * Mirrors: Room::select([...])->orderBy('name')->get()
@@ -67,6 +57,7 @@ interface RoomRepositoryInterface
      * @param string $checkIn
      * @param string $checkOut
      * @return bool True if overlapping bookings exist
+     * @throws \Error If room does not exist (mirrors original behavior of calling method on null)
      */
     public function hasOverlappingConfirmedBookings(int $roomId, string $checkIn, string $checkOut): bool;
 

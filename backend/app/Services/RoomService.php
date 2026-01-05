@@ -4,10 +4,10 @@ namespace App\Services;
 
 use App\Exceptions\OptimisticLockException;
 use App\Models\Room;
+use App\Repositories\Contracts\RoomRepositoryInterface;
 use App\Traits\HasCacheTagSupport;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class RoomService
@@ -18,6 +18,11 @@ class RoomService
     private const CACHE_TTL_AVAILABILITY = 30;   // 30 seconds
     private const CACHE_TAG_ROOMS = 'rooms';
     private const CACHE_TAG_AVAILABILITY = 'availability';
+
+    public function __construct(
+        private readonly RoomRepositoryInterface $roomRepository
+    ) {
+    }
 
     /**
      * Get all active rooms with availability - CACHED
@@ -64,9 +69,7 @@ class RoomService
             return Cache::remember(
                 $cacheKey,
                 self::CACHE_TTL_ROOMS,
-                fn() => Room::with('bookings')
-                    ->select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'created_at', 'updated_at'])
-                    ->find($roomId)
+                fn() => $this->roomRepository->findByIdWithBookings($roomId)
             );
         }
 
@@ -74,9 +77,7 @@ class RoomService
             ->remember(
                 $cacheKey,
                 self::CACHE_TTL_ROOMS,
-                fn() => Room::with('bookings')
-                    ->select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'created_at', 'updated_at'])
-                    ->find($roomId)
+                fn() => $this->roomRepository->findByIdWithBookings($roomId)
             );
     }
 
@@ -147,10 +148,7 @@ class RoomService
                 $cacheKey,
                 self::CACHE_TTL_AVAILABILITY,
                 function () use ($roomId) {
-                    $room = Room::with(['bookings' => function ($q) {
-                        $q->where('status', 'confirmed')
-                          ->select(['id', 'room_id', 'check_in', 'check_out', 'status']);
-                    }])->find($roomId);
+                    $room = $this->roomRepository->findByIdWithConfirmedBookings($roomId);
 
                     if (!$room) return null;
 
@@ -170,10 +168,7 @@ class RoomService
                 $cacheKey,
                 self::CACHE_TTL_AVAILABILITY,
                 function () use ($roomId) {
-                    $room = Room::with(['bookings' => function ($q) {
-                        $q->where('status', 'confirmed')
-                          ->select(['id', 'room_id', 'check_in', 'check_out', 'status']);
-                    }])->find($roomId);
+                    $room = $this->roomRepository->findByIdWithConfirmedBookings($roomId);
 
                     if (!$room) return null;
 
@@ -232,19 +227,12 @@ class RoomService
 
     private function fetchRoomsFromDB(): Collection
     {
-        return Room::select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'created_at', 'updated_at'])
-            ->orderBy('name')
-            ->get();
+        return $this->roomRepository->getAllOrderedByName();
     }
 
     private function checkOverlappingBookings(int $roomId, string $checkIn, string $checkOut): bool
     {
-        return !Room::find($roomId)
-            ->bookings()
-            ->where('status', 'confirmed')
-            ->where('check_in', '<', $checkOut)
-            ->where('check_out', '>', $checkIn)
-            ->exists();
+        return !$this->roomRepository->hasOverlappingConfirmedBookings($roomId, $checkIn, $checkOut);
     }
 
     /**
@@ -294,20 +282,18 @@ class RoomService
 
         // Atomic update with version check and increment
         // This is the key to optimistic locking - single atomic operation
-        // Uses raw query to ensure atomicity (Eloquent's update() wouldn't work here)
-        $rowsAffected = DB::table('rooms')
-            ->where('id', $room->id)
-            ->where('lock_version', $currentVersion)
-            ->update(array_merge($updateData, [
-                'lock_version' => DB::raw('lock_version + 1'),
-                'updated_at' => now(),
-            ]));
+        // Repository handles the raw query to ensure atomicity
+        $rowsAffected = $this->roomRepository->updateWithVersionCheck(
+            $room->id,
+            $currentVersion,
+            $updateData
+        );
 
         // If no rows were updated, the version didn't match
         // This means another process updated the room between read and write
         if ($rowsAffected === 0) {
             // Refresh to get the actual current version for logging/debugging
-            $room->refresh();
+            $this->roomRepository->refresh($room);
             $actualVersion = $room->lock_version;
 
             Log::warning('Optimistic lock conflict detected', [
@@ -324,7 +310,7 @@ class RoomService
         }
 
         // Success! Refresh the model to get the updated data including new version
-        $room->refresh();
+        $this->roomRepository->refresh($room);
 
         // Invalidate cache for this room (important for consistency)
         $this->invalidateRoom($room->id);
@@ -351,7 +337,7 @@ class RoomService
         // Ensure lock_version is not set by caller (DB default handles it)
         $createData = collect($data)->except(['lock_version'])->toArray();
 
-        $room = Room::create($createData);
+        $room = $this->roomRepository->create($createData);
 
         // Invalidate room list cache
         $this->invalidateAllRooms();
@@ -385,13 +371,13 @@ class RoomService
             $currentVersion = $room->lock_version;
         }
 
-        $rowsAffected = DB::table('rooms')
-            ->where('id', $room->id)
-            ->where('lock_version', $currentVersion)
-            ->delete();
+        $rowsAffected = $this->roomRepository->deleteWithVersionCheck(
+            $room->id,
+            $currentVersion
+        );
 
         if ($rowsAffected === 0) {
-            $room->refresh();
+            $this->roomRepository->refresh($room);
             
             throw OptimisticLockException::forRoom(
                 $room,

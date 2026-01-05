@@ -25,11 +25,21 @@ The Booking domain is the first (and most critical) domain to use the Repository
 | Implementation | `app/Repositories/EloquentBookingRepository.php`            |
 | Binding        | `AppServiceProvider::register()`                            |
 
+### RoomRepository
+
+The Room domain is critical for availability and inventory management.
+
+| File           | Location                                                 |
+| -------------- | -------------------------------------------------------- |
+| Interface      | `app/Repositories/Contracts/RoomRepositoryInterface.php` |
+| Implementation | `app/Repositories/EloquentRoomRepository.php`            |
+| Binding        | `AppServiceProvider::register()`                         |
+
 ---
 
 ## Interface Methods
 
-### Basic CRUD
+### BookingRepository - Basic CRUD
 
 ```php
 public function findById(int $id): ?Booking;
@@ -65,12 +75,40 @@ public function forceDelete(Booking $booking): bool;
 public function getTrashedOlderThan(Carbon $cutoffDate): Collection;
 ```
 
-### Admin/Listing
+### BookingRepository - Admin/Listing
 
 ```php
 public function getAllWithTrashed(array $relations = []): Collection;
 public function getWithCommonRelations(): Collection;
 public function query(): Builder;
+```
+
+---
+
+## RoomRepository Interface Methods
+
+### Query Methods
+
+```php
+public function findById(int $roomId): ?Room;
+public function findByIdWithBookings(int $roomId): ?Room;
+public function findByIdWithConfirmedBookings(int $roomId): ?Room;
+public function getAllOrderedByName(): Collection;
+```
+
+### Availability Check
+
+```php
+public function hasOverlappingConfirmedBookings(int $roomId, string $checkIn, string $checkOut): bool;
+```
+
+### Create/Update/Delete with Optimistic Locking
+
+```php
+public function create(array $data): Room;
+public function updateWithVersionCheck(int $roomId, int $expectedVersion, array $data): int;
+public function deleteWithVersionCheck(int $roomId, int $expectedVersion): int;
+public function refresh(Room $room): Room;
 ```
 
 ---
@@ -82,16 +120,23 @@ In `app/Providers/AppServiceProvider.php`:
 ```php
 public function register(): void
 {
+    // Booking Repository
     $this->app->bind(
         BookingRepositoryInterface::class,
         EloquentBookingRepository::class
+    );
+
+    // Room Repository
+    $this->app->bind(
+        RoomRepositoryInterface::class,
+        EloquentRoomRepository::class
     );
 }
 ```
 
 ---
 
-## Usage Example
+## Usage Example - Booking
 
 ### Before (Direct Eloquent)
 
@@ -157,6 +202,80 @@ class CreateBookingService
                 'user_id' => $userId,
             ]);
         });
+    }
+}
+```
+
+---
+
+## Usage Example - Room
+
+### Before (Direct Eloquent in RoomService)
+
+```php
+class RoomService
+{
+    private function fetchRoomsFromDB(): Collection
+    {
+        // Direct Eloquent call - tightly coupled
+        return Room::select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'created_at', 'updated_at'])
+            ->orderBy('name')
+            ->get();
+    }
+
+    private function checkOverlappingBookings(int $roomId, string $checkIn, string $checkOut): bool
+    {
+        // Direct Eloquent call
+        return !Room::find($roomId)
+            ->bookings()
+            ->where('status', 'confirmed')
+            ->where('check_in', '<', $checkOut)
+            ->where('check_out', '>', $checkIn)
+            ->exists();
+    }
+
+    public function updateWithOptimisticLock(Room $room, array $data, ?int $currentVersion = null): Room
+    {
+        // Direct DB call - tightly coupled
+        $rowsAffected = DB::table('rooms')
+            ->where('id', $room->id)
+            ->where('lock_version', $currentVersion)
+            ->update(...);
+        // ...
+    }
+}
+```
+
+### After (Repository Injection)
+
+```php
+class RoomService
+{
+    public function __construct(
+        private readonly RoomRepositoryInterface $roomRepository
+    ) {}
+
+    private function fetchRoomsFromDB(): Collection
+    {
+        // Repository method - decoupled, mockable
+        return $this->roomRepository->getAllOrderedByName();
+    }
+
+    private function checkOverlappingBookings(int $roomId, string $checkIn, string $checkOut): bool
+    {
+        // Repository method
+        return !$this->roomRepository->hasOverlappingConfirmedBookings($roomId, $checkIn, $checkOut);
+    }
+
+    public function updateWithOptimisticLock(Room $room, array $data, ?int $currentVersion = null): Room
+    {
+        // Repository method
+        $rowsAffected = $this->roomRepository->updateWithVersionCheck(
+            $room->id,
+            $currentVersion,
+            $updateData
+        );
+        // ...
     }
 }
 ```
@@ -240,13 +359,28 @@ class BookingFeatureTest extends TestCase
 | `Controllers/BookingControllerExample.php`         | 2           | LOW      |
 | `Console/Commands/PruneOldSoftDeletedBookings.php` | 1           | LOW      |
 
-### Find All Usages
+### Files with Direct Room:: Usage to Migrate
+
+| File                             | Status  | Notes                                  |
+| -------------------------------- | ------- | -------------------------------------- |
+| `Services/RoomService.php`       | ✅ DONE | Fully refactored to use RoomRepository |
+| `Controllers/RoomController.php` | PENDING | Uses RoomService, low priority         |
+
+### Find All Booking Usages
 
 ```bash
 grep -rn "Booking::" backend/app --include="*.php" \
   | grep -v "Booking::class" \
   | grep -v "Booking::STATUS" \
   | grep -v "Booking::ACTIVE_STATUSES"
+```
+
+### Find All Room Usages
+
+```bash
+grep -rn "Room::" backend/app --include="*.php" \
+  | grep -v "Room::class" \
+  | grep -v "Repository"
 ```
 
 ### Incremental Rollout

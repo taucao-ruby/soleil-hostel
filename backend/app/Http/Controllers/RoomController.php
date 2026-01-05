@@ -9,6 +9,8 @@ use App\Http\Resources\RoomResource;
 use App\Services\RoomService;
 use Illuminate\Http\JsonResponse;
 
+// Note: Room import retained for authorize() policy checks (Room::class)
+
 /**
  * RoomController - Thin controller following clean architecture.
  *
@@ -113,7 +115,7 @@ class RoomController extends Controller
      */
     public function update(RoomRequest $request, $id): JsonResponse
     {
-        $room = Room::find($id);
+        $room = $this->roomService->findById($id);
         if (!$room) {
             return response()->json([
                 'success' => false,
@@ -154,7 +156,7 @@ class RoomController extends Controller
      */
     public function destroy(Request $request, $id): JsonResponse
     {
-        $room = Room::find($id);
+        $room = $this->roomService->findById($id);
         if (!$room) {
             return response()->json([
                 'success' => false,

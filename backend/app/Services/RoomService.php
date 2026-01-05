@@ -184,6 +184,20 @@ class RoomService
     }
 
     /**
+     * Find a room by ID (uncached, for write operations).
+     *
+     * Used by controller for update/delete operations where
+     * we need the fresh model instance for authorization and mutation.
+     *
+     * @param int $roomId
+     * @return Room|null
+     */
+    public function findById(int $roomId): ?Room
+    {
+        return $this->roomRepository->findByIdWithBookings($roomId);
+    }
+
+    /**
      * ===== INVALIDATION METHODS =====
      */
 

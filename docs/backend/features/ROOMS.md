@@ -78,6 +78,54 @@ Room::active();               // Only active rooms
 
 ---
 
+## Architecture: Thin Controller Pattern
+
+RoomController follows **thin controller architecture** - all CRUD operations are delegated to `RoomService`:
+
+```php
+class RoomController extends Controller
+{
+    public function __construct(
+        private RoomService $roomService
+    ) {}
+
+    // ✅ Controller only handles HTTP concerns
+    public function update(RoomRequest $request, $id): JsonResponse
+    {
+        $room = $this->roomService->findById($id);  // Delegate to service
+        if (!$room) {
+            return response()->json(['success' => false, 'message' => 'Room not found'], 404);
+        }
+
+        $this->authorize('update', $room);
+        $updatedRoom = $this->roomService->updateWithOptimisticLock($room, $data, $lockVersion);
+
+        return response()->json(['success' => true, 'data' => new RoomResource($updatedRoom)]);
+    }
+}
+```
+
+### Service Layer Responsibilities
+
+| Layer      | Responsibility                                  |
+| ---------- | ----------------------------------------------- |
+| Controller | Input validation, authorization, HTTP responses |
+| Service    | Business logic, caching, optimistic locking     |
+| Repository | Data access, queries, atomic DB operations      |
+
+### RoomService Methods
+
+| Method                                             | Purpose                         |
+| -------------------------------------------------- | ------------------------------- |
+| `getAllRoomsWithAvailability()`                    | List rooms (cached)             |
+| `getRoomById($id)`                                 | Get room with bookings (cached) |
+| `findById($id)`                                    | Get room for write operations   |
+| `createRoom($data)`                                | Create new room                 |
+| `updateWithOptimisticLock($room, $data, $version)` | Update with version check       |
+| `deleteWithOptimisticLock($room, $version)`        | Delete with version check       |
+
+---
+
 ## RoomService - Optimistic Locking
 
 ```php

@@ -35,7 +35,7 @@ class EloquentRoomRepository implements RoomRepositoryInterface
     public function findByIdWithBookings(int $roomId): ?Room
     {
         return Room::with('bookings')
-            ->select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'created_at', 'updated_at'])
+            ->select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'lock_version', 'created_at', 'updated_at'])
             ->find($roomId);
     }
 
@@ -69,7 +69,7 @@ class EloquentRoomRepository implements RoomRepositoryInterface
      */
     public function getAllOrderedByName(): Collection
     {
-        return Room::select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'created_at', 'updated_at'])
+        return Room::select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'lock_version', 'created_at', 'updated_at'])
             ->orderBy('name')
             ->get();
     }

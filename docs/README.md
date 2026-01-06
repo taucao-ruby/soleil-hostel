@@ -1,6 +1,6 @@
 # 📚 Soleil Hostel Documentation
 
-> **Last Updated:** January 4, 2026 | **Tests:** 435 passed (1295 assertions) | **Status:** Production Ready & Running ✅
+> **Last Updated:** January 6, 2026 | **Tests:** 488 passed (1348 assertions) | **Status:** Production Ready & Running ✅
 
     ## Quick Navigation
 
@@ -57,6 +57,7 @@
     │   ├── README.md                     # Backend index
     │   ├── architecture/                 # System design
     │   │   ├── API.md                    # Complete API reference
+    │   │   ├── REPOSITORIES.md           # Repository pattern
     │   │   ├── MIDDLEWARE.md             # Middleware pipeline
     │   │   ├── EVENTS.md                 # Events & listeners
     │   │   ├── POLICIES.md               # Authorization policies
@@ -113,7 +114,8 @@
 | Caching            | ✅ Complete             | 6 tests       |
 | Monitoring         | ✅ Complete             | 10 tests      |
 | Optimistic Locking | ✅ Complete             | 24 tests      |
-| **Total**          | **✅ Production Ready** | **435 tests** |
+| Repository Layer   | ✅ Complete             | 53 tests      |
+| **Total**          | **✅ Production Ready** | **488 tests** |
 
     ## Tech Stack
 

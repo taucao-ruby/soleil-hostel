@@ -1,6 +1,6 @@
 # 🖥️ Soleil Hostel Backend (Laravel 11)
 
-> **Last Updated:** January 4, 2026 | **Laravel:** 11.x | **PHP:** 8.2+ | **Tests:** 435 passing ✅
+> **Last Updated:** January 6, 2026 | **Laravel:** 11.x | **PHP:** 8.2+ | **Tests:** 488 passing ✅
 
 ## 🎯 Overview
 
@@ -11,11 +11,12 @@ The Soleil Hostel backend is a **production-ready REST API** built with Laravel 
 -   ✅ **Authentication**: Dual-mode (Bearer Token + HttpOnly Cookie)
 -   ✅ **Booking System**: Pessimistic locking prevents double-booking
 -   ✅ **Room Management**: Optimistic locking prevents lost updates
+-   ✅ **Repository Pattern**: Data access abstraction with 100% unit test coverage
 -   ✅ **RBAC**: Enum-based role system (User, Moderator, Admin)
 -   ✅ **Security**: XSS protection, CSRF tokens, security headers, rate limiting
 -   ✅ **Performance**: Redis caching, N+1 query prevention, database indexes
 -   ✅ **Monitoring**: Correlation IDs, performance logging, health probes
--   ✅ **Testing**: 435 tests with 1295 assertions (100% pass rate)
+-   ✅ **Testing**: 488 tests with 1348 assertions (100% pass rate)
 
 ---
 
@@ -80,6 +81,7 @@ backend/
 │   ├── Models/          # Eloquent models
 │   ├── Policies/        # Authorization policies
 │   ├── Providers/       # Service providers
+│   ├── Repositories/    # Repository pattern (data access layer)
 │   ├── Services/        # Business logic layer
 │   └── Traits/          # Reusable traits
 ├── config/              # Configuration files
@@ -94,7 +96,8 @@ backend/
 ├── storage/             # File storage & logs
 ├── tests/
 │   ├── Feature/         # Feature tests (383 tests)
-│   └── Unit/            # Unit tests (52 tests)
+│   └── Unit/            # Unit tests (105 tests)
+│       ├── Repositories/ # Repository unit tests (53 tests, zero DB)
 └── vendor/              # Composer dependencies
 ```
 

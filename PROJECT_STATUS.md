@@ -1,25 +1,26 @@
 # Soleil Hostel - Project Status
 
-**Last Updated:** January 4, 2026
+**Last Updated:** January 6, 2026
 
 ## 🎉 Current Status: Production Ready & Running ✅
 
-All 435 tests passing, 0 skipped, 1295 assertions verified.  
+All 488 tests passing, 0 skipped, 1348 assertions verified.  
 All GitHub Actions CI/CD workflows passing.  
 Documentation restructured and organized in `docs/` folder.  
 Both backend and frontend servers verified running successfully.  
-Optimistic locking fully implemented and tested (24 tests).
+Optimistic locking fully implemented and tested (24 tests).  
+Repository layer fully unit tested (53 tests with zero database dependency).
 
 ---
 
 ## 📊 Test Results Summary
 
 ```
-✅ 435 tests passed
+✅ 488 tests passed
 ❌ 0 tests failed
 ⏭️  0 tests skipped
-📋 1295 assertions
-⏱️  Duration: ~14 seconds
+📋 1348 assertions
+⏱️  Duration: ~25 seconds
 ```
 
 ---
@@ -149,7 +150,8 @@ Fixed 13 GitHub Actions issues:
 - **Backend**: PHP dev server running at http://127.0.0.1:8000
 - **Frontend**: Vite dev server running at http://localhost:5173
 - Database migrations completed successfully with fresh seed data
-- All 435 backend tests verified passing (1295 assertions)
+- All 488 backend tests verified passing (1348 assertions)
+- Repository layer fully unit tested (53 tests with zero database dependency)
 
 ### 🔐 Optimistic Locking Implementation (January 2026)
 
@@ -288,6 +290,17 @@ Fixed 13 GitHub Actions issues:
 - Respects soft delete behavior and global scopes
 - Prepared for incremental adoption without behavior changes
 - Foundation for improved testability and future flexibility
+
+### Phase 13: Repository Unit Tests ✅ (January 6, 2026)
+
+- Created comprehensive unit tests for repository implementations
+- **EloquentBookingRepositoryTest**: 33 tests covering all 20 methods
+- **EloquentRoomRepositoryTest**: 20 tests covering all 8 methods
+- **Zero database dependency** - full mocking with Mockery
+- Uses `@runInSeparateProcess` + `alias:` mocks for Eloquent static methods
+- Tests run in complete isolation (~11 seconds for 53 tests)
+- Updated [TESTING.md](./docs/backend/guides/TESTING.md) and [REPOSITORIES.md](./docs/backend/architecture/REPOSITORIES.md)
+- All 488 tests passing (435 feature/integration + 53 repository unit tests)
 
 ---
 

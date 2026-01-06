@@ -309,7 +309,35 @@ class RoomService
 
 ## Testing with Repository
 
-### Unit Test (Mocked Repository)
+### Repository Unit Tests (Zero Database)
+
+Both repository implementations have comprehensive unit tests with **zero database dependency**:
+
+| Test File                           | Tests | Coverage   | Location                   |
+| ----------------------------------- | ----- | ---------- | -------------------------- |
+| `EloquentBookingRepositoryTest.php` | 33    | 20 methods | `tests/Unit/Repositories/` |
+| `EloquentRoomRepositoryTest.php`    | 20    | 8 methods  | `tests/Unit/Repositories/` |
+
+**Key Features:**
+
+- Pure PHPUnit tests (not Laravel TestCase)
+- Full Mockery mocking of Eloquent models and query builders
+- `@runInSeparateProcess` with `alias:` mocks for static method testing
+- Fast execution (~11 seconds for 53 tests)
+- 100% isolated from database
+
+**Run Repository Tests:**
+
+```bash
+# All repository unit tests
+php vendor/bin/phpunit tests/Unit/Repositories --testdox --no-coverage
+
+# Specific repository
+php vendor/bin/phpunit tests/Unit/Repositories/EloquentBookingRepositoryTest.php
+php vendor/bin/phpunit tests/Unit/Repositories/EloquentRoomRepositoryTest.php
+```
+
+### Service Unit Test (Mocked Repository)
 
 ```php
 class CreateBookingServiceTest extends TestCase

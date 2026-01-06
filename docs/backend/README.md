@@ -21,6 +21,7 @@
 | ----------------------------------------------------------- | --------------------------- |
 | [API.md](./architecture/API.md)                             | Complete API reference      |
 | [DATABASE.md](../DATABASE.md)                               | Schema, indexes, migrations |
+| [REPOSITORIES.md](./architecture/REPOSITORIES.md)           | Repository pattern          |
 | [MIDDLEWARE.md](./architecture/MIDDLEWARE.md)               | Middleware pipeline         |
 | [EVENTS.md](./architecture/EVENTS.md)                       | Events & listeners          |
 | [POLICIES.md](./architecture/POLICIES.md)                   | Authorization policies      |

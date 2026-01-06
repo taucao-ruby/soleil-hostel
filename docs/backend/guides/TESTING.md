@@ -39,7 +39,8 @@ php artisan test --parallel
 | Caching                   | 6       | 18         |
 | N+1 Prevention            | 7       | 21         |
 | Health Check              | 7       | 21         |
-| **Total**                 | **296** | **890**    |
+| Repository Unit Tests     | 53      | 53         |
+| **Total**                 | **349** | **943**    |
 
 ---
 
@@ -54,8 +55,11 @@ tests/
 │   │   └── UserRoleTest.php
 │   ├── Models/
 │   │   └── UserRoleHelpersTest.php
-│   └── RateLimiting/
-│       └── AdvancedRateLimitServiceTest.php
+│   ├── RateLimiting/
+│   │   └── AdvancedRateLimitServiceTest.php
+│   └── Repositories/
+│       ├── EloquentBookingRepositoryTest.php
+│       └── EloquentRoomRepositoryTest.php
 │
 ├── Feature/                        # Feature/Integration tests
 │   ├── Auth/
@@ -123,6 +127,19 @@ php artisan test --filter=RoomOptimisticLockingTest
 php artisan test tests/Feature/Authorization/
 php artisan test tests/Feature/Middleware/EnsureUserHasRoleTest.php
 ```
+
+### Repository Unit Tests
+
+```bash
+# Run all repository unit tests (no database required)
+php vendor/bin/phpunit tests/Unit/Repositories --testdox --no-coverage
+
+# Run specific repository test
+php vendor/bin/phpunit tests/Unit/Repositories/EloquentBookingRepositoryTest.php
+php vendor/bin/phpunit tests/Unit/Repositories/EloquentRoomRepositoryTest.php
+```
+
+> **Note:** Repository unit tests use Mockery with `@runInSeparateProcess` to mock Eloquent static methods. They run in complete isolation without database connections.
 
 ---
 

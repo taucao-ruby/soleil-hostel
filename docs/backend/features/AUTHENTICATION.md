@@ -152,6 +152,101 @@ await fetch("/api/auth/refresh-httponly", {
 | POST   | `/api/auth/refresh-httponly` | Rotate cookie + refresh_count |
 | POST   | `/api/auth/logout-httponly`  | Clear HttpOnly cookie         |
 
+### Email Verification Endpoints
+
+| Method | Endpoint                               | Description                         |
+| ------ | -------------------------------------- | ----------------------------------- |
+| GET    | `/api/email/verify`                    | Verification notice (403 if needed) |
+| GET    | `/api/email/verify/{id}/{hash}`        | Verify email (signed URL)           |
+| POST   | `/api/email/verification-notification` | Resend verification email           |
+| GET    | `/api/email/verification-status`       | Check verification status           |
+
+---
+
+## Email Verification
+
+### Overview
+
+Email verification is **required** before users can access protected routes (bookings, etc.).
+
+```
+Registration → Verification Email → User Clicks Link → Email Verified → Access Granted
+```
+
+### Implementation
+
+```php
+// User model implements MustVerifyEmail
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+
+class User extends Authenticatable implements MustVerifyEmail
+```
+
+### Route Protection
+
+```php
+// Routes requiring verified email
+Route::middleware(['check_token_valid', 'verified'])->group(function () {
+    Route::get('/bookings', [BookingController::class, 'index']);
+    // ... booking routes require verified email
+});
+```
+
+### Frontend Flow
+
+```typescript
+// 1. Check verification status after login
+const { verified } = await api.get("/email/verification-status");
+
+if (!verified) {
+  // Show "Please verify your email" page
+  router.push("/verify-email");
+}
+
+// 2. Request resend if needed
+await api.post("/email/verification-notification");
+// → "Verification link sent to your email"
+
+// 3. User clicks link in email
+// → GET /api/email/verify/{id}/{hash}
+// → email_verified_at is set
+// → User can now access protected routes
+```
+
+### Response Examples
+
+**Verification Status (Unverified)**
+
+```json
+{
+  "success": true,
+  "verified": false,
+  "email": "user@example.com",
+  "email_verified_at": null
+}
+```
+
+**Verification Status (Verified)**
+
+```json
+{
+  "success": true,
+  "verified": true,
+  "email": "user@example.com",
+  "email_verified_at": "2025-12-19T10:00:00.000000Z"
+}
+```
+
+**Unverified User Accessing Protected Route**
+
+```json
+// HTTP 403 Forbidden
+{
+  "success": false,
+  "message": "Your email address is not verified."
+}
+```
+
 ---
 
 ## Request/Response Examples

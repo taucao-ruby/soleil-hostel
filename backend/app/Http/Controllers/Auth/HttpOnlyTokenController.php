@@ -44,6 +44,11 @@ class HttpOnlyTokenController extends Controller
             throw new AuthenticationException('Email hoặc mật khẩu không đúng.');
         }
 
+        // Auto-resend verification email if unverified
+        if (!$user->hasVerifiedEmail()) {
+            $user->sendEmailVerificationNotification();
+        }
+
         // ========== Token Configuration ==========
         $rememberMe = $request->boolean('remember_me', false);
         $tokenType = $rememberMe ? 'long_lived' : 'short_lived';

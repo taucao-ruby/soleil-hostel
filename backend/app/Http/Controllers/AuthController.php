@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Models\User;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
@@ -24,6 +25,9 @@ class AuthController extends Controller
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
         ]);
+
+        // Fire Registered event to trigger email verification notification
+        event(new Registered($user));
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -51,6 +55,11 @@ class AuthController extends Controller
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials are invalid.'],
             ]);
+        }
+
+        // Auto-resend verification email if unverified
+        if (!$user->hasVerifiedEmail()) {
+            $user->sendEmailVerificationNotification();
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;

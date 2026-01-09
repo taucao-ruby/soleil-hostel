@@ -24,12 +24,6 @@ class EmailVerificationTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        Notification::fake();
-    }
-
     // ========== VERIFICATION REQUIRED TESTS ==========
 
     /** @test */
@@ -37,12 +31,10 @@ class EmailVerificationTest extends TestCase
     {
         // Arrange: Create unverified user
         $user = User::factory()->unverified()->create();
-        $token = $user->createToken('test-token')->plainTextToken;
 
         // Act: Try to access bookings (requires verification)
-        $response = $this->withHeaders([
-            'Authorization' => "Bearer {$token}",
-        ])->getJson('/api/bookings');
+        $response = $this->actingAs($user, 'sanctum')
+            ->getJson('/api/bookings');
 
         // Assert: Should be forbidden
         $response->assertStatus(403);
@@ -55,12 +47,10 @@ class EmailVerificationTest extends TestCase
         $user = User::factory()->create([
             'email_verified_at' => now(),
         ]);
-        $token = $user->createToken('test-token')->plainTextToken;
 
         // Act: Access bookings
-        $response = $this->withHeaders([
-            'Authorization' => "Bearer {$token}",
-        ])->getJson('/api/bookings');
+        $response = $this->actingAs($user, 'sanctum')
+            ->getJson('/api/bookings');
 
         // Assert: Should succeed (200 or empty bookings)
         $response->assertStatus(200);
@@ -256,6 +246,8 @@ class EmailVerificationTest extends TestCase
     /** @test */
     public function user_can_request_verification_email_resend()
     {
+        Notification::fake();
+
         // Arrange
         $user = User::factory()->unverified()->create();
         $token = $user->createToken('test-token')->plainTextToken;
@@ -279,6 +271,8 @@ class EmailVerificationTest extends TestCase
     /** @test */
     public function verified_user_cannot_request_resend()
     {
+        Notification::fake();
+
         // Arrange
         $user = User::factory()->create([
             'email_verified_at' => now(),
@@ -313,12 +307,12 @@ class EmailVerificationTest extends TestCase
 
         $this->assertNotNull($user->email_verified_at);
 
-        // Act: Change email (simulating user update)
-        $user->email = 'newemail@example.com';
-        $user->email_verified_at = null; // Must clear on email change
+        // Act: Change email using centralized method
+        $changed = $user->changeEmail('newemail@example.com');
         $user->save();
 
         // Assert
+        $this->assertTrue($changed);
         $user->refresh();
         $this->assertNull($user->email_verified_at);
         $this->assertEquals('newemail@example.com', $user->email);
@@ -331,24 +325,18 @@ class EmailVerificationTest extends TestCase
         $user = User::factory()->create([
             'email_verified_at' => now(),
         ]);
-        $token = $user->createToken('test-token')->plainTextToken;
 
-        // Verify can access protected route initially
-        $response = $this->withHeaders([
-            'Authorization' => "Bearer {$token}",
-        ])->getJson('/api/bookings');
-        $response->assertStatus(200);
+        // Act: Change email using centralized method
+        $user->changeEmail('changed@example.com');
+        $user->save();
 
-        // Act: Change email and clear verification
-        $user->update([
-            'email' => 'changed@example.com',
-            'email_verified_at' => null,
-        ]);
+        // Assert: User is no longer verified
+        $user->refresh();
+        $this->assertNull($user->email_verified_at);
 
-        // Assert: Can no longer access protected route
-        $response = $this->withHeaders([
-            'Authorization' => "Bearer {$token}",
-        ])->getJson('/api/bookings');
+        // And would be blocked by verified middleware (403)
+        $response = $this->actingAs($user, 'sanctum')
+            ->getJson('/api/bookings');
         
         $response->assertStatus(403);
     }
@@ -358,6 +346,8 @@ class EmailVerificationTest extends TestCase
     /** @test */
     public function verification_resend_is_rate_limited()
     {
+        Notification::fake();
+
         // Arrange
         $user = User::factory()->unverified()->create();
         $token = $user->createToken('test-token')->plainTextToken;
@@ -429,6 +419,8 @@ class EmailVerificationTest extends TestCase
     /** @test */
     public function registration_sends_verification_email()
     {
+        Notification::fake();
+
         // Act: Register new user
         $response = $this->postJson('/api/auth/register', [
             'name' => 'Test User',
@@ -445,5 +437,94 @@ class EmailVerificationTest extends TestCase
         $this->assertNotNull($user);
         
         Notification::assertSentTo($user, VerifyEmail::class);
+    }
+
+    // ========== AUTO-RESEND ON LOGIN TESTS ==========
+
+    /** @test */
+    public function unverified_user_receives_verification_email_on_login()
+    {
+        Notification::fake();
+
+        // Arrange: Create unverified user
+        $user = User::factory()->unverified()->create([
+            'password' => bcrypt('password123'),
+        ]);
+
+        // Act: Login
+        $response = $this->postJson('/api/auth/login', [
+            'email' => $user->email,
+            'password' => 'password123',
+        ]);
+
+        // Assert: Login successful
+        $response->assertStatus(200);
+
+        // Verification email should be auto-sent
+        Notification::assertSentTo($user, VerifyEmail::class);
+    }
+
+    /** @test */
+    public function verified_user_does_not_receive_verification_email_on_login()
+    {
+        Notification::fake();
+
+        // Arrange: Create verified user
+        $user = User::factory()->create([
+            'email_verified_at' => now(),
+            'password' => bcrypt('password123'),
+        ]);
+
+        // Act: Login
+        $response = $this->postJson('/api/auth/login', [
+            'email' => $user->email,
+            'password' => 'password123',
+        ]);
+
+        // Assert: Login successful
+        $response->assertStatus(200);
+
+        // No verification email should be sent
+        Notification::assertNothingSent();
+    }
+
+    // ========== CHANGE EMAIL METHOD TESTS ==========
+
+    /** @test */
+    public function change_email_method_returns_true_when_email_changes()
+    {
+        // Arrange
+        $user = User::factory()->create([
+            'email' => 'old@example.com',
+            'email_verified_at' => now(),
+        ]);
+
+        // Act
+        $changed = $user->changeEmail('new@example.com');
+
+        // Assert
+        $this->assertTrue($changed);
+        $this->assertEquals('new@example.com', $user->email);
+        $this->assertNull($user->email_verified_at);
+    }
+
+    /** @test */
+    public function change_email_method_returns_false_when_email_stays_same()
+    {
+        // Arrange
+        $user = User::factory()->create([
+            'email' => 'same@example.com',
+            'email_verified_at' => now(),
+        ]);
+
+        $originalVerifiedAt = $user->email_verified_at;
+
+        // Act
+        $changed = $user->changeEmail('same@example.com');
+
+        // Assert
+        $this->assertFalse($changed);
+        $this->assertEquals('same@example.com', $user->email);
+        $this->assertEquals($originalVerifiedAt, $user->email_verified_at);
     }
 }

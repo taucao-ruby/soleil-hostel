@@ -492,7 +492,59 @@ Route::middleware(['check_token_valid', 'verified'])->group(function () {
    └─→ 'verified' middleware checks email_verified_at
        ├─→ Verified: Continue to route
        └─→ Unverified: 403 Forbidden
+
+4. Unverified user logs in
+   └─→ Auto-resend verification email
+       └─→ User receives fresh verification link
 ```
+
+### Auto-Resend on Login
+
+**Feature:** Unverified users automatically receive a fresh verification email on login.
+
+```php
+// In all login controllers (AuthController, Auth\AuthController, HttpOnlyTokenController)
+if (!$user->hasVerifiedEmail()) {
+    $user->sendEmailVerificationNotification();
+}
+```
+
+**Benefits:**
+
+- No need to manually request resend
+- Fresh verification link after password reset
+- Better UX for users who lost the original email
+
+### Centralized Email Change
+
+**Method:** `User::changeEmail(string $newEmail)`
+
+```php
+// User model
+public function changeEmail(string $newEmail): bool
+{
+    if ($this->email !== $newEmail) {
+        $this->email = $newEmail;
+        $this->email_verified_at = null;  // Force re-verification
+        return true;
+    }
+    return false;
+}
+
+// Usage in controllers/services
+if ($user->changeEmail($request->input('email'))) {
+    $user->save();
+    $user->sendEmailVerificationNotification();
+    return response()->json(['message' => 'Email changed. Please verify your new email.']);
+}
+```
+
+**Why centralize?**
+
+- ✅ Prevents forgetting to clear `email_verified_at`
+- ✅ Single source of truth for email change logic
+- ✅ Easier to add logging/auditing later
+- ✅ Returns boolean indicating if change occurred
 
 ### Frontend Integration
 
@@ -506,7 +558,7 @@ const checkVerification = async () => {
   }
 };
 
-// Request resend
+// Request resend (now less needed due to auto-resend on login)
 const resendVerification = async () => {
   await api.post("/email/verification-notification");
   showNotification("Verification email sent!");
@@ -528,6 +580,16 @@ $this->actingAs($user)->get('/api/bookings')->assertStatus(200);
 $this->travel(2)->days();
 $response = $this->get($expiredVerificationUrl);
 $response->assertStatus(403);
+
+// Auto-resend on login
+$user = User::factory()->unverified()->create();
+$response = $this->postJson('/api/auth/login', ['email' => $user->email, 'password' => 'password']);
+Notification::assertSentTo($user, VerifyEmail::class);
+
+// changeEmail method
+$changed = $user->changeEmail('new@example.com');
+$this->assertTrue($changed);
+$this->assertNull($user->email_verified_at);
 ```
 
 ---

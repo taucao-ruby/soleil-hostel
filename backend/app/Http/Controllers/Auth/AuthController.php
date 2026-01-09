@@ -63,6 +63,11 @@ class AuthController
             throw new AuthenticationException('Email hoặc mật khẩu không đúng.');
         }
 
+        // Auto-resend verification email if unverified
+        if (!$user->hasVerifiedEmail()) {
+            $user->sendEmailVerificationNotification();
+        }
+
         // ========== Determine: Short-lived hoặc Long-lived ==========
         $shouldRemember = $request->shouldRemember();
         

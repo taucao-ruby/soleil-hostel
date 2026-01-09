@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Auth\AuthController as TokenAuthController;
 use App\Http\Controllers\Auth\HttpOnlyTokenController;
+use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\AdminBookingController;
@@ -83,6 +84,30 @@ Route::get('/rooms/{id}', [RoomController::class, 'show']);
 // Contact form (public - with rate limiting)
 Route::post('/contact', [ContactController::class, 'store'])->middleware('throttle:3,1');
 
+// ========== EMAIL VERIFICATION ROUTES ==========
+// These routes require authentication but NOT verified email
+// The verification link itself uses signed URLs for security
+
+// Verification notice (required by Laravel - named route)
+Route::get('/email/verify', [EmailVerificationController::class, 'notice'])
+    ->middleware(['check_token_valid'])
+    ->name('verification.notice');
+
+// Verify email (signed URL from verification email)
+Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+    ->middleware(['check_token_valid', 'signed'])
+    ->name('verification.verify');
+
+// Resend verification email
+Route::post('/email/verification-notification', [EmailVerificationController::class, 'resend'])
+    ->middleware(['check_token_valid', 'throttle:email-verification'])
+    ->name('verification.send');
+
+// Check verification status
+Route::get('/email/verification-status', [EmailVerificationController::class, 'status'])
+    ->middleware(['check_token_valid'])
+    ->name('verification.status');
+
 // ========== PROTECTED ROUTES (Require valid token) ==========
 // 
 // Our custom middleware:
@@ -116,7 +141,13 @@ Route::middleware(['check_token_valid'])->group(function () {
     Route::put('/rooms/{id}', [RoomController::class, 'update']);
     Route::patch('/rooms/{id}', [RoomController::class, 'update']);
     Route::delete('/rooms/{id}', [RoomController::class, 'destroy']);
+});
 
+// ========== PROTECTED ROUTES (Require valid token + verified email) ==========
+// SECURITY: These routes require email verification before access
+// Users with unverified email will receive 403 Forbidden
+
+Route::middleware(['check_token_valid', 'verified'])->group(function () {
     // ========== BOOKING ENDPOINTS ==========
     Route::post('/bookings', [BookingController::class, 'store'])->middleware('throttle:10,1');
     Route::get('/bookings', [BookingController::class, 'index']);

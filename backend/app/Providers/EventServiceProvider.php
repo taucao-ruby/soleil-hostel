@@ -11,6 +11,9 @@ use App\Events\BookingUpdated;
 use App\Events\BookingDeleted;
 use App\Listeners\InvalidateCacheOnBookingChange;
 use App\Listeners\QueryDebuggerListener;
+use App\Listeners\SendBookingConfirmation;
+use App\Listeners\SendBookingCancellation;
+use App\Listeners\SendBookingUpdateNotification;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -29,17 +32,20 @@ class EventServiceProvider extends ServiceProvider
             QueryDebuggerListener::class,  // ← Track N+1 queries
         ],
 
-        // ========== BOOKING EVENTS + CACHE INVALIDATION ==========
+        // ========== BOOKING EVENTS + CACHE INVALIDATION + NOTIFICATIONS ==========
         BookingCreated::class => [
             InvalidateCacheOnBookingChange::class,
+            SendBookingConfirmation::class,  // ← Send confirmation email
         ],
 
         BookingUpdated::class => [
             InvalidateCacheOnBookingChange::class,
+            SendBookingUpdateNotification::class,  // ← Send update email
         ],
 
         BookingDeleted::class => [
             InvalidateCacheOnBookingChange::class,
+            SendBookingCancellation::class,  // ← Send cancellation email
         ],
     ];
 

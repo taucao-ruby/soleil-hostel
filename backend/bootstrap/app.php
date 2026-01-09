@@ -25,6 +25,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\EnsureUserHasRole::class,
             'correlation_id' => \App\Http\Middleware\AddCorrelationId::class,
             'log_performance' => \App\Http\Middleware\LogPerformance::class,
+            'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+            'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,
         ]);
 
         // ========== Register global middleware ==========

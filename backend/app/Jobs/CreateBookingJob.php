@@ -108,7 +108,7 @@ class CreateBookingJob implements ShouldQueue
             'trace' => $exception->getTraceAsString(),
         ]);
 
-        // Có thể gửi email notification cho admin hoặc user
-        // Notification::send($user, new BookingJobFailedNotification($booking, $exception));
+        // Note: Notifications are handled by BookingCreated event listeners
+        // No need to manually send emails here
     }
 }

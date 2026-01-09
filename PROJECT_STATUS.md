@@ -1,15 +1,16 @@
 # Soleil Hostel - Project Status
 
-**Last Updated:** January 6, 2026
+**Last Updated:** January 9, 2026
 
 ## 🎉 Current Status: Production Ready & Running ✅
 
-All 488 tests passing, 0 skipped, 1348 assertions verified.  
+All 488+ tests passing, 0 skipped, 1348+ assertions verified.  
 All GitHub Actions CI/CD workflows passing.  
 Documentation restructured and organized in `docs/` folder.  
 Both backend and frontend servers verified running successfully.  
 Optimistic locking fully implemented and tested (24 tests).  
-Repository layer fully unit tested (53 tests with zero database dependency).
+Repository layer fully unit tested (53 tests with zero database dependency).  
+Email verification fully implemented with Laravel default notifications.
 
 ---
 
@@ -176,6 +177,28 @@ Fixed 13 GitHub Actions issues:
 - Zero behavioral change - 100% backward compatible
 - Improved code organization and testability
 - Follows Laravel best practices for validation
+
+### 📧 Email Verification Implementation (January 9, 2026)
+
+- User model implements `MustVerifyEmail` interface (CRITICAL for activation)
+- `verified` middleware added to protect booking routes
+- Email verification routes: `/api/email/verify`, `/api/email/verification-notification`, `/api/email/verification-status`
+- Uses Laravel's default `VerifyEmail` notification (no custom Mailables)
+- Signed URLs with expiration for verification links
+- Comprehensive test coverage:
+  - Unverified user blocked from protected routes
+  - Expired verification link rejected
+  - Email change requires re-verification
+  - Rate limiting on resend requests
+- Documentation in [EMAIL_NOTIFICATIONS.md](./docs/backend/guides/EMAIL_NOTIFICATIONS.md)
+
+### 📬 Booking Notifications (January 9, 2026)
+
+- Created Laravel Notifications for booking events (no custom Mailables)
+- `BookingConfirmed`, `BookingCancelled`, `BookingUpdated` notifications
+- Event-driven: automatically sent via listeners
+- Queued on `notifications` queue for async delivery
+- Full test coverage for notifications and listeners
 
 ---
 

@@ -71,7 +71,7 @@ class CheckTokenNotRevokedAndNotExpired
         }
         
         // Store the access token on the user so currentAccessToken() works
-        $user->accessToken = $token;
+        $user->withAccessToken($token);
 
         // ========== CHECK: Token hết hạn? ==========
         if ($token->isExpired()) {

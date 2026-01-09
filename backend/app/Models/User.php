@@ -185,6 +185,36 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Booking::class);
     }
 
+    // ===== EMAIL MANAGEMENT =====
+
+    /**
+     * Change user email and clear verification status.
+     * 
+     * CRITICAL: Email change requires re-verification for security.
+     * This centralizes the logic to prevent forgetting to clear email_verified_at.
+     * 
+     * @param string $newEmail The new email address
+     * @return bool Whether the email was actually changed
+     * 
+     * @example
+     * // In controllers/services
+     * if ($user->changeEmail($request->input('email'))) {
+     *     $user->save();
+     *     $user->sendEmailVerificationNotification();
+     * }
+     */
+    public function changeEmail(string $newEmail): bool
+    {
+        // Only change if different
+        if ($this->email !== $newEmail) {
+            $this->email = $newEmail;
+            $this->email_verified_at = null;  // Force re-verification
+            return true;
+        }
+        
+        return false;
+    }
+
     // ===== SCOPES =====
 
     /**

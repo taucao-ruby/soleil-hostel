@@ -77,4 +77,22 @@ class BookingPolicy
     {
         return $user->isAdmin();
     }
+
+    /**
+     * Determine whether the user can confirm a pending booking.
+     * Only admins can confirm bookings.
+     */
+    public function confirm(User $user, Booking $booking): bool
+    {
+        return $user->isAdmin();
+    }
+
+    /**
+     * Determine whether the user can cancel a booking.
+     * Users can cancel their own bookings, admins can cancel any.
+     */
+    public function cancel(User $user, Booking $booking): bool
+    {
+        return $user->isAdmin() || $user->id === $booking->user_id;
+    }
 }

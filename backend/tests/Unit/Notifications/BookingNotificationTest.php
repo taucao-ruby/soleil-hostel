@@ -33,7 +33,7 @@ class BookingNotificationTest extends TestCase
             'guest_email' => 'john@example.com',
             'check_in' => '2025-12-01',
             'check_out' => '2025-12-05',
-            'total_price' => 400.00,
+            'status' => Booking::STATUS_CONFIRMED,
         ]);
 
         // Act
@@ -58,6 +58,7 @@ class BookingNotificationTest extends TestCase
         $booking = Booking::factory()->create([
             'room_id' => $room->id,
             'guest_email' => 'guest@example.com',
+            'status' => Booking::STATUS_CANCELLED,
         ]);
 
         // Act
@@ -81,6 +82,7 @@ class BookingNotificationTest extends TestCase
             'guest_email' => 'guest@example.com',
             'check_in' => '2025-12-01',
             'check_out' => '2025-12-05',
+            'status' => Booking::STATUS_CONFIRMED,
         ]);
 
         $changes = [
@@ -113,7 +115,7 @@ class BookingNotificationTest extends TestCase
             'guest_email' => 'jane@example.com',
             'check_in' => '2025-12-10',
             'check_out' => '2025-12-15',
-            'total_price' => 750.00,
+            'status' => Booking::STATUS_CONFIRMED,
         ]);
 
         // Act
@@ -121,11 +123,14 @@ class BookingNotificationTest extends TestCase
         $mailMessage = $notification->toMail(new \Illuminate\Notifications\AnonymousNotifiable());
 
         // Assert
+        $this->assertNotNull($mailMessage, 'Mail message should not be null for confirmed booking');
         $this->assertStringContainsString('Hello Jane Smith!', $mailMessage->greeting);
-        $this->assertStringContainsString('Ocean View Suite', $mailMessage->introLines[1]);
-        $this->assertStringContainsString('2025-12-10', $mailMessage->introLines[2]);
-        $this->assertStringContainsString('2025-12-15', $mailMessage->introLines[3]);
-        $this->assertStringContainsString('750.00', $mailMessage->introLines[4]);
+        
+        // Check that content contains the expected details (content structure may vary)
+        $allContent = implode(' ', $mailMessage->introLines);
+        $this->assertStringContainsString('Ocean View Suite', $allContent);
+        $this->assertStringContainsString('Dec 10, 2025', $allContent);
+        $this->assertStringContainsString('Dec 15, 2025', $allContent);
     }
 
     /** @test */

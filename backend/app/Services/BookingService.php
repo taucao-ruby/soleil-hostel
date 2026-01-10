@@ -3,10 +3,14 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use App\Notifications\BookingConfirmed;
+use App\Notifications\BookingCancelled;
 use App\Traits\HasCacheTagSupport;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 
 class BookingService
 {
@@ -18,6 +22,96 @@ class BookingService
     private const CACHE_TAG_BOOKINGS = 'bookings';
     private const CACHE_TAG_USER = 'user-bookings';
     private const CACHE_TAG_TRASHED = 'trashed-bookings';
+
+    // Rate limiting: max 5 confirmation emails per user per minute
+    private const RATE_LIMIT_CONFIRMATIONS_PER_MINUTE = 5;
+
+    /**
+     * Confirm a pending booking and trigger confirmation email notification.
+     * 
+     * Architecture:
+     * - Updates booking status to confirmed within a transaction
+     * - Dispatches BookingConfirmed notification (queued, afterCommit)
+     * - Rate limits per-user to prevent email abuse
+     * - Notification is non-blocking: booking is confirmed even if email fails
+     * 
+     * @param Booking $booking The pending booking to confirm
+     * @return Booking The confirmed booking
+     * @throws \RuntimeException If booking is not in pending status
+     * 
+     * @see docs/backend/BOOKING_CONFIRMATION_NOTIFICATION_ARCHITECTURE.md
+     */
+    public function confirmBooking(Booking $booking): Booking
+    {
+        if ($booking->status !== Booking::STATUS_PENDING) {
+            throw new \RuntimeException(
+                "Cannot confirm booking: current status is '{$booking->status}', expected 'pending'"
+            );
+        }
+
+        return DB::transaction(function () use ($booking) {
+            $booking->update(['status' => Booking::STATUS_CONFIRMED]);
+            
+            // Invalidate cache
+            $this->invalidateBooking($booking->id, $booking->user_id);
+
+            // Rate limit confirmation emails per user
+            $rateLimitKey = 'booking-confirm-email:' . $booking->user_id;
+            
+            if (RateLimiter::tooManyAttempts($rateLimitKey, self::RATE_LIMIT_CONFIRMATIONS_PER_MINUTE)) {
+                Log::warning('Rate limit hit for booking confirmation email', [
+                    'user_id' => $booking->user_id,
+                    'booking_id' => $booking->id,
+                ]);
+                // Still confirm booking, just skip notification (business decision: email is non-critical)
+            } else {
+                RateLimiter::hit($rateLimitKey, decaySeconds: 60);
+                
+                // Dispatch notification to user (afterCommit ensures it waits for transaction)
+                $booking->user->notify(new BookingConfirmed($booking));
+                
+                Log::info('Booking confirmed and notification queued', [
+                    'booking_id' => $booking->id,
+                    'user_id' => $booking->user_id,
+                ]);
+            }
+
+            return $booking->fresh();
+        });
+    }
+
+    /**
+     * Cancel a booking and trigger cancellation email notification.
+     * 
+     * @param Booking $booking The booking to cancel
+     * @param int|null $cancelledByUserId User performing the cancellation
+     * @return Booking The cancelled booking
+     * @throws \RuntimeException If booking is already cancelled
+     */
+    public function cancelBooking(Booking $booking, ?int $cancelledByUserId = null): Booking
+    {
+        if ($booking->status === Booking::STATUS_CANCELLED) {
+            throw new \RuntimeException('Booking is already cancelled');
+        }
+
+        return DB::transaction(function () use ($booking, $cancelledByUserId) {
+            $booking->update(['status' => Booking::STATUS_CANCELLED]);
+            
+            // Invalidate cache
+            $this->invalidateBooking($booking->id, $booking->user_id);
+
+            // Dispatch cancellation notification
+            $booking->user->notify(new BookingCancelled($booking));
+            
+            Log::info('Booking cancelled and notification queued', [
+                'booking_id' => $booking->id,
+                'user_id' => $booking->user_id,
+                'cancelled_by' => $cancelledByUserId ?? auth()->id(),
+            ]);
+
+            return $booking->fresh();
+        });
+    }
 
     /**
      * Get user's bookings - CACHED

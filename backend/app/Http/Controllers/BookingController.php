@@ -190,5 +190,76 @@ class BookingController extends Controller
             'message' => 'Booking cancelled successfully',
         ], 200);
     }
+
+    /**
+     * Confirm a pending booking.
+     * 
+     * Changes booking status from 'pending' to 'confirmed' and triggers
+     * a queued confirmation email notification to the guest.
+     * 
+     * Authorization: Only admins can confirm bookings
+     * Rate limiting: Max 5 confirmation emails per user per minute
+     */
+    public function confirm(Booking $booking): JsonResponse
+    {
+        $this->authorize('confirm', $booking);
+
+        if ($booking->status !== Booking::STATUS_PENDING) {
+            return response()->json([
+                'success' => false,
+                'message' => "Cannot confirm booking: current status is '{$booking->status}'",
+            ], 422);
+        }
+
+        try {
+            $booking = $this->bookingService->confirmBooking($booking);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Booking confirmed successfully. Confirmation email queued.',
+                'data' => new BookingResource($booking->load('room')),
+            ]);
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
+     * Cancel a booking.
+     * 
+     * Changes booking status to 'cancelled' and triggers a queued
+     * cancellation email notification to the guest.
+     * 
+     * Authorization: Users can cancel their own bookings, admins can cancel any
+     */
+    public function cancel(Booking $booking): JsonResponse
+    {
+        $this->authorize('cancel', $booking);
+
+        if ($booking->status === Booking::STATUS_CANCELLED) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Booking is already cancelled',
+            ], 422);
+        }
+
+        try {
+            $booking = $this->bookingService->cancelBooking($booking, auth()->id());
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Booking cancelled successfully. Cancellation email queued.',
+                'data' => new BookingResource($booking->load('room')),
+            ]);
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+    }
 }
 

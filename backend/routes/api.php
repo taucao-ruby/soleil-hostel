@@ -155,6 +155,12 @@ Route::middleware(['check_token_valid', 'verified'])->group(function () {
     Route::put('/bookings/{booking}', [BookingController::class, 'update'])->middleware('throttle:10,1');
     Route::patch('/bookings/{booking}', [BookingController::class, 'update'])->middleware('throttle:10,1');
     Route::delete('/bookings/{booking}', [BookingController::class, 'destroy'])->middleware('throttle:10,1');
+    
+    // Booking status change endpoints (with notification triggers)
+    Route::post('/bookings/{booking}/confirm', [BookingController::class, 'confirm'])
+        ->middleware(['role:admin', 'throttle:10,1']);
+    Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])
+        ->middleware('throttle:10,1');
 
     // ========== ADMIN BOOKING ENDPOINTS (Soft Delete Management) ==========
     // All routes require admin role via middleware

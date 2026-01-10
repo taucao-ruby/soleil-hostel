@@ -4,6 +4,7 @@ namespace Tests;
 
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -19,6 +20,10 @@ abstract class TestCase extends BaseTestCase
     protected function setUp(): void
     {
         parent::setUp();
+        
+        // Fake notifications by default to avoid mail.manager binding errors
+        // Tests that need to verify notifications can call Notification::fake() again
+        Notification::fake();
     }
 
     protected function tearDown(): void

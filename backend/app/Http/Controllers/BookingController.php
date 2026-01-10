@@ -122,8 +122,8 @@ class BookingController extends Controller
         $validated = $request->validated();
 
         try {
-            // Store original booking data BEFORE updating (to avoid serialization issues)
-            $originalBookingData = $booking->toArray();
+            // Store original booking data BEFORE updating (to compare changes later)
+            $originalBookingData = (object) $booking->toArray();
 
             // Gọi service update - convert strings to Carbon dates
             // Pass guest_name and guest_email via additionalData
@@ -137,9 +137,8 @@ class BookingController extends Controller
                 ]
             );
 
-            // Dispatch event for cache invalidation using array data instead of models
-            // This avoids Laravel trying to restore deleted models from the event
-            event(new BookingUpdated((object) $booking->toArray(), (object) $originalBookingData));
+            // Dispatch event for notification - pass actual Booking model and original data
+            event(new BookingUpdated($booking, $originalBookingData));
 
             return response()->json([
                 'success' => true,

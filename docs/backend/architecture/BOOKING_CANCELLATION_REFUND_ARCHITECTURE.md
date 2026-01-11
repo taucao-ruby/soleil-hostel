@@ -59,37 +59,63 @@
 
 ```
 ┌─────────────┐     confirm()     ┌─────────────┐
-│   pending   │ ─────────────────▶ │  confirmed  │
-└─────────────┘                    └──────┬──────┘
-                                          │
-                                    cancel()
-                                          │
-                                          ▼
-                              ┌───────────────────────┐
-                              │ cancellation_pending  │  ← (intermediate state)
-                              └───────────┬───────────┘
-                                          │
-                          ┌───────────────┴───────────────┐
-                          │                               │
-                    refund succeeds                 refund fails
-                          │                               │
-                          ▼                               ▼
-                   ┌────────────┐                ┌─────────────────┐
-                   │  cancelled │                │  refund_failed  │
-                   │ (refunded) │                │ (needs manual)  │
-                   └────────────┘                └─────────────────┘
+│   PENDING   │ ─────────────────▶│  CONFIRMED  │
+└─────────────┘                   └──────┬──────┘
+                                         │
+                                   cancel()
+                                         │
+                                         ▼
+                             ┌───────────────────────┐
+                             │   REFUND_PENDING      │  ← (intermediate state)
+                             └───────────┬───────────┘
+                                         │
+                         ┌───────────────┴───────────────┐
+                         │                               │
+                   refund succeeds                 refund fails
+                         │                               │
+                         ▼                               ▼
+                  ┌────────────┐                ┌─────────────────┐
+                  │  CANCELLED │                │  REFUND_FAILED  │
+                  │ (refunded) │                │ (needs manual)  │
+                  └────────────┘                └─────────────────┘
 ```
+
+> **Note:** The enum uses `REFUND_PENDING` (not `cancellation_pending`) as the intermediate state name.
+> See `App\Enums\BookingStatus` for the authoritative status definitions.
 
 ### Allowed Transitions (Exhaustive)
 
-| From                   | To                     | Trigger                              | Transactional? |
-| ---------------------- | ---------------------- | ------------------------------------ | -------------- |
-| `pending`              | `confirmed`            | Admin confirmation                   | Yes            |
-| `pending`              | `cancelled`            | User/admin cancellation (no payment) | Yes            |
-| `confirmed`            | `cancellation_pending` | Cancellation initiated               | Yes            |
-| `cancellation_pending` | `cancelled`            | Refund succeeds                      | Yes (via job)  |
-| `cancellation_pending` | `refund_failed`        | Refund exhausts retries              | Yes (via job)  |
-| `refund_failed`        | `cancelled`            | Manual admin resolution              | Yes            |
+| From             | To               | Trigger                              | Transactional? |
+| ---------------- | ---------------- | ------------------------------------ | -------------- |
+| `PENDING`        | `CONFIRMED`      | Admin confirmation                   | Yes            |
+| `PENDING`        | `CANCELLED`      | User/admin cancellation (no payment) | Yes            |
+| `PENDING`        | `REFUND_PENDING` | Cancellation with refund             | Yes            |
+| `CONFIRMED`      | `REFUND_PENDING` | Cancellation initiated               | Yes            |
+| `CONFIRMED`      | `CANCELLED`      | Cancel without refund                | Yes            |
+| `REFUND_PENDING` | `CANCELLED`      | Refund succeeds                      | Yes (via job)  |
+| `REFUND_PENDING` | `REFUND_FAILED`  | Refund exhausts retries              | Yes (via job)  |
+| `REFUND_FAILED`  | `REFUND_PENDING` | Retry refund                         | Yes            |
+| `REFUND_FAILED`  | `CANCELLED`      | Manual admin resolution              | Yes            |
+
+### BookingStatus Enum
+
+```php
+// app/Enums/BookingStatus.php
+
+enum BookingStatus: string
+{
+    case PENDING = 'pending';
+    case CONFIRMED = 'confirmed';
+    case REFUND_PENDING = 'refund_pending';
+    case CANCELLED = 'cancelled';
+    case REFUND_FAILED = 'refund_failed';
+
+    public function isCancellable(): bool;         // PENDING, CONFIRMED, REFUND_FAILED
+    public function isTerminal(): bool;            // CANCELLED only
+    public function isRefundInProgress(): bool;    // REFUND_PENDING only
+    public function canTransitionTo(self $target): bool;
+}
+```
 
 ### Invariants (MUST NEVER Violate)
 
@@ -105,7 +131,7 @@ public function isRefunded(): bool
 public static function bootBooking(): void
 {
     static::saving(function (Booking $booking) {
-        if ($booking->isRefunded() && $booking->status !== self::STATUS_CANCELLED) {
+        if ($booking->isRefunded() && $booking->status !== BookingStatus::CANCELLED) {
             throw new InvariantViolationException(
                 "Invariant violation: refunded booking must be cancelled"
             );
@@ -114,10 +140,10 @@ public static function bootBooking(): void
 }
 ```
 
-### Why Intermediate State `cancellation_pending`?
+### Why Intermediate State `REFUND_PENDING`?
 
 1. **Refund is external**: Stripe API call cannot be in DB transaction
-2. **User visibility**: Shows "cancellation in progress" vs ambiguous state
+2. **User visibility**: Shows "refund in progress" vs ambiguous state
 3. **Retry-safe**: Job can retry without re-triggering duplicate refunds
 4. **Audit trail**: Clear indication of where failure occurred
 
@@ -128,26 +154,25 @@ public static function bootBooking(): void
 ### Sequence Diagram: Success Path
 
 ```
-User                Controller              BookingService           Stripe/Cashier          Queue
+User                Controller              CancellationService      Stripe/Cashier          Queue
  │                      │                        │                        │                    │
  ├─ POST /cancel ──────▶│                        │                        │                    │
  │                      ├── authorize(cancel) ──▶│                        │                    │
  │                      │                        │                        │                    │
  │                      ├── DB::transaction ────▶│                        │                    │
- │                      │   status → cancellation_pending                 │                    │
+ │                      │   status → REFUND_PENDING                       │                    │
  │                      │◀─ commit ──────────────┤                        │                    │
  │                      │                        │                        │                    │
- │                      ├── dispatch(ProcessRefundJob) ──────────────────────────────────────▶│
- │                      │                        │                        │                    │
- │◀─ 202 Accepted ──────┤                        │                        │                    │
- │   {status: "cancellation_pending"}            │                        │                    │
- │                      │                        │                        │                    │
- │                      │                        │    (async via queue)   │                    │
- │                      │                        │◀───────────────────────┤                    │
- │                      │                        ├── $charge->refund() ──▶│                    │
- │                      │                        │◀── RefundObject ───────┤                    │
+ │                      │                        ├── processRefund() ────▶│                    │
+ │                      │                        │◀── RefundResult ───────┤                    │
  │                      │                        │                        │                    │
  │                      │                        ├── DB::transaction      │                    │
+ │                      │                        │   status → CANCELLED   │                    │
+ │                      │◀──────────────────────┤                        │                    │
+ │◀─ 200 OK ────────────┤                        │                        │                    │
+ │   {status: "cancelled"}                       │                        │                    │
+ │                      │                        │                        │                    │
+ │                      │                        ├── event(BookingCancelled) ────────────────▶│      │                    │
  │                      │                        │   status → cancelled   │                    │
  │                      │                        │   refund_id = xyz      │                    │
  │                      │                        │                        │                    │

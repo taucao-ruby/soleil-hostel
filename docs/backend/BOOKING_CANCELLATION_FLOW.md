@@ -13,7 +13,7 @@
 | **Endpoint**             | `POST /api/bookings/{booking}/cancel` — dedicated, idempotent |
 | **Refund Processing**    | **Synchronous** — user waits for Stripe response              |
 | **Transaction Boundary** | DB update + refund are **NOT** in same transaction            |
-| **Fallback**             | `refund_pending` intermediate state; async reconciliation job |
+| **Fallback**             | `REFUND_PENDING` intermediate state; async reconciliation job |
 | **Notification**         | Queued via `afterCommit()`, retry with exponential backoff    |
 | **Idempotency**          | Status check before processing; repeat calls return 200       |
 
@@ -24,10 +24,10 @@
 1. **Dedicated endpoint** — `POST /bookings/{booking}/cancel` isolated from CRUD; never embed in `PATCH /bookings/{id}`
 2. **Synchronous refund** — user receives immediate confirmation; avoids UX ambiguity ("is my refund processing?")
 3. **Cashier-native refunds** — `$user->refund($paymentIntentId, $options)` only; no raw Stripe SDK calls
-4. **Intermediate state** — booking transitions to `refund_pending` before Stripe call; reverts to `cancelled`/`refund_failed` after
+4. **Intermediate state** — booking transitions to `REFUND_PENDING` before Stripe call; reverts to `CANCELLED`/`REFUND_FAILED` after
 5. **Idempotent by design** — re-cancelling an already-cancelled booking returns 200 with existing state
 6. **DB transaction scope** — status updates are transactional; refund call is intentionally **outside** to avoid long-held locks
-7. **Reconciliation job** — scheduled every 5 min to fix orphaned `refund_pending` bookings (Stripe webhook or API check)
+7. **Reconciliation job** — scheduled every 5 min to fix orphaned `REFUND_PENDING` bookings (Stripe webhook or API check)
 8. **Notifications use Mailable internally** — `toMail()` returns a Mailable; never `Mail::send()` directly
 9. **Policy enforcement** — `BookingPolicy@cancel` checks ownership, status, and refund window
 10. **Observability** — structured logs (JSON), Prometheus metrics via `laravel-prometheus`, Sentry for exceptions
@@ -110,22 +110,34 @@ return [
 // app/Policies/BookingPolicy.php
 public function cancel(User $user, Booking $booking): bool
 {
-    if ($booking->user_id !== $user->id && !$user->isAdmin()) {
+    $isOwner = $user->id === $booking->user_id;
+    $isAdmin = $user->isAdmin();
+
+    if (!$isOwner && !$isAdmin) {
         return false;
     }
 
+    // Idempotent — allow re-request on already cancelled
     if ($booking->status === BookingStatus::CANCELLED) {
-        return true; // Idempotent — allow re-request
+        return true;
     }
 
-    if (!in_array($booking->status, [BookingStatus::PENDING, BookingStatus::CONFIRMED])) {
+    // Must be in cancellable state (pending, confirmed, or refund_failed)
+    if (!$booking->status->isCancellable()) {
         return false;
     }
 
-    // Cannot cancel after check-in started
-    return !$booking->isStarted();
+    // Regular users cannot cancel after check-in started (unless config allows)
+    if (!$isAdmin && $booking->isStarted()) {
+        return config('booking.cancellation.allow_after_checkin', false);
+    }
+
+    return true;
 }
 ```
+
+> **Note:** Admins can always cancel bookings even after check-in has started.
+> The `CancellationService::validateCancellation()` method also respects admin bypass.
 
 ---
 

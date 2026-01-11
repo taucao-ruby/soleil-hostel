@@ -1,10 +1,10 @@
 # Soleil Hostel - Project Status
 
-**Last Updated:** January 10, 2026
+**Last Updated:** January 11, 2026
 
 ## 🎉 Current Status: Production Ready & Running ✅
 
-All 537 tests passing, 0 skipped, 1445 assertions verified.  
+All 555 tests passing, 0 skipped, 1496 assertions verified.  
 All GitHub Actions CI/CD workflows passing.  
 Documentation restructured and organized in `docs/` folder.  
 Both backend and frontend servers verified running successfully.  
@@ -17,11 +17,11 @@ Email verification fully implemented with Laravel default notifications.
 ## 📊 Test Results Summary
 
 ```
-✅ 537 tests passed
+✅ 555 tests passed
 ❌ 0 tests failed
 ⏭️  0 tests skipped
-📋 1445 assertions
-⏱️  Duration: ~48 seconds
+📋 1496 assertions
+⏱️  Duration: ~55 seconds
 ```
 
 ---
@@ -205,8 +205,16 @@ Fixed 13 GitHub Actions issues:
 - Fixed date comparison in `SendBookingUpdateNotification` (Carbon vs string)
 - Fixed `TypeError` in `BookingController::update()` - now passes Booking model instead of stdClass
 - Fixed queue test assertions to verify notification properties instead of queue state
-- All 537 tests passing (1445 assertions)
 - Full test coverage for notifications and listeners
+
+### 🔧 BookingStatus Enum Consistency Fix (January 11, 2026)
+
+- Fixed all code to use `BookingStatus` enum instead of deprecated `Booking::STATUS_*` string constants
+- Updated `BookingService`, `CancellationService`, `BookingPolicy` to use enum consistently
+- Fixed `BookingConfirmed` and `BookingUpdated` notifications to use enum for status comparisons
+- Fixed `BookingPolicy::cancel()` inverted logic for after-checkin cancellation
+- Added admin bypass in `CancellationService::validateCancellation()` for isStarted check
+- All 555 tests passing (1496 assertions)
 
 ---
 

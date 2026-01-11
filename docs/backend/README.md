@@ -17,16 +17,17 @@
 
 ### Architecture
 
-| Document                                                    | Description                 |
-| ----------------------------------------------------------- | --------------------------- |
-| [API.md](./architecture/API.md)                             | Complete API reference      |
-| [DATABASE.md](../DATABASE.md)                               | Schema, indexes, migrations |
-| [REPOSITORIES.md](./architecture/REPOSITORIES.md)           | Repository pattern          |
-| [MIDDLEWARE.md](./architecture/MIDDLEWARE.md)               | Middleware pipeline         |
-| [EVENTS.md](./architecture/EVENTS.md)                       | Events & listeners          |
-| [POLICIES.md](./architecture/POLICIES.md)                   | Authorization policies      |
-| [JOBS.md](./architecture/JOBS.md)                           | Queue jobs                  |
-| [TRAITS_EXCEPTIONS.md](./architecture/TRAITS_EXCEPTIONS.md) | Traits, macros, exceptions  |
+| Document                                                                                                  | Description                 |
+| --------------------------------------------------------------------------------------------------------- | --------------------------- |
+| [API.md](./architecture/API.md)                                                                           | Complete API reference      |
+| [DATABASE.md](../DATABASE.md)                                                                             | Schema, indexes, migrations |
+| [REPOSITORIES.md](./architecture/REPOSITORIES.md)                                                         | Repository pattern          |
+| [MIDDLEWARE.md](./architecture/MIDDLEWARE.md)                                                             | Middleware pipeline         |
+| [EVENTS.md](./architecture/EVENTS.md)                                                                     | Events & listeners          |
+| [POLICIES.md](./architecture/POLICIES.md)                                                                 | Authorization policies      |
+| [JOBS.md](./architecture/JOBS.md)                                                                         | Queue jobs                  |
+| [TRAITS_EXCEPTIONS.md](./architecture/TRAITS_EXCEPTIONS.md)                                               | Traits, macros, exceptions  |
+| [BOOKING_CANCELLATION_REFUND_ARCHITECTURE.md](./architecture/BOOKING_CANCELLATION_REFUND_ARCHITECTURE.md) | Cancellation & refund flow  |
 
 ### Features
 

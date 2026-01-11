@@ -172,7 +172,7 @@ class BookingConfirmedNotification extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage|null
     {
         // Guard: booking may have been cancelled between queue and execution
-        if ($this->booking->status !== Booking::STATUS_CONFIRMED) {
+        if ($this->booking->status !== BookingStatus::CONFIRMED) {
             return null; // Returning null skips the mail channel silently
         }
 
@@ -185,6 +185,8 @@ class BookingConfirmedNotification extends Notification implements ShouldQueue
             ->action('View Booking', url('/bookings/' . $this->booking->id));
     }
 ```
+
+> **Note:** Use `BookingStatus::CONFIRMED` enum instead of `Booking::STATUS_CONFIRMED` string constant.
 
 **Rationale:**
 
@@ -235,16 +237,24 @@ class BookingConfirmedNotification extends Notification implements ShouldQueue
 ```php
 public function confirmBooking(Booking $booking): Booking
 {
+    if ($booking->status !== BookingStatus::PENDING) {
+        throw new \RuntimeException(
+            "Cannot confirm booking: current status is '{$booking->status->value}', expected 'pending'"
+        );
+    }
+
     return DB::transaction(function () use ($booking) {
-        $booking->update(['status' => Booking::STATUS_CONFIRMED]);
+        $booking->update(['status' => BookingStatus::CONFIRMED]);
 
         // Dispatch notification—afterCommit() ensures it waits for transaction
-        $booking->user->notify(new BookingConfirmedNotification($booking));
+        $booking->user->notify(new BookingConfirmed($booking));
 
         return $booking->fresh();
     });
 }
 ```
+
+> **Note:** Use `BookingStatus` enum for all status comparisons and assignments.
 
 **Rationale:**
 

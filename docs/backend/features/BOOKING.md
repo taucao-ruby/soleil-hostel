@@ -109,23 +109,77 @@ return $query
 
 ## Booking Model
 
-### Status Constants
+### BookingStatus Enum
+
+The booking system uses a dedicated `BookingStatus` enum for type-safe status management:
+
+```php
+// App\Enums\BookingStatus
+
+enum BookingStatus: string
+{
+    case PENDING = 'pending';
+    case CONFIRMED = 'confirmed';
+    case REFUND_PENDING = 'refund_pending';
+    case CANCELLED = 'cancelled';
+    case REFUND_FAILED = 'refund_failed';
+
+    // Helper methods
+    public function isCancellable(): bool;      // Can this status be cancelled?
+    public function isTerminal(): bool;         // Is this a final state?
+    public function isRefundInProgress(): bool; // Is refund being processed?
+    public function isActive(): bool;           // Is this an active booking?
+    public function canTransitionTo(self $target): bool; // Valid transitions
+    public function label(): string;            // Human-readable label
+    public function color(): string;            // CSS color class
+}
+```
+
+### State Machine
+
+```
+┌─────────┐    ┌───────────┐    ┌────────────────┐    ┌───────────┐
+│ PENDING │───▶│ CONFIRMED │───▶│ REFUND_PENDING │───▶│ CANCELLED │
+└─────────┘    └───────────┘    └────────────────┘    └───────────┘
+     │              │                   │                    ▲
+     └──────────────┴───────────────────┘                    │
+     (no-payment fast path: skip refund)                     │
+                                        ▼                    │
+                                ┌───────────────┐            │
+                                │ REFUND_FAILED │────────────┘
+                                └───────────────┘
+```
+
+### Model Configuration
 
 ```php
 class Booking extends Model
 {
     use SoftDeletes, Purifiable;
 
-    public const STATUS_PENDING = 'pending';
-    public const STATUS_CONFIRMED = 'confirmed';
-    public const STATUS_CANCELLED = 'cancelled';
-    public const ACTIVE_STATUSES = ['pending', 'confirmed'];
+    protected $casts = [
+        'status' => BookingStatus::class,  // Enum casting
+        'check_in' => 'date',
+        'check_out' => 'date',
+    ];
 
     protected $fillable = [
         'room_id', 'check_in', 'check_out',
         'guest_name', 'guest_email', 'status',
-        'user_id', 'deleted_by'
+        'user_id', 'deleted_by',
+        // Refund fields
+        'payment_intent_id', 'amount', 'refund_id',
+        'refund_status', 'refund_amount', 'refund_error',
+        'cancelled_at', 'cancelled_by',
     ];
+
+    // Legacy constants (deprecated - use BookingStatus enum)
+    /** @deprecated Use BookingStatus::PENDING */
+    public const STATUS_PENDING = 'pending';
+    /** @deprecated Use BookingStatus::CONFIRMED */
+    public const STATUS_CONFIRMED = 'confirmed';
+    /** @deprecated Use BookingStatus::CANCELLED */
+    public const STATUS_CANCELLED = 'cancelled';
 
     // XSS Protection: auto-purify guest_name
     public function getPurifiableFields() {
@@ -140,10 +194,10 @@ class Booking extends Model
 // Overlap detection
 Booking::overlappingBookings($roomId, $checkIn, $checkOut);
 
-// Filter by status
+// Filter by status (use enum)
+Booking::where('status', BookingStatus::CONFIRMED);
 Booking::active();        // pending + confirmed
 Booking::cancelled();     // cancelled only
-Booking::byStatus('confirmed');
 
 // Eager loading (N+1 prevention)
 Booking::withCommonRelations()->get();

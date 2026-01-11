@@ -64,6 +64,52 @@ class BookingPolicy
     {
         return $user->isAdmin();
     }
+
+    public function confirm(User $user, Booking $booking): bool
+    {
+        return $user->isAdmin();
+    }
+
+    /**
+     * Cancellation policy:
+     * - Owner or admin can cancel
+     * - Already cancelled = allowed (idempotency)
+     * - Must be in cancellable state (pending, confirmed, refund_failed)
+     * - Regular users cannot cancel after check-in started (unless config allows)
+     */
+    public function cancel(User $user, Booking $booking): bool
+    {
+        $isOwner = $user->id === $booking->user_id;
+        $isAdmin = $user->isAdmin();
+
+        if (!$isOwner && !$isAdmin) {
+            return false;
+        }
+
+        // Idempotency: already cancelled
+        if ($booking->status === BookingStatus::CANCELLED) {
+            return true;
+        }
+
+        if (!$booking->status->isCancellable()) {
+            return false;
+        }
+
+        // Regular users cannot cancel after check-in
+        if (!$isAdmin && $booking->isStarted()) {
+            return config('booking.cancellation.allow_after_checkin', false);
+        }
+
+        return true;
+    }
+
+    /**
+     * Force cancel bypasses refund and sets to cancelled immediately.
+     */
+    public function forceCancel(User $user, Booking $booking): bool
+    {
+        return $user->isAdmin() && !$booking->status->isTerminal();
+    }
 }
 ```
 
@@ -77,6 +123,10 @@ class BookingPolicy
 | update (any) | ❌   | ❌        | ✅    |
 | delete (own) | ✅   | ✅        | ✅    |
 | delete (any) | ❌   | ❌        | ✅    |
+| confirm      | ❌   | ❌        | ✅    |
+| cancel (own) | ✅   | ✅        | ✅    |
+| cancel (any) | ❌   | ❌        | ✅    |
+| forceCancel  | ❌   | ❌        | ✅    |
 | viewTrashed  | ❌   | ❌        | ✅    |
 | restore      | ❌   | ❌        | ✅    |
 | forceDelete  | ❌   | ❌        | ✅    |

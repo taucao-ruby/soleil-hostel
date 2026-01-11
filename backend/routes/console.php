@@ -24,6 +24,5 @@ Artisan::command('inspire', function () {
 Schedule::job(new ReconcileRefundsJob())
     ->everyFiveMinutes()
     ->withoutOverlapping()
-    ->runInBackground()
     ->onOneServer() // For multi-server deployments
     ->name('reconcile-refunds');

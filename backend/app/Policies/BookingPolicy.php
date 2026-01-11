@@ -119,7 +119,7 @@ class BookingPolicy
 
         // Regular users cannot cancel after check-in has started
         if (!$isAdmin && $booking->isStarted()) {
-            return !config('booking.cancellation.allow_after_checkin', false);
+            return config('booking.cancellation.allow_after_checkin', false);
         }
 
         return true;

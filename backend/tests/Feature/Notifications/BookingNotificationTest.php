@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Notifications;
 
+use App\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
@@ -59,7 +60,7 @@ class BookingNotificationTest extends TestCase
         $booking = Booking::factory()->create([
             'user_id' => $this->user->id,
             'room_id' => $this->room->id,
-            'status' => Booking::STATUS_PENDING,
+            'status' => BookingStatus::PENDING,
         ]);
 
         $this->bookingService->confirmBooking($booking);
@@ -77,7 +78,7 @@ class BookingNotificationTest extends TestCase
         $booking = Booking::factory()->create([
             'user_id' => $this->user->id,
             'room_id' => $this->room->id,
-            'status' => Booking::STATUS_PENDING,
+            'status' => BookingStatus::PENDING,
         ]);
 
         $notification = new BookingConfirmed($booking);
@@ -93,7 +94,7 @@ class BookingNotificationTest extends TestCase
         $booking = Booking::factory()->create([
             'user_id' => $this->user->id,
             'room_id' => $this->room->id,
-            'status' => Booking::STATUS_CANCELLED,
+            'status' => BookingStatus::CANCELLED,
         ]);
 
         $notification = new BookingConfirmed($booking);
@@ -115,13 +116,13 @@ class BookingNotificationTest extends TestCase
         $booking = Booking::factory()->create([
             'user_id' => $this->user->id,
             'room_id' => $this->room->id,
-            'status' => Booking::STATUS_PENDING,
+            'status' => BookingStatus::PENDING,
         ]);
 
         $this->bookingService->confirmBooking($booking);
 
         // Booking should be confirmed but notification not sent
-        $this->assertEquals(Booking::STATUS_CONFIRMED, $booking->fresh()->status);
+        $this->assertEquals(BookingStatus::CONFIRMED, $booking->fresh()->status);
         Notification::assertNothingSentTo($this->user);
     }
 
@@ -131,7 +132,7 @@ class BookingNotificationTest extends TestCase
         $booking = Booking::factory()->create([
             'user_id' => $this->user->id,
             'room_id' => $this->room->id,
-            'status' => Booking::STATUS_CONFIRMED,
+            'status' => BookingStatus::CONFIRMED,
         ]);
 
         $this->expectException(\RuntimeException::class);
@@ -150,7 +151,7 @@ class BookingNotificationTest extends TestCase
         $booking = Booking::factory()->create([
             'user_id' => $this->user->id,
             'room_id' => $this->room->id,
-            'status' => Booking::STATUS_CONFIRMED,
+            'status' => BookingStatus::CONFIRMED,
         ]);
 
         $this->bookingService->cancelBooking($booking, $this->admin->id);
@@ -168,7 +169,7 @@ class BookingNotificationTest extends TestCase
         $booking = Booking::factory()->create([
             'user_id' => $this->user->id,
             'room_id' => $this->room->id,
-            'status' => Booking::STATUS_CONFIRMED,
+            'status' => BookingStatus::CONFIRMED,
         ]);
 
         $notification = new BookingCancelled($booking);
@@ -183,7 +184,7 @@ class BookingNotificationTest extends TestCase
         $booking = Booking::factory()->create([
             'user_id' => $this->user->id,
             'room_id' => $this->room->id,
-            'status' => Booking::STATUS_CANCELLED,
+            'status' => BookingStatus::CANCELLED,
         ]);
 
         $this->expectException(\RuntimeException::class);
@@ -200,7 +201,7 @@ class BookingNotificationTest extends TestCase
         $booking = Booking::factory()->create([
             'user_id' => $this->user->id,
             'room_id' => $this->room->id,
-            'status' => Booking::STATUS_CANCELLED,
+            'status' => BookingStatus::CANCELLED,
         ]);
 
         $notification = new BookingUpdated($booking, ['check_in' => '2026-02-01']);
@@ -215,7 +216,7 @@ class BookingNotificationTest extends TestCase
         $booking = Booking::factory()->create([
             'user_id' => $this->user->id,
             'room_id' => $this->room->id,
-            'status' => Booking::STATUS_CONFIRMED,
+            'status' => BookingStatus::CONFIRMED,
         ]);
 
         $changes = ['check_in' => '2026-02-01', 'check_out' => '2026-02-05'];
@@ -236,7 +237,7 @@ class BookingNotificationTest extends TestCase
         $booking = Booking::factory()->create([
             'user_id' => $this->user->id,
             'room_id' => $this->room->id,
-            'status' => Booking::STATUS_PENDING,
+            'status' => BookingStatus::PENDING,
         ]);
 
         $response = $this->actingAs($this->admin)
@@ -248,7 +249,7 @@ class BookingNotificationTest extends TestCase
                 'message' => 'Booking confirmed successfully. Confirmation email queued.',
             ]);
 
-        $this->assertEquals(Booking::STATUS_CONFIRMED, $booking->fresh()->status);
+        $this->assertEquals(BookingStatus::CONFIRMED, $booking->fresh()->status);
         Notification::assertSentTo($this->user, BookingConfirmed::class);
     }
 
@@ -258,7 +259,7 @@ class BookingNotificationTest extends TestCase
         $booking = Booking::factory()->create([
             'user_id' => $this->user->id,
             'room_id' => $this->room->id,
-            'status' => Booking::STATUS_PENDING,
+            'status' => BookingStatus::PENDING,
         ]);
 
         $response = $this->actingAs($this->user)
@@ -275,7 +276,7 @@ class BookingNotificationTest extends TestCase
         $booking = Booking::factory()->create([
             'user_id' => $this->user->id,
             'room_id' => $this->room->id,
-            'status' => Booking::STATUS_CONFIRMED,
+            'status' => BookingStatus::CONFIRMED,
         ]);
 
         $response = $this->actingAs($this->user)
@@ -284,11 +285,16 @@ class BookingNotificationTest extends TestCase
         $response->assertOk()
             ->assertJson([
                 'success' => true,
-                'message' => 'Booking cancelled successfully. Cancellation email queued.',
+                'message' => 'Booking cancelled successfully.',
             ]);
 
-        $this->assertEquals(Booking::STATUS_CANCELLED, $booking->fresh()->status);
-        Notification::assertSentTo($this->user, BookingCancelled::class);
+        $this->assertEquals(BookingStatus::CANCELLED, $booking->fresh()->status);
+        // Notification is sent to guest_email via on-demand notification (Notification::route())
+        Notification::assertSentOnDemand(
+            BookingCancelled::class,
+            fn ($notification, $channels, $notifiable) => 
+                $notifiable->routes['mail'] === $booking->guest_email
+        );
     }
 
     /** @test */
@@ -299,7 +305,7 @@ class BookingNotificationTest extends TestCase
         $booking = Booking::factory()->create([
             'user_id' => $otherUser->id,
             'room_id' => $this->room->id,
-            'status' => Booking::STATUS_CONFIRMED,
+            'status' => BookingStatus::CONFIRMED,
         ]);
 
         $response = $this->actingAs($this->user)
@@ -316,14 +322,14 @@ class BookingNotificationTest extends TestCase
         $booking = Booking::factory()->create([
             'user_id' => $this->user->id,
             'room_id' => $this->room->id,
-            'status' => Booking::STATUS_CONFIRMED,
+            'status' => BookingStatus::CONFIRMED,
         ]);
 
         $response = $this->actingAs($this->admin)
             ->postJson("/api/bookings/{$booking->id}/cancel");
 
         $response->assertOk();
-        $this->assertEquals(Booking::STATUS_CANCELLED, $booking->fresh()->status);
+        $this->assertEquals(BookingStatus::CANCELLED, $booking->fresh()->status);
     }
 
     // ========== NOTIFICATION PROPERTIES TESTS ==========
@@ -334,7 +340,7 @@ class BookingNotificationTest extends TestCase
         $booking = Booking::factory()->create([
             'user_id' => $this->user->id,
             'room_id' => $this->room->id,
-            'status' => Booking::STATUS_CONFIRMED,
+            'status' => BookingStatus::CONFIRMED,
         ]);
 
         $notification = new BookingConfirmed($booking);
@@ -350,7 +356,7 @@ class BookingNotificationTest extends TestCase
         $booking = Booking::factory()->create([
             'user_id' => $this->user->id,
             'room_id' => $this->room->id,
-            'status' => Booking::STATUS_CANCELLED,
+            'status' => BookingStatus::CANCELLED,
         ]);
 
         $notification = new BookingCancelled($booking);

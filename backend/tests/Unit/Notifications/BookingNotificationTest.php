@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Notifications;
 
+use App\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
@@ -33,7 +34,7 @@ class BookingNotificationTest extends TestCase
             'guest_email' => 'john@example.com',
             'check_in' => '2025-12-01',
             'check_out' => '2025-12-05',
-            'status' => Booking::STATUS_CONFIRMED,
+            'status' => BookingStatus::CONFIRMED,
         ]);
 
         // Act
@@ -58,7 +59,7 @@ class BookingNotificationTest extends TestCase
         $booking = Booking::factory()->create([
             'room_id' => $room->id,
             'guest_email' => 'guest@example.com',
-            'status' => Booking::STATUS_CANCELLED,
+            'status' => BookingStatus::CANCELLED,
         ]);
 
         // Act
@@ -82,7 +83,7 @@ class BookingNotificationTest extends TestCase
             'guest_email' => 'guest@example.com',
             'check_in' => '2025-12-01',
             'check_out' => '2025-12-05',
-            'status' => Booking::STATUS_CONFIRMED,
+            'status' => BookingStatus::CONFIRMED,
         ]);
 
         $changes = [
@@ -115,7 +116,7 @@ class BookingNotificationTest extends TestCase
             'guest_email' => 'jane@example.com',
             'check_in' => '2025-12-10',
             'check_out' => '2025-12-15',
-            'status' => Booking::STATUS_CONFIRMED,
+            'status' => BookingStatus::CONFIRMED,
         ]);
 
         // Act

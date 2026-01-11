@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
@@ -53,7 +54,7 @@ class CreateBookingServiceTest extends TestCase
         $this->assertNotNull($booking->id);
         $this->assertEquals($this->room->id, $booking->room_id);
         $this->assertEquals($this->user->id, $booking->user_id);
-        $this->assertEquals('pending', $booking->status);
+        $this->assertEquals(BookingStatus::PENDING, $booking->status);
     }
 
     /**
@@ -294,10 +295,10 @@ class CreateBookingServiceTest extends TestCase
             guestEmail: 'test@example.com',
             userId: $this->user->id,
             additionalData: [
-                'status' => 'confirmed', // Override default status
+                'status' => BookingStatus::CONFIRMED, // Override default status
             ],
         );
 
-        $this->assertEquals('confirmed', $booking->status);
+        $this->assertEquals(BookingStatus::CONFIRMED, $booking->status);
     }
 }

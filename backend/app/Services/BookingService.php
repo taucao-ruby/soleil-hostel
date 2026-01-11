@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Notifications\BookingConfirmed;
 use App\Notifications\BookingCancelled;
@@ -43,14 +44,14 @@ class BookingService
      */
     public function confirmBooking(Booking $booking): Booking
     {
-        if ($booking->status !== Booking::STATUS_PENDING) {
+        if ($booking->status !== BookingStatus::PENDING) {
             throw new \RuntimeException(
-                "Cannot confirm booking: current status is '{$booking->status}', expected 'pending'"
+                "Cannot confirm booking: current status is '{$booking->status->value}', expected 'pending'"
             );
         }
 
         return DB::transaction(function () use ($booking) {
-            $booking->update(['status' => Booking::STATUS_CONFIRMED]);
+            $booking->update(['status' => BookingStatus::CONFIRMED]);
             
             // Invalidate cache
             $this->invalidateBooking($booking->id, $booking->user_id);
@@ -90,12 +91,12 @@ class BookingService
      */
     public function cancelBooking(Booking $booking, ?int $cancelledByUserId = null): Booking
     {
-        if ($booking->status === Booking::STATUS_CANCELLED) {
+        if ($booking->status === BookingStatus::CANCELLED) {
             throw new \RuntimeException('Booking is already cancelled');
         }
 
         return DB::transaction(function () use ($booking, $cancelledByUserId) {
-            $booking->update(['status' => Booking::STATUS_CANCELLED]);
+            $booking->update(['status' => BookingStatus::CANCELLED]);
             
             // Invalidate cache
             $this->invalidateBooking($booking->id, $booking->user_id);

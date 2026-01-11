@@ -55,7 +55,7 @@ final class CancellationService
         }
 
         // Validate cancellation is allowed
-        $this->validateCancellation($booking);
+        $this->validateCancellation($booking, $actor);
 
         // Phase 1: Lock and mark as refund_pending (or cancelled if no payment)
         $booking = $this->transitionToRefundPending($booking, $actor);
@@ -80,14 +80,14 @@ final class CancellationService
      *
      * @throws BookingCancellationException
      */
-    private function validateCancellation(Booking $booking): void
+    private function validateCancellation(Booking $booking, User $actor): void
     {
         if (!$booking->status->isCancellable()) {
             throw BookingCancellationException::notCancellable($booking);
         }
 
-        // Check if booking has already started (unless config allows)
-        if ($booking->isStarted() && !config('booking.cancellation.allow_after_checkin')) {
+        // Check if booking has already started (unless config allows or actor is admin)
+        if ($booking->isStarted() && !config('booking.cancellation.allow_after_checkin') && !$actor->isAdmin()) {
             throw BookingCancellationException::alreadyStarted($booking);
         }
     }

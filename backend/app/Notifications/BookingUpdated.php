@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Enums\BookingStatus;
 use App\Models\Booking;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -67,7 +68,7 @@ class BookingUpdated extends Notification implements ShouldQueue
     public function toMail(object $notifiable): ?MailMessage
     {
         // Skip if booking was cancelled (separate notification handles that)
-        if ($this->booking->status === Booking::STATUS_CANCELLED) {
+        if ($this->booking->status === BookingStatus::CANCELLED) {
             Log::info('BookingUpdated notification skipped - booking cancelled', [
                 'booking_id' => $this->booking->id,
             ]);

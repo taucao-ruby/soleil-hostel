@@ -9,6 +9,7 @@ use Illuminate\Database\Events\QueryExecuted;
 use App\Events\BookingCreated;
 use App\Events\BookingUpdated;
 use App\Events\BookingDeleted;
+use App\Events\BookingCancelled;
 use App\Listeners\InvalidateCacheOnBookingChange;
 use App\Listeners\QueryDebuggerListener;
 use App\Listeners\SendBookingConfirmation;
@@ -45,7 +46,13 @@ class EventServiceProvider extends ServiceProvider
 
         BookingDeleted::class => [
             InvalidateCacheOnBookingChange::class,
-            SendBookingCancellation::class,  // ← Send cancellation email
+            SendBookingCancellation::class,  // ← Send cancellation email (soft delete)
+        ],
+
+        // Cancellation with refund flow
+        BookingCancelled::class => [
+            InvalidateCacheOnBookingChange::class,
+            SendBookingCancellation::class,  // ← Send cancellation email with refund info
         ],
     ];
 

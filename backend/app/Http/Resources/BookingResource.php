@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\BookingStatus;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -22,8 +23,50 @@ class BookingResource extends JsonResource
             'check_out' => $this->check_out->format('Y-m-d'),
             'guest_name' => $this->guest_name,
             'guest_email' => $this->guest_email,
-            'status' => $this->status,
+            'status' => $this->status instanceof BookingStatus 
+                ? $this->status->value 
+                : $this->status,
+            'status_label' => $this->status instanceof BookingStatus 
+                ? $this->status->label() 
+                : null,
             'nights' => $this->nights,
+            
+            // ===== PAYMENT INFO =====
+            'amount' => $this->when($this->amount !== null, $this->amount),
+            'amount_formatted' => $this->when(
+                $this->amount !== null, 
+                fn() => '$' . number_format($this->amount / 100, 2)
+            ),
+            
+            // ===== REFUND INFO (visible when cancelled with refund) =====
+            'refund_amount' => $this->when(
+                $this->status === BookingStatus::CANCELLED && $this->refund_amount,
+                $this->refund_amount
+            ),
+            'refund_amount_formatted' => $this->when(
+                $this->status === BookingStatus::CANCELLED && $this->refund_amount,
+                fn() => '$' . number_format($this->refund_amount / 100, 2)
+            ),
+            'refund_status' => $this->when(
+                $this->refund_status !== null,
+                $this->refund_status
+            ),
+            
+            // ===== CANCELLATION INFO =====
+            'cancelled_at' => $this->when(
+                $this->cancelled_at !== null,
+                fn() => $this->cancelled_at?->toIso8601String()
+            ),
+            'cancelled_by' => $this->whenLoaded('cancelledBy', fn() => [
+                'id' => $this->cancelledBy->id,
+                'name' => $this->cancelledBy->name,
+            ]),
+            
+            // ===== REFUND ELIGIBILITY (for pending/confirmed bookings) =====
+            'refund_percentage' => $this->when(
+                $this->status instanceof BookingStatus && $this->status->isCancellable(),
+                fn() => $this->getRefundPercentage()
+            ),
             
             // ===== CONDITIONAL RELATIONSHIPS =====
             // Only include relationships if they were eager-loaded

@@ -2,6 +2,7 @@
 
 namespace App\Listeners;
 
+use App\Events\BookingCancelled;
 use App\Events\BookingCreated;
 use App\Events\BookingUpdated;
 use App\Events\BookingDeleted;
@@ -26,6 +27,8 @@ class InvalidateCacheOnBookingChange implements ShouldQueue
                 $this->handleUpdated($event->booking, $event->oldBooking);
             } elseif ($event instanceof BookingDeleted) {
                 $this->handleDeleted($event->booking);
+            } elseif ($event instanceof BookingCancelled) {
+                $this->handleCancelled($event->booking);
             }
         } catch (\Exception $e) {
             Log::error("Cache invalidation failed: {$e->getMessage()}");
@@ -60,5 +63,15 @@ class InvalidateCacheOnBookingChange implements ShouldQueue
         $this->roomService->invalidateAvailability($booking->room_id);
         // Invalidate user's bookings list
         $this->bookingService->invalidateUserBookings($booking->user_id);
+    }
+
+    private function handleCancelled($booking): void
+    {
+        // Cancelled booking releases room availability
+        $this->roomService->invalidateAvailability($booking->room_id);
+        // Invalidate user's bookings list
+        $this->bookingService->invalidateUserBookings($booking->user_id);
+        // Invalidate this booking's cache
+        $this->bookingService->invalidateBooking($booking->id, $booking->user_id);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
@@ -24,7 +25,7 @@ class BookingFactory extends Factory
             'check_out' => $checkOut,
             'guest_name' => $this->faker->name(),
             'guest_email' => $this->faker->safeEmail(),
-            'status' => Booking::STATUS_PENDING,
+            'status' => BookingStatus::PENDING,
         ];
     }
 
@@ -34,7 +35,7 @@ class BookingFactory extends Factory
     public function confirmed(): static
     {
         return $this->state(fn (array $attributes) => [
-            'status' => Booking::STATUS_CONFIRMED,
+            'status' => BookingStatus::CONFIRMED,
         ]);
     }
 
@@ -44,7 +45,8 @@ class BookingFactory extends Factory
     public function cancelled(): static
     {
         return $this->state(fn (array $attributes) => [
-            'status' => Booking::STATUS_CANCELLED,
+            'status' => BookingStatus::CANCELLED,
+            'cancelled_at' => Carbon::now()->subHours($this->faker->numberBetween(1, 48)),
         ]);
     }
 
@@ -54,7 +56,70 @@ class BookingFactory extends Factory
     public function pending(): static
     {
         return $this->state(fn (array $attributes) => [
-            'status' => Booking::STATUS_PENDING,
+            'status' => BookingStatus::PENDING,
+        ]);
+    }
+
+    /**
+     * Create a booking with refund pending status.
+     */
+    public function refundPending(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => BookingStatus::REFUND_PENDING,
+            'cancelled_at' => Carbon::now()->subMinutes($this->faker->numberBetween(1, 10)),
+        ]);
+    }
+
+    /**
+     * Create a booking with failed refund.
+     */
+    public function refundFailed(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => BookingStatus::REFUND_FAILED,
+            'cancelled_at' => Carbon::now()->subMinutes($this->faker->numberBetween(10, 30)),
+            'refund_status' => 'failed',
+            'refund_error' => 'Card declined',
+        ]);
+    }
+
+    /**
+     * Create a booking with payment information.
+     */
+    public function withPayment(int $amountCents = null): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'payment_intent_id' => 'pi_test_' . $this->faker->uuid(),
+            'amount' => $amountCents ?? $this->faker->numberBetween(5000, 50000), // $50-$500
+        ]);
+    }
+
+    /**
+     * Create a cancelled booking with successful refund.
+     */
+    public function withRefund(int $refundAmountCents = null): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => BookingStatus::CANCELLED,
+            'cancelled_at' => Carbon::now()->subHours($this->faker->numberBetween(1, 24)),
+            'payment_intent_id' => 'pi_test_' . $this->faker->uuid(),
+            'amount' => $refundAmountCents ?? $this->faker->numberBetween(5000, 50000),
+            'refund_id' => 're_test_' . $this->faker->uuid(),
+            'refund_status' => 'succeeded',
+            'refund_amount' => $refundAmountCents ?? $this->faker->numberBetween(2500, 50000),
+        ]);
+    }
+
+    /**
+     * Create booking with check-in in the future (n hours from now).
+     */
+    public function checkInFuture(int $hours = 72): static
+    {
+        $checkIn = Carbon::now()->addHours($hours)->startOfDay();
+        return $this->state(fn (array $attributes) => [
+            'check_in' => $checkIn,
+            'check_out' => $checkIn->clone()->addDays(2),
         ]);
     }
 

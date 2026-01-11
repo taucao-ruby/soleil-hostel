@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\BookingStatus;
+use App\Exceptions\BookingCancellationException;
+use App\Exceptions\RefundFailedException;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Http\Requests\StoreBookingRequest;
@@ -11,6 +14,7 @@ use App\Events\BookingUpdated;
 use App\Events\BookingDeleted;
 use App\Services\CreateBookingService;
 use App\Services\BookingService;
+use App\Services\CancellationService;
 use App\Services\RoomService;
 use Illuminate\Http\JsonResponse;
 use RuntimeException;
@@ -20,6 +24,7 @@ class BookingController extends Controller
     public function __construct(
         private CreateBookingService $createBookingService,
         private BookingService $bookingService,
+        private CancellationService $cancellationService,
         private RoomService $roomService
     ) {}
 
@@ -203,10 +208,10 @@ class BookingController extends Controller
     {
         $this->authorize('confirm', $booking);
 
-        if ($booking->status !== Booking::STATUS_PENDING) {
+        if ($booking->status !== BookingStatus::PENDING) {
             return response()->json([
                 'success' => false,
-                'message' => "Cannot confirm booking: current status is '{$booking->status}'",
+                'message' => "Cannot confirm booking: current status is '{$booking->status->value}'",
             ], 422);
         }
 
@@ -227,38 +232,69 @@ class BookingController extends Controller
     }
 
     /**
-     * Cancel a booking.
-     * 
-     * Changes booking status to 'cancelled' and triggers a queued
-     * cancellation email notification to the guest.
-     * 
+     * Cancel a booking with optional refund.
+     *
+     * This endpoint handles the complete cancellation flow:
+     * 1. Validates cancellation eligibility (ownership, status, timing)
+     * 2. Calculates refund amount based on cancellation policy
+     * 3. Processes refund via Stripe (if payment exists)
+     * 4. Updates booking status
+     * 5. Sends cancellation notification
+     *
      * Authorization: Users can cancel their own bookings, admins can cancel any
+     * Idempotent: Re-cancelling an already cancelled booking returns success
      */
     public function cancel(Booking $booking): JsonResponse
     {
         $this->authorize('cancel', $booking);
 
-        if ($booking->status === Booking::STATUS_CANCELLED) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Booking is already cancelled',
-            ], 422);
-        }
-
         try {
-            $booking = $this->bookingService->cancelBooking($booking, auth()->id());
+            $booking = $this->cancellationService->cancel(
+                $booking,
+                auth()->user()
+            );
+
+            // Build response message based on refund status
+            $message = $this->buildCancellationMessage($booking);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Booking cancelled successfully. Cancellation email queued.',
+                'message' => $message,
                 'data' => new BookingResource($booking->load('room')),
             ]);
-        } catch (\RuntimeException $e) {
+
+        } catch (BookingCancellationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
-            ], 422);
+                'error' => $e->getErrorCode(),
+            ], $e->getHttpStatusCode());
+
+        } catch (RefundFailedException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Refund processing failed. Your booking has been marked for cancellation and our team will process the refund manually.',
+                'error' => 'refund_failed',
+                'retryable' => $e->isRetryable(),
+            ], $e->getHttpStatusCode());
         }
+    }
+
+    /**
+     * Build appropriate cancellation message based on refund status.
+     */
+    private function buildCancellationMessage(Booking $booking): string
+    {
+        if ($booking->refund_amount && $booking->refund_amount > 0) {
+            $formattedAmount = number_format($booking->refund_amount / 100, 2);
+            return "Booking cancelled successfully. A refund of \${$formattedAmount} has been processed.";
+        }
+
+        if ($booking->payment_intent_id && $booking->refund_amount === 0) {
+            return 'Booking cancelled successfully. No refund is available based on the cancellation policy.';
+        }
+
+        return 'Booking cancelled successfully.';
     }
 }
 

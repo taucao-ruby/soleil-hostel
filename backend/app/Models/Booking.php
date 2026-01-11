@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\BookingStatus;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -24,6 +25,17 @@ class Booking extends Model
         'status',
         'user_id',
         'deleted_by',
+        // Payment fields
+        'payment_intent_id',
+        'amount',
+        // Refund fields
+        'refund_id',
+        'refund_status',
+        'refund_amount',
+        'refund_error',
+        // Cancellation audit
+        'cancelled_at',
+        'cancelled_by',
     ];
 
     protected $casts = [
@@ -32,6 +44,10 @@ class Booking extends Model
         'deleted_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'cancelled_at' => 'datetime',
+        'status' => BookingStatus::class,
+        'amount' => 'integer',
+        'refund_amount' => 'integer',
     ];
 
     /**
@@ -44,9 +60,12 @@ class Booking extends Model
         return ['guest_name'];
     }
 
-    // ===== CONSTANTS =====
+    // ===== CONSTANTS (Legacy - use BookingStatus enum) =====
+    /** @deprecated Use BookingStatus::PENDING */
     public const STATUS_PENDING = 'pending';
+    /** @deprecated Use BookingStatus::CONFIRMED */
     public const STATUS_CONFIRMED = 'confirmed';
+    /** @deprecated Use BookingStatus::CANCELLED */
     public const STATUS_CANCELLED = 'cancelled';
 
     public const ACTIVE_STATUSES = ['pending', 'confirmed'];
@@ -65,6 +84,100 @@ class Booking extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the user who cancelled the booking.
+     */
+    public function cancelledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
+    }
+
+    // ===== PAYMENT / REFUND METHODS =====
+
+    /**
+     * Check if booking has a refundable payment.
+     */
+    public function isRefundable(): bool
+    {
+        return $this->payment_intent_id !== null
+            && $this->refund_id === null
+            && $this->status->isCancellable();
+    }
+
+    /**
+     * Calculate refund amount based on cancellation policy.
+     *
+     * @return int Amount in cents
+     */
+    public function calculateRefundAmount(): int
+    {
+        if (!$this->amount || $this->amount <= 0) {
+            return 0;
+        }
+
+        $hoursUntilCheckIn = now()->diffInHours($this->check_in, false);
+        $config = config('booking.cancellation');
+
+        // Already past check-in
+        if ($hoursUntilCheckIn < 0) {
+            return 0;
+        }
+
+        // Full refund window
+        if ($hoursUntilCheckIn >= $config['full_refund_hours']) {
+            $refundPct = 100;
+        }
+        // Partial refund window
+        elseif ($hoursUntilCheckIn >= $config['partial_refund_hours']) {
+            $refundPct = $config['partial_refund_pct'];
+        }
+        // No refund zone
+        else {
+            return 0;
+        }
+
+        // Apply cancellation fee if enabled
+        if ($config['allow_fee']) {
+            $refundPct = max(0, $refundPct - $config['fee_pct']);
+        }
+
+        return (int) ($this->amount * $refundPct / 100);
+    }
+
+    /**
+     * Get refund percentage based on current time.
+     *
+     * @return int Percentage (0-100)
+     */
+    public function getRefundPercentage(): int
+    {
+        $hoursUntilCheckIn = now()->diffInHours($this->check_in, false);
+        $config = config('booking.cancellation');
+
+        if ($hoursUntilCheckIn < 0) {
+            return 0;
+        }
+
+        if ($hoursUntilCheckIn >= $config['full_refund_hours']) {
+            return 100;
+        }
+
+        if ($hoursUntilCheckIn >= $config['partial_refund_hours']) {
+            return $config['partial_refund_pct'];
+        }
+
+        return 0;
+    }
+
+    /**
+     * Check if refund is in a failed state.
+     */
+    public function hasFailedRefund(): bool
+    {
+        return $this->status === BookingStatus::REFUND_FAILED
+            || $this->refund_status === 'failed';
     }
 
     // ===== SCOPES =====

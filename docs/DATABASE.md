@@ -93,20 +93,38 @@ CREATE TYPE room_status AS ENUM ('available', 'occupied', 'maintenance');
 
 ### bookings
 
-| Column      | Type         | Constraints              |
-| ----------- | ------------ | ------------------------ |
-| id          | BIGSERIAL    | PRIMARY KEY              |
-| user_id     | BIGINT       | FK → users(id), NULLABLE |
-| room_id     | BIGINT       | FK → rooms(id)           |
-| guest_name  | VARCHAR(255) | NOT NULL                 |
-| guest_email | VARCHAR(255) | NOT NULL                 |
-| check_in    | DATE         | NOT NULL                 |
-| check_out   | DATE         | NOT NULL                 |
-| status      | VARCHAR      | DEFAULT 'pending'        |
-| deleted_at  | TIMESTAMP    | NULLABLE (soft delete)   |
-| deleted_by  | BIGINT       | NULLABLE, FK → users(id) |
-| created_at  | TIMESTAMP    |                          |
-| updated_at  | TIMESTAMP    |                          |
+| Column            | Type         | Constraints                         |
+| ----------------- | ------------ | ----------------------------------- |
+| id                | BIGSERIAL    | PRIMARY KEY                         |
+| user_id           | BIGINT       | FK → users(id), NULLABLE            |
+| room_id           | BIGINT       | FK → rooms(id)                      |
+| guest_name        | VARCHAR(255) | NOT NULL                            |
+| guest_email       | VARCHAR(255) | NOT NULL                            |
+| check_in          | DATE         | NOT NULL                            |
+| check_out         | DATE         | NOT NULL                            |
+| status            | VARCHAR      | DEFAULT 'pending'                   |
+| amount            | BIGINT       | NULLABLE (cents)                    |
+| payment_intent_id | VARCHAR(255) | NULLABLE (Stripe PaymentIntent ID)  |
+| refund_id         | VARCHAR(255) | NULLABLE (Stripe Refund ID)         |
+| refund_status     | VARCHAR      | NULLABLE (pending/succeeded/failed) |
+| refund_amount     | BIGINT       | NULLABLE (cents)                    |
+| refund_error      | TEXT         | NULLABLE                            |
+| cancelled_at      | TIMESTAMP    | NULLABLE                            |
+| cancelled_by      | BIGINT       | NULLABLE, FK → users(id)            |
+| deleted_at        | TIMESTAMP    | NULLABLE (soft delete)              |
+| deleted_by        | BIGINT       | NULLABLE, FK → users(id)            |
+| created_at        | TIMESTAMP    |                                     |
+| updated_at        | TIMESTAMP    |                                     |
+
+**Booking Status Enum:**
+
+```
+pending         → Initial state, awaiting payment/confirmation
+confirmed       → Payment received, booking active
+refund_pending  → Cancellation initiated, refund processing
+cancelled       → Terminal state, refund completed or not required
+refund_failed   → Refund failed, awaiting retry or manual intervention
+```
 
 ### reviews
 

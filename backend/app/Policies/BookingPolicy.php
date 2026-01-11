@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\BookingStatus;
 use App\Enums\UserRole;
 use App\Models\Booking;
 use App\Models\User;
@@ -89,10 +90,48 @@ class BookingPolicy
 
     /**
      * Determine whether the user can cancel a booking.
-     * Users can cancel their own bookings, admins can cancel any.
+     *
+     * Rules:
+     * 1. User must own the booking OR be an admin
+     * 2. Booking must be in a cancellable state (pending, confirmed, or refund_failed)
+     * 3. Already cancelled bookings return true for idempotency
+     * 4. Cannot cancel after check-in has started (unless admin or config allows)
      */
     public function cancel(User $user, Booking $booking): bool
     {
-        return $user->isAdmin() || $user->id === $booking->user_id;
+        // Check ownership
+        $isOwner = $user->id === $booking->user_id;
+        $isAdmin = $user->isAdmin();
+
+        if (!$isOwner && !$isAdmin) {
+            return false;
+        }
+
+        // Allow re-cancellation for idempotency (returns existing state)
+        if ($booking->status === BookingStatus::CANCELLED) {
+            return true;
+        }
+
+        // Check if booking is in cancellable state
+        if (!$booking->status->isCancellable()) {
+            return false;
+        }
+
+        // Regular users cannot cancel after check-in has started
+        if (!$isAdmin && $booking->isStarted()) {
+            return !config('booking.cancellation.allow_after_checkin', false);
+        }
+
+        return true;
+    }
+
+    /**
+     * Determine whether the user can force cancel a booking.
+     * Force cancel bypasses refund and sets booking to cancelled immediately.
+     * Only admins can force cancel.
+     */
+    public function forceCancel(User $user, Booking $booking): bool
+    {
+        return $user->isAdmin() && !$booking->status->isTerminal();
     }
 }

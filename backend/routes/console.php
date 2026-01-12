@@ -26,3 +26,15 @@ Schedule::job(new ReconcileRefundsJob())
     ->withoutOverlapping()
     ->onOneServer() // For multi-server deployments
     ->name('reconcile-refunds');
+
+// Horizon monitoring: Persist queue metrics for dashboard (every 5 minutes)
+Schedule::command('horizon:snapshot')
+    ->everyFiveMinutes()
+    ->onOneServer()
+    ->name('horizon-snapshot');
+
+// Horizon cleanup: Trim old monitoring data (daily at 2 AM)
+Schedule::command('horizon:clear', ['--verbose'])
+    ->dailyAt('02:00')
+    ->onOneServer()
+    ->name('horizon-clear');

@@ -9,6 +9,7 @@
         "php": "^8.2",
         "ezyang/htmlpurifier": "^4.17",
         "laravel/framework": "^12.0",
+        "laravel/horizon": "^5.42",
         "laravel/sanctum": "^4.1",
         "laravel/tinker": "^2.10.1",
         "sentry/sentry-laravel": "^4.20"

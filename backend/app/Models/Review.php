@@ -37,12 +37,17 @@ class Review extends Model
      * 
      * Dùng HTML Purifier whitelist, chứ không phải regex blacklist
      * Title + content được strip safe tags, block <script>, on*, javascript:, v.v.
+     * 
+     * @return array<string>
      */
-    protected array $purifiable = [
-        'title',      // Review title
-        'content',    // Review body - allow basic HTML (b, i, p, br, links)
-        'guest_name', // Guest who wrote review
-    ];
+    public function getPurifiableFields(): array
+    {
+        return [
+            'title',      // Review title
+            'content',    // Review body - allow basic HTML (b, i, p, br, links)
+            'guest_name', // Guest who wrote review
+        ];
+    }
 
     /**
      * Relationships
@@ -55,6 +60,16 @@ class Review extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the booking this review belongs to.
+     * 
+     * Required for ReviewPolicy ownership checks via $review->booking->user_id.
+     */
+    public function booking(): BelongsTo
+    {
+        return $this->belongsTo(Booking::class);
     }
 
     /**

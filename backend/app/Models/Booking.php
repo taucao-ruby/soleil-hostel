@@ -94,6 +94,17 @@ class Booking extends Model
         return $this->belongsTo(User::class, 'cancelled_by');
     }
 
+    /**
+     * Get the review for this booking.
+     * 
+     * One-to-one: Each booking can have at most one review.
+     * Used by ReviewPolicy for uniqueness check without DB query.
+     */
+    public function review(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Review::class, 'booking_id');
+    }
+
     // ===== PAYMENT / REFUND METHODS =====
 
     /**

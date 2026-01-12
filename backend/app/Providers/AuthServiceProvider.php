@@ -82,5 +82,13 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('manage-rooms', function (User $user): bool {
             return $user->isAdmin();
         });
+
+        /**
+         * View queue monitoring gate - admin only
+         * Use for: Accessing Horizon dashboard, viewing failed jobs, retry operations
+         */
+        Gate::define('view-queue-monitoring', function (User $user): bool {
+            return $user->isAdmin();
+        });
     }
 }

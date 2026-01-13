@@ -127,6 +127,8 @@ class RateLimitService
         $window = $limit['window'] ?? 60;  // seconds
         $maxAttempts = $limit['max'] ?? 5;
         $ttl = $window * 2;  // Expire keys after 2 windows for cleanup
+        // Generate unique member ID to avoid collisions when multiple requests happen in same second
+        $uniqueId = uniqid((string)$now . ':', true);
 
         $script = <<<'LUA'
 local key = KEYS[1]
@@ -134,6 +136,7 @@ local now = tonumber(ARGV[1])
 local window = tonumber(ARGV[2])
 local limit = tonumber(ARGV[3])
 local ttl = tonumber(ARGV[4])
+local unique_id = ARGV[5]
 
 -- Remove old entries outside window
 redis.call('ZREMRANGEBYSCORE', key, 0, now - window)
@@ -142,8 +145,8 @@ redis.call('ZREMRANGEBYSCORE', key, 0, now - window)
 local count = redis.call('ZCARD', key)
 
 if count < limit then
-  -- Add new entry with current timestamp as score
-  redis.call('ZADD', key, now, now)
+  -- Add new entry with timestamp as score and unique ID as member
+  redis.call('ZADD', key, now, unique_id)
   redis.call('EXPIRE', key, ttl)
   local remaining = limit - count - 1
   return { 1, remaining, 0 }  -- [allowed, remaining, reset_after]
@@ -158,7 +161,7 @@ else
 end
 LUA;
 
-        $result = Redis::eval($script, 1, $key, $now, $window, $maxAttempts, $ttl);
+        $result = Redis::eval($script, 1, $key, $now, $window, $maxAttempts, $ttl, $uniqueId);
 
         return [
             'allowed' => (bool) $result[0],

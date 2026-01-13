@@ -13,11 +13,22 @@ class AdvancedRateLimitServiceTest extends TestCase
     use RefreshDatabase;
 
     private RateLimitService $limiter;
+    private string $testId;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->limiter = app(RateLimitService::class);
+        // Generate unique test ID to avoid key collisions in parallel runs
+        $this->testId = uniqid('test_' . getmypid() . '_', true);
+    }
+
+    /**
+     * Generate a unique key for this test execution
+     */
+    private function uniqueKey(string $suffix): string
+    {
+        return "{$this->testId}:{$suffix}";
     }
 
     public function test_sliding_window_allows_within_limit(): void
@@ -30,15 +41,17 @@ class AdvancedRateLimitServiceTest extends TestCase
             ],
         ];
 
+        $key = $this->uniqueKey('user:1');
+
         // First 5 requests should be allowed
         for ($i = 0; $i < 5; $i++) {
-            $result = $this->limiter->check('test:user:1', $limits);
+            $result = $this->limiter->check($key, $limits);
             $this->assertTrue($result['allowed'], "Request $i should be allowed");
             $this->assertGreaterThanOrEqual(5 - $i - 1, $result['remaining']);
         }
 
         // 6th request should be throttled
-        $result = $this->limiter->check('test:user:1', $limits);
+        $result = $this->limiter->check($key, $limits);
         $this->assertFalse($result['allowed'], '6th request should be throttled');
         $this->assertEquals(0, $result['remaining']);
         $this->assertGreaterThan(0, $result['retry_after']);
@@ -55,14 +68,16 @@ class AdvancedRateLimitServiceTest extends TestCase
             ],
         ];
 
+        $key = $this->uniqueKey('bucket:1');
+
         // Should allow 10 requests in burst
         for ($i = 0; $i < 10; $i++) {
-            $result = $this->limiter->check('test:bucket:1', $limits);
+            $result = $this->limiter->check($key, $limits);
             $this->assertTrue($result['allowed'], "Burst request $i should be allowed");
         }
 
         // 11th should be rejected
-        $result = $this->limiter->check('test:bucket:1', $limits);
+        $result = $this->limiter->check($key, $limits);
         $this->assertFalse($result['allowed']);
     }
 
@@ -82,13 +97,15 @@ class AdvancedRateLimitServiceTest extends TestCase
             ],
         ];
 
+        $key = $this->uniqueKey('multi:1');
+
         // Should be limited by sliding window (3) before token bucket (5)
         for ($i = 0; $i < 3; $i++) {
-            $result = $this->limiter->check('test:multi:1', $limits);
+            $result = $this->limiter->check($key, $limits);
             $this->assertTrue($result['allowed']);
         }
 
-        $result = $this->limiter->check('test:multi:1', $limits);
+        $result = $this->limiter->check($key, $limits);
         $this->assertFalse($result['allowed']);
     }
 
@@ -102,19 +119,21 @@ class AdvancedRateLimitServiceTest extends TestCase
             ],
         ];
 
+        $key = $this->uniqueKey('reset:1');
+
         // Max out limit
-        $this->limiter->check('test:reset:1', $limits);
-        $this->limiter->check('test:reset:1', $limits);
+        $this->limiter->check($key, $limits);
+        $this->limiter->check($key, $limits);
 
         // Should be throttled
-        $result = $this->limiter->check('test:reset:1', $limits);
+        $result = $this->limiter->check($key, $limits);
         $this->assertFalse($result['allowed']);
 
         // Reset
-        $this->limiter->reset('test:reset:1');
+        $this->limiter->reset($key);
 
         // Should be allowed again
-        $result = $this->limiter->check('test:reset:1', $limits);
+        $result = $this->limiter->check($key, $limits);
         $this->assertTrue($result['allowed']);
     }
 
@@ -128,7 +147,7 @@ class AdvancedRateLimitServiceTest extends TestCase
             ],
         ];
 
-        $key = 'test:status:1';
+        $key = $this->uniqueKey('status:1');
         $this->limiter->check($key, $limits);
         $this->limiter->check($key, $limits);
 
@@ -147,12 +166,13 @@ class AdvancedRateLimitServiceTest extends TestCase
             ],
         ];
 
-        $this->limiter->check('test:metrics:1', $limits);
-        $this->limiter->check('test:metrics:1', $limits);
-        $this->limiter->check('test:metrics:1', $limits);
+        $key = $this->uniqueKey('metrics:1');
+        $this->limiter->check($key, $limits);
+        $this->limiter->check($key, $limits);
+        $this->limiter->check($key, $limits);
 
         $metrics = $this->limiter->getMetrics();
-        $this->assertGreaterThan(0, $metrics['total_checks']);
-        $this->assertGreaterThan(0, $metrics['throttled']);
+        $this->assertGreaterThanOrEqual(3, $metrics['total_checks']);
+        $this->assertGreaterThanOrEqual(1, $metrics['throttled']);
     }
 }

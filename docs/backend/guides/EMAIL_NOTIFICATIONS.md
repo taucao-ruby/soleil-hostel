@@ -170,13 +170,125 @@ class BookingConfirmed extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Booking Confirmation - Soleil Hostel')
-            ->greeting('Hello ' . $this->booking->guest_name . '!')
-            ->line('Your booking has been confirmed.')
-            // ... more content
-            ->action('View Booking', url('/bookings/' . $this->booking->id));
+            ->subject('🎉 Booking Confirmed - ' . config('email-branding.name'))
+            ->markdown('mail.bookings.confirmed', [
+                'guestName' => e($this->booking->guest_name),
+                'bookingId' => $this->booking->id,
+                'roomName' => e($this->booking->room->name),
+                'checkIn' => $this->booking->check_in->format('l, F j, Y'),
+                'checkOut' => $this->booking->check_out->format('l, F j, Y'),
+                'totalPrice' => $this->booking->amount ?? 0,
+                'viewBookingUrl' => url('/bookings/' . $this->booking->id),
+            ]);
     }
 }
+```
+
+---
+
+## Branded Email Templates
+
+### Overview
+
+All booking notifications use branded Markdown templates for professional, consistent email appearance:
+
+- **Location**: `resources/views/mail/bookings/`
+- **Templates**: `confirmed.blade.php`, `cancelled.blade.php`, `updated.blade.php`
+- **Theme**: `resources/views/vendor/mail/html/themes/soleil.css`
+
+### Brand Configuration
+
+All brand elements are configured in `config/email-branding.php`:
+
+```php
+return [
+    'name' => env('MAIL_BRAND_NAME', 'Soleil Hostel'),
+    'tagline' => env('MAIL_BRAND_TAGLINE', 'Your Home Away From Home'),
+
+    'colors' => [
+        'primary' => env('MAIL_COLOR_PRIMARY', '#007BFF'),
+        'secondary' => env('MAIL_COLOR_SECONDARY', '#6C757D'),
+        // ... more colors
+    ],
+
+    'logo' => [
+        'url' => env('MAIL_LOGO_URL', null), // Falls back to APP_URL/logo.png
+        'alt' => 'Soleil Hostel',
+        'width' => '150',
+    ],
+
+    'contact' => [
+        'email' => env('MAIL_CONTACT_EMAIL', 'support@soleilhostel.com'),
+        'phone' => env('MAIL_CONTACT_PHONE', '+1 (555) 123-4567'),
+        'address' => 'Paradise City',
+    ],
+
+    'footer' => [
+        'copyright' => '© ' . date('Y') . ' Soleil Hostel. All rights reserved.',
+    ],
+];
+```
+
+### Customizing Templates
+
+Templates use Laravel's Markdown Mail components with custom branding:
+
+```blade
+{{-- resources/views/mail/bookings/confirmed.blade.php --}}
+@component('mail::message')
+
+<div style="text-align: center; margin-bottom: 24px;">
+    <img src="{{ config('email-branding.logo.url') }}" alt="Soleil Hostel">
+</div>
+
+# 🎉 Booking Confirmed!
+
+Hello **{{ $guestName }}**,
+
+Your booking has been confirmed!
+
+@component('mail::panel')
+| Detail | Information |
+|:-------|:------------|
+| **Confirmation Number** | #{{ $bookingId }} |
+| **Room** | {{ $roomName }} |
+| **Check-in** | {{ $checkIn }} |
+| **Check-out** | {{ $checkOut }} |
+@endcomponent
+
+@component('mail::button', ['url' => $viewBookingUrl, 'color' => 'primary'])
+View Your Booking
+@endcomponent
+
+@endcomponent
+```
+
+### Theme Customization
+
+The custom theme in `resources/views/vendor/mail/html/themes/soleil.css` defines:
+
+- Button colors matching brand primary (#007BFF)
+- Typography and spacing
+- Responsive design for mobile devices
+- Panel styling for booking details
+
+To use the theme, ensure `config/mail.php` includes:
+
+```php
+'markdown' => [
+    'theme' => env('MAIL_MARKDOWN_THEME', 'soleil'),
+    'paths' => [
+        resource_path('views/vendor/mail'),
+    ],
+],
+```
+
+### Security
+
+All user-supplied data in templates is escaped using `e()` helper:
+
+```php
+'guestName' => e($this->booking->guest_name), // XSS-safe
 ```
 
 ---

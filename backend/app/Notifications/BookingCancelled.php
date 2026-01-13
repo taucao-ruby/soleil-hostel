@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Log;
  * BookingCancelled Notification
  * 
  * Production-grade queued notification for booking cancellations.
- * Includes refund information when applicable.
+ * Uses branded Markdown template with refund information when applicable.
  * 
  * Architecture:
  * - Implements ShouldQueue for async delivery via queue workers
@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Log;
  * - Includes idempotency guard to prevent duplicate sends
  * - Exponential backoff retry strategy for transient SMTP failures
  * 
- * @see docs/backend/BOOKING_CANCELLATION_FLOW.md
+ * @see docs/backend/guides/EMAIL_NOTIFICATIONS.md
  */
 class BookingCancelled extends Notification implements ShouldQueue
 {
@@ -66,7 +66,8 @@ class BookingCancelled extends Notification implements ShouldQueue
     /**
      * Get the mail representation of the notification.
      * 
-     * Includes idempotency guard: returns null if booking status is not cancelled.
+     * Uses branded Markdown template with idempotency guard:
+     * returns null if booking status is not cancelled.
      * Includes refund information when a refund was processed.
      */
     public function toMail(object $notifiable): ?MailMessage
@@ -80,31 +81,18 @@ class BookingCancelled extends Notification implements ShouldQueue
             return null;
         }
 
-        $mail = (new MailMessage)
-            ->subject('Booking Cancelled - Soleil Hostel')
-            ->greeting('Hello ' . $this->booking->guest_name . ',')
-            ->line('Your booking has been cancelled.')
-            ->line('**Cancelled Booking Details:**')
-            ->line('Room: ' . $this->booking->room->name)
-            ->line('Check-in: ' . $this->booking->check_in->format('M j, Y'))
-            ->line('Check-out: ' . $this->booking->check_out->format('M j, Y'));
-
-        // Add refund information if applicable
-        if ($this->booking->refund_amount && $this->booking->refund_amount > 0) {
-            $formattedAmount = number_format($this->booking->refund_amount / 100, 2);
-            $mail->line('**Refund Information:**')
-                ->line("A refund of \${$formattedAmount} has been processed to your original payment method.")
-                ->line('Please allow 5-10 business days for the refund to appear on your statement.');
-        } elseif ($this->booking->payment_intent_id && $this->booking->refund_amount === 0) {
-            $mail->line('**Refund Information:**')
-                ->line('Based on our cancellation policy, no refund is available for this booking.');
-        }
-
-        return $mail
-            ->line('If this was a mistake or you have any questions, please contact us.')
-            ->action('Contact Support', url('/contact'))
-            ->line('We hope to serve you again in the future.')
-            ->salutation('Best regards, Soleil Hostel Team');
+        return (new MailMessage)
+            ->subject('Booking Cancelled - ' . config('email-branding.name', 'Soleil Hostel'))
+            ->markdown('mail.bookings.cancelled', [
+                'guestName' => e($this->booking->guest_name),
+                'bookingId' => $this->booking->id,
+                'roomName' => e($this->booking->room->name),
+                'checkIn' => $this->booking->check_in->format('l, F j, Y'),
+                'checkOut' => $this->booking->check_out->format('l, F j, Y'),
+                'refundAmount' => $this->booking->refund_amount ?? 0,
+                'hasPayment' => !empty($this->booking->payment_intent_id),
+                'bookAgainUrl' => url('/rooms'),
+            ]);
     }
 
     /**

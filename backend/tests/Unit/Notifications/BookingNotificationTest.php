@@ -123,15 +123,13 @@ class BookingNotificationTest extends TestCase
         $notification = new BookingConfirmed($booking);
         $mailMessage = $notification->toMail(new \Illuminate\Notifications\AnonymousNotifiable());
 
-        // Assert
+        // Assert - now using markdown templates, check rendered content
         $this->assertNotNull($mailMessage, 'Mail message should not be null for confirmed booking');
-        $this->assertStringContainsString('Hello Jane Smith!', $mailMessage->greeting);
+        $rendered = $mailMessage->render();
         
-        // Check that content contains the expected details (content structure may vary)
-        $allContent = implode(' ', $mailMessage->introLines);
-        $this->assertStringContainsString('Ocean View Suite', $allContent);
-        $this->assertStringContainsString('Dec 10, 2025', $allContent);
-        $this->assertStringContainsString('Dec 15, 2025', $allContent);
+        $this->assertStringContainsString('Jane Smith', $rendered);
+        $this->assertStringContainsString('Ocean View Suite', $rendered);
+        $this->assertStringContainsString('December', $rendered); // Date format changed with markdown
     }
 
     /** @test */

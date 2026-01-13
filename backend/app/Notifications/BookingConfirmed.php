@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Log;
  * BookingConfirmed Notification
  * 
  * Production-grade queued notification for booking confirmations.
+ * Uses branded Markdown template for professional email presentation.
  * 
  * Architecture:
  * - Implements ShouldQueue for async delivery via queue workers
@@ -29,7 +30,7 @@ use Illuminate\Support\Facades\Log;
  *     ->notify(new BookingConfirmed($booking));
  * ```
  * 
- * @see docs/backend/BOOKING_CONFIRMATION_NOTIFICATION_ARCHITECTURE.md
+ * @see docs/backend/guides/EMAIL_NOTIFICATIONS.md
  */
 class BookingConfirmed extends Notification implements ShouldQueue
 {
@@ -78,8 +79,8 @@ class BookingConfirmed extends Notification implements ShouldQueue
     /**
      * Get the mail representation of the notification.
      * 
-     * Includes idempotency guard: returns null if booking status changed
-     * between queue dispatch and worker execution.
+     * Uses branded Markdown template with idempotency guard:
+     * returns null if booking status changed between queue dispatch and worker execution.
      */
     public function toMail(object $notifiable): ?MailMessage
     {
@@ -93,16 +94,16 @@ class BookingConfirmed extends Notification implements ShouldQueue
         }
 
         return (new MailMessage)
-            ->subject('Booking Confirmation - Soleil Hostel')
-            ->greeting('Hello ' . $this->booking->guest_name . '!')
-            ->line('Your booking has been confirmed.')
-            ->line('**Booking Details:**')
-            ->line('Room: ' . $this->booking->room->name)
-            ->line('Check-in: ' . $this->booking->check_in->format('M j, Y'))
-            ->line('Check-out: ' . $this->booking->check_out->format('M j, Y'))
-            ->action('View Booking', url('/bookings/' . $this->booking->id))
-            ->line('Thank you for choosing Soleil Hostel!')
-            ->salutation('Best regards, Soleil Hostel Team');
+            ->subject('🎉 Booking Confirmed - ' . config('email-branding.name', 'Soleil Hostel'))
+            ->markdown('mail.bookings.confirmed', [
+                'guestName' => e($this->booking->guest_name),
+                'bookingId' => $this->booking->id,
+                'roomName' => e($this->booking->room->name),
+                'checkIn' => $this->booking->check_in->format('l, F j, Y'),
+                'checkOut' => $this->booking->check_out->format('l, F j, Y'),
+                'totalPrice' => $this->booking->amount ?? 0,
+                'viewBookingUrl' => url('/bookings/' . $this->booking->id),
+            ]);
     }
 
     /**

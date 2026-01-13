@@ -14,13 +14,14 @@ use Illuminate\Support\Facades\Log;
  * BookingUpdated Notification
  * 
  * Production-grade queued notification for booking modifications.
+ * Uses branded Markdown template with change summary.
  * 
  * Architecture:
  * - Implements ShouldQueue for async delivery via queue workers
  * - Uses afterCommit() to ensure notification only dispatches after DB transaction commits
  * - Exponential backoff retry strategy for transient SMTP failures
  * 
- * @see docs/backend/BOOKING_CONFIRMATION_NOTIFICATION_ARCHITECTURE.md
+ * @see docs/backend/guides/EMAIL_NOTIFICATIONS.md
  */
 class BookingUpdated extends Notification implements ShouldQueue
 {
@@ -64,6 +65,8 @@ class BookingUpdated extends Notification implements ShouldQueue
 
     /**
      * Get the mail representation of the notification.
+     * 
+     * Uses branded Markdown template with change summary.
      */
     public function toMail(object $notifiable): ?MailMessage
     {
@@ -75,31 +78,18 @@ class BookingUpdated extends Notification implements ShouldQueue
             return null;
         }
 
-        $message = (new MailMessage)
-            ->subject('Booking Updated - Soleil Hostel')
-            ->greeting('Hello ' . $this->booking->guest_name . ',')
-            ->line('Your booking has been updated.');
-
-        // Add changes information if available
-        if (!empty($this->changes)) {
-            $message->line('**Changes Made:**');
-            foreach ($this->changes as $field => $value) {
-                $displayField = ucfirst(str_replace('_', ' ', $field));
-                $displayValue = $value instanceof \DateTimeInterface 
-                    ? $value->format('M j, Y') 
-                    : $value;
-                $message->line($displayField . ': ' . $displayValue);
-            }
-        }
-
-        return $message
-            ->line('**Current Booking Details:**')
-            ->line('Room: ' . $this->booking->room->name)
-            ->line('Check-in: ' . $this->booking->check_in->format('M j, Y'))
-            ->line('Check-out: ' . $this->booking->check_out->format('M j, Y'))
-            ->action('View Booking', url('/bookings/' . $this->booking->id))
-            ->line('Thank you for choosing Soleil Hostel!')
-            ->salutation('Best regards, Soleil Hostel Team');
+        return (new MailMessage)
+            ->subject('📝 Booking Updated - ' . config('email-branding.name', 'Soleil Hostel'))
+            ->markdown('mail.bookings.updated', [
+                'guestName' => e($this->booking->guest_name),
+                'bookingId' => $this->booking->id,
+                'roomName' => e($this->booking->room->name),
+                'checkIn' => $this->booking->check_in->format('l, F j, Y'),
+                'checkOut' => $this->booking->check_out->format('l, F j, Y'),
+                'totalPrice' => $this->booking->amount ?? 0,
+                'changes' => $this->changes,
+                'viewBookingUrl' => url('/bookings/' . $this->booking->id),
+            ]);
     }
 
     /**

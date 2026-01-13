@@ -9,6 +9,7 @@ use Tests\Unit\UnitTestCase;
 class AdvancedRateLimitServiceTest extends UnitTestCase
 {
     private RateLimitService $service;
+    private string $testId;
 
     protected function setUp(): void
     {
@@ -16,12 +17,22 @@ class AdvancedRateLimitServiceTest extends UnitTestCase
         
         // Create fresh service for each test (uses memory fallback if Redis unavailable)
         $this->service = new RateLimitService();
+        // Generate unique test ID to avoid key collisions in parallel runs
+        $this->testId = uniqid('unit_' . getmypid() . '_', true);
+    }
+
+    /**
+     * Generate a unique key for this test execution
+     */
+    private function uniqueKey(string $suffix): string
+    {
+        return "{$this->testId}:{$suffix}";
     }
 
     #[Test]
     public function sliding_window_allows_within_limit(): void
     {
-        $key = 'test:login:' . fake()->ipv4();
+        $key = $this->uniqueKey('login:' . fake()->ipv4());
         $limits = [
             [
                 'type' => 'sliding_window',
@@ -39,7 +50,7 @@ class AdvancedRateLimitServiceTest extends UnitTestCase
     #[Test]
     public function sliding_window_blocks_exceeding_limit(): void
     {
-        $key = 'test:login:' . fake()->ipv4();
+        $key = $this->uniqueKey('login:' . fake()->ipv4());
         $limits = [
             [
                 'type' => 'sliding_window',
@@ -63,7 +74,7 @@ class AdvancedRateLimitServiceTest extends UnitTestCase
     #[Test]
     public function token_bucket_allows_bursts(): void
     {
-        $key = 'test:api:' . fake()->ipv4();
+        $key = $this->uniqueKey('api:' . fake()->ipv4());
         $limits = [
             [
                 'type' => 'token_bucket',
@@ -86,7 +97,7 @@ class AdvancedRateLimitServiceTest extends UnitTestCase
     #[Test]
     public function multiple_limits_all_must_pass(): void
     {
-        $key = 'test:booking:user:1';
+        $key = $this->uniqueKey('booking:user:' . fake()->randomNumber(5));
         $limits = [
             [
                 'id' => 'per_minute',
@@ -116,7 +127,7 @@ class AdvancedRateLimitServiceTest extends UnitTestCase
     #[Test]
     public function reset_clears_limit(): void
     {
-        $key = 'test:reset:' . fake()->ipv4();
+        $key = $this->uniqueKey('reset:' . fake()->ipv4());
         $limits = [
             [
                 'type' => 'sliding_window',
@@ -145,7 +156,7 @@ class AdvancedRateLimitServiceTest extends UnitTestCase
     #[Test]
     public function status_returns_current_state(): void
     {
-        $key = 'test:status:' . fake()->ipv4();
+        $key = $this->uniqueKey('status:' . fake()->ipv4());
         $limits = [
             [
                 'type' => 'sliding_window',
@@ -177,8 +188,9 @@ class AdvancedRateLimitServiceTest extends UnitTestCase
         ];
         
         // Make some requests
+        $key = $this->uniqueKey('metrics:key');
         for ($i = 0; $i < 3; $i++) {
-            $this->service->check('test:metrics:key', $limits);
+            $this->service->check($key, $limits);
         }
         
         // Get metrics
@@ -193,12 +205,12 @@ class AdvancedRateLimitServiceTest extends UnitTestCase
     #[Test]
     public function composite_key_building(): void
     {
-        $user_id = 1;
-        $ip = '192.168.1.1';
-        $room_id = 100;
+        $user_id = fake()->randomNumber(5);
+        $ip = fake()->ipv4();
+        $room_id = fake()->randomNumber(3);
         $endpoint = 'booking.create';
         
-        $key = "user:{$user_id}:ip:{$ip}:room:{$room_id}:endpoint:{$endpoint}";
+        $key = $this->uniqueKey("user:{$user_id}:ip:{$ip}:room:{$room_id}:endpoint:{$endpoint}");
         $limits = [
             [
                 'type' => 'sliding_window',
@@ -221,7 +233,7 @@ class AdvancedRateLimitServiceTest extends UnitTestCase
     #[Test]
     public function degradation_to_memory_fallback(): void
     {
-        $key = 'test:fallback:' . fake()->ipv4();
+        $key = $this->uniqueKey('fallback:' . fake()->ipv4());
         $limits = [
             [
                 'type' => 'sliding_window',

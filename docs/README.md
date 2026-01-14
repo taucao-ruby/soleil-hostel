@@ -1,6 +1,6 @@
 # 📚 Soleil Hostel Documentation
 
-> **Last Updated:** January 11, 2026 | **Tests:** 555 passed (1496 assertions) | **Status:** Production Ready & Running ✅
+> **Last Updated:** January 12, 2026 | **Tests:** 555 passed (1496 assertions) | **Status:** Production Ready & Running ✅
 
     ## Quick Navigation
 
@@ -57,6 +57,7 @@
     │   ├── README.md                     # Backend index
     │   ├── architecture/                 # System design
     │   │   ├── API.md                    # Complete API reference
+    │   │   ├── SERVICES.md               # Service layer architecture
     │   │   ├── REPOSITORIES.md           # Repository pattern
     │   │   ├── MIDDLEWARE.md             # Middleware pipeline
     │   │   ├── EVENTS.md                 # Events & listeners
@@ -77,7 +78,8 @@
     │   │   ├── PERFORMANCE.md            # Octane & N+1
     │   │   ├── DEPLOYMENT.md             # Docker & deployment
     │   │   ├── COMMANDS.md               # Artisan commands
-    │   │   └── MONITORING_LOGGING.md     # Observability & logging
+    │   │   ├── MONITORING_LOGGING.md     # Observability & logging
+    │   │   └── EMAIL_NOTIFICATIONS.md    # Email & verification
     │   └── security/                     # Security documentation
     │       ├── HEADERS.md                # Security headers
     │       ├── XSS_PROTECTION.md         # HTML Purifier
@@ -107,6 +109,7 @@
 | Authentication        | ✅ Complete             | 26 tests      |
 | Booking System        | ✅ Complete             | 60 tests      |
 | Booking Notifications | ✅ Complete             | 23 tests      |
+| Email Templates       | ✅ Complete             | 13 tests      |
 | Room Management       | ✅ Complete             | 151 tests     |
 | RBAC                  | ✅ Complete             | 47 tests      |
 | Security Headers      | ✅ Complete             | 14 tests      |
@@ -117,7 +120,7 @@
 | Optimistic Locking    | ✅ Complete             | 24 tests      |
 | Repository Layer      | ✅ Complete             | 53 tests      |
 | Email Verification    | ✅ Complete             | 26 tests      |
-| **Total**             | **✅ Production Ready** | **537 tests** |
+| **Total**             | **✅ Production Ready** | **555 tests** |
 
     ## Tech Stack
 

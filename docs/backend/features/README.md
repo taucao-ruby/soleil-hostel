@@ -9,6 +9,7 @@
 | Authentication     | ✅     | 26    | [AUTHENTICATION.md](./AUTHENTICATION.md)                    |
 | Email Verification | ✅     | 14    | [AUTHENTICATION.md](./AUTHENTICATION.md#email-verification) |
 | Booking System     | ✅     | 60    | [BOOKING.md](./BOOKING.md)                                  |
+| Email Templates    | ✅     | 13    | [EMAIL_TEMPLATES.md](./EMAIL_TEMPLATES.md)                  |
 | Room Management    | ✅     | 24    | [ROOMS.md](./ROOMS.md)                                      |
 | Reviews            | ✅     | 48    | [REVIEWS.md](./REVIEWS.md)                                  |
 | RBAC               | ✅     | 47    | [RBAC.md](./RBAC.md)                                        |
@@ -41,6 +42,14 @@
 - Soft deletes with audit trail
 - Half-open interval logic
 - Admin restore/force-delete
+
+### 📧 Email Templates
+
+- Branded Markdown templates for all booking notifications
+- Custom `soleil.css` theme with brand colors
+- Configurable via `config/email-branding.php`
+- XSS protection with `e()` helper
+- 13 unit tests for template rendering
 
 ### 🏨 Room Management
 

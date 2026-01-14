@@ -1,16 +1,17 @@
 # Soleil Hostel - Project Status
 
-**Last Updated:** January 11, 2026
+**Last Updated:** January 14, 2026
 
 ## 🎉 Current Status: Production Ready & Running ✅
 
-All 555 tests passing, 0 skipped, 1496 assertions verified.  
+All 555 tests passing, 0 skipped, 1496 assertions verified (including 13 new email template tests).  
 All GitHub Actions CI/CD workflows passing.  
 Documentation restructured and organized in `docs/` folder.  
 Both backend and frontend servers verified running successfully.  
 Optimistic locking fully implemented and tested (24 tests).  
 Repository layer fully unit tested (53 tests with zero database dependency).  
-Email verification fully implemented with Laravel default notifications.
+Email verification fully implemented with Laravel default notifications.  
+**NEW**: ADR decision log, operational playbook, known limitations, API deprecation strategy.
 
 ---
 
@@ -77,32 +78,37 @@ Email verification fully implemented with Laravel default notifications.
 
 📚 **Full Documentation:** → **[docs/README.md](./docs/README.md)**
 
+### New Documentation (January 14, 2026)
+
+| Document                                                  | Description                                  |
+| --------------------------------------------------------- | -------------------------------------------- |
+| [ADR.md](./docs/ADR.md)                                   | Architecture Decision Records (12 decisions) |
+| [KNOWN_LIMITATIONS.md](./docs/KNOWN_LIMITATIONS.md)       | System constraints & tech debt               |
+| [OPERATIONAL_PLAYBOOK.md](./docs/OPERATIONAL_PLAYBOOK.md) | Incident runbooks                            |
+| [API_DEPRECATION.md](./docs/API_DEPRECATION.md)           | API versioning & deprecation strategy        |
+
 ```
 docs/
 ├── README.md                    # Documentation index
-├── guides/                      # Setup & testing guides
-│   ├── ENVIRONMENT_SETUP.md
-│   └── TESTING.md
-├── architecture/                # System design
-│   ├── README.md
-│   └── DATABASE.md
-├── features/                    # Feature documentation
-│   ├── AUTHENTICATION.md
-│   ├── BOOKING.md
-│   ├── ROOMS.md
-│   ├── RBAC.md
-│   └── CACHING.md
-└── security/                    # Security documentation
-    ├── HEADERS.md
-    ├── XSS_PROTECTION.md
-    └── RATE_LIMITING.md
+├── ADR.md                       # Architecture Decision Records
+├── KNOWN_LIMITATIONS.md         # System constraints
+├── OPERATIONAL_PLAYBOOK.md      # Incident runbooks
+├── API_DEPRECATION.md           # API deprecation strategy
+├── backend/
+│   ├── architecture/            # SERVICES.md, REPOSITORIES.md, etc.
+│   ├── features/                # EMAIL_TEMPLATES.md, BOOKING.md, etc.
+│   ├── guides/                  # Setup, testing, deployment
+│   └── security/                # Headers, XSS, rate limiting
+└── frontend/                    # React architecture docs
 ```
 
 ### Quick References
 
-- [docs/guides/ENVIRONMENT_SETUP.md](./docs/guides/ENVIRONMENT_SETUP.md) - Setup guide
-- [docs/guides/TESTING.md](./docs/guides/TESTING.md) - Testing guide
-- [docs/security/README.md](./docs/security/README.md) - Security overview
+- [docs/ADR.md](./docs/ADR.md) - Architecture decisions
+- [docs/OPERATIONAL_PLAYBOOK.md](./docs/OPERATIONAL_PLAYBOOK.md) - Incident handling
+- [docs/backend/guides/ENVIRONMENT_SETUP.md](./docs/backend/guides/ENVIRONMENT_SETUP.md) - Setup guide
+- [docs/backend/guides/TESTING.md](./docs/backend/guides/TESTING.md) - Testing guide
+- [docs/backend/security/README.md](./docs/backend/security/README.md) - Security overview
 
 ---
 
@@ -215,6 +221,42 @@ Fixed 13 GitHub Actions issues:
 - Fixed `BookingPolicy::cancel()` inverted logic for after-checkin cancellation
 - Added admin bypass in `CancellationService::validateCancellation()` for isStarted check
 - All 555 tests passing (1496 assertions)
+
+### 📧 Branded Email Templates (January 12, 2026)
+
+- Created professional Markdown email templates for all booking notifications
+- **Templates**: `confirmed.blade.php`, `cancelled.blade.php`, `updated.blade.php`
+- **Location**: `resources/views/mail/bookings/`
+- **Features**:
+  - Brand header with logo and tagline
+  - Booking details in formatted tables
+  - Contact information and support links
+  - Responsive design for mobile devices
+- **Configuration**: New `config/email-branding.php` for brand customization
+  - Logo, colors (primary: #007BFF), contact info, footer
+- **Theme**: Custom `soleil.css` theme at `resources/views/vendor/mail/html/themes/`
+- **Security**: All user data escaped with `e()` helper for XSS protection
+- **Tests**: 13 new unit tests in `EmailTemplateRenderingTest.php`
+- **Documentation**: Updated [EMAIL_NOTIFICATIONS.md](./docs/backend/guides/EMAIL_NOTIFICATIONS.md)
+
+### 📚 Documentation Upgrade (January 14, 2026)
+
+Major documentation upgrade with enterprise-grade additions:
+
+- **ADR (Architecture Decision Records)**: 12 documented decisions
+  - Notifications vs Mailables, Repository pattern, Locking strategies
+  - RBAC design, Dual auth modes, Cache invalidation, API versioning
+- **Known Limitations**: 10 documented constraints with workarounds
+  - Single DB region, no payment integration, sync refunds
+  - No multi-tenancy, Redis requirements, no i18n
+- **Operational Playbook**: 13 runbooks for incident handling
+  - Application down, DB failure, Redis down, security incidents
+  - Double booking, slow responses, deployment rollbacks
+- **API Deprecation Strategy**: Complete lifecycle management
+  - Deprecation headers (RFC 8594), sunset dates, migration guides
+  - Breaking vs non-breaking changes, versioning strategy
+- **Services Architecture**: New SERVICES.md documenting all 8 services
+- **Email Templates**: New EMAIL_TEMPLATES.md feature documentation
 
 ---
 

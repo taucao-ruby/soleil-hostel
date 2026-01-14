@@ -1,17 +1,21 @@
 # 📚 Soleil Hostel Documentation
 
-> **Last Updated:** January 12, 2026 | **Tests:** 555 passed (1496 assertions) | **Status:** Production Ready & Running ✅
+> **Last Updated:** January 14, 2026 | **Tests:** 555 passed (1496 assertions) | **Status:** Production Ready & Running ✅
 
-    ## Quick Navigation
+## Quick Navigation
 
-    | I want to...                       | Go to                                                |
-    | ---------------------------------- | ---------------------------------------------------- |
-    | **Get started quickly**            | [Quick Start](#quick-start)                          |
-    | **Database schema**                | [Database Docs](./DATABASE.md)                       |
-    | **Backend documentation**          | [Backend Docs](./backend/README.md)                  |
-    | **Frontend documentation**         | [Frontend Docs](./frontend/README.md)                |
-    | **Set up development environment** | [Setup Guide](./backend/guides/ENVIRONMENT_SETUP.md) |
-    | **Run tests**                      | [Testing Guide](./backend/guides/TESTING.md)         |
+| I want to...                          | Go to                                                |
+| ------------------------------------- | ---------------------------------------------------- |
+| **Get started quickly**               | [Quick Start](#quick-start)                          |
+| **Understand architecture decisions** | [ADR (Decision Log)](./ADR.md)                       |
+| **Handle an incident**                | [Operational Playbook](./OPERATIONAL_PLAYBOOK.md)    |
+| **Know system limitations**           | [Known Limitations](./KNOWN_LIMITATIONS.md)          |
+| **Deprecate an API**                  | [API Deprecation](./API_DEPRECATION.md)              |
+| **Database schema**                   | [Database Docs](./DATABASE.md)                       |
+| **Backend documentation**             | [Backend Docs](./backend/README.md)                  |
+| **Frontend documentation**            | [Frontend Docs](./frontend/README.md)                |
+| **Set up development environment**    | [Setup Guide](./backend/guides/ENVIRONMENT_SETUP.md) |
+| **Run tests**                         | [Testing Guide](./backend/guides/TESTING.md)         |
 
     ---
 
@@ -49,56 +53,61 @@
 
     ## Documentation Structure
 
-    ```
-    docs/
-    ├── README.md                         # This file
-    ├── DATABASE.md                       # Database schema & indexes
-    ├── backend/                          # Backend documentation
-    │   ├── README.md                     # Backend index
-    │   ├── architecture/                 # System design
-    │   │   ├── API.md                    # Complete API reference
-    │   │   ├── SERVICES.md               # Service layer architecture
-    │   │   ├── REPOSITORIES.md           # Repository pattern
-    │   │   ├── MIDDLEWARE.md             # Middleware pipeline
-    │   │   ├── EVENTS.md                 # Events & listeners
-    │   │   ├── POLICIES.md               # Authorization policies
-    │   │   ├── JOBS.md                   # Queue jobs
-    │   │   └── TRAITS_EXCEPTIONS.md      # Traits & exceptions
-    │   ├── features/                     # Feature documentation
-    │   │   ├── AUTHENTICATION.md         # Auth (Bearer + HttpOnly)
-    │   │   ├── BOOKING.md                # Booking system
-    │   │   ├── ROOMS.md                  # Room management
-    │   │   ├── REVIEWS.md                # Reviews + XSS protection
-    │   │   ├── RBAC.md                   # Role-based access
-    │   │   ├── CACHING.md                # Redis cache layer
-    │   │   └── OPTIMISTIC_LOCKING.md     # Concurrency control
-    │   ├── guides/                       # How-to guides
-    │   │   ├── ENVIRONMENT_SETUP.md      # Dev environment
-    │   │   ├── TESTING.md                # Testing guide
-    │   │   ├── PERFORMANCE.md            # Octane & N+1
-    │   │   ├── DEPLOYMENT.md             # Docker & deployment
-    │   │   ├── COMMANDS.md               # Artisan commands
-    │   │   ├── MONITORING_LOGGING.md     # Observability & logging
-    │   │   └── EMAIL_NOTIFICATIONS.md    # Email & verification
-    │   └── security/                     # Security documentation
-    │       ├── HEADERS.md                # Security headers
-    │       ├── XSS_PROTECTION.md         # HTML Purifier
-    │       ├── RATE_LIMITING.md          # Rate limiting
-    │       └── README.md                 # Security overview
-    └── frontend/                         # Frontend documentation
-        ├── README.md                     # Frontend overview
-        ├── ARCHITECTURE.md               # Main architecture document
-        ├── APP_LAYER.md                  # App configuration layer
-        ├── FEATURES_LAYER.md             # Feature modules
-        ├── SERVICES_LAYER.md             # API services
-        ├── SHARED_LAYER.md               # Shared components
-        ├── TYPES_LAYER.md                # TypeScript types
-        ├── UTILS_LAYER.md                # Utility functions
-        ├── CONFIGURATION.md              # Build & dev config
-        ├── TESTING.md                    # Frontend testing
-        ├── PERFORMANCE_SECURITY.md       # Performance & security
-        └── DEPLOYMENT.md                 # Frontend deployment
-    ```
+```
+docs/
+├── README.md                         # This file (documentation index)
+├── ADR.md                            # Architecture Decision Records
+├── KNOWN_LIMITATIONS.md              # System constraints & tech debt
+├── OPERATIONAL_PLAYBOOK.md           # Incident runbooks
+├── API_DEPRECATION.md                # API versioning & deprecation
+├── DATABASE.md                       # Database schema & indexes
+├── backend/                          # Backend documentation
+│   ├── README.md                     # Backend index
+│   ├── architecture/                 # System design
+│   │   ├── API.md                    # Complete API reference
+│   │   ├── SERVICES.md               # Service layer architecture
+│   │   ├── REPOSITORIES.md           # Repository pattern
+│   │   ├── MIDDLEWARE.md             # Middleware pipeline
+│   │   ├── EVENTS.md                 # Events & listeners
+│   │   ├── POLICIES.md               # Authorization policies
+│   │   ├── JOBS.md                   # Queue jobs
+│   │   └── TRAITS_EXCEPTIONS.md      # Traits & exceptions
+│   ├── features/                     # Feature documentation
+│   │   ├── AUTHENTICATION.md         # Auth (Bearer + HttpOnly)
+│   │   ├── BOOKING.md                # Booking system
+│   │   ├── EMAIL_TEMPLATES.md        # Branded email templates
+│   │   ├── ROOMS.md                  # Room management
+│   │   ├── REVIEWS.md                # Reviews + XSS protection
+│   │   ├── RBAC.md                   # Role-based access
+│   │   ├── CACHING.md                # Redis cache layer
+│   │   └── OPTIMISTIC_LOCKING.md     # Concurrency control
+│   ├── guides/                       # How-to guides
+│   │   ├── ENVIRONMENT_SETUP.md      # Dev environment
+│   │   ├── TESTING.md                # Testing guide
+│   │   ├── PERFORMANCE.md            # Octane & N+1
+│   │   ├── DEPLOYMENT.md             # Docker & deployment
+│   │   ├── COMMANDS.md               # Artisan commands
+│   │   ├── MONITORING_LOGGING.md     # Observability & logging
+│   │   └── EMAIL_NOTIFICATIONS.md    # Email & verification
+│   └── security/                     # Security documentation
+│       ├── HEADERS.md                # Security headers
+│       ├── XSS_PROTECTION.md         # HTML Purifier
+│       ├── RATE_LIMITING.md          # Rate limiting
+│       └── README.md                 # Security overview
+└── frontend/                         # Frontend documentation
+    ├── README.md                     # Frontend overview
+    ├── ARCHITECTURE.md               # Main architecture document
+    ├── APP_LAYER.md                  # App configuration layer
+    ├── FEATURES_LAYER.md             # Feature modules
+    ├── SERVICES_LAYER.md             # API services
+    ├── SHARED_LAYER.md               # Shared components
+    ├── TYPES_LAYER.md                # TypeScript types
+    ├── UTILS_LAYER.md                # Utility functions
+    ├── CONFIGURATION.md              # Build & dev config
+    ├── TESTING.md                    # Frontend testing
+    ├── PERFORMANCE_SECURITY.md       # Performance & security
+    └── DEPLOYMENT.md                 # Frontend deployment
+```
 
     ---
 

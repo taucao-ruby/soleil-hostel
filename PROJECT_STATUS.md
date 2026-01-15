@@ -4,7 +4,8 @@
 
 ## 🎉 Current Status: Production Ready & Running ✅
 
-All 555 tests passing, 0 skipped, 1496 assertions verified (including 13 new email template tests).  
+All 573 tests passing, 0 skipped, 1582 assertions verified (including 18 new auth consolidation tests).  
+All GitHub Actions CI/CD workflows passing.  
 All GitHub Actions CI/CD workflows passing.  
 Documentation restructured and organized in `docs/` folder.  
 Both backend and frontend servers verified running successfully.  
@@ -18,11 +19,11 @@ Email verification fully implemented with Laravel default notifications.
 ## 📊 Test Results Summary
 
 ```
-✅ 555 tests passed
+✅ 573 tests passed
 ❌ 0 tests failed
 ⏭️  0 tests skipped
-📋 1496 assertions
-⏱️  Duration: ~55 seconds
+📋 1582 assertions
+⏱️  Duration: ~60 seconds
 ```
 
 ---
@@ -248,6 +249,27 @@ Major documentation upgrade with enterprise-grade additions:
   - RBAC design, Dual auth modes, Cache invalidation, API versioning
 - **Known Limitations**: 10 documented constraints with workarounds
   - Single DB region, no payment integration, sync refunds
+
+### 🔐 Auth Endpoint Consolidation (January 15, 2026)
+
+Auth endpoint cleanup with full backward compatibility:
+
+- **New `DeprecatedEndpoint` Middleware**: RFC 8594 compliant deprecation headers
+  - `Deprecation`, `Sunset`, `Link`, `X-Deprecation-Notice` headers
+  - Logs deprecated endpoint usage for migration monitoring
+- **Legacy Endpoints Now Send Deprecation Headers**:
+  - `POST /api/auth/login` → sunset July 2026 → successor `/api/auth/login-v2`
+  - `POST /api/auth/logout` → sunset July 2026 → successor `/api/auth/logout-v2`
+  - `POST /api/auth/refresh` → sunset July 2026 → successor `/api/auth/refresh-v2`
+  - `GET /api/auth/me` → sunset July 2026 → successor `/api/auth/me-v2`
+- **New Unified Endpoints** (mode-agnostic, auto-detect Bearer/Cookie):
+  - `GET /api/auth/unified/me` - Get current user
+  - `POST /api/auth/unified/logout` - Logout current session
+  - `POST /api/auth/unified/logout-all` - Logout all devices (NEW for cookie mode)
+- **Tests**: 18 new tests in `AuthConsolidationTest.php` (86 assertions)
+- **Documentation**:
+  - Updated [API_DEPRECATION.md](./docs/API_DEPRECATION.md) with active deprecation schedule
+  - New [AUTH_MIGRATION.md](./docs/backend/guides/AUTH_MIGRATION.md) client migration guide
   - No multi-tenancy, Redis requirements, no i18n
 - **Operational Playbook**: 13 runbooks for incident handling
   - Application down, DB failure, Redis down, security incidents

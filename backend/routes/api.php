@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Auth\AuthController as TokenAuthController;
 use App\Http\Controllers\Auth\HttpOnlyTokenController;
+use App\Http\Controllers\Auth\UnifiedAuthController;
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\BookingController;
@@ -59,15 +60,18 @@ Route::get('ping', function() {
 });
 
 // Auth routes (public - with rate limiting)
-// Legacy endpoints
+// ========== LEGACY ENDPOINTS (Deprecated - Sunset July 2026) ==========
+// These endpoints are maintained for backward compatibility.
+// New clients SHOULD use -v2 or -httponly variants.
 Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
-Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+Route::post('/auth/login', [AuthController::class, 'login'])
+    ->middleware(['throttle:5,1', 'deprecated:2026-07-01,/api/auth/login-v2']);
 
-// NEW: Token expiration endpoints (Bearer token)
+// ========== BEARER TOKEN ENDPOINTS (Current - v2) ==========
 Route::post('/auth/login-v2', [TokenAuthController::class, 'login'])->middleware('throttle:5,1');
 
-// NEW: httpOnly cookie authentication (XSS-safe)
-// Token stored in httpOnly Cookie, NOT localStorage
+// ========== HTTPONLY COOKIE ENDPOINTS (Current) ==========
+// Token stored in httpOnly Cookie, NOT localStorage - XSS-safe
 Route::post('/auth/login-httponly', [HttpOnlyTokenController::class, 'login'])->middleware('throttle:5,1');
 Route::get('/auth/csrf-token', function(Request $request) {
     // Generate a random CSRF token (not session-based for API)
@@ -118,19 +122,22 @@ Route::get('/email/verification-status', [EmailVerificationController::class, 's
 //
 
 Route::middleware(['check_httponly_token'])->group(function () {
-    // NEW: httpOnly cookie authentication endpoints (with custom middleware)
+    // ========== HTTPONLY COOKIE AUTH ENDPOINTS ==========
     Route::post('/auth/refresh-httponly', [HttpOnlyTokenController::class, 'refresh']);
     Route::post('/auth/logout-httponly', [HttpOnlyTokenController::class, 'logout']);
     Route::get('/auth/me-httponly', [HttpOnlyTokenController::class, 'me']);
 });
 
 Route::middleware(['check_token_valid'])->group(function () {
-    // ========== AUTH ENDPOINTS (Legacy) ==========
-    Route::post('/auth/logout', [AuthController::class, 'logout']);
-    Route::post('/auth/refresh', [AuthController::class, 'refresh']);
-    Route::get('/auth/me', [AuthController::class, 'me']);
+    // ========== LEGACY AUTH ENDPOINTS (Deprecated - Sunset July 2026) ==========
+    Route::post('/auth/logout', [AuthController::class, 'logout'])
+        ->middleware('deprecated:2026-07-01,/api/auth/logout-v2');
+    Route::post('/auth/refresh', [AuthController::class, 'refresh'])
+        ->middleware('deprecated:2026-07-01,/api/auth/refresh-v2');
+    Route::get('/auth/me', [AuthController::class, 'me'])
+        ->middleware('deprecated:2026-07-01,/api/auth/me-v2');
 
-    // ========== AUTH ENDPOINTS (New - Token Expiration) ==========
+    // ========== BEARER TOKEN AUTH ENDPOINTS (Current - v2) ==========
     Route::post('/auth/refresh-v2', [TokenAuthController::class, 'refresh']);
     Route::post('/auth/logout-v2', [TokenAuthController::class, 'logout']);
     Route::post('/auth/logout-all-v2', [TokenAuthController::class, 'logoutAll']);
@@ -141,6 +148,15 @@ Route::middleware(['check_token_valid'])->group(function () {
     Route::put('/rooms/{id}', [RoomController::class, 'update']);
     Route::patch('/rooms/{id}', [RoomController::class, 'update']);
     Route::delete('/rooms/{id}', [RoomController::class, 'destroy']);
+});
+
+// ========== UNIFIED AUTH ENDPOINTS (NEW - Mode-agnostic) ==========
+// These endpoints detect auth mode (Bearer/Cookie) and delegate appropriately.
+// Use these for new clients that want mode-agnostic auth handling.
+Route::prefix('auth/unified')->group(function () {
+    Route::get('/me', [UnifiedAuthController::class, 'me']);
+    Route::post('/logout', [UnifiedAuthController::class, 'logout']);
+    Route::post('/logout-all', [UnifiedAuthController::class, 'logoutAll']);
 });
 
 // ========== PROTECTED ROUTES (Require valid token + verified email) ==========

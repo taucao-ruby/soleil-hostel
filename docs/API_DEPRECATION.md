@@ -63,6 +63,8 @@ X-Deprecation-Notice: This endpoint is deprecated. Use /api/v2/bookings instead.
 
 ### Middleware for Deprecated Endpoints
 
+The `DeprecatedEndpoint` middleware is implemented at `app/Http/Middleware/DeprecatedEndpoint.php`:
+
 ```php
 // app/Http/Middleware/DeprecatedEndpoint.php
 
@@ -70,30 +72,36 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class DeprecatedEndpoint
 {
-    public function handle(Request $request, Closure $next, string $sunset, string $successor = null)
+    public function handle(Request $request, Closure $next, string $sunset, ?string $successor = null)
     {
         $response = $next($request);
 
-        // Add deprecation headers
-        $response->headers->set('Deprecation', now()->toRfc7231String());
-        $response->headers->set('Sunset', $sunset);
-        $response->headers->set('X-Deprecation-Notice',
-            "This endpoint is deprecated and will be removed on {$sunset}."
-        );
+        // Parse sunset date
+        $sunsetDate = \Carbon\Carbon::parse($sunset);
 
+        // Set RFC 8594 deprecation headers
+        $response->headers->set('Deprecation', now()->toRfc7231String());
+        $response->headers->set('Sunset', $sunsetDate->toRfc7231String());
+
+        $notice = "This endpoint is deprecated and will be removed on {$sunsetDate->format('Y-m-d')}.";
         if ($successor) {
+            $notice .= " Use {$successor} instead.";
             $response->headers->set('Link', "<{$successor}>; rel=\"successor-version\"");
         }
+        $response->headers->set('X-Deprecation-Notice', $notice);
 
         // Log usage for monitoring migration progress
-        \Log::channel('deprecation')->info('Deprecated endpoint accessed', [
+        Log::channel('single')->info('Deprecated endpoint accessed', [
             'endpoint' => $request->path(),
             'method' => $request->method(),
             'user_id' => $request->user()?->id,
             'client' => $request->header('User-Agent'),
+            'sunset' => $sunset,
+            'successor' => $successor,
         ]);
 
         return $response;
@@ -101,27 +109,42 @@ class DeprecatedEndpoint
 }
 ```
 
+Middleware is registered in `bootstrap/app.php`:
+
+```php
+$middleware->alias([
+    // ...
+    'deprecated' => \App\Http\Middleware\DeprecatedEndpoint::class,
+]);
+```
+
+````
+
 ### Route Registration
 
 ```php
 // routes/api.php
 
-// Active endpoint
-Route::post('/auth/login-v2', [AuthController::class, 'loginV2']);
-
-// Deprecated endpoint (sunset in 6 months)
+// ========== LEGACY ENDPOINTS (Deprecated - Sunset July 2026) ==========
 Route::post('/auth/login', [AuthController::class, 'login'])
-    ->middleware('deprecated:2026-07-01,/api/auth/login-v2');
+    ->middleware(['throttle:5,1', 'deprecated:2026-07-01,/api/auth/login-v2']);
 
-// Sunset endpoint (returns 410 for writes)
-Route::post('/auth/old-login', function () {
-    return response()->json([
-        'error' => 'Gone',
-        'message' => 'This endpoint has been removed. Use /api/auth/login-v2 instead.',
-        'successor' => '/api/auth/login-v2',
-    ], 410);
+Route::middleware(['check_token_valid'])->group(function () {
+    Route::post('/auth/logout', [AuthController::class, 'logout'])
+        ->middleware('deprecated:2026-07-01,/api/auth/logout-v2');
+    Route::post('/auth/refresh', [AuthController::class, 'refresh'])
+        ->middleware('deprecated:2026-07-01,/api/auth/refresh-v2');
+    Route::get('/auth/me', [AuthController::class, 'me'])
+        ->middleware('deprecated:2026-07-01,/api/auth/me-v2');
 });
-```
+
+// ========== UNIFIED ENDPOINTS (NEW - Mode-agnostic) ==========
+Route::prefix('auth/unified')->group(function () {
+    Route::get('/me', [UnifiedAuthController::class, 'me']);
+    Route::post('/logout', [UnifiedAuthController::class, 'logout']);
+    Route::post('/logout-all', [UnifiedAuthController::class, 'logoutAll']);
+});
+````
 
 ---
 
@@ -129,25 +152,39 @@ Route::post('/auth/old-login', function () {
 
 ### Deprecated Endpoints
 
-| Endpoint                | Deprecated | Sunset   | Successor             |
-| ----------------------- | ---------- | -------- | --------------------- |
-| `POST /api/auth/login`  | Jan 2026   | Jul 2026 | `/api/auth/login-v2`  |
-| `POST /api/auth/logout` | Jan 2026   | Jul 2026 | `/api/auth/logout-v2` |
-| `GET /api/auth/me`      | Jan 2026   | Jul 2026 | `/api/auth/me-v2`     |
+| Endpoint                 | Deprecated | Sunset   | Successor              | Headers Active |
+| ------------------------ | ---------- | -------- | ---------------------- | -------------- |
+| `POST /api/auth/login`   | Jan 2026   | Jul 2026 | `/api/auth/login-v2`   | ✅ Yes         |
+| `POST /api/auth/logout`  | Jan 2026   | Jul 2026 | `/api/auth/logout-v2`  | ✅ Yes         |
+| `POST /api/auth/refresh` | Jan 2026   | Jul 2026 | `/api/auth/refresh-v2` | ✅ Yes         |
+| `GET /api/auth/me`       | Jan 2026   | Jul 2026 | `/api/auth/me-v2`      | ✅ Yes         |
 
 ### Active Endpoints (Current)
 
-| Endpoint                          | Version | Status |
-| --------------------------------- | ------- | ------ |
-| `POST /api/auth/login-v2`         | v2      | Active |
-| `POST /api/auth/login-httponly`   | v2      | Active |
-| `POST /api/auth/logout-v2`        | v2      | Active |
-| `POST /api/auth/logout-all-v2`    | v2      | Active |
-| `GET /api/auth/me-v2`             | v2      | Active |
-| `POST /api/auth/refresh-httponly` | v2      | Active |
-| `POST /api/bookings`              | v1      | Active |
-| `GET /api/rooms`                  | v1      | Active |
-| `GET /api/health/*`               | v1      | Active |
+| Endpoint                          | Version | Mode   | Status |
+| --------------------------------- | ------- | ------ | ------ |
+| `POST /api/auth/login-v2`         | v2      | Bearer | Active |
+| `POST /api/auth/login-httponly`   | v2      | Cookie | Active |
+| `POST /api/auth/logout-v2`        | v2      | Bearer | Active |
+| `POST /api/auth/logout-httponly`  | v2      | Cookie | Active |
+| `POST /api/auth/logout-all-v2`    | v2      | Bearer | Active |
+| `GET /api/auth/me-v2`             | v2      | Bearer | Active |
+| `GET /api/auth/me-httponly`       | v2      | Cookie | Active |
+| `POST /api/auth/refresh-v2`       | v2      | Bearer | Active |
+| `POST /api/auth/refresh-httponly` | v2      | Cookie | Active |
+| `POST /api/bookings`              | v1      | Any    | Active |
+| `GET /api/rooms`                  | v1      | Any    | Active |
+| `GET /api/health/*`               | v1      | Any    | Active |
+
+### Unified Endpoints (NEW - January 2026)
+
+Mode-agnostic endpoints that auto-detect authentication mode (Bearer or Cookie):
+
+| Endpoint                            | Version | Mode | Status |
+| ----------------------------------- | ------- | ---- | ------ |
+| `GET /api/auth/unified/me`          | v2      | Both | Active |
+| `POST /api/auth/unified/logout`     | v2      | Both | Active |
+| `POST /api/auth/unified/logout-all` | v2      | Both | Active |
 
 ---
 

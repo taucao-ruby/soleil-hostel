@@ -138,14 +138,17 @@ class BookingCancellationTest extends TestCase
 
     public function test_full_refund_when_cancelled_more_than_48_hours_before_checkin(): void
     {
-        // Set up a booking with payment, 3 days before check-in
+        // Freeze time to make test deterministic
+        // At noon today, check-in 3 days later at midnight = 60 hours > 48 hours (full refund)
+        $this->travelTo(now()->startOfDay()->addHours(12)); // Today at noon
+
         $booking = Booking::factory()
             ->for($this->user)
             ->for($this->room)
             ->confirmed()
             ->create([
-                'check_in' => now()->addDays(3), // 72 hours
-                'check_out' => now()->addDays(5),
+                'check_in' => now()->addDays(3)->startOfDay(), // 3 days from noon = 60 hours to midnight
+                'check_out' => now()->addDays(5)->startOfDay(),
                 'amount' => 10000, // $100.00
                 'payment_intent_id' => 'pi_test_123',
             ]);
@@ -158,13 +161,18 @@ class BookingCancellationTest extends TestCase
 
     public function test_partial_refund_when_cancelled_between_24_and_48_hours_before_checkin(): void
     {
+        // Freeze time at 12:00 so check_in date (midnight) is exactly 36 hours away
+        // check_in is cast as 'date' (midnight), so we set current time to noon
+        // making the diff to check_in (day after tomorrow's midnight) = 36 hours
+        $this->travelTo(now()->startOfDay()->addHours(12)); // Today at noon
+
         $booking = Booking::factory()
             ->for($this->user)
             ->for($this->room)
             ->confirmed()
             ->create([
-                'check_in' => now()->addHours(36), // 36 hours
-                'check_out' => now()->addDays(3),
+                'check_in' => now()->addDays(2)->startOfDay(), // Day after tomorrow at midnight = 36 hours from noon today
+                'check_out' => now()->addDays(4)->startOfDay(),
                 'amount' => 10000,
                 'payment_intent_id' => 'pi_test_123',
             ]);
@@ -177,13 +185,17 @@ class BookingCancellationTest extends TestCase
 
     public function test_no_refund_when_cancelled_less_than_24_hours_before_checkin(): void
     {
+        // Freeze time to make test deterministic
+        // At noon today, check-in tomorrow at midnight = 12 hours < 24 hours (no refund)
+        $this->travelTo(now()->startOfDay()->addHours(12)); // Today at noon
+        
         $booking = Booking::factory()
             ->for($this->user)
             ->for($this->room)
             ->confirmed()
             ->create([
-                'check_in' => now()->addHours(12), // 12 hours
-                'check_out' => now()->addDays(2),
+                'check_in' => now()->addDay()->startOfDay(), // Tomorrow midnight = 12 hours from noon
+                'check_out' => now()->addDays(3)->startOfDay(),
                 'amount' => 10000,
                 'payment_intent_id' => 'pi_test_123',
             ]);

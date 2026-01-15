@@ -158,17 +158,18 @@ class BookingCancellationTest extends TestCase
 
     public function test_partial_refund_when_cancelled_between_24_and_48_hours_before_checkin(): void
     {
-        // Freeze time at midnight to ensure consistent date-based calculations
-        // (check_in is cast as 'date' so time component is stripped)
-        $this->travelTo(now()->startOfDay());
+        // Freeze time at 12:00 so check_in date (midnight) is exactly 36 hours away
+        // check_in is cast as 'date' (midnight), so we set current time to noon
+        // making the diff to check_in (tomorrow's midnight) = 36 hours
+        $this->travelTo(now()->startOfDay()->addHours(12)); // Today at noon
 
         $booking = Booking::factory()
             ->for($this->user)
             ->for($this->room)
             ->confirmed()
             ->create([
-                'check_in' => now()->addHours(36), // 36 hours from midnight = 36 hours exactly
-                'check_out' => now()->addDays(3),
+                'check_in' => now()->addDays(2)->startOfDay(), // Day after tomorrow at midnight = 36 hours from noon today
+                'check_out' => now()->addDays(4),
                 'amount' => 10000,
                 'payment_intent_id' => 'pi_test_123',
             ]);

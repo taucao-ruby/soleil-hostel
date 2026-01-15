@@ -27,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'log_performance' => \App\Http\Middleware\LogPerformance::class,
             'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
             'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,
+            'deprecated' => \App\Http\Middleware\DeprecatedEndpoint::class,
         ]);
 
         // ========== Register global middleware ==========

@@ -26,6 +26,17 @@ use App\Http\Controllers\CspViolationReportController;
 |
 */
 
+// ========== VERSIONED API ROUTES ==========
+// v1: Current stable version
+// v2: Under development (returns 501 Not Implemented)
+// Legacy: Backward compatibility proxy (deprecated, sunset July 2026)
+
+Route::prefix('v1')->group(base_path('routes/api/v1.php'));
+Route::prefix('v2')->group(base_path('routes/api/v2.php'));
+
+// Legacy routes (no prefix) - proxy to v1 with deprecation headers
+require base_path('routes/api/legacy.php');
+
 // ========== PUBLIC ROUTES (No authentication) ==========
 
 // ========== HEALTH CHECK ==========
@@ -80,10 +91,6 @@ Route::get('/auth/csrf-token', function(Request $request) {
 
 // Security: CSP violation reporting
 Route::post('/csp-violation-report', [CspViolationReportController::class, 'report'])->withoutMiddleware(['api']);
-
-// Room read-only (public)
-Route::get('/rooms', [RoomController::class, 'index']);
-Route::get('/rooms/{id}', [RoomController::class, 'show']);
 
 // Contact form (public - with rate limiting)
 Route::post('/contact', [ContactController::class, 'store'])->middleware('throttle:3,1');
@@ -142,12 +149,6 @@ Route::middleware(['check_token_valid'])->group(function () {
     Route::post('/auth/logout-v2', [TokenAuthController::class, 'logout']);
     Route::post('/auth/logout-all-v2', [TokenAuthController::class, 'logoutAll']);
     Route::get('/auth/me-v2', [TokenAuthController::class, 'me']);
-
-    // ========== ROOM MANAGEMENT (Admin only) ==========
-    Route::post('/rooms', [RoomController::class, 'store']);
-    Route::put('/rooms/{id}', [RoomController::class, 'update']);
-    Route::patch('/rooms/{id}', [RoomController::class, 'update']);
-    Route::delete('/rooms/{id}', [RoomController::class, 'destroy']);
 });
 
 // ========== UNIFIED AUTH ENDPOINTS (NEW - Mode-agnostic) ==========
@@ -158,47 +159,3 @@ Route::prefix('auth/unified')->group(function () {
     Route::post('/logout', [UnifiedAuthController::class, 'logout']);
     Route::post('/logout-all', [UnifiedAuthController::class, 'logoutAll']);
 });
-
-// ========== PROTECTED ROUTES (Require valid token + verified email) ==========
-// SECURITY: These routes require email verification before access
-// Users with unverified email will receive 403 Forbidden
-
-Route::middleware(['check_token_valid', 'verified'])->group(function () {
-    // ========== BOOKING ENDPOINTS ==========
-    Route::post('/bookings', [BookingController::class, 'store'])->middleware('throttle:10,1');
-    Route::get('/bookings', [BookingController::class, 'index']);
-    Route::get('/bookings/{booking}', [BookingController::class, 'show']);
-    Route::put('/bookings/{booking}', [BookingController::class, 'update'])->middleware('throttle:10,1');
-    Route::patch('/bookings/{booking}', [BookingController::class, 'update'])->middleware('throttle:10,1');
-    Route::delete('/bookings/{booking}', [BookingController::class, 'destroy'])->middleware('throttle:10,1');
-    
-    // Booking status change endpoints (with notification triggers)
-    Route::post('/bookings/{booking}/confirm', [BookingController::class, 'confirm'])
-        ->middleware(['role:admin', 'throttle:10,1']);
-    Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])
-        ->middleware('throttle:10,1');
-
-    // ========== ADMIN BOOKING ENDPOINTS (Soft Delete Management) ==========
-    // All routes require admin role via middleware
-    Route::prefix('admin/bookings')->middleware('role:admin')->group(function () {
-        // View all bookings including trashed
-        Route::get('/', [AdminBookingController::class, 'index']);
-        
-        // View only trashed bookings (Trash view)
-        Route::get('/trashed', [AdminBookingController::class, 'trashed']);
-        
-        // View specific trashed booking
-        Route::get('/trashed/{id}', [AdminBookingController::class, 'showTrashed']);
-        
-        // Restore a soft deleted booking
-        Route::post('/{id}/restore', [AdminBookingController::class, 'restore']);
-        
-        // Bulk restore multiple bookings
-        Route::post('/restore-bulk', [AdminBookingController::class, 'restoreBulk']);
-        
-        // Permanently delete (force delete) - GDPR "right to be forgotten"
-        Route::delete('/{id}/force', [AdminBookingController::class, 'forceDelete']);
-    });
-});
-
-

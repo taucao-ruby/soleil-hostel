@@ -11,6 +11,56 @@ Development: http://localhost:8000/api
 
 ---
 
+## API Versioning
+
+### Current Versions
+
+| Version    | Status         | Base Path  | Description                          |
+| ---------- | -------------- | ---------- | ------------------------------------ |
+| **v1**     | ✅ Stable      | `/api/v1/` | Current production version           |
+| **v2**     | 🚧 Development | `/api/v2/` | Returns 501 Not Implemented          |
+| **Legacy** | ⚠️ Deprecated  | `/api/`    | Proxy to v1 with deprecation headers |
+
+### Versioned Endpoints
+
+All bookings and rooms endpoints are now versioned:
+
+```
+✅ /api/v1/bookings/*      - Recommended (stable)
+✅ /api/v1/rooms/*         - Recommended (stable)
+✅ /api/v1/admin/bookings/* - Recommended (stable)
+
+⚠️ /api/bookings/*         - Deprecated (sunset: July 1, 2026)
+⚠️ /api/rooms/*            - Deprecated (sunset: July 1, 2026)
+
+🚧 /api/v2/*               - Under development (returns 501)
+```
+
+### Legacy Endpoints (Deprecated)
+
+Legacy endpoints at `/api/bookings` and `/api/rooms` remain functional for backward compatibility but include deprecation headers:
+
+```http
+HTTP/1.1 200 OK
+Deprecation: Sat, 17 Jan 2026 00:00:00 GMT
+Sunset: Sat, 01 Jul 2026 00:00:00 GMT
+Link: </api/v1/bookings>; rel="successor-version"
+X-Deprecation-Notice: This endpoint is deprecated and will be removed on 2026-07-01. Use /api/v1/bookings instead.
+```
+
+### Migration Guide
+
+To migrate from legacy to v1 endpoints, simply add `/v1` prefix:
+
+| Legacy (Deprecated)  | V1 (Recommended)        |
+| -------------------- | ----------------------- |
+| `GET /api/bookings`  | `GET /api/v1/bookings`  |
+| `POST /api/bookings` | `POST /api/v1/bookings` |
+| `GET /api/rooms`     | `GET /api/v1/rooms`     |
+| `POST /api/rooms`    | `POST /api/v1/rooms`    |
+
+---
+
 ## Authentication
 
 ### Public Endpoints
@@ -49,18 +99,18 @@ Development: http://localhost:8000/api
 
 ### Public Endpoints
 
-| Method | Endpoint      | Description    | Rate Limit |
-| ------ | ------------- | -------------- | ---------- |
-| GET    | `/rooms`      | List all rooms | -          |
-| GET    | `/rooms/{id}` | Get room by ID | -          |
+| Method | Endpoint         | Description    | Rate Limit |
+| ------ | ---------------- | -------------- | ---------- |
+| GET    | `/v1/rooms`      | List all rooms | -          |
+| GET    | `/v1/rooms/{id}` | Get room by ID | -          |
 
 ### Admin Endpoints
 
-| Method | Endpoint      | Description | Auth  |
-| ------ | ------------- | ----------- | ----- |
-| POST   | `/rooms`      | Create room | Admin |
-| PUT    | `/rooms/{id}` | Update room | Admin |
-| DELETE | `/rooms/{id}` | Delete room | Admin |
+| Method | Endpoint         | Description | Auth  |
+| ------ | ---------------- | ----------- | ----- |
+| POST   | `/v1/rooms`      | Create room | Admin |
+| PUT    | `/v1/rooms/{id}` | Update room | Admin |
+| DELETE | `/v1/rooms/{id}` | Delete room | Admin |
 
 ### Room Request/Response
 
@@ -95,24 +145,24 @@ Development: http://localhost:8000/api
 
 ### User Endpoints
 
-| Method | Endpoint         | Description        | Rate Limit |
-| ------ | ---------------- | ------------------ | ---------- |
-| GET    | `/bookings`      | List user bookings | -          |
-| POST   | `/bookings`      | Create booking     | 10/min     |
-| GET    | `/bookings/{id}` | Get booking        | -          |
-| PUT    | `/bookings/{id}` | Update booking     | 10/min     |
-| DELETE | `/bookings/{id}` | Cancel booking     | 10/min     |
+| Method | Endpoint            | Description        | Rate Limit |
+| ------ | ------------------- | ------------------ | ---------- |
+| GET    | `/v1/bookings`      | List user bookings | -          |
+| POST   | `/v1/bookings`      | Create booking     | 10/min     |
+| GET    | `/v1/bookings/{id}` | Get booking        | -          |
+| PUT    | `/v1/bookings/{id}` | Update booking     | 10/min     |
+| DELETE | `/v1/bookings/{id}` | Cancel booking     | 10/min     |
 
 ### Admin Endpoints
 
-| Method | Endpoint                       | Description            | Auth  |
-| ------ | ------------------------------ | ---------------------- | ----- |
-| GET    | `/admin/bookings`              | All bookings + trashed | Admin |
-| GET    | `/admin/bookings/trashed`      | Trashed bookings       | Admin |
-| GET    | `/admin/bookings/trashed/{id}` | View trashed booking   | Admin |
-| POST   | `/admin/bookings/{id}/restore` | Restore booking        | Admin |
-| POST   | `/admin/bookings/restore-bulk` | Bulk restore           | Admin |
-| DELETE | `/admin/bookings/{id}/force`   | Permanent delete       | Admin |
+| Method | Endpoint                          | Description            | Auth  |
+| ------ | --------------------------------- | ---------------------- | ----- |
+| GET    | `/v1/admin/bookings`              | All bookings + trashed | Admin |
+| GET    | `/v1/admin/bookings/trashed`      | Trashed bookings       | Admin |
+| GET    | `/v1/admin/bookings/trashed/{id}` | View trashed booking   | Admin |
+| POST   | `/v1/admin/bookings/{id}/restore` | Restore booking        | Admin |
+| POST   | `/v1/admin/bookings/restore-bulk` | Bulk restore           | Admin |
+| DELETE | `/v1/admin/bookings/{id}/force`   | Permanent delete       | Admin |
 
 ### Booking Request/Response
 

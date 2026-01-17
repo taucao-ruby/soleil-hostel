@@ -152,14 +152,25 @@ Route::prefix('auth/unified')->group(function () {
 
 ### Deprecated Endpoints
 
-| Endpoint                 | Deprecated | Sunset   | Successor              | Headers Active |
-| ------------------------ | ---------- | -------- | ---------------------- | -------------- |
-| `POST /api/auth/login`   | Jan 2026   | Jul 2026 | `/api/auth/login-v2`   | ✅ Yes         |
-| `POST /api/auth/logout`  | Jan 2026   | Jul 2026 | `/api/auth/logout-v2`  | ✅ Yes         |
-| `POST /api/auth/refresh` | Jan 2026   | Jul 2026 | `/api/auth/refresh-v2` | ✅ Yes         |
-| `GET /api/auth/me`       | Jan 2026   | Jul 2026 | `/api/auth/me-v2`      | ✅ Yes         |
+| Endpoint                    | Deprecated | Sunset   | Successor                  | Headers Active |
+| --------------------------- | ---------- | -------- | -------------------------- | -------------- |
+| `POST /api/auth/login`      | Jan 2026   | Jul 2026 | `/api/auth/login-v2`       | ✅ Yes         |
+| `POST /api/auth/logout`     | Jan 2026   | Jul 2026 | `/api/auth/logout-v2`      | ✅ Yes         |
+| `POST /api/auth/refresh`    | Jan 2026   | Jul 2026 | `/api/auth/refresh-v2`     | ✅ Yes         |
+| `GET /api/auth/me`          | Jan 2026   | Jul 2026 | `/api/auth/me-v2`          | ✅ Yes         |
+| `GET /api/rooms`            | Jan 2026   | Jul 2026 | `/api/v1/rooms`            | ✅ Yes         |
+| `GET /api/rooms/{id}`       | Jan 2026   | Jul 2026 | `/api/v1/rooms/{id}`       | ✅ Yes         |
+| `POST /api/rooms`           | Jan 2026   | Jul 2026 | `/api/v1/rooms`            | ✅ Yes         |
+| `PUT /api/rooms/{id}`       | Jan 2026   | Jul 2026 | `/api/v1/rooms/{id}`       | ✅ Yes         |
+| `DELETE /api/rooms/{id}`    | Jan 2026   | Jul 2026 | `/api/v1/rooms/{id}`       | ✅ Yes         |
+| `GET /api/bookings`         | Jan 2026   | Jul 2026 | `/api/v1/bookings`         | ✅ Yes         |
+| `POST /api/bookings`        | Jan 2026   | Jul 2026 | `/api/v1/bookings`         | ✅ Yes         |
+| `GET /api/bookings/{id}`    | Jan 2026   | Jul 2026 | `/api/v1/bookings/{id}`    | ✅ Yes         |
+| `PUT /api/bookings/{id}`    | Jan 2026   | Jul 2026 | `/api/v1/bookings/{id}`    | ✅ Yes         |
+| `DELETE /api/bookings/{id}` | Jan 2026   | Jul 2026 | `/api/v1/bookings/{id}`    | ✅ Yes         |
+| `GET /api/admin/bookings/*` | Jan 2026   | Jul 2026 | `/api/v1/admin/bookings/*` | ✅ Yes         |
 
-### Active Endpoints (Current)
+### Active Endpoints (Current - v1)
 
 | Endpoint                          | Version | Mode   | Status |
 | --------------------------------- | ------- | ------ | ------ |
@@ -172,9 +183,24 @@ Route::prefix('auth/unified')->group(function () {
 | `GET /api/auth/me-httponly`       | v2      | Cookie | Active |
 | `POST /api/auth/refresh-v2`       | v2      | Bearer | Active |
 | `POST /api/auth/refresh-httponly` | v2      | Cookie | Active |
-| `POST /api/bookings`              | v1      | Any    | Active |
-| `GET /api/rooms`                  | v1      | Any    | Active |
+| `GET /api/v1/bookings`            | v1      | Any    | Active |
+| `POST /api/v1/bookings`           | v1      | Any    | Active |
+| `GET /api/v1/rooms`               | v1      | Any    | Active |
+| `POST /api/v1/rooms`              | v1      | Any    | Active |
+| `GET /api/v1/admin/bookings/*`    | v1      | Admin  | Active |
 | `GET /api/health/*`               | v1      | Any    | Active |
+
+### API v2 (Under Development)
+
+All v2 endpoints currently return `501 Not Implemented`:
+
+```json
+{
+  "error": "NOT_IMPLEMENTED",
+  "message": "API v2 under development",
+  "useInstead": "/api/v1/..."
+}
+```
 
 ### Unified Endpoints (NEW - January 2026)
 

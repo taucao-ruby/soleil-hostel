@@ -43,14 +43,23 @@ class HealthCheckController extends Controller
 
         // ========== REDIS CHECK ==========
         try {
-            // Ping Redis directly
-            Redis::ping();
+            // Check if Redis extension is loaded
+            if (!extension_loaded('redis')) {
+                $health['status'] = 'unhealthy';
+                $health['services']['redis'] = [
+                    'status' => 'down',
+                    'error' => 'Redis PHP extension not loaded',
+                ];
+            } else {
+                // Ping Redis directly
+                Redis::ping();
 
-            $health['services']['redis'] = [
-                'status' => 'up',
-                'connections' => ['default'],
-            ];
-        } catch (\Exception $e) {
+                $health['services']['redis'] = [
+                    'status' => 'up',
+                    'connections' => ['default'],
+                ];
+            }
+        } catch (\Throwable $e) {
             $health['status'] = 'unhealthy';
             $health['services']['redis'] = [
                 'status' => 'down',
@@ -84,14 +93,16 @@ class HealthCheckController extends Controller
 
         // Add detailed Redis info
         try {
-            $info = Redis::info('stats');
+            if (extension_loaded('redis')) {
+                $info = Redis::info('stats');
 
-            $data['services']['redis']['stats'] = [
-                'connected_clients' => $info['connected_clients'] ?? 'N/A',
-                'used_memory_mb' => round(($info['used_memory'] ?? 0) / 1024 / 1024, 2),
-                'total_commands_processed' => $info['total_commands_processed'] ?? 'N/A',
-            ];
-        } catch (\Exception $e) {
+                $data['services']['redis']['stats'] = [
+                    'connected_clients' => $info['connected_clients'] ?? 'N/A',
+                    'used_memory_mb' => round(($info['used_memory'] ?? 0) / 1024 / 1024, 2),
+                    'total_commands_processed' => $info['total_commands_processed'] ?? 'N/A',
+                ];
+            }
+        } catch (\Throwable $e) {
             // Silently fail detailed Redis stats
         }
 

@@ -306,6 +306,14 @@ class HealthController extends Controller
     protected function checkRedis(): array
     {
         try {
+            // Check if Redis extension is loaded
+            if (!extension_loaded('redis')) {
+                return [
+                    'healthy' => false,
+                    'error' => 'Redis PHP extension not loaded',
+                ];
+            }
+
             $start = microtime(true);
             Redis::ping();
             $latency = round((microtime(true) - $start) * 1000, 2);
@@ -314,7 +322,7 @@ class HealthController extends Controller
                 'healthy' => true,
                 'latency_ms' => $latency,
             ];
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return [
                 'healthy' => false,
                 'error' => $e->getMessage(),
@@ -368,6 +376,15 @@ class HealthController extends Controller
 
             // For Redis queue, check connection
             if ($driver === 'redis') {
+                // Check if Redis extension is loaded
+                if (!extension_loaded('redis')) {
+                    return [
+                        'healthy' => false,
+                        'driver' => $driver,
+                        'error' => 'Redis PHP extension not loaded',
+                    ];
+                }
+
                 Redis::connection(config('queue.connections.redis.connection', 'default'))->ping();
 
                 return [
@@ -380,7 +397,7 @@ class HealthController extends Controller
                 'healthy' => true,
                 'driver' => $driver,
             ];
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return [
                 'healthy' => false,
                 'error' => $e->getMessage(),

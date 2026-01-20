@@ -1,6 +1,8 @@
 # 🔧 Backend Documentation
 
 > Laravel 11 + PHP 8.3 + PostgreSQL + Redis
+>
+> **Last Updated:** January 19, 2026 | **Tests:** 609 total (609 passing, 1657 assertions)
 
 ## Quick Navigation
 
@@ -41,6 +43,8 @@
 | [RBAC.md](./features/RBAC.md)                             | Role-based access             |
 | [CACHING.md](./features/CACHING.md)                       | Redis cache layer             |
 | [OPTIMISTIC_LOCKING.md](./features/OPTIMISTIC_LOCKING.md) | Concurrency control for rooms |
+| [EMAIL_TEMPLATES.md](./features/EMAIL_TEMPLATES.md)       | Branded email templates       |
+| [HEALTH_CHECK.md](./features/HEALTH_CHECK.md)             | Health check endpoints        |
 
 ### Guides
 
@@ -53,14 +57,16 @@
 | [COMMANDS.md](./guides/COMMANDS.md)                       | Artisan commands        |
 | [MONITORING_LOGGING.md](./guides/MONITORING_LOGGING.md)   | Observability & logging |
 | [EMAIL_NOTIFICATIONS.md](./guides/EMAIL_NOTIFICATIONS.md) | Email & verification    |
+| [AUTH_MIGRATION.md](./guides/AUTH_MIGRATION.md)           | Auth endpoint migration |
 
 ### Security
 
-| Document                                          | Description      |
-| ------------------------------------------------- | ---------------- |
-| [HEADERS.md](./security/HEADERS.md)               | Security headers |
-| [XSS_PROTECTION.md](./security/XSS_PROTECTION.md) | HTML Purifier    |
-| [RATE_LIMITING.md](./security/RATE_LIMITING.md)   | Rate limiting    |
+| Document                                          | Description       |
+| ------------------------------------------------- | ----------------- |
+| [README.md](./security/README.md)                 | Security overview |
+| [HEADERS.md](./security/HEADERS.md)               | Security headers  |
+| [XSS_PROTECTION.md](./security/XSS_PROTECTION.md) | HTML Purifier     |
+| [RATE_LIMITING.md](./security/RATE_LIMITING.md)   | Rate limiting     |
 
 ---
 

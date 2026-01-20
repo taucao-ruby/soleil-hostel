@@ -1,29 +1,29 @@
 # Soleil Hostel - Project Status
 
-**Last Updated:** January 14, 2026
+**Last Updated:** January 19, 2026
 
 ## 🎉 Current Status: Production Ready & Running ✅
 
-All 573 tests passing, 0 skipped, 1582 assertions verified (including 18 new auth consolidation tests).  
-All GitHub Actions CI/CD workflows passing.  
+All 609 tests passing with 1657 assertions verified.  
 All GitHub Actions CI/CD workflows passing.  
 Documentation restructured and organized in `docs/` folder.  
 Both backend and frontend servers verified running successfully.  
 Optimistic locking fully implemented and tested (24 tests).  
 Repository layer fully unit tested (53 tests with zero database dependency).  
 Email verification fully implemented with Laravel default notifications.  
-**NEW**: ADR decision log, operational playbook, known limitations, API deprecation strategy.
+**Auth Consolidation**: Unified endpoints deployed, legacy endpoints deprecated (sunset July 2026).  
+**Documentation**: ADR decision log, operational playbook, known limitations, API deprecation strategy.  
+**Health Check Fix (Jan 19)**: Redis extension check added to prevent fatal errors when PHP Redis extension unavailable.
 
 ---
 
 ## 📊 Test Results Summary
 
 ```
-✅ 573 tests passed
-❌ 0 tests failed
-⏭️  0 tests skipped
-📋 1582 assertions
-⏱️  Duration: ~60 seconds
+✅ 609 total tests
+✅ 609 tests passed
+📋 1657 assertions
+⏱️  Duration: ~31 seconds
 ```
 
 ---

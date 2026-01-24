@@ -161,9 +161,14 @@ final class TransactionIsolation
     ): mixed {
         $connection = DB::connection();
         $driver = $connection->getDriverName();
+        $pdo = $connection->getPdo();
 
-        // Set isolation level before beginning transaction
-        if ($isolationLevel !== self::READ_COMMITTED) {
+        // Check if we're already in a transaction (e.g., from RefreshDatabase in tests)
+        // MySQL/MariaDB and PostgreSQL don't allow changing isolation level mid-transaction
+        $inTransaction = $pdo->inTransaction();
+
+        // Set isolation level BEFORE beginning transaction (only if not already in one)
+        if (!$inTransaction && $isolationLevel !== self::READ_COMMITTED) {
             match ($driver) {
                 'pgsql' => $connection->statement(
                     "SET TRANSACTION ISOLATION LEVEL {$isolationLevel}"
@@ -173,9 +178,15 @@ final class TransactionIsolation
                 ),
                 default => Log::warning("Isolation level not supported for driver: {$driver}"),
             };
+        } elseif ($inTransaction && $isolationLevel !== self::READ_COMMITTED) {
+            // Log that we're skipping isolation level change due to active transaction
+            Log::debug("Skipping isolation level change (already in transaction)", [
+                'requested_level' => $isolationLevel,
+                'driver' => $driver,
+            ]);
         }
 
-        // Set statement timeout for PostgreSQL
+        // Set statement timeout for PostgreSQL (can be set mid-transaction with SET LOCAL)
         if ($driver === 'pgsql' && $timeout > 0) {
             $timeoutMs = $timeout * 1000;
             $connection->statement("SET LOCAL statement_timeout = {$timeoutMs}");

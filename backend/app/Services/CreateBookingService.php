@@ -2,11 +2,15 @@
 
 namespace App\Services;
 
+use App\Database\TransactionIsolation;
+use App\Database\TransactionMetrics;
+use App\Exceptions\DoubleBookingException;
 use App\Models\Booking;
 use App\Models\Room;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use PDOException;
 use RuntimeException;
 use Throwable;
@@ -16,14 +20,33 @@ use Throwable;
  * 
  * Triển khai pessimistic locking (SELECT ... FOR UPDATE) để đảm bảo không bao giờ có overlap
  * kể cả dưới tải cao (100-500 request/giây)
+ * 
+ * Transaction Isolation Strategy:
+ * - Uses READ COMMITTED isolation (PostgreSQL default) with FOR UPDATE locks
+ * - Automatic retry on deadlock (40P01) and serialization failure (40001)
+ * - Exponential backoff with jitter to reduce contention
+ * 
+ * Data Invariants Protected:
+ * - No overlapping bookings for same room (enforced by lock + check)
+ * - Booking dates are always valid (check_in < check_out)
+ * - Room must exist and be active
+ * 
+ * Error Handling:
+ * - Deadlock (40P01): Immediate retry with small jitter
+ * - Serialization failure (40001): Retry with exponential backoff  
+ * - Constraint violation: Business error, no retry
  */
 class CreateBookingService
 {
-    // Số lần retry khi deadlock
-    private const DEADLOCK_RETRY_ATTEMPTS = 3;
+    // Số lần retry khi deadlock hoặc serialization failure
+    private const MAX_RETRY_ATTEMPTS = 3;
     
     // Thời gian chờ giữa retry (exponential backoff: 100ms, 200ms, 400ms)
-    private const DEADLOCK_RETRY_DELAY_MS = 100;
+    private const BASE_RETRY_DELAY_MS = 100;
+
+    // PostgreSQL SQLSTATE codes
+    private const SQLSTATE_SERIALIZATION_FAILURE = '40001';
+    private const SQLSTATE_DEADLOCK_DETECTED = '40P01';
 
     /**
      * Tạo booking mới với đảm bảo không overlap
@@ -68,12 +91,16 @@ class CreateBookingService
     }
 
     /**
-     * Tạo booking với retry logic cho deadlock
+     * Tạo booking với retry logic cho deadlock và serialization failure
      * 
      * Khi 2+ transaction cùng lock các row và cố gắng update chéo nhau,
      * PostgreSQL/MySQL sẽ raise deadlock exception.
      * 
-     * Giải pháp: Retry với exponential backoff
+     * Error Types:
+     * - Deadlock (40P01): Two transactions waiting for each other's locks
+     * - Serialization Failure (40001): SERIALIZABLE/REPEATABLE READ conflict
+     * 
+     * Giải pháp: Retry với exponential backoff + jitter
      */
     private function createWithDeadlockRetry(
         int $roomId,
@@ -85,10 +112,12 @@ class CreateBookingService
         array $additionalData
     ): Booking {
         $attempt = 0;
+        $startTime = microtime(true);
+        $lastException = null;
 
         do {
             try {
-                return $this->createBookingWithLocking(
+                $booking = $this->createBookingWithLocking(
                     $roomId,
                     $checkIn,
                     $checkOut,
@@ -97,33 +126,136 @@ class CreateBookingService
                     $userId,
                     $additionalData
                 );
+
+                // Record success metrics
+                $durationMs = (microtime(true) - $startTime) * 1000;
+                TransactionMetrics::recordSuccess(
+                    'create_booking',
+                    TransactionIsolation::READ_COMMITTED,
+                    $durationMs,
+                    $attempt
+                );
+
+                return $booking;
+
             } catch (PDOException $e) {
                 $attempt++;
+                $lastException = $e;
+                $errorType = $this->classifyDatabaseError($e);
 
-                // Kiểm tra nếu là deadlock exception
-                if ($this->isDeadlockException($e)) {
-                    if ($attempt >= self::DEADLOCK_RETRY_ATTEMPTS) {
-                        // Đã retry hết, ném lỗi
-                        throw new RuntimeException(
-                            'Không thể tạo booking sau ' . self::DEADLOCK_RETRY_ATTEMPTS . ' lần thử do xung đột database. Vui lòng thử lại.',
-                            0,
-                            $e
-                        );
-                    }
+                Log::warning("Booking creation attempt {$attempt} failed", [
+                    'room_id' => $roomId,
+                    'error_type' => $errorType,
+                    'sqlstate' => $e->errorInfo[0] ?? 'unknown',
+                    'message' => $e->getMessage(),
+                ]);
 
-                    // Exponential backoff: 100ms, 200ms, 400ms
-                    $delayMs = self::DEADLOCK_RETRY_DELAY_MS * (2 ** ($attempt - 1));
-                    usleep($delayMs * 1000); // Chuyển từ ms sang microseconds
-
-                    continue;
+                // Check if error is retryable
+                if (!$this->isRetryableException($e)) {
+                    throw $e;
                 }
 
-                // Exception khác, ném luôn
-                throw $e;
-            }
-        } while ($attempt < self::DEADLOCK_RETRY_ATTEMPTS);
+                if ($attempt >= self::MAX_RETRY_ATTEMPTS) {
+                    // Record failure metrics
+                    TransactionMetrics::recordFailure(
+                        'create_booking',
+                        TransactionIsolation::READ_COMMITTED,
+                        $attempt,
+                        (microtime(true) - $startTime) * 1000
+                    );
 
-        throw new RuntimeException('Không thể tạo booking');
+                    throw new RuntimeException(
+                        'Không thể tạo booking sau ' . self::MAX_RETRY_ATTEMPTS . ' lần thử do xung đột database. Vui lòng thử lại.',
+                        0,
+                        $e
+                    );
+                }
+
+                // Calculate delay based on error type
+                $delayMs = $this->calculateRetryDelay($attempt, $errorType);
+                usleep($delayMs * 1000);
+
+                continue;
+            }
+        } while ($attempt < self::MAX_RETRY_ATTEMPTS);
+
+        throw new RuntimeException('Không thể tạo booking', 0, $lastException);
+    }
+
+    /**
+     * Classify database error for proper handling.
+     * 
+     * @param PDOException $e
+     * @return string Error type: 'deadlock', 'serialization', 'lock_timeout', 'other'
+     */
+    private function classifyDatabaseError(PDOException $e): string
+    {
+        $sqlstate = (string) ($e->errorInfo[0] ?? $e->getCode());
+        $message = strtolower($e->getMessage());
+
+        if ($sqlstate === self::SQLSTATE_DEADLOCK_DETECTED || str_contains($message, 'deadlock')) {
+            return 'deadlock';
+        }
+
+        if ($sqlstate === self::SQLSTATE_SERIALIZATION_FAILURE) {
+            return 'serialization';
+        }
+
+        if (str_contains($message, 'lock wait timeout') || str_contains($message, 'lock timeout')) {
+            return 'lock_timeout';
+        }
+
+        if (str_contains($message, 'database is locked')) {
+            return 'sqlite_busy';
+        }
+
+        return 'other';
+    }
+
+    /**
+     * Calculate retry delay based on error type and attempt number.
+     * 
+     * Strategy:
+     * - Deadlock: Quick retry with small random jitter (10-50ms)
+     * - Serialization: Exponential backoff with jitter
+     * - Lock timeout: Longer delay to allow lock release
+     * 
+     * @param int $attempt Attempt number (1-based)
+     * @param string $errorType Error classification
+     * @return int Delay in milliseconds
+     */
+    private function calculateRetryDelay(int $attempt, string $errorType): int
+    {
+        return match ($errorType) {
+            'deadlock' => random_int(10, 50),
+            'serialization' => (int) (self::BASE_RETRY_DELAY_MS * pow(2, $attempt - 1) + random_int(0, 50)),
+            'lock_timeout' => (int) (self::BASE_RETRY_DELAY_MS * pow(2, $attempt) + random_int(0, 100)),
+            'sqlite_busy' => random_int(50, 150),
+            default => (int) (self::BASE_RETRY_DELAY_MS * pow(2, $attempt - 1)),
+        };
+    }
+
+    /**
+     * Check if exception is retryable.
+     * 
+     * Retryable errors (transient):
+     * - Deadlock detected (40P01)
+     * - Serialization failure (40001)
+     * - Lock wait timeout
+     * - SQLite busy
+     * 
+     * Non-retryable errors (business logic):
+     * - Unique constraint violation
+     * - Foreign key violation
+     * - Check constraint violation
+     * 
+     * @param PDOException $e
+     * @return bool
+     */
+    private function isRetryableException(PDOException $e): bool
+    {
+        $errorType = $this->classifyDatabaseError($e);
+        return in_array($errorType, ['deadlock', 'serialization', 'lock_timeout', 'sqlite_busy'], true);
     }
 
     /**
@@ -263,23 +395,5 @@ class CreateBookingService
         }
 
         return Carbon::parse($date)->startOfDay();
-    }
-
-    /**
-     * Kiểm tra exception có phải deadlock không
-     * 
-     * Deadlock errors:
-     * - MySQL: SQLSTATE 40P01 hoặc message chứa "Deadlock found"
-     * - PostgreSQL: SQLSTATE 40P01 (serialization failure)
-     * - SQLite: SQLITE_BUSY hoặc "database is locked"
-     */
-    private function isDeadlockException(PDOException $exception): bool
-    {
-        $message = strtolower($exception->getMessage());
-        $code = $exception->getCode();
-
-        return str_contains($message, 'deadlock') ||
-               str_contains($message, 'lock') ||
-               in_array($code, ['40P01', '1213', 'HY000'], true);
     }
 }

@@ -19,8 +19,7 @@ Email verification fully implemented with Laravel default notifications.
 
 ## 📊 Test Results Summary
 
-```
-✅ 609 total tests
+```✅ 609 total tests
 ✅ 609 tests passed
 📋 1657 assertions
 ⏱️  Duration: ~31 seconds
@@ -67,7 +66,7 @@ Email verification fully implemented with Laravel default notifications.
 - **Optimistic Locking**: Room concurrency control implemented (24 tests, Jan 2026)
 - **Optimistic Locking**: Room concurrency control implemented (24 tests, Jan 2026)
 
-### Database
+### Database Commands
 
 - **PostgreSQL**: Primary database
 - **Redis**: Cache driver (optional, falls back to database cache)
@@ -88,8 +87,7 @@ Email verification fully implemented with Laravel default notifications.
 | [OPERATIONAL_PLAYBOOK.md](./docs/OPERATIONAL_PLAYBOOK.md) | Incident runbooks                            |
 | [API_DEPRECATION.md](./docs/API_DEPRECATION.md)           | API versioning & deprecation strategy        |
 
-```
-docs/
+```docs/
 ├── README.md                    # Documentation index
 ├── ADR.md                       # Architecture Decision Records
 ├── KNOWN_LIMITATIONS.md         # System constraints
@@ -155,8 +153,8 @@ Fixed 13 GitHub Actions issues:
 - Created CORS middleware for credential-based authentication
 - Frontend/Backend integration verified and working
 - Both servers running successfully with proper CORS configuration
-- **Backend**: PHP dev server running at http://127.0.0.1:8000
-- **Frontend**: Vite dev server running at http://localhost:5173
+- **Backend**: PHP dev server running at `http://127.0.0.1:8000`
+- **Frontend**: Vite dev server running at `http://localhost:5173`
 - Database migrations completed successfully with fresh seed data
 - All 488 backend tests verified passing (1348 assertions)
 - Repository layer fully unit tested (53 tests with zero database dependency)
@@ -411,8 +409,7 @@ Auth endpoint cleanup with full backward compatibility:
 
 ### Authentication
 
-```
-POST   /api/auth/register              - Register new user
+```POST /api/auth/register              - Register new user
 POST   /api/auth/login-v2              - Login (Bearer token)
 POST   /api/auth/login-httponly        - Login (HttpOnly cookie)
 POST   /api/auth/refresh-httponly      - Refresh token
@@ -423,8 +420,7 @@ GET    /api/auth/me-v2                 - Get current user
 
 ### Bookings
 
-```
-GET    /api/bookings                   - List all bookings
+```GET /api/bookings                   - List all bookings
 POST   /api/bookings                   - Create booking
 GET    /api/bookings/{id}              - Get booking details
 PUT    /api/bookings/{id}              - Update booking
@@ -433,8 +429,7 @@ DELETE /api/bookings/{id}              - Delete booking
 
 ### Rooms
 
-```
-GET    /api/rooms                      - List all rooms
+```GET /api/rooms                      - List all rooms
 POST   /api/rooms                      - Create room (admin only)
 GET    /api/rooms/{id}                 - Get room details
 PUT    /api/rooms/{id}                 - Update room (requires lock_version)
@@ -444,8 +439,7 @@ GET    /api/rooms/available            - Check room availability
 
 ### Health & Monitoring
 
-```
-GET    /api/health/live                - Liveness probe
+```GET /api/health/live                - Liveness probe
 GET    /api/health/ready               - Readiness probe
 GET    /api/health/full                - Full health check
 ```
@@ -566,7 +560,7 @@ php artisan migrate --force
 
 - **Project**: Soleil Hostel Management System
 - **Owner**: taucao-ruby
-- **Repository**: https://github.com/taucao-ruby/soleil-hostel
+- **Repository**: `https://github.com/taucao-ruby/soleil-hostel`
 - **Framework**: Laravel 11 + React
 - **Database**: PostgreSQL + Redis
 

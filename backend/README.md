@@ -8,17 +8,17 @@ The Soleil Hostel backend is a **production-ready REST API** built with Laravel 
 
 ### Key Features
 
--   ✅ **Authentication**: Dual-mode (Bearer Token + HttpOnly Cookie)
--   ✅ **Booking System**: Pessimistic locking prevents double-booking
--   ✅ **Room Management**: Optimistic locking prevents lost updates
--   ✅ **Repository Pattern**: Data access abstraction with 100% unit test coverage
--   ✅ **RBAC**: Enum-based role system (User, Moderator, Admin)
--   ✅ **Booking Notifications**: Event-driven queued emails (confirm, update, cancel)
--   ✅ **Email Verification**: Laravel's built-in verification with signed URLs
--   ✅ **Security**: XSS protection, CSRF tokens, security headers, rate limiting
--   ✅ **Performance**: Redis caching, N+1 query prevention, database indexes
--   ✅ **Monitoring**: Correlation IDs, performance logging, health probes
--   ✅ **Testing**: 537 tests with 1445 assertions (100% pass rate)
+- ✅ **Authentication**: Dual-mode (Bearer Token + HttpOnly Cookie)
+- ✅ **Booking System**: Pessimistic locking prevents double-booking
+- ✅ **Room Management**: Optimistic locking prevents lost updates
+- ✅ **Repository Pattern**: Data access abstraction with 100% unit test coverage
+- ✅ **RBAC**: Enum-based role system (User, Moderator, Admin)
+- ✅ **Booking Notifications**: Event-driven queued emails (confirm, update, cancel)
+- ✅ **Email Verification**: Laravel's built-in verification with signed URLs
+- ✅ **Security**: XSS protection, CSRF tokens, security headers, rate limiting
+- ✅ **Performance**: Redis caching, N+1 query prevention, database indexes
+- ✅ **Monitoring**: Correlation IDs, performance logging, health probes
+- ✅ **Testing**: 537 tests with 1445 assertions (100% pass rate)
 
 ---
 
@@ -26,10 +26,10 @@ The Soleil Hostel backend is a **production-ready REST API** built with Laravel 
 
 ### Prerequisites
 
--   PHP 8.2 or higher
--   Composer
--   PostgreSQL 12+
--   Redis (optional, for caching)
+- PHP 8.2 or higher
+- Composer
+- PostgreSQL 12+
+- Redis (optional, for caching)
 
 ### Installation
 
@@ -207,12 +207,12 @@ php artisan test --coverage --min=80
 
 ### Key Patterns
 
--   **Service Layer**: Business logic isolated from controllers
--   **Form Requests**: Validation separated from controller logic
--   **Policies**: Authorization logic centralized
--   **Events & Listeners**: Decoupled event-driven architecture
--   **Optimistic Locking**: Prevents lost updates in Room model
--   **Pessimistic Locking**: Prevents double-booking in Booking system
+- **Service Layer**: Business logic isolated from controllers
+- **Form Requests**: Validation separated from controller logic
+- **Policies**: Authorization logic centralized
+- **Events & Listeners**: Decoupled event-driven architecture
+- **Optimistic Locking**: Prevents lost updates in Room model
+- **Pessimistic Locking**: Prevents double-booking in Booking system
 
 ---
 
@@ -220,16 +220,16 @@ php artisan test --coverage --min=80
 
 ### Implemented
 
--   ✅ XSS Protection (HTML Purifier)
--   ✅ CSRF Protection (Sanctum)
--   ✅ SQL Injection Prevention (Eloquent ORM)
--   ✅ Rate Limiting (3-tier: guest, user, admin)
--   ✅ Security Headers (CSP, HSTS, X-Frame-Options, etc.)
--   ✅ Token Expiration & Rotation
--   ✅ HttpOnly Cookies for sensitive tokens
--   ✅ Suspicious Activity Detection
--   ✅ Password Hashing (bcrypt)
--   ✅ Sensitive Data Masking in logs
+- ✅ XSS Protection (HTML Purifier)
+- ✅ CSRF Protection (Sanctum)
+- ✅ SQL Injection Prevention (Eloquent ORM)
+- ✅ Rate Limiting (3-tier: guest, user, admin)
+- ✅ Security Headers (CSP, HSTS, X-Frame-Options, etc.)
+- ✅ Token Expiration & Rotation
+- ✅ HttpOnly Cookies for sensitive tokens
+- ✅ Suspicious Activity Detection
+- ✅ Password Hashing (bcrypt)
+- ✅ Sensitive Data Masking in logs
 
 ### Security Headers
 
@@ -277,15 +277,15 @@ CREATE INDEX idx_bookings_status_period ON bookings(status, check_in);
 
 Full documentation available in the `docs/` folder:
 
--   [Architecture Overview](../docs/backend/README.md)
--   [Authentication Guide](../docs/backend/features/AUTHENTICATION.md)
--   [Booking System](../docs/backend/features/BOOKING.md)
--   [Room Management](../docs/backend/features/ROOMS.md)
--   [Optimistic Locking](../docs/backend/features/OPTIMISTIC_LOCKING.md)
--   [RBAC System](../docs/backend/features/RBAC.md)
--   [Security Guide](../docs/backend/security/README.md)
--   [Testing Guide](../docs/backend/guides/TESTING.md)
--   [Environment Setup](../docs/backend/guides/ENVIRONMENT_SETUP.md)
+- [Architecture Overview](../docs/backend/README.md)
+- [Authentication Guide](../docs/backend/features/AUTHENTICATION.md)
+- [Booking System](../docs/backend/features/BOOKING.md)
+- [Room Management](../docs/backend/features/ROOMS.md)
+- [Optimistic Locking](../docs/backend/features/OPTIMISTIC_LOCKING.md)
+- [RBAC System](../docs/backend/features/RBAC.md)
+- [Security Guide](../docs/backend/security/README.md)
+- [Testing Guide](../docs/backend/guides/TESTING.md)
+- [Environment Setup](../docs/backend/guides/ENVIRONMENT_SETUP.md)
 
 ---
 
@@ -303,6 +303,12 @@ php artisan migrate
 # Fresh migration with seed data
 php artisan migrate:fresh --seed
 
+# Cache warmup (post-deployment)
+php artisan cache:warmup              # Warm all caches
+php artisan cache:warmup --dry-run    # Preview only
+php artisan cache:warmup --group=rooms --group=config  # Specific groups
+php artisan cache:warmup --force      # Override existing cache
+
 # Clear caches
 php artisan cache:clear
 php artisan config:clear
@@ -312,11 +318,26 @@ php artisan route:clear
 php artisan route:list
 ```
 
+### Cache Warmup
+
+After deployment, run cache warmup to prevent cold-start latency spikes:
+
+```bash
+# Full warmup with progress
+php artisan cache:warmup
+
+# In deployment scripts (no progress bar)
+php artisan cache:warmup --force --no-progress
+```
+
+See [Cache Warmup Strategy](../docs/backend/CACHE_WARMUP_STRATEGY.md) for full documentation.
+
 ### Database Commands
 
 ```bash
 # Create new migration
 php artisan make:migration create_rooms_table
+
 
 # Create new seeder
 php artisan make:seeder RoomSeeder
@@ -347,18 +368,18 @@ php artisan test --filter=RoomOptimisticLocking
 
 ### Production Checklist
 
--   [ ] Set `APP_ENV=production` in `.env`
--   [ ] Set `APP_DEBUG=false` in `.env`
--   [ ] Configure production database
--   [ ] Set strong `APP_KEY`
--   [ ] Configure Redis for caching (recommended)
--   [ ] Set up queue worker (if using queues)
--   [ ] Configure Sentry for error tracking (optional)
--   [ ] Run `composer install --optimize-autoloader --no-dev`
--   [ ] Run `php artisan config:cache`
--   [ ] Run `php artisan route:cache`
--   [ ] Run `php artisan view:cache`
--   [ ] Run `php artisan migrate --force`
+- [ ] Set `APP_ENV=production` in `.env`
+- [ ] Set `APP_DEBUG=false` in `.env`
+- [ ] Configure production database
+- [ ] Set strong `APP_KEY`
+- [ ] Configure Redis for caching (recommended)
+- [ ] Set up queue worker (if using queues)
+- [ ] Configure Sentry for error tracking (optional)
+- [ ] Run `composer install --optimize-autoloader --no-dev`
+- [ ] Run `php artisan config:cache`
+- [ ] Run `php artisan route:cache`
+- [ ] Run `php artisan view:cache`
+- [ ] Run `php artisan migrate --force`
 
 ### Performance Optimization
 

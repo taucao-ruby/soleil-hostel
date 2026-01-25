@@ -237,19 +237,44 @@ run_migrations() {
 warm_up_cache() {
     log_info "🔥 Warming up cache..."
 
-    # Call cache warmup endpoint (requires internal API token)
+    local start_time=$(date +%s)
+
+    # Method 1: Use artisan command directly via SSH (preferred)
+    # This runs the cache:warmup command on the server
+    if [ -n "${FORGE_SSH_HOST:-}" ]; then
+        local ssh_result=$(ssh -o ConnectTimeout=10 "${FORGE_SSH_USER:-forge}@${FORGE_SSH_HOST}" \
+            "cd ${FORGE_SITE_PATH:-/home/forge/solelhotel.com} && php artisan cache:warmup --force --no-progress 2>&1" \
+            --max-time "$CACHE_WARMUP_TIMEOUT")
+
+        if echo "$ssh_result" | grep -q "completed successfully"; then
+            local end_time=$(date +%s)
+            local duration=$((end_time - start_time))
+            log_success "✅ Cache warmed successfully (${duration}s)"
+            
+            # Log warmup metrics
+            log_info "📊 Warmup metrics: $ssh_result"
+            return 0
+        fi
+    fi
+
+    # Method 2: Fallback to API endpoint (for environments without SSH)
     local cache_url="${SITE_URL:-https://solelhotel.com}/api/cache/warmup"
 
     local response=$(curl -s -X POST "$cache_url" \
         -H "Authorization: Bearer ${INTERNAL_API_TOKEN:-}" \
         -H "Content-Type: application/json" \
+        -d '{"force": true}' \
         --max-time "$CACHE_WARMUP_TIMEOUT")
 
     if echo "$response" | grep -q "success\|warmed"; then
-        log_success "✅ Cache warmed successfully"
+        local end_time=$(date +%s)
+        local duration=$((end_time - start_time))
+        log_success "✅ Cache warmed successfully via API (${duration}s)"
         return 0
     else
         log_warning "⚠️ Cache warmup may have failed (continuing anyway)"
+        log_warning "   Response: $response"
+        # Non-critical failure - don't block deployment
         return 0
     fi
 }

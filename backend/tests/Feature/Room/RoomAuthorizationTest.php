@@ -3,6 +3,7 @@
 namespace Tests\Feature\Room;
 
 use App\Enums\UserRole;
+use App\Models\Location;
 use App\Models\Room;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -24,6 +25,7 @@ class RoomAuthorizationTest extends TestCase
     private User $admin;
     private User $moderator;
     private User $user;
+    private Location $location;
 
     protected function setUp(): void
     {
@@ -32,11 +34,13 @@ class RoomAuthorizationTest extends TestCase
         $this->admin = User::factory()->create(['role' => UserRole::ADMIN]);
         $this->moderator = User::factory()->create(['role' => UserRole::MODERATOR]);
         $this->user = User::factory()->create(['role' => UserRole::USER]);
+        $this->location = Location::factory()->create();
     }
 
     private function getValidRoomData(): array
     {
         return [
+            'location_id' => $this->location->id,
             'name' => 'Test Room',
             'description' => 'Test description',
             'price' => 100.00,

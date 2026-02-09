@@ -3,6 +3,7 @@
 namespace Tests\Feature\Room;
 
 use App\Enums\UserRole;
+use App\Models\Location;
 use App\Models\Room;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -18,11 +19,13 @@ class RoomValidationTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+    private Location $location;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->admin = User::factory()->create(['role' => UserRole::ADMIN]);
+        $this->location = Location::factory()->create();
     }
 
     // ========== STORE VALIDATION TESTS ==========
@@ -191,6 +194,7 @@ class RoomValidationTest extends TestCase
     {
         $response = $this->actingAs($this->admin, 'sanctum')
             ->postJson('/api/rooms', [
+                'location_id' => $this->location->id,
                 'name' => 'Test Room',
                 'description' => 'Test description',
                 'price' => 100.00,
@@ -205,6 +209,7 @@ class RoomValidationTest extends TestCase
     {
         $response = $this->actingAs($this->admin, 'sanctum')
             ->postJson('/api/rooms', [
+                'location_id' => $this->location->id,
                 'name' => 'Test Room',
                 'description' => 'Test description',
                 'price' => 100.00,
@@ -219,6 +224,7 @@ class RoomValidationTest extends TestCase
     {
         $response = $this->actingAs($this->admin, 'sanctum')
             ->postJson('/api/rooms', [
+                'location_id' => $this->location->id,
                 'name' => 'Test Room',
                 'description' => 'Test description',
                 'price' => 100.00,
@@ -301,6 +307,7 @@ class RoomValidationTest extends TestCase
     {
         $response = $this->actingAs($this->admin, 'sanctum')
             ->postJson('/api/rooms', [
+                'location_id' => $this->location->id,
                 'name' => 'Free Room',
                 'description' => 'Test description',
                 'price' => 0,
@@ -315,6 +322,7 @@ class RoomValidationTest extends TestCase
     {
         $response = $this->actingAs($this->admin, 'sanctum')
             ->postJson('/api/rooms', [
+                'location_id' => $this->location->id,
                 'name' => 'Dormitory',
                 'description' => 'Test description',
                 'price' => 50.00,
@@ -329,6 +337,7 @@ class RoomValidationTest extends TestCase
     {
         $response = $this->actingAs($this->admin, 'sanctum')
             ->postJson('/api/rooms', [
+                'location_id' => $this->location->id,
                 'name' => 'Test Room',
                 'description' => 'Test description',
                 'price' => 99.99,

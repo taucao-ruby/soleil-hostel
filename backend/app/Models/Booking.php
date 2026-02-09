@@ -18,6 +18,7 @@ class Booking extends Model
 
     protected $fillable = [
         'room_id',
+        'location_id',
         'check_in',
         'check_out',
         'guest_name',
@@ -76,6 +77,14 @@ class Booking extends Model
     public function room(): BelongsTo
     {
         return $this->belongsTo(Room::class);
+    }
+
+    /**
+     * Get the location for this booking (denormalized for analytics).
+     */
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(Location::class);
     }
 
     /**

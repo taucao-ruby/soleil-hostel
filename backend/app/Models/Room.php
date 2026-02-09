@@ -4,8 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 
 /**
  * Room Model
@@ -15,7 +17,9 @@ use Illuminate\Database\Eloquent\Builder;
  * race conditions during concurrent updates.
  *
  * @property int         $id
+ * @property int         $location_id
  * @property string      $name
+ * @property string|null $room_number
  * @property string      $description
  * @property string      $price
  * @property int         $max_guests
@@ -23,6 +27,7 @@ use Illuminate\Database\Eloquent\Builder;
  * @property int         $lock_version  Optimistic locking version (starts at 1)
  * @property \Carbon\Carbon $created_at
  * @property \Carbon\Carbon $updated_at
+ * @property-read Location $location
  */
 class Room extends Model
 {
@@ -35,7 +40,9 @@ class Room extends Model
      * @var array<int, string>
      */
     protected $fillable = [
+        'location_id',
         'name',
+        'room_number',
         'description',
         'price',
         'max_guests',
@@ -74,6 +81,14 @@ class Room extends Model
     public function getLockVersionAttribute(?int $value): int
     {
         return $value ?? 1;
+    }
+
+    /**
+     * Get the location this room belongs to.
+     */
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(Location::class);
     }
 
     /**
@@ -117,7 +132,9 @@ class Room extends Model
     {
         return $query->select([
             'rooms.id',
+            'rooms.location_id',
             'rooms.name',
+            'rooms.room_number',
             'rooms.description',
             'rooms.price',
             'rooms.max_guests',
@@ -136,6 +153,52 @@ class Room extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('status', 'active');
+    }
+
+    /**
+     * Scope: Filter rooms by location.
+     *
+     * Usage: Room::atLocation(1)->get()
+     */
+    public function scopeAtLocation(Builder $query, int $locationId): Builder
+    {
+        return $query->where('location_id', $locationId);
+    }
+
+    /**
+     * Scope: Available rooms between dates (no overlapping bookings).
+     *
+     * Uses half-open interval [check_in, check_out) for overlap detection.
+     * Allows same-day checkout/checkin.
+     *
+     * Usage: Room::availableBetween('2026-03-01', '2026-03-05')->get()
+     */
+    public function scopeAvailableBetween(Builder $query, string $checkIn, string $checkOut): Builder
+    {
+        // Normalize to datetime format for consistent comparison across SQLite and PostgreSQL
+        $checkInDt = \Carbon\Carbon::parse($checkIn)->startOfDay()->toDateTimeString();
+        $checkOutDt = \Carbon\Carbon::parse($checkOut)->startOfDay()->toDateTimeString();
+
+        return $query->where('status', 'available')
+            ->whereDoesntHave('bookings', function (Builder $q) use ($checkInDt, $checkOutDt) {
+                $q->whereIn('status', Booking::ACTIVE_STATUSES)
+                    ->where('check_in', '<', $checkOutDt)
+                    ->where('check_out', '>', $checkInDt);
+            });
+    }
+
+    // ===== ACCESSORS =====
+
+    /**
+     * Display name with room number if available.
+     */
+    protected function displayName(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->room_number
+                ? "{$this->name} (#{$this->room_number})"
+                : $this->name
+        );
     }
 }
 

@@ -7,7 +7,7 @@ import path from 'path'
 export default defineConfig({
   plugins: [
     react(),
-    vitePluginCspNonce(),  // Inject CSP nonce vào HTML bundle
+    vitePluginCspNonce(), // Inject CSP nonce vào HTML bundle
   ],
   resolve: {
     alias: {
@@ -31,23 +31,26 @@ export default defineConfig({
     },
   },
   server: {
-  // The `dev` npm script runs `vite --port 5173` so match that default here to
-  // keep behavior consistent. Set `open: false` to avoid OS-specific `xdg-open` warnings
-  // when running inside containers or headless environments.
-  host: '0.0.0.0',
-  port: 5173,
-  proxy: {
+    // The `dev` npm script runs `vite --port 5173` so match that default here to
+    // keep behavior consistent. Set `open: false` to avoid OS-specific `xdg-open` warnings
+    // when running inside containers or headless environments.
+    host: '0.0.0.0',
+    port: 5173,
+    proxy: {
       '/api': {
         target: 'http://backend:8000',
         changeOrigin: true,
         secure: false,
       },
-  },
-  
-  open: false,
+    },
+
+    open: false,
     cors: true,
     hmr: {
       overlay: true,
     },
+  },
+  test: {
+    exclude: ['tests/e2e/**', 'node_modules/**'],
   },
 })

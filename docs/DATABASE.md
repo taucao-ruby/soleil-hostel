@@ -1,32 +1,53 @@
 # 🗄️ Database Schema & Indexes
 
-> Complete database design for Soleil Hostel (18 migrations, 12 tables)
+> Complete database design for Soleil Hostel (24 migrations, 13 tables)
 
 ## ER Diagram
 
 ```
+┌────────────────────┐
+│     locations      │
+├────────────────────┤
+│ id (PK)            │
+│ name (UNIQUE)      │
+│ slug (UNIQUE)      │
+│ address            │
+│ city, district     │
+│ latitude/longitude │
+│ amenities (JSONB)  │
+│ images (JSONB)     │
+│ is_active          │
+│ total_rooms        │
+│ lock_version       │
+│ created_at         │
+│ updated_at         │
+└────────────────────┘
+          │
+          │ 1:N
+          ▼
 ┌────────────────────┐       ┌────────────────────┐       ┌────────────────────┐
 │       users        │       │       rooms        │       │      reviews       │
 ├────────────────────┤       ├────────────────────┤       ├────────────────────┤
 │ id (PK)            │       │ id (PK)            │       │ id (PK)            │
-│ name               │       │ name               │       │ room_id (FK)       │
-│ email (UNIQUE)     │       │ description        │       │ user_id (FK)       │
-│ password           │       │ price              │       │ title              │
-│ role (ENUM)        │       │ max_guests         │       │ content            │
-│ email_verified_at  │       │ status             │       │ guest_name         │
-│ remember_token     │       │ lock_version       │◄──    │ rating (1-5)       │
-│ created_at         │       │ created_at         │       │ approved           │
-│ updated_at         │       │ updated_at         │       │ created_at         │
-└────────────────────┘       └────────────────────┘       └────────────────────┘
-          │                           │                            │
-          │ 1:N                       │ 1:N                        │
-          ▼                           ▼                            │
+│ name               │       │ location_id (FK)   │       │ room_id (FK)       │
+│ email (UNIQUE)     │       │ name               │       │ user_id (FK)       │
+│ password           │       │ room_number        │       │ title              │
+│ role (ENUM)        │       │ description        │       │ content            │
+│ email_verified_at  │       │ price              │       │ guest_name         │
+│ remember_token     │       │ max_guests         │       │ rating (1-5)       │
+│ created_at         │       │ status             │       │ approved           │
+│ updated_at         │       │ lock_version       │◄──    │ created_at         │
+└────────────────────┘       │ created_at         │       └────────────────────┘
+          │                  │ updated_at         │                │
+          │ 1:N              └────────────────────┘                │
+          ▼                           │ 1:N                        │
 ┌─────────────────────────────────────────────────┐               │
 │                   bookings                       │◄──────────────┘
 ├─────────────────────────────────────────────────┤
 │ id (PK)                                          │
 │ user_id (FK → users)                             │
 │ room_id (FK → rooms)                             │
+│ location_id (FK → locations)  ◄── Denormalized   │
 │ guest_name, guest_email                          │
 │ check_in (DATE), check_out (DATE)                │
 │ status (pending/confirmed/cancelled)             │
@@ -71,19 +92,46 @@
 CREATE TYPE user_role AS ENUM ('user', 'moderator', 'admin');
 ```
 
-### rooms
+### locations
 
 | Column       | Type             | Constraints         |
 | ------------ | ---------------- | ------------------- |
 | id           | BIGSERIAL        | PRIMARY KEY         |
-| name         | VARCHAR(255)     | NOT NULL            |
+| name         | VARCHAR(255)     | NOT NULL, UNIQUE    |
+| slug         | VARCHAR(255)     | NOT NULL, UNIQUE    |
+| address      | TEXT             | NOT NULL            |
+| city         | VARCHAR(100)     | NOT NULL            |
+| district     | VARCHAR(100)     | NULLABLE            |
+| ward         | VARCHAR(100)     | NULLABLE            |
+| postal_code  | VARCHAR(20)      | NULLABLE            |
+| latitude     | DECIMAL(10,8)    | NULLABLE            |
+| longitude    | DECIMAL(11,8)    | NULLABLE            |
+| phone        | VARCHAR(20)      | NULLABLE            |
+| email        | VARCHAR(255)     | NULLABLE            |
 | description  | TEXT             | NULLABLE            |
-| price        | DECIMAL(10,2)    | NOT NULL            |
-| max_guests   | INTEGER          | NOT NULL            |
-| status       | room_status ENUM | DEFAULT 'available' |
+| amenities    | JSONB            | NULLABLE            |
+| images       | JSONB            | NULLABLE            |
+| is_active    | BOOLEAN          | DEFAULT TRUE        |
+| total_rooms  | INTEGER UNSIGNED | DEFAULT 0           |
 | lock_version | BIGINT UNSIGNED  | NOT NULL, DEFAULT 1 |
 | created_at   | TIMESTAMP        |                     |
 | updated_at   | TIMESTAMP        |                     |
+
+### rooms
+
+| Column       | Type             | Constraints              |
+| ------------ | ---------------- | ------------------------ |
+| id           | BIGSERIAL        | PRIMARY KEY              |
+| location_id  | BIGINT           | NOT NULL, FK → locations |
+| name         | VARCHAR(255)     | NOT NULL                 |
+| room_number  | VARCHAR(50)      | NULLABLE                 |
+| description  | TEXT             | NULLABLE                 |
+| price        | DECIMAL(10,2)    | NOT NULL                 |
+| max_guests   | INTEGER          | NOT NULL                 |
+| status       | room_status ENUM | DEFAULT 'available'      |
+| lock_version | BIGINT UNSIGNED  | NOT NULL, DEFAULT 1      |
+| created_at   | TIMESTAMP        |                          |
+| updated_at   | TIMESTAMP        |                          |
 
 **ENUM: room_status**
 
@@ -98,6 +146,7 @@ CREATE TYPE room_status AS ENUM ('available', 'occupied', 'maintenance');
 | id                | BIGSERIAL    | PRIMARY KEY                         |
 | user_id           | BIGINT       | FK → users(id), NULLABLE            |
 | room_id           | BIGINT       | FK → rooms(id)                      |
+| location_id       | BIGINT       | FK → locations(id), NULLABLE        |
 | guest_name        | VARCHAR(255) | NOT NULL                            |
 | guest_email       | VARCHAR(255) | NOT NULL                            |
 | check_in          | DATE         | NOT NULL                            |
@@ -525,16 +574,22 @@ DB_DATABASE=:memory:
 ## Model Relationships
 
 ```
+Location
+├── hasMany → Room (location_id)
+├── hasMany → Booking (location_id)  // denormalized for analytics
+│
 User
 ├── hasMany → Booking (user_id)
 │
 Room
+├── belongsTo → Location (location_id)
 ├── hasMany → Booking (room_id)
 ├── hasMany → Review (room_id)  // via query, no model relation
 │
 Booking
 ├── belongsTo → User (user_id)
 ├── belongsTo → Room (room_id)
+├── belongsTo → Location (location_id)  // denormalized
 ├── belongsTo → User (deleted_by) // soft delete audit
 │
 Review

@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\AdminBookingController;
+use App\Http\Controllers\LocationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -15,8 +16,14 @@ use App\Http\Controllers\AdminBookingController;
 |
 */
 
-// ========== ROOM ENDPOINTS (v1) ==========
+// ========== LOCATION ENDPOINTS (v1) ==========
 // Public read-only
+Route::get('/locations', [LocationController::class, 'index']);
+Route::get('/locations/{slug}', [LocationController::class, 'show']);
+Route::get('/locations/{slug}/availability', [LocationController::class, 'availability']);
+
+// ========== ROOM ENDPOINTS (v1) ==========
+// Public read-only (now supports ?location_id= filter)
 Route::get('/rooms', [RoomController::class, 'index']);
 Route::get('/rooms/{id}', [RoomController::class, 'show']);
 

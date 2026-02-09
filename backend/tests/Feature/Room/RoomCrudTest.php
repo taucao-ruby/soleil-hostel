@@ -3,6 +3,7 @@
 namespace Tests\Feature\Room;
 
 use App\Enums\UserRole;
+use App\Models\Location;
 use App\Models\Room;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -24,6 +25,7 @@ class RoomCrudTest extends TestCase
 
     private User $admin;
     private User $user;
+    private Location $location;
 
     protected function setUp(): void
     {
@@ -31,6 +33,7 @@ class RoomCrudTest extends TestCase
 
         $this->admin = User::factory()->create(['role' => UserRole::ADMIN]);
         $this->user = User::factory()->create(['role' => UserRole::USER]);
+        $this->location = Location::factory()->create();
     }
 
     // ========== INDEX TESTS ==========
@@ -129,6 +132,7 @@ class RoomCrudTest extends TestCase
     public function test_admin_can_create_room(): void
     {
         $roomData = [
+            'location_id' => $this->location->id,
             'name' => 'New Room',
             'description' => 'A beautiful new room',
             'price' => 100.00,
@@ -160,6 +164,7 @@ class RoomCrudTest extends TestCase
     public function test_regular_user_cannot_create_room(): void
     {
         $roomData = [
+            'location_id' => $this->location->id,
             'name' => 'New Room',
             'description' => 'A beautiful new room',
             'price' => 100.00,
@@ -176,6 +181,7 @@ class RoomCrudTest extends TestCase
     public function test_guest_cannot_create_room(): void
     {
         $roomData = [
+            'location_id' => $this->location->id,
             'name' => 'New Room',
             'description' => 'A beautiful new room',
             'price' => 100.00,

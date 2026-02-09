@@ -32,7 +32,7 @@ class RoomTest extends TestCase
         $room = new Room();
 
         $this->assertEquals(
-            ['name', 'description', 'price', 'max_guests', 'status'],
+            ['location_id', 'name', 'room_number', 'description', 'price', 'max_guests', 'status'],
             $room->getFillable()
         );
     }

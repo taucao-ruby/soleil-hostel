@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Exceptions\OptimisticLockException;
+use App\Models\Location;
 use App\Models\Room;
 use App\Models\User;
 use App\Services\RoomService;
@@ -34,12 +35,14 @@ class RoomOptimisticLockingTest extends TestCase
 
     private RoomService $roomService;
     private User $admin;
+    private Location $location;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->roomService = app(RoomService::class);
         $this->admin = User::factory()->create(['role' => 'admin']);
+        $this->location = Location::factory()->create();
     }
 
     // ========================================================================
@@ -249,6 +252,7 @@ class RoomOptimisticLockingTest extends TestCase
     {
         // Act
         $room = $this->roomService->createRoom([
+            'location_id' => $this->location->id,
             'name' => 'New Room',
             'description' => 'A brand new room',
             'price' => 100.00,
@@ -317,6 +321,7 @@ class RoomOptimisticLockingTest extends TestCase
         // Act
         $response = $this->actingAs($this->admin)
             ->postJson('/api/rooms', [
+                'location_id' => $this->location->id,
                 'name' => 'New API Room',
                 'description' => 'Created via API',
                 'price' => 150.00,

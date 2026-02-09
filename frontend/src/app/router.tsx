@@ -12,6 +12,8 @@ const LoginPage = lazy(() => import('@/features/auth/LoginPage'))
 const RegisterPage = lazy(() => import('@/features/auth/RegisterPage'))
 const RoomList = lazy(() => import('@/features/rooms/RoomList'))
 const BookingForm = lazy(() => import('@/features/booking/BookingForm'))
+const LocationList = lazy(() => import('@/features/locations/LocationList'))
+const LocationDetail = lazy(() => import('@/features/locations/LocationDetail'))
 
 // Placeholder Dashboard
 const DashboardPage = () => (
@@ -75,6 +77,14 @@ export const router = createBrowserRouter([
       {
         path: 'rooms',
         element: withSuspense(RoomList),
+      },
+      {
+        path: 'locations',
+        element: withSuspense(LocationList),
+      },
+      {
+        path: 'locations/:slug',
+        element: withSuspense(LocationDetail),
       },
       {
         path: 'booking',

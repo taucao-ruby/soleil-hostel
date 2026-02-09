@@ -23,10 +23,20 @@ class RoomResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'display_name' => $this->display_name,
+            'room_number' => $this->room_number,
             'description' => $this->description,
             'price' => (float) $this->price,
             'max_guests' => $this->max_guests,
             'status' => $this->status,
+            
+            // ===== LOCATION INFO =====
+            'location' => $this->when($this->relationLoaded('location') && $this->location, [
+                'id' => $this->location?->id,
+                'name' => $this->location?->name,
+                'slug' => $this->location?->slug,
+            ]),
+            'location_id' => $this->location_id,
             
             // ===== OPTIMISTIC LOCKING =====
             // Clients MUST include this value when sending update requests

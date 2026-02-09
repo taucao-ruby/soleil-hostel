@@ -28,6 +28,13 @@ class RoomRequest extends FormRequest
             'status' => 'required|in:available,booked,maintenance',
         ];
 
+        // For POST requests (create), location_id is required
+        if ($this->isMethod('POST')) {
+            $rules['location_id'] = 'required|integer|exists:locations,id';
+        } elseif ($this->isMethod('PUT') || $this->isMethod('PATCH')) {
+            $rules['location_id'] = 'sometimes|integer|exists:locations,id';
+        }
+
         // For PUT/PATCH requests (updates), add optional lock_version validation
         // lock_version is optional for backward compatibility, but recommended
         if ($this->isMethod('PUT') || $this->isMethod('PATCH')) {

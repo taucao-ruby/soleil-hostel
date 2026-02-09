@@ -32,11 +32,32 @@ class RoomController extends Controller
      * List all rooms.
      *
      * GET /api/rooms
+     *
+     * Optional query params:
+     * - location_id: int - filter by location
+     * - check_in: date - filter available rooms (requires check_out)
+     * - check_out: date - filter available rooms (requires check_in)
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $rooms = $this->roomService->getAllRoomsWithAvailability();
-        
+        $request->validate([
+            'location_id' => 'nullable|integer|exists:locations,id',
+            'check_in' => 'nullable|date|required_with:check_out',
+            'check_out' => 'nullable|date|after:check_in',
+        ]);
+
+        $rooms = Room::query()
+            ->with('location:id,name,slug')
+            ->withCount('activeBookings')
+            ->when($request->filled('location_id'), fn($q) =>
+                $q->where('location_id', $request->integer('location_id'))
+            )
+            ->when($request->filled(['check_in', 'check_out']), fn($q) =>
+                $q->availableBetween($request->input('check_in'), $request->input('check_out'))
+            )
+            ->orderBy('price')
+            ->get();
+
         return response()->json([
             'success' => true,
             'message' => 'Room list fetched successfully',

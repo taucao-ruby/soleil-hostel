@@ -6,6 +6,7 @@ use Illuminate\Support\ServiceProvider;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\PersonalAccessToken;
+use App\Observers\BookingObserver;
 use App\Policies\BookingPolicy;
 use App\Policies\RoomPolicy;
 use App\Directives\PurifyDirective;
@@ -48,6 +49,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Register BookingObserver for automatic location_id population
+        Booking::observe(BookingObserver::class);
+
         // Load RateLimiterServiceProvider early
         $this->app->register(RateLimiterServiceProvider::class);
 

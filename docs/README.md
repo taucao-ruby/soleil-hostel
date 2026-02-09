@@ -4,19 +4,24 @@
 
 ## Quick Navigation
 
-| I want to...                          | Go to                                                      |
-| ------------------------------------- | ---------------------------------------------------------- |
-| **Get started quickly**               | [Quick Start](#quick-start)                                |
-| **Understand architecture decisions** | [ADR (Decision Log)](./ADR.md)                             |
-| **Handle an incident**                | [Operational Playbook](./OPERATIONAL_PLAYBOOK.md)          |
-| **Know system limitations**           | [Known Limitations](./KNOWN_LIMITATIONS.md)                |
-| **Deprecate an API**                  | [API Deprecation](./API_DEPRECATION.md)                    |
-| **Database schema**                   | [Database Docs](./DATABASE.md)                             |
-| **Backend documentation**             | [Backend Docs](./backend/README.md)                        |
-| **Frontend documentation**            | [Frontend Docs](./frontend/README.md)                      |
-| **Set up development environment**    | [Setup Guide](./backend/guides/ENVIRONMENT_SETUP.md)       |
-| **Run tests**                         | [Testing Guide](./backend/guides/TESTING.md)               |
-| **Migrate to unified auth endpoints** | [Auth Migration Guide](./backend/guides/AUTH_MIGRATION.md) |
+| I want to...                          | Go to                                                             |
+| ------------------------------------- | ----------------------------------------------------------------- |
+| **Get started quickly**               | [Quick Start](#quick-start)                                       |
+| **Understand architecture decisions** | [ADR (Decision Log)](./ADR.md)                                    |
+| **Handle an incident**                | [Operational Playbook](./OPERATIONAL_PLAYBOOK.md)                 |
+| **Know system limitations**           | [Known Limitations](./KNOWN_LIMITATIONS.md)                       |
+| **Deprecate an API**                  | [API Deprecation](./API_DEPRECATION.md)                           |
+| **Database schema**                   | [Database Docs](./DATABASE.md)                                    |
+| **Backend documentation**             | [Backend Docs](./backend/README.md)                               |
+| **Frontend documentation**            | [Frontend Docs](./frontend/README.md)                             |
+| **Set up development environment**    | [Setup Guide](./backend/guides/ENVIRONMENT_SETUP.md)              |
+| **Run tests**                         | [Testing Guide](./backend/guides/TESTING.md)                      |
+| **Migrate to unified auth endpoints** | [Auth Migration Guide](./backend/guides/AUTH_MIGRATION.md)        |
+| **Migrate from API v1 to v2**         | [API v1→v2 Migration](./backend/guides/API_MIGRATION_V1_TO_V2.md) |
+| **Browse interactive API docs**       | [API Reference (Redoc)](./api/index.html)                         |
+| **Download OpenAPI spec**             | [openapi.yaml](./api/openapi.yaml)                                |
+| **Review performance baselines**      | [Performance Baseline](./PERFORMANCE_BASELINE.md)                 |
+| **Run load tests**                    | [Performance Tests](../tests/performance/README.md)               |
 
 ---
 
@@ -62,6 +67,10 @@ docs/
 ├── OPERATIONAL_PLAYBOOK.md           # Incident runbooks
 ├── API_DEPRECATION.md                # API versioning & deprecation
 ├── DATABASE.md                       # Database schema & indexes
+├── PERFORMANCE_BASELINE.md           # Performance benchmarks & SLA targets
+├── api/                              # API documentation
+│   ├── index.html                    # Interactive API docs (Redoc)
+│   └── openapi.yaml                  # OpenAPI 3.1 specification
 ├── backend/                          # Backend documentation
 │   ├── README.md                     # Backend index
 │   ├── architecture/                 # System design
@@ -90,7 +99,8 @@ docs/
 │   │   ├── COMMANDS.md               # Artisan commands
 │   │   ├── MONITORING_LOGGING.md     # Observability & logging
 │   │   ├── EMAIL_NOTIFICATIONS.md    # Email & verification
-│   │   └── AUTH_MIGRATION.md         # Auth endpoint migration guide
+│   │   ├── AUTH_MIGRATION.md         # Auth endpoint migration guide
+│   │   └── API_MIGRATION_V1_TO_V2.md # API v1→v2 migration guide
 │   └── security/                     # Security documentation
 │       ├── HEADERS.md                # Security headers
 │       ├── XSS_PROTECTION.md         # HTML Purifier
@@ -202,6 +212,20 @@ docs/
 
 ## Recent Updates (January 2026)
 
+### Performance Benchmarking & API Documentation (January 2026)
+
+- **Performance Test Suite**: k6 load tests for availability queries, booking creation, auth flows, and mixed workloads
+  - See [Performance Tests README](../tests/performance/README.md) for quick start
+- **Performance Baseline**: Documented SLA targets, alerting thresholds, and bottleneck analysis
+  - See [PERFORMANCE_BASELINE.md](./PERFORMANCE_BASELINE.md)
+- **OpenAPI 3.1 Specification**: Complete API spec covering all endpoints, schemas, and security schemes
+  - Interactive docs: [API Reference (Redoc)](./api/index.html)
+  - Raw spec: [openapi.yaml](./api/openapi.yaml)
+- **API v1→v2 Migration Guide**: Step-by-step client migration with code examples
+  - See [API_MIGRATION_V1_TO_V2.md](./backend/guides/API_MIGRATION_V1_TO_V2.md)
+- **Updated Postman Collection**: v2 collection with test scripts and E2E flows
+  - See `/backend/postman/Soleil_Hostel_v2.postman_collection.json`
+
 ### Auth Endpoint Consolidation (January 15, 2026)
 
 - **New Unified Endpoints** (mode-agnostic, auto-detect Bearer/Cookie):
@@ -238,4 +262,4 @@ docs/
 ## Support
 
 - **Issues**: GitHub Issues
-- **API Docs**: Postman collection in `/backend/postman/`
+- **API Docs**: [Interactive API Reference (Redoc)](./api/index.html) | [OpenAPI Spec](./api/openapi.yaml) | Postman collection in `/backend/postman/`

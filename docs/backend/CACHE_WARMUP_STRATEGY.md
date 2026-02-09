@@ -22,7 +22,7 @@ Cache warmup is a critical post-deployment step that pre-populates application c
 
 ### Architecture
 
-```
+```bash
 ┌─────────────────────────────────────────────────────────────────┐
 │                     Cache Warmup Flow                           │
 ├─────────────────────────────────────────────────────────────────┤
@@ -212,10 +212,13 @@ php artisan cache:warmup --group=rooms -v
 
 1. Reduce chunk size
 2. Increase PHP memory limit temporarily:
+
    ```bash
    php -d memory_limit=512M artisan cache:warmup
    ```
+
 3. Warm groups separately:
+
    ```bash
    php artisan cache:warmup --group=config
    php artisan cache:warmup --group=rooms
@@ -233,9 +236,11 @@ php artisan cache:warmup --group=rooms -v
 1. Check cache server connection
 2. Check database connection
 3. Review error logs:
+
    ```bash
    grep "CacheWarmer" storage/logs/laravel.log | tail -50
    ```
+
 4. Fix issue and retry warmup
 
 ### Issue: High cache miss rate after deployment
@@ -320,20 +325,20 @@ php artisan test --filter=test_cache_warmup_command_runs_successfully
 
 1. **Redis connection refused**
 
-   ```
+   ```bash
    Check REDIS_HOST, REDIS_PORT in .env
    Verify Redis is running: redis-cli ping
    ```
 
 2. **Database query timeout**
 
-   ```
-   Check slow query log
+   ```Check slow query log
    Add indexes if needed
    Reduce chunk size
    ```
 
 3. **Permission denied on cache directory**
+
    ```bash
    chmod -R 775 storage/framework/cache
    chown -R www-data:www-data storage

@@ -485,3 +485,7 @@ October 2026: REMOVAL
 - [API.md](./backend/architecture/API.md) - Complete API reference
 - [AUTHENTICATION.md](./backend/features/AUTHENTICATION.md) - Auth documentation
 - [ADR-012](./ADR.md#adr-012-api-versioning-strategy) - API versioning decision
+- [OpenAPI 3.1 Spec](./api/openapi.yaml) - Machine-readable API specification
+- [Interactive API Docs (Redoc)](./api/index.html) - Browse all endpoints interactively
+- [API v1→v2 Migration Guide](./backend/guides/API_MIGRATION_V1_TO_V2.md) - Step-by-step client migration
+- [Postman Collection v2](../backend/postman/Soleil_Hostel_v2.postman_collection.json) - Updated collection with E2E flows

@@ -58,13 +58,13 @@ php artisan serve
 php -S 127.0.0.1:8000 -t public public/index.php
 ```
 
-Backend will be available at: http://127.0.0.1:8000
+Backend will be available at: <http://127.0.0.1:8000>
 
 ---
 
 ## 📂 Project Structure
 
-```
+```bash
 backend/
 ├── app/
 │   ├── Console/         # Artisan commands
@@ -193,7 +193,7 @@ php artisan test --coverage --min=80
 
 ### Clean Architecture Layers
 
-```
+```bash
 ┌─────────────────────────────────────┐
 │        Controllers (HTTP)           │  ← API Routes
 ├─────────────────────────────────────┤
@@ -431,5 +431,5 @@ MIT License - see main project README for details.
 ---
 
 **Status**: ✅ Production Ready  
-**Backend API**: http://127.0.0.1:8000  
+**Backend API**: <http://127.0.0.1:8000>
 **Documentation**: [docs/README.md](../docs/README.md)

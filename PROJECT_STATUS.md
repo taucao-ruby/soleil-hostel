@@ -13,6 +13,8 @@ Repository layer fully unit tested (53 tests with zero database dependency).
 Email verification fully implemented with Laravel default notifications.  
 **Auth Consolidation**: Unified endpoints deployed, legacy endpoints deprecated (sunset July 2026).  
 **Documentation**: ADR decision log, operational playbook, known limitations, API deprecation strategy.  
+**Performance Benchmarking**: k6 load test suite (4 scenarios) with documented baselines and SLA targets.  
+**API Documentation**: OpenAPI 3.1 spec, interactive Redoc docs, API v1→v2 migration guide, updated Postman collection.  
 **Health Check Fix (Jan 19)**: Redis extension check added to prevent fatal errors when PHP Redis extension unavailable.
 
 ---
@@ -80,12 +82,16 @@ Email verification fully implemented with Laravel default notifications.
 
 ### New Documentation (January 14, 2026)
 
-| Document                                                  | Description                                  |
-| --------------------------------------------------------- | -------------------------------------------- |
-| [ADR.md](./docs/ADR.md)                                   | Architecture Decision Records (12 decisions) |
-| [KNOWN_LIMITATIONS.md](./docs/KNOWN_LIMITATIONS.md)       | System constraints & tech debt               |
-| [OPERATIONAL_PLAYBOOK.md](./docs/OPERATIONAL_PLAYBOOK.md) | Incident runbooks                            |
-| [API_DEPRECATION.md](./docs/API_DEPRECATION.md)           | API versioning & deprecation strategy        |
+| Document                                                               | Description                                  |
+| ---------------------------------------------------------------------- | -------------------------------------------- |
+| [ADR.md](./docs/ADR.md)                                                | Architecture Decision Records (12 decisions) |
+| [KNOWN_LIMITATIONS.md](./docs/KNOWN_LIMITATIONS.md)                    | System constraints & tech debt               |
+| [OPERATIONAL_PLAYBOOK.md](./docs/OPERATIONAL_PLAYBOOK.md)              | Incident runbooks                            |
+| [API_DEPRECATION.md](./docs/API_DEPRECATION.md)                        | API versioning & deprecation strategy        |
+| [PERFORMANCE_BASELINE.md](./docs/PERFORMANCE_BASELINE.md)              | Performance benchmarks & SLA targets         |
+| [openapi.yaml](./docs/api/openapi.yaml)                                | OpenAPI 3.1 specification (all endpoints)    |
+| [API Reference (Redoc)](./docs/api/index.html)                         | Interactive API documentation                |
+| [API v1→v2 Migration](./docs/backend/guides/API_MIGRATION_V1_TO_V2.md) | Client migration guide with examples         |
 
 ```docs/
 ├── README.md                    # Documentation index
@@ -93,6 +99,10 @@ Email verification fully implemented with Laravel default notifications.
 ├── KNOWN_LIMITATIONS.md         # System constraints
 ├── OPERATIONAL_PLAYBOOK.md      # Incident runbooks
 ├── API_DEPRECATION.md           # API deprecation strategy
+├── PERFORMANCE_BASELINE.md      # Performance baselines & SLA targets
+├── api/
+│   ├── index.html               # Interactive API docs (Redoc)
+│   └── openapi.yaml             # OpenAPI 3.1 specification
 ├── backend/
 │   ├── architecture/            # SERVICES.md, REPOSITORIES.md, etc.
 │   ├── features/                # EMAIL_TEMPLATES.md, BOOKING.md, etc.
@@ -108,6 +118,41 @@ Email verification fully implemented with Laravel default notifications.
 - [docs/backend/guides/ENVIRONMENT_SETUP.md](./docs/backend/guides/ENVIRONMENT_SETUP.md) - Setup guide
 - [docs/backend/guides/TESTING.md](./docs/backend/guides/TESTING.md) - Testing guide
 - [docs/backend/security/README.md](./docs/backend/security/README.md) - Security overview
+- [docs/PERFORMANCE_BASELINE.md](./docs/PERFORMANCE_BASELINE.md) - Performance benchmarks
+- [docs/api/index.html](./docs/api/index.html) - Interactive API docs (Redoc)
+- [docs/backend/guides/API_MIGRATION_V1_TO_V2.md](./docs/backend/guides/API_MIGRATION_V1_TO_V2.md) - API v1→v2 migration
+
+---
+
+## 📈 Performance Benchmarking (January 2026)
+
+### k6 Load Test Suite
+
+- **4 test scenarios** covering the full API surface:
+  - `availability-query.js` — Room availability reads, 100 VU spike, cache hit tracking
+  - `booking-creation.js` — Booking writes with conflict handling, 60 VU sustained
+  - `auth-flow.js` — Full auth lifecycle (Bearer + HttpOnly), 80 VU sustained
+  - `mixed-workload.js` — Production-realistic 70/20/10 read/write/auth mix, 100 VU
+- **Performance baseline** documented in [PERFORMANCE_BASELINE.md](./docs/PERFORMANCE_BASELINE.md)
+  - SLA targets: p50 < 50ms reads, p95 < 200ms reads, p95 < 300ms writes
+  - Alerting thresholds and monitoring queries included
+  - 4 bottlenecks identified with prioritized recommendations
+
+### API Documentation Suite
+
+- **OpenAPI 3.1 Specification** ([openapi.yaml](./docs/api/openapi.yaml))
+  - All endpoints: auth, rooms, bookings, admin, health, contact, deprecated
+  - Schemas: User, Room, Booking, errors, pagination
+  - Security schemes: BearerAuth + CookieAuth
+- **Interactive API Reference** ([Redoc](./docs/api/index.html))
+  - Standalone HTML page using Redoc CDN
+  - Themed to match Soleil Hostel branding
+- **API v1→v2 Migration Guide** ([guide](./docs/backend/guides/API_MIGRATION_V1_TO_V2.md))
+  - 5 breaking changes documented with code examples
+  - JavaScript migration snippets and curl test commands
+- **Postman Collection v2** (`backend/postman/Soleil_Hostel_v2.postman_collection.json`)
+  - 35+ requests across 7 folders + E2E flow
+  - Auto-save test scripts for chained requests
 
 ---
 

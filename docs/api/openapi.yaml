@@ -1,0 +1,2073 @@
+openapi: 3.1.0
+info:
+  title: Soleil Hostel API
+  version: 2.0.0
+  description: |
+    Production-ready hostel management API built with Laravel 11 + PHP 8.3.
+
+    ## Features
+    - **Dual Auth Modes**: Bearer Token (stateless) + HttpOnly Cookie (web browsers)
+    - **Unified Auth Endpoints**: Mode-agnostic endpoints that auto-detect auth method
+    - **RBAC**: Three roles — USER, MODERATOR, ADMIN
+    - **Optimistic Locking**: Room updates require `lock_version` to prevent lost updates
+    - **Pessimistic Locking**: Booking creation uses `SELECT ... FOR UPDATE` to prevent double-booking
+    - **Rate Limiting**: Multi-tier rate limiting (IP, user, endpoint-specific)
+    - **Correlation ID**: Include `X-Correlation-ID` header for request tracing
+
+    ## Authentication Quick Start
+
+    **Option A — Bearer Token (mobile / SPA):**
+    ```
+    POST /api/auth/login-v2  →  { "token": "abc123..." }
+    Then: Authorization: Bearer abc123...
+    ```
+
+    **Option B — HttpOnly Cookie (web browser):**
+    ```
+    POST /api/auth/login-httponly  →  Set-Cookie: soleil_token=...
+    Cookies sent automatically on subsequent requests.
+    ```
+
+    **Option C — Unified Endpoints (auto-detect):**
+    ```
+    GET /api/auth/unified/me  →  Works with either auth mode
+    ```
+
+    ## Rate Limits
+    - Login: 5 requests/min per IP
+    - General API (public): 200 requests/min
+    - General API (authenticated): 500 requests/min
+    - Booking creation: 3 requests/min per user
+
+    ## Deprecation Policy
+    Legacy endpoints return RFC 8594 headers (`Deprecation`, `Sunset`, `Link`).
+    Sunset date: July 31, 2026. See [API Deprecation Guide](./API_DEPRECATION.md).
+  contact:
+    name: API Support
+    email: support@soleilhostel.com
+  license:
+    name: MIT
+
+servers:
+  - url: https://api.soleilhostel.com/api
+    description: Production
+  - url: http://localhost:8000/api
+    description: Local Development
+
+tags:
+  - name: Authentication
+    description: Login, registration, token management, and unified auth endpoints
+  - name: Email Verification
+    description: Email verification flow (required for booking creation)
+  - name: Rooms
+    description: Room listing, detail, and management (admin-only for writes)
+  - name: Bookings
+    description: Create, update, cancel, and manage bookings
+  - name: Admin Bookings
+    description: Admin-only booking management (soft-delete recovery, audit)
+  - name: Health
+    description: Kubernetes-style health probes and detailed system checks
+  - name: Contact
+    description: Public contact form
+  - name: Deprecated
+    description: Legacy endpoints scheduled for removal (sunset July 2026)
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum
+      description: |
+        Sanctum bearer token for stateless API clients (mobile apps, SPAs).
+        Obtained via `POST /auth/login-v2`.
+        Include in header: `Authorization: Bearer {token}`
+
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: soleil_token
+      description: |
+        HttpOnly cookie authentication for web browsers.
+        Login via `POST /auth/login-httponly`, then cookie is auto-sent.
+        CSRF protection via SameSite=Strict.
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 17
+        name:
+          type: string
+          example: "John Doe"
+        email:
+          type: string
+          format: email
+          example: "john@example.com"
+        role:
+          type: string
+          enum: [user, moderator, admin]
+          example: "user"
+        email_verified_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-01-15T10:30:00.000000Z"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Room:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 42
+        name:
+          type: string
+          example: "Ocean View Double"
+        description:
+          type: string
+          nullable: true
+          example: "Spacious room with ocean view"
+        price:
+          type: number
+          format: decimal
+          example: 120.00
+        max_guests:
+          type: integer
+          minimum: 1
+          maximum: 10
+          example: 2
+        status:
+          type: string
+          enum: [active, inactive]
+          example: "active"
+        lock_version:
+          type: integer
+          description: |
+            Optimistic locking version. MUST be included in PUT/PATCH requests.
+            Backend returns 409 Conflict if version doesn't match.
+          example: 5
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Booking:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1001
+        room_id:
+          type: integer
+          example: 42
+        user_id:
+          type: integer
+          example: 17
+        check_in:
+          type: string
+          format: date
+          example: "2026-06-01"
+        check_out:
+          type: string
+          format: date
+          example: "2026-06-05"
+        guest_name:
+          type: string
+          example: "Jane Doe"
+        guest_email:
+          type: string
+          format: email
+          example: "jane@example.com"
+        status:
+          type: string
+          enum: [pending, confirmed, refund_pending, cancelled, refund_failed]
+          example: "confirmed"
+        amount:
+          type: number
+          format: decimal
+          nullable: true
+          example: 480.00
+        payment_intent_id:
+          type: string
+          nullable: true
+        refund_status:
+          type: string
+          nullable: true
+          enum: [null, pending, completed, failed]
+        refund_amount:
+          type: integer
+          nullable: true
+          description: "Refund amount in cents"
+        cancelled_at:
+          type: string
+          format: date-time
+          nullable: true
+        cancelled_by:
+          type: integer
+          nullable: true
+        room:
+          $ref: "#/components/schemas/Room"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: "Validation failed"
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          example:
+            email: ["The email field is required"]
+            check_out: ["Check-out date must be after check-in date"]
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+        data:
+          type: object
+
+    TokenInfo:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "login_web"
+        type:
+          type: string
+          enum: [short_lived, long_lived]
+          example: "short_lived"
+        device_id:
+          type: string
+          format: uuid
+        expires_at:
+          type: string
+          format: date-time
+        expires_in_minutes:
+          type: integer
+          example: 60
+        expires_in_seconds:
+          type: integer
+          example: 3540
+
+  responses:
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Unauthenticated"
+
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "This action is unauthorized."
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Room not found"
+
+    ValidationError:
+      description: Input validation failed (422)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    RateLimitExceeded:
+      description: Too many requests (429)
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+            example: 60
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+            example: 0
+        Retry-After:
+          schema:
+            type: integer
+            example: 42
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Too many requests. Please try again in 42 seconds."
+
+    VersionConflict:
+      description: Optimistic locking conflict (409)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Room data has been modified by another user. Please refresh and try again."
+              current_version:
+                type: integer
+                example: 7
+              provided_version:
+                type: integer
+                example: 5
+
+paths:
+  # ═══════════════════════════════════════
+  # AUTHENTICATION - Public
+  # ═══════════════════════════════════════
+
+  /auth/register:
+    post:
+      tags: [Authentication]
+      summary: Register a new user
+      operationId: register
+      description: |
+        Creates a new user account. Sends verification email automatically.
+        Rate limited: 5 requests/min per IP.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password, password_confirmation]
+              properties:
+                name:
+                  type: string
+                  minLength: 2
+                  maxLength: 255
+                  example: "John Doe"
+                email:
+                  type: string
+                  format: email
+                  example: "john@example.com"
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  example: "SecurePass123!"
+                password_confirmation:
+                  type: string
+                  format: password
+                  example: "SecurePass123!"
+      responses:
+        "201":
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "User registered successfully"
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: "#/components/schemas/User"
+                      access_token:
+                        type: string
+                        example: "1|abcdef123456..."
+                      token_type:
+                        type: string
+                        example: "Bearer"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/RateLimitExceeded"
+
+  /auth/login-v2:
+    post:
+      tags: [Authentication]
+      summary: Login with Bearer Token (stateless)
+      operationId: loginBearer
+      description: |
+        Authenticate and receive a Sanctum bearer token.
+        Use for mobile apps, SPAs, and API clients.
+
+        **Token Types:**
+        - `short_lived`: 60 minutes (default)
+        - `long_lived`: 30 days (when `remember_me: true`)
+
+        **Single Device Login:** Enabled by default — previous tokens are revoked.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "john@example.com"
+                password:
+                  type: string
+                  format: password
+                  example: "SecurePass123!"
+                remember_me:
+                  type: boolean
+                  default: false
+                  description: "If true, issues a long-lived token (30 days)"
+                device_name:
+                  type: string
+                  default: "login_web"
+                  description: "Identifier for the device/client"
+      responses:
+        "201":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Đăng nhập thành công."
+                  token:
+                    type: string
+                    example: "abcdef1234567890abcdef1234567890abcdefgh"
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      name:
+                        type: string
+                      email:
+                        type: string
+                  expires_at:
+                    type: string
+                    format: date-time
+                  expires_in_minutes:
+                    type: integer
+                    example: 60
+                  type:
+                    type: string
+                    enum: [short_lived, long_lived]
+                  device_id:
+                    type: string
+                    format: uuid
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimitExceeded"
+
+  /auth/login-httponly:
+    post:
+      tags: [Authentication]
+      summary: Login with HttpOnly Cookie (web browsers)
+      operationId: loginHttpOnly
+      description: |
+        Authenticate and receive token via HttpOnly cookie.
+        **Recommended for web browsers** — XSS-safe, CSRF-protected.
+
+        Cookie details:
+        - Name: `soleil_token`
+        - HttpOnly: `true`
+        - SameSite: `Strict`
+        - Secure: `true` (production only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                remember_me:
+                  type: boolean
+                  default: false
+      responses:
+        "200":
+          description: Login successful. Token set in HttpOnly cookie.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: "soleil_token=uuid-here; HttpOnly; SameSite=Strict; Path=/"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Login thành công. Token đã được set trong httpOnly cookie."
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      name:
+                        type: string
+                      email:
+                        type: string
+                  expires_in_minutes:
+                    type: integer
+                  expires_at:
+                    type: string
+                    format: date-time
+                  token_type:
+                    type: string
+                    enum: [short_lived, long_lived]
+                  csrf_token:
+                    type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimitExceeded"
+
+  # ═══════════════════════════════════════
+  # AUTHENTICATION - Protected (Bearer)
+  # ═══════════════════════════════════════
+
+  /auth/me-v2:
+    get:
+      tags: [Authentication]
+      summary: Get current user + token info (Bearer)
+      operationId: meBearerV2
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Current user with token metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      name:
+                        type: string
+                      email:
+                        type: string
+                  token:
+                    $ref: "#/components/schemas/TokenInfo"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/refresh-v2:
+    post:
+      tags: [Authentication]
+      summary: Refresh bearer token (rotate)
+      operationId: refreshBearerV2
+      description: |
+        Revokes current token and issues a new one.
+        Max 10 refreshes/hour — exceeding triggers suspicious activity lockout.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Token refreshed thành công."
+                  token:
+                    type: string
+                  expires_at:
+                    type: string
+                    format: date-time
+                  expires_in_minutes:
+                    type: integer
+                  type:
+                    type: string
+                  old_token_status:
+                    type: string
+                    example: "revoked"
+        "401":
+          description: Token expired, revoked, or suspicious activity detected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  code:
+                    type: string
+                    enum: [TOKEN_EXPIRED, TOKEN_REVOKED, SUSPICIOUS_ACTIVITY]
+
+  /auth/logout-v2:
+    post:
+      tags: [Authentication]
+      summary: Logout current session (Bearer)
+      operationId: logoutBearerV2
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Logged out successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Logout thành công."
+                  revoked_at:
+                    type: string
+                    format: date-time
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/logout-all-v2:
+    post:
+      tags: [Authentication]
+      summary: Logout all devices (Bearer)
+      operationId: logoutAllBearerV2
+      description: Revokes all active tokens for the current user.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: All sessions revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  revoked_count:
+                    type: integer
+                    example: 3
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ═══════════════════════════════════════
+  # AUTHENTICATION - Protected (HttpOnly)
+  # ═══════════════════════════════════════
+
+  /auth/me-httponly:
+    get:
+      tags: [Authentication]
+      summary: Get current user (HttpOnly Cookie)
+      operationId: meHttpOnly
+      security:
+        - CookieAuth: []
+      responses:
+        "200":
+          description: Current user and token info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      name:
+                        type: string
+                      email:
+                        type: string
+                  token:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      type:
+                        type: string
+                      expires_at:
+                        type: string
+                        format: date-time
+                      expires_in_minutes:
+                        type: integer
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/refresh-httponly:
+    post:
+      tags: [Authentication]
+      summary: Refresh HttpOnly cookie token
+      operationId: refreshHttpOnly
+      security:
+        - CookieAuth: []
+      responses:
+        "200":
+          description: Token refreshed. New cookie set.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  expires_in_minutes:
+                    type: integer
+                  expires_at:
+                    type: string
+                    format: date-time
+                  csrf_token:
+                    type: string
+        "401":
+          description: Suspicious activity or expired token
+
+  /auth/logout-httponly:
+    post:
+      tags: [Authentication]
+      summary: Logout (HttpOnly Cookie)
+      operationId: logoutHttpOnly
+      security:
+        - CookieAuth: []
+      responses:
+        "200":
+          description: Logged out. Cookie cleared.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                description: Empty cookie with negative max-age
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                    example: "Logout thành công."
+
+  # ═══════════════════════════════════════
+  # UNIFIED AUTH (mode-agnostic)
+  # ═══════════════════════════════════════
+
+  /auth/unified/me:
+    get:
+      tags: [Authentication]
+      summary: Get current user (auto-detects auth mode)
+      operationId: unifiedMe
+      description: |
+        Auto-detects Bearer token or HttpOnly cookie and returns user info.
+        Detection priority: HttpOnly cookie → Bearer token → 401.
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+      responses:
+        "200":
+          description: Current user details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      name:
+                        type: string
+                      email:
+                        type: string
+                  token:
+                    type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/unified/logout:
+    post:
+      tags: [Authentication]
+      summary: Logout (auto-detects auth mode)
+      operationId: unifiedLogout
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+      responses:
+        "200":
+          description: Logged out (token revoked or cookie cleared)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/unified/logout-all:
+    post:
+      tags: [Authentication]
+      summary: Logout all devices (auto-detects auth mode)
+      operationId: unifiedLogoutAll
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+      responses:
+        "200":
+          description: All sessions revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  revoked_count:
+                    type: integer
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ═══════════════════════════════════════
+  # EMAIL VERIFICATION
+  # ═══════════════════════════════════════
+
+  /email/verification-status:
+    get:
+      tags: [Email Verification]
+      summary: Check email verification status
+      operationId: emailVerificationStatus
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Verification status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  verified:
+                    type: boolean
+                  email:
+                    type: string
+                  email_verified_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+
+  /email/verification-notification:
+    post:
+      tags: [Email Verification]
+      summary: Resend verification email
+      operationId: resendVerificationEmail
+      description: Rate limited to prevent abuse.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Verification email sent (or already verified)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        "429":
+          $ref: "#/components/responses/RateLimitExceeded"
+
+  /email/verify/{id}/{hash}:
+    get:
+      tags: [Email Verification]
+      summary: Verify email address (from email link)
+      operationId: verifyEmail
+      description: User clicks this link from their verification email.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: hash
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: expires
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: signature
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Email verified successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  verified:
+                    type: boolean
+        "403":
+          description: Invalid signature or expired link
+
+  # ═══════════════════════════════════════
+  # ROOMS (v1)
+  # ═══════════════════════════════════════
+
+  /v1/rooms:
+    get:
+      tags: [Rooms]
+      summary: List all rooms with availability
+      operationId: listRooms
+      description: |
+        Returns all active rooms. Optionally filter by date range for availability.
+        Results are cached in Redis for fast repeated queries.
+      parameters:
+        - in: query
+          name: check_in
+          schema:
+            type: string
+            format: date
+          description: Filter rooms available from this date
+          example: "2026-06-01"
+        - in: query
+          name: check_out
+          schema:
+            type: string
+            format: date
+          description: Filter rooms available until this date
+          example: "2026-06-05"
+      responses:
+        "200":
+          description: Room list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Room list fetched successfully"
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Room"
+
+    post:
+      tags: [Rooms]
+      summary: Create a new room (Admin only)
+      operationId: createRoom
+      security:
+        - BearerAuth: []
+      description: |
+        Creates a new room. Requires ADMIN role.
+        New rooms get `lock_version: 1` automatically.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, price, max_guests]
+              properties:
+                name:
+                  type: string
+                  example: "Ocean View Double"
+                description:
+                  type: string
+                  nullable: true
+                price:
+                  type: number
+                  format: decimal
+                  example: 120.00
+                max_guests:
+                  type: integer
+                  minimum: 1
+                  maximum: 10
+                  example: 2
+                status:
+                  type: string
+                  enum: [active, inactive]
+                  default: active
+      responses:
+        "201":
+          description: Room created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/Room"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /v1/rooms/{id}:
+    get:
+      tags: [Rooms]
+      summary: Get room details
+      operationId: getRoom
+      description: |
+        Returns room details including `lock_version`.
+        Store this version — it's required for update requests.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Room details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/Room"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Rooms]
+      summary: Update room (with optimistic locking)
+      operationId: updateRoom
+      description: |
+        **Optimistic Locking Required:**
+        1. `GET /v1/rooms/42` → returns `lock_version: 5`
+        2. `PUT /v1/rooms/42` with `lock_version: 5` → success, new version: 6
+        3. Another `PUT` with `lock_version: 5` → **409 Conflict** (stale data)
+
+        Requires ADMIN role.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lock_version]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                price:
+                  type: number
+                  format: decimal
+                max_guests:
+                  type: integer
+                status:
+                  type: string
+                  enum: [active, inactive]
+                lock_version:
+                  type: integer
+                  description: Current version from GET request
+            example:
+              name: "Updated Ocean View"
+              price: 150.00
+              max_guests: 3
+              lock_version: 5
+      responses:
+        "200":
+          description: Room updated (lock_version incremented)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/Room"
+              example:
+                success: true
+                message: "Room updated successfully"
+                data:
+                  id: 42
+                  name: "Updated Ocean View"
+                  price: 150.00
+                  lock_version: 6
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/VersionConflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+    patch:
+      tags: [Rooms]
+      summary: Partially update room (with optimistic locking)
+      operationId: patchRoom
+      description: Same as PUT but for partial updates. `lock_version` still required.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lock_version]
+              properties:
+                name:
+                  type: string
+                price:
+                  type: number
+                lock_version:
+                  type: integer
+      responses:
+        "200":
+          description: Room updated
+        "409":
+          $ref: "#/components/responses/VersionConflict"
+
+    delete:
+      tags: [Rooms]
+      summary: Delete a room (Admin only)
+      operationId: deleteRoom
+      description: Optionally accepts `lock_version` in body for consistency.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Room deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                    example: "Room deleted successfully"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ═══════════════════════════════════════
+  # BOOKINGS (v1)
+  # ═══════════════════════════════════════
+
+  /v1/bookings:
+    get:
+      tags: [Bookings]
+      summary: List user's bookings
+      operationId: listBookings
+      description: Returns all bookings for the authenticated user.
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+      responses:
+        "200":
+          description: Booking list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Booking"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      tags: [Bookings]
+      summary: Create a new booking
+      operationId: createBooking
+      description: |
+        **Requirements:**
+        - User must be authenticated
+        - Email must be verified (`verified` middleware)
+        - Room must be available for selected dates (half-open interval)
+        - Pessimistic locking prevents double-booking
+
+        **Notifications:**
+        - BookingCreated event dispatched
+        - Confirmation email queued asynchronously
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [room_id, check_in, check_out, guest_name, guest_email]
+              properties:
+                room_id:
+                  type: integer
+                  example: 42
+                check_in:
+                  type: string
+                  format: date
+                  example: "2026-06-01"
+                check_out:
+                  type: string
+                  format: date
+                  example: "2026-06-05"
+                guest_name:
+                  type: string
+                  minLength: 2
+                  example: "Jane Doe"
+                guest_email:
+                  type: string
+                  format: email
+                  example: "jane@example.com"
+      responses:
+        "201":
+          description: Booking created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                    example: "Booking created successfully"
+                  data:
+                    $ref: "#/components/schemas/Booking"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Email not verified
+        "422":
+          description: Validation error or room not available
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: "Room is not available for the selected dates"
+        "429":
+          $ref: "#/components/responses/RateLimitExceeded"
+
+  /v1/bookings/{booking}:
+    get:
+      tags: [Bookings]
+      summary: Get booking details
+      operationId: getBooking
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+      parameters:
+        - in: path
+          name: booking
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Booking details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/Booking"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Bookings]
+      summary: Update a booking
+      operationId: updateBooking
+      description: Update booking dates and guest info. Room availability is re-validated.
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+      parameters:
+        - in: path
+          name: booking
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [check_in, check_out]
+              properties:
+                check_in:
+                  type: string
+                  format: date
+                check_out:
+                  type: string
+                  format: date
+                guest_name:
+                  type: string
+                guest_email:
+                  type: string
+                  format: email
+      responses:
+        "200":
+          description: Booking updated
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+    delete:
+      tags: [Bookings]
+      summary: Cancel a booking (soft delete)
+      operationId: deleteBooking
+      description: Soft-deletes the booking with audit trail.
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+      parameters:
+        - in: path
+          name: booking
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Booking cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                    example: "Booking cancelled successfully"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /v1/bookings/{booking}/confirm:
+    post:
+      tags: [Bookings]
+      summary: Confirm a pending booking (Admin only)
+      operationId: confirmBooking
+      description: |
+        Changes booking status from `pending` to `confirmed`.
+        Sends confirmation email to guest. Requires ADMIN role.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: booking
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Booking confirmed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                    example: "Booking confirmed successfully. Confirmation email queued."
+                  data:
+                    $ref: "#/components/schemas/Booking"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          description: Booking is not in pending status
+
+  /v1/bookings/{booking}/cancel:
+    post:
+      tags: [Bookings]
+      summary: Cancel booking with refund
+      operationId: cancelBooking
+      description: |
+        Cancels booking with refund calculation:
+        - **Full refund**: ≥ 48 hours before check-in
+        - **50% refund**: ≥ 24 hours before check-in
+        - **No refund**: < 24 hours before check-in
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+      parameters:
+        - in: path
+          name: booking
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Booking cancelled (with refund info)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/Booking"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          description: Booking cannot be cancelled (terminal state)
+
+  # ═══════════════════════════════════════
+  # ADMIN BOOKINGS (v1)
+  # ═══════════════════════════════════════
+
+  /v1/admin/bookings:
+    get:
+      tags: [Admin Bookings]
+      summary: List all bookings (including soft-deleted)
+      operationId: adminListBookings
+      description: Returns all bookings with trashed, ordered by creation date. Admin only.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: All bookings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Booking"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /v1/admin/bookings/trashed:
+    get:
+      tags: [Admin Bookings]
+      summary: List soft-deleted bookings
+      operationId: adminListTrashed
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Trashed bookings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Booking"
+                  meta:
+                    type: object
+                    properties:
+                      total_trashed:
+                        type: integer
+
+  /v1/admin/bookings/trashed/{id}:
+    get:
+      tags: [Admin Bookings]
+      summary: Get a soft-deleted booking
+      operationId: adminShowTrashed
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Trashed booking details
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/admin/bookings/{id}/restore:
+    post:
+      tags: [Admin Bookings]
+      summary: Restore a soft-deleted booking
+      operationId: adminRestoreBooking
+      description: Validates no date overlap before restoring.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Booking restored
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Date conflict prevents restoration
+
+  /v1/admin/bookings/restore-bulk:
+    post:
+      tags: [Admin Bookings]
+      summary: Bulk restore soft-deleted bookings
+      operationId: adminBulkRestore
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids]
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: integer
+                  example: [101, 102, 103]
+      responses:
+        "200":
+          description: Bulk restore result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      restored_count:
+                        type: integer
+                      failed:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                            reason:
+                              type: string
+
+  /v1/admin/bookings/{id}/force:
+    delete:
+      tags: [Admin Bookings]
+      summary: Permanently delete a soft-deleted booking (GDPR)
+      operationId: adminForceDelete
+      description: |
+        Permanently removes a soft-deleted booking from the database.
+        Only works on already soft-deleted bookings. Used for GDPR compliance.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Booking permanently deleted
+        "404":
+          description: Trashed booking not found
+
+  # ═══════════════════════════════════════
+  # HEALTH CHECKS
+  # ═══════════════════════════════════════
+
+  /health:
+    get:
+      tags: [Health]
+      summary: Basic health check
+      operationId: healthCheck
+      responses:
+        "200":
+          description: API is healthy
+
+  /health/live:
+    get:
+      tags: [Health]
+      summary: Liveness probe (Kubernetes)
+      operationId: liveness
+      description: Returns 200 if application is alive. Does NOT check dependencies.
+      responses:
+        "200":
+          description: Application is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /health/ready:
+    get:
+      tags: [Health]
+      summary: Readiness probe (Kubernetes)
+      operationId: readiness
+      description: |
+        Returns 200 only if all critical dependencies are ready:
+        - Database connection
+        - Redis cache
+        Returns 503 if any critical component is down.
+        Returns 200 with `status: degraded` if non-critical components fail.
+      responses:
+        "200":
+          description: System ready (or degraded)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok, degraded]
+                  timestamp:
+                    type: string
+                    format: date-time
+                  checks:
+                    type: object
+                    properties:
+                      database:
+                        type: object
+                        properties:
+                          healthy:
+                            type: boolean
+                          latency_ms:
+                            type: number
+                      cache:
+                        type: object
+                        properties:
+                          healthy:
+                            type: boolean
+                          latency_ms:
+                            type: number
+                      redis:
+                        type: object
+                        properties:
+                          healthy:
+                            type: boolean
+        "503":
+          description: Critical dependency unavailable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "unhealthy"
+                  checks:
+                    type: object
+
+  /health/full:
+    get:
+      tags: [Health]
+      summary: Detailed health check (all components)
+      operationId: healthDetailed
+      description: |
+        Checks all system components: database, cache, redis, storage, queue.
+        Returns application metrics (memory, uptime, versions).
+      responses:
+        "200":
+          description: Detailed health status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok, degraded, unhealthy]
+                  app:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      environment:
+                        type: string
+                  checks:
+                    type: object
+                  summary:
+                    type: object
+                    properties:
+                      healthy:
+                        type: integer
+                      total:
+                        type: integer
+                      percentage:
+                        type: number
+                  metrics:
+                    type: object
+                    properties:
+                      uptime_seconds:
+                        type: integer
+                      memory_usage_mb:
+                        type: number
+                      peak_memory_mb:
+                        type: number
+                      php_version:
+                        type: string
+                      laravel_version:
+                        type: string
+
+  /health/db:
+    get:
+      tags: [Health]
+      summary: Database health check
+      operationId: healthDatabase
+      responses:
+        "200":
+          description: Database is healthy
+        "503":
+          description: Database is down
+
+  /health/cache:
+    get:
+      tags: [Health]
+      summary: Cache health check
+      operationId: healthCache
+      responses:
+        "200":
+          description: Cache status (always 200, degraded is not critical)
+
+  /health/queue:
+    get:
+      tags: [Health]
+      summary: Queue health check
+      operationId: healthQueue
+      responses:
+        "200":
+          description: Queue status
+
+  # ═══════════════════════════════════════
+  # CONTACT
+  # ═══════════════════════════════════════
+
+  /contact:
+    post:
+      tags: [Contact]
+      summary: Send a contact message
+      operationId: sendContact
+      description: |
+        Public contact form. Rate limited: 3/min, 10/day per IP.
+        Message is sanitized via HTML Purifier (XSS protection).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, message]
+              properties:
+                name:
+                  type: string
+                  maxLength: 255
+                  example: "Alice Smith"
+                email:
+                  type: string
+                  format: email
+                  example: "alice@example.com"
+                message:
+                  type: string
+                  maxLength: 5000
+                  example: "I'd like to know about group booking rates."
+      responses:
+        "201":
+          description: Message received
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                    example: "Message received. We will get back to you soon."
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/RateLimitExceeded"
+
+  # ═══════════════════════════════════════
+  # UTILITY
+  # ═══════════════════════════════════════
+
+  /ping:
+    get:
+      tags: [Health]
+      summary: Simple ping endpoint
+      operationId: ping
+      responses:
+        "200":
+          description: API is working
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "API is working!"
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /auth/csrf-token:
+    get:
+      tags: [Authentication]
+      summary: Get CSRF token
+      operationId: getCsrfToken
+      description: Returns a CSRF token for use with HttpOnly cookie authentication.
+      responses:
+        "200":
+          description: CSRF token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  csrf_token:
+                    type: string
+
+  # ═══════════════════════════════════════
+  # DEPRECATED ENDPOINTS
+  # ═══════════════════════════════════════
+
+  /auth/login:
+    post:
+      deprecated: true
+      tags: [Deprecated]
+      summary: "[DEPRECATED] Login (use /auth/login-v2 or /auth/login-httponly)"
+      operationId: loginLegacy
+      description: |
+        ⚠️ **DEPRECATED — Sunset: July 1, 2026**
+
+        This endpoint still works but returns deprecation headers.
+        Migrate to:
+        - `/auth/login-v2` for Bearer token auth
+        - `/auth/login-httponly` for cookie-based auth
+
+        Response headers include:
+        - `Deprecation: <date>`
+        - `Sunset: Thu, 01 Jul 2026 00:00:00 GMT`
+        - `Link: </api/auth/login-v2>; rel="successor-version"`
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+      responses:
+        "200":
+          description: Login successful (with deprecation headers)
+          headers:
+            Deprecation:
+              schema:
+                type: string
+              example: "Mon, 09 Feb 2026 00:00:00 GMT"
+            Sunset:
+              schema:
+                type: string
+              example: "Thu, 01 Jul 2026 00:00:00 GMT"
+            Link:
+              schema:
+                type: string
+              example: '</api/auth/login-v2>; rel="successor-version"'
+            X-Deprecation-Notice:
+              schema:
+                type: string
+
+  /auth/me:
+    get:
+      deprecated: true
+      tags: [Deprecated]
+      summary: "[DEPRECATED] Get user (use /auth/me-v2 or /auth/unified/me)"
+      operationId: meLegacy
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: User info (with deprecation headers)
+
+  /auth/logout:
+    post:
+      deprecated: true
+      tags: [Deprecated]
+      summary: "[DEPRECATED] Logout (use /auth/logout-v2 or /auth/unified/logout)"
+      operationId: logoutLegacy
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Logged out (with deprecation headers)
+
+  /auth/refresh:
+    post:
+      deprecated: true
+      tags: [Deprecated]
+      summary: "[DEPRECATED] Refresh token (use /auth/refresh-v2)"
+      operationId: refreshLegacy
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Token refreshed (with deprecation headers)

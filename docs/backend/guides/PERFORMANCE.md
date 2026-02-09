@@ -96,7 +96,7 @@ stdout_logfile=/var/www/storage/logs/octane.log
 
 Automatic detection of N+1 query problems.
 
-### Configuration
+### Configuration1
 
 ```php
 // config/query-detector.php
@@ -230,7 +230,7 @@ class QueryMetricsTable
 
 }
 
-````
+````bash
 
 ---
 

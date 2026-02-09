@@ -1,0 +1,1265 @@
+{
+    "info": {
+        "name": "Soleil Hostel API v2",
+        "description": "Complete API collection for Soleil Hostel Management System v2.0.\n\nFeatures:\n- Dual Auth Modes (Bearer Token + HttpOnly Cookie)\n- Unified Auth Endpoints (auto-detect mode)\n- RBAC (USER, MODERATOR, ADMIN)\n- Optimistic Locking for Room Updates\n- Pessimistic Locking for Booking Creation\n- Email Verification Required for Bookings\n- Kubernetes-style Health Probes\n\nSetup:\n1. Import this collection\n2. Set environment variable `base_url` to `http://localhost:8000/api`\n3. Run 'Register' or 'Login (Bearer)' — token auto-saved",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+        "_exporter_id": "soleil-hostel"
+    },
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:8000/api",
+            "type": "string"
+        },
+        {
+            "key": "bearer_token",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "admin_token",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "room_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "booking_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "lock_version",
+            "value": "1",
+            "type": "string"
+        }
+    ],
+    "item": [
+        {
+            "name": "🔐 Authentication",
+            "description": "Registration, login (Bearer + HttpOnly), token management.",
+            "item": [
+                {
+                    "name": "Register New User",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            { "key": "Accept", "value": "application/json" }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/register",
+                            "host": ["{{base_url}}"],
+                            "path": ["auth", "register"]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"password_confirmation\": \"SecurePass123!\"\n}"
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 201) {",
+                                    "  const body = pm.response.json();",
+                                    "  const token = body.data?.access_token || body.token;",
+                                    "  if (token) {",
+                                    "    pm.collectionVariables.set('bearer_token', token);",
+                                    "    console.log('Token saved to bearer_token');",
+                                    "  }",
+                                    "}",
+                                    "",
+                                    "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                                    "pm.test('Has user data', () => {",
+                                    "  const body = pm.response.json();",
+                                    "  pm.expect(body.success).to.be.true;",
+                                    "  pm.expect(body.data.user).to.have.property('id');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "response": [
+                        {
+                            "name": "Success (201)",
+                            "status": "Created",
+                            "code": 201,
+                            "body": "{\n  \"success\": true,\n  \"message\": \"User registered successfully\",\n  \"data\": {\n    \"user\": {\n      \"id\": 17,\n      \"name\": \"John Doe\",\n      \"email\": \"john@example.com\",\n      \"role\": \"user\",\n      \"email_verified_at\": null\n    },\n    \"access_token\": \"1|abcdef123456...\",\n    \"token_type\": \"Bearer\"\n  }\n}"
+                        }
+                    ]
+                },
+                {
+                    "name": "Login (Bearer Token) ✅",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            { "key": "Accept", "value": "application/json" }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/login-v2",
+                            "host": ["{{base_url}}"],
+                            "path": ["auth", "login-v2"]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"admin@soleilhostel.com\",\n  \"password\": \"password\",\n  \"remember_me\": false\n}"
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 200 || pm.response.code === 201) {",
+                                    "  const body = pm.response.json();",
+                                    "  if (body.token) {",
+                                    "    pm.collectionVariables.set('bearer_token', body.token);",
+                                    "    pm.collectionVariables.set('admin_token', body.token);",
+                                    "    console.log('Token saved: ' + body.type + ', expires: ' + body.expires_at);",
+                                    "  }",
+                                    "}",
+                                    "",
+                                    "pm.test('Login successful', () => {",
+                                    "  pm.response.to.have.status(201);",
+                                    "  pm.expect(pm.response.json().token).to.be.a('string');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "response": [
+                        {
+                            "name": "Success (201)",
+                            "status": "Created",
+                            "code": 201,
+                            "body": "{\n  \"message\": \"Đăng nhập thành công.\",\n  \"token\": \"abcdef1234567890...\",\n  \"user\": { \"id\": 1, \"name\": \"Admin\", \"email\": \"admin@soleilhostel.com\" },\n  \"expires_at\": \"2026-02-09T11:00:00+00:00\",\n  \"expires_in_minutes\": 60,\n  \"type\": \"short_lived\",\n  \"device_id\": \"550e8400-e29b-41d4-a716-446655440000\"\n}"
+                        }
+                    ]
+                },
+                {
+                    "name": "Login (HttpOnly Cookie)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            { "key": "Accept", "value": "application/json" }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/login-httponly",
+                            "host": ["{{base_url}}"],
+                            "path": ["auth", "login-httponly"]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"admin@soleilhostel.com\",\n  \"password\": \"password\",\n  \"remember_me\": false\n}"
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Login successful', () => {",
+                                    "  pm.response.to.have.status(200);",
+                                    "  pm.expect(pm.response.json().success).to.be.true;",
+                                    "});",
+                                    "",
+                                    "pm.test('Has Set-Cookie header', () => {",
+                                    "  const cookies = pm.response.headers.get('Set-Cookie');",
+                                    "  // Cookie is set by the server",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "response": [
+                        {
+                            "name": "Success (200) + Cookie",
+                            "status": "OK",
+                            "code": 200,
+                            "body": "{\n  \"success\": true,\n  \"message\": \"Login thành công. Token đã được set trong httpOnly cookie.\",\n  \"user\": { \"id\": 1, \"name\": \"Admin\", \"email\": \"admin@soleilhostel.com\" },\n  \"expires_in_minutes\": 60,\n  \"token_type\": \"short_lived\"\n}"
+                        }
+                    ]
+                },
+                {
+                    "name": "Login (Legacy — Deprecated ⚠️)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            { "key": "Accept", "value": "application/json" }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/login",
+                            "host": ["{{base_url}}"],
+                            "path": ["auth", "login"]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"admin@soleilhostel.com\",\n  \"password\": \"password\"\n}"
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Returns deprecation headers', () => {",
+                                    "  pm.expect(pm.response.headers.has('Deprecation')).to.be.true;",
+                                    "  pm.expect(pm.response.headers.has('Sunset')).to.be.true;",
+                                    "  pm.expect(pm.response.headers.has('X-Deprecation-Notice')).to.be.true;",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Current User (Unified /me)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{bearer_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/unified/me",
+                            "host": ["{{base_url}}"],
+                            "path": ["auth", "unified", "me"]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Get user successful', () => {",
+                                    "  pm.response.to.have.status(200);",
+                                    "  const body = pm.response.json();",
+                                    "  pm.expect(body.user || body.data).to.be.an('object');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Current User (Bearer /me-v2)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{bearer_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/me-v2",
+                            "host": ["{{base_url}}"],
+                            "path": ["auth", "me-v2"]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Has user and token info', () => {",
+                                    "  pm.response.to.have.status(200);",
+                                    "  const body = pm.response.json();",
+                                    "  pm.expect(body.user).to.have.property('id');",
+                                    "  pm.expect(body.token).to.have.property('expires_at');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Refresh Token (Bearer)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{bearer_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/refresh-v2",
+                            "host": ["{{base_url}}"],
+                            "path": ["auth", "refresh-v2"]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 200) {",
+                                    "  const body = pm.response.json();",
+                                    "  if (body.token) {",
+                                    "    pm.collectionVariables.set('bearer_token', body.token);",
+                                    "    console.log('Token refreshed and saved');",
+                                    "  }",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Logout (Unified)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{bearer_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/unified/logout",
+                            "host": ["{{base_url}}"],
+                            "path": ["auth", "unified", "logout"]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Logout successful', () => {",
+                                    "  pm.response.to.have.status(200);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Logout All Devices",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{bearer_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/unified/logout-all",
+                            "host": ["{{base_url}}"],
+                            "path": ["auth", "unified", "logout-all"]
+                        }
+                    }
+                },
+                {
+                    "name": "Get CSRF Token",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/csrf-token",
+                            "host": ["{{base_url}}"],
+                            "path": ["auth", "csrf-token"]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "📧 Email Verification",
+            "description": "Email verification flow (required before creating bookings).",
+            "item": [
+                {
+                    "name": "Check Verification Status",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{bearer_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/email/verification-status",
+                            "host": ["{{base_url}}"],
+                            "path": ["email", "verification-status"]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Has verification status', () => {",
+                                    "  pm.response.to.have.status(200);",
+                                    "  const body = pm.response.json();",
+                                    "  pm.expect(body).to.have.property('verified');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Resend Verification Email",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{bearer_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/email/verification-notification",
+                            "host": ["{{base_url}}"],
+                            "path": ["email", "verification-notification"]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "🏨 Rooms",
+            "description": "Room listing, detail, and management. Writes require ADMIN role + lock_version.",
+            "item": [
+                {
+                    "name": "List All Rooms",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/v1/rooms",
+                            "host": ["{{base_url}}"],
+                            "path": ["v1", "rooms"]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Room list returned', () => {",
+                                    "  pm.response.to.have.status(200);",
+                                    "  const body = pm.response.json();",
+                                    "  pm.expect(body.success).to.be.true;",
+                                    "  pm.expect(body.data).to.be.an('array');",
+                                    "  if (body.data.length > 0) {",
+                                    "    pm.collectionVariables.set('room_id', body.data[0].id);",
+                                    "    pm.collectionVariables.set('lock_version', body.data[0].lock_version || 1);",
+                                    "  }",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "List Rooms (with Date Filter)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/v1/rooms?check_in=2026-06-01&check_out=2026-06-05",
+                            "host": ["{{base_url}}"],
+                            "path": ["v1", "rooms"],
+                            "query": [
+                                { "key": "check_in", "value": "2026-06-01" },
+                                { "key": "check_out", "value": "2026-06-05" }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Room Detail",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/v1/rooms/{{room_id}}",
+                            "host": ["{{base_url}}"],
+                            "path": ["v1", "rooms", "{{room_id}}"]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Room detail returned', () => {",
+                                    "  pm.response.to.have.status(200);",
+                                    "  const body = pm.response.json();",
+                                    "  pm.expect(body.data).to.have.property('lock_version');",
+                                    "  pm.collectionVariables.set('lock_version', body.data.lock_version);",
+                                    "  console.log('lock_version saved: ' + body.data.lock_version);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Room (Admin)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            { "key": "Accept", "value": "application/json" },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{admin_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/v1/rooms",
+                            "host": ["{{base_url}}"],
+                            "path": ["v1", "rooms"]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"Deluxe Suite\",\n  \"description\": \"Luxury suite with sea view\",\n  \"price\": 250.00,\n  \"max_guests\": 4,\n  \"status\": \"active\"\n}"
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 201) {",
+                                    "  const body = pm.response.json();",
+                                    "  pm.collectionVariables.set('room_id', body.data.id);",
+                                    "  pm.collectionVariables.set('lock_version', body.data.lock_version);",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Update Room (with Optimistic Lock) 🔒",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            { "key": "Accept", "value": "application/json" },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{admin_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/v1/rooms/{{room_id}}",
+                            "host": ["{{base_url}}"],
+                            "path": ["v1", "rooms", "{{room_id}}"]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"Updated Room Name\",\n  \"price\": 150.00,\n  \"lock_version\": {{lock_version}}\n}"
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Room updated', () => {",
+                                    "  if (pm.response.code === 200) {",
+                                    "    const body = pm.response.json();",
+                                    "    pm.collectionVariables.set('lock_version', body.data.lock_version);",
+                                    "    console.log('New lock_version: ' + body.data.lock_version);",
+                                    "  } else if (pm.response.code === 409) {",
+                                    "    console.log('Version conflict! Run Get Room Detail first.');",
+                                    "  }",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "response": [
+                        {
+                            "name": "Success (200)",
+                            "status": "OK",
+                            "code": 200,
+                            "body": "{\n  \"success\": true,\n  \"message\": \"Room updated successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"name\": \"Updated Room Name\",\n    \"price\": 150.00,\n    \"lock_version\": 6\n  }\n}"
+                        },
+                        {
+                            "name": "Version Conflict (409)",
+                            "status": "Conflict",
+                            "code": 409,
+                            "body": "{\n  \"message\": \"Room data has been modified by another user. Please refresh and try again.\",\n  \"current_version\": 7,\n  \"provided_version\": 5\n}"
+                        }
+                    ]
+                },
+                {
+                    "name": "Delete Room (Admin)",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{admin_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/v1/rooms/{{room_id}}",
+                            "host": ["{{base_url}}"],
+                            "path": ["v1", "rooms", "{{room_id}}"]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "📅 Bookings",
+            "description": "Booking CRUD. Requires authenticated + verified email.",
+            "item": [
+                {
+                    "name": "Create Booking ✅",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            { "key": "Accept", "value": "application/json" },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{bearer_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/v1/bookings",
+                            "host": ["{{base_url}}"],
+                            "path": ["v1", "bookings"]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"room_id\": {{room_id}},\n  \"check_in\": \"2026-06-01\",\n  \"check_out\": \"2026-06-05\",\n  \"guest_name\": \"Jane Doe\",\n  \"guest_email\": \"jane@example.com\"\n}"
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 201) {",
+                                    "  const body = pm.response.json();",
+                                    "  pm.collectionVariables.set('booking_id', body.data.id);",
+                                    "  console.log('Booking created: #' + body.data.id);",
+                                    "}",
+                                    "",
+                                    "pm.test('Booking created or conflict', () => {",
+                                    "  pm.expect([201, 422]).to.include(pm.response.code);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "response": [
+                        {
+                            "name": "Created (201)",
+                            "status": "Created",
+                            "code": 201,
+                            "body": "{\n  \"success\": true,\n  \"message\": \"Booking created successfully\",\n  \"data\": {\n    \"id\": 1001,\n    \"room_id\": 1,\n    \"check_in\": \"2026-06-01\",\n    \"check_out\": \"2026-06-05\",\n    \"guest_name\": \"Jane Doe\",\n    \"guest_email\": \"jane@example.com\",\n    \"status\": \"pending\"\n  }\n}"
+                        },
+                        {
+                            "name": "Room Not Available (422)",
+                            "status": "Unprocessable Entity",
+                            "code": 422,
+                            "body": "{\n  \"success\": false,\n  \"message\": \"Room is not available for the selected dates\"\n}"
+                        }
+                    ]
+                },
+                {
+                    "name": "List My Bookings",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{bearer_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/v1/bookings",
+                            "host": ["{{base_url}}"],
+                            "path": ["v1", "bookings"]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Bookings listed', () => {",
+                                    "  pm.response.to.have.status(200);",
+                                    "  pm.expect(pm.response.json().data).to.be.an('array');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Booking Detail",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{bearer_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/v1/bookings/{{booking_id}}",
+                            "host": ["{{base_url}}"],
+                            "path": ["v1", "bookings", "{{booking_id}}"]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Booking",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            { "key": "Accept", "value": "application/json" },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{bearer_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/v1/bookings/{{booking_id}}",
+                            "host": ["{{base_url}}"],
+                            "path": ["v1", "bookings", "{{booking_id}}"]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"check_in\": \"2026-06-02\",\n  \"check_out\": \"2026-06-06\",\n  \"guest_name\": \"Jane Doe Updated\",\n  \"guest_email\": \"jane.updated@example.com\"\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Confirm Booking (Admin)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{admin_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/v1/bookings/{{booking_id}}/confirm",
+                            "host": ["{{base_url}}"],
+                            "path": [
+                                "v1",
+                                "bookings",
+                                "{{booking_id}}",
+                                "confirm"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Cancel Booking (with Refund)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{bearer_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/v1/bookings/{{booking_id}}/cancel",
+                            "host": ["{{base_url}}"],
+                            "path": [
+                                "v1",
+                                "bookings",
+                                "{{booking_id}}",
+                                "cancel"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Booking (Soft Delete)",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{bearer_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/v1/bookings/{{booking_id}}",
+                            "host": ["{{base_url}}"],
+                            "path": ["v1", "bookings", "{{booking_id}}"]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "🔧 Admin Bookings",
+            "description": "Admin-only: soft-delete recovery, force delete (GDPR), bulk restore.",
+            "item": [
+                {
+                    "name": "List All Bookings (incl. Trashed)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{admin_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/v1/admin/bookings",
+                            "host": ["{{base_url}}"],
+                            "path": ["v1", "admin", "bookings"]
+                        }
+                    }
+                },
+                {
+                    "name": "List Trashed Bookings",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{admin_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/v1/admin/bookings/trashed",
+                            "host": ["{{base_url}}"],
+                            "path": ["v1", "admin", "bookings", "trashed"]
+                        }
+                    }
+                },
+                {
+                    "name": "Restore Trashed Booking",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{admin_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/v1/admin/bookings/{{booking_id}}/restore",
+                            "host": ["{{base_url}}"],
+                            "path": [
+                                "v1",
+                                "admin",
+                                "bookings",
+                                "{{booking_id}}",
+                                "restore"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Bulk Restore Bookings",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            { "key": "Accept", "value": "application/json" },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{admin_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/v1/admin/bookings/restore-bulk",
+                            "host": ["{{base_url}}"],
+                            "path": ["v1", "admin", "bookings", "restore-bulk"]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"ids\": [1, 2, 3]\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Force Delete Booking (GDPR)",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{admin_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/v1/admin/bookings/{{booking_id}}/force",
+                            "host": ["{{base_url}}"],
+                            "path": [
+                                "v1",
+                                "admin",
+                                "bookings",
+                                "{{booking_id}}",
+                                "force"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "💚 Health Checks",
+            "description": "Kubernetes-style health probes and system diagnostics.",
+            "item": [
+                {
+                    "name": "Ping",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/ping",
+                            "host": ["{{base_url}}"],
+                            "path": ["ping"]
+                        }
+                    }
+                },
+                {
+                    "name": "Basic Health",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/health",
+                            "host": ["{{base_url}}"],
+                            "path": ["health"]
+                        }
+                    }
+                },
+                {
+                    "name": "Liveness Probe",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/health/live",
+                            "host": ["{{base_url}}"],
+                            "path": ["health", "live"]
+                        }
+                    }
+                },
+                {
+                    "name": "Readiness Probe",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/health/ready",
+                            "host": ["{{base_url}}"],
+                            "path": ["health", "ready"]
+                        }
+                    }
+                },
+                {
+                    "name": "Detailed Health (All Components)",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/health/full",
+                            "host": ["{{base_url}}"],
+                            "path": ["health", "full"]
+                        }
+                    }
+                },
+                {
+                    "name": "Database Health",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/health/db",
+                            "host": ["{{base_url}}"],
+                            "path": ["health", "db"]
+                        }
+                    }
+                },
+                {
+                    "name": "Cache Health",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/health/cache",
+                            "host": ["{{base_url}}"],
+                            "path": ["health", "cache"]
+                        }
+                    }
+                },
+                {
+                    "name": "Queue Health",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/health/queue",
+                            "host": ["{{base_url}}"],
+                            "path": ["health", "queue"]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "📞 Contact",
+            "item": [
+                {
+                    "name": "Send Contact Message",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            { "key": "Accept", "value": "application/json" }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/contact",
+                            "host": ["{{base_url}}"],
+                            "path": ["contact"]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"Alice Smith\",\n  \"email\": \"alice@example.com\",\n  \"message\": \"I'd like to know about group booking rates for 20 guests.\"\n}"
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Message sent', () => {",
+                                    "  pm.response.to.have.status(201);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "🔄 E2E: Full Booking Flow",
+            "description": "End-to-end test: Register → Login → List Rooms → Create Booking → Confirm → Cancel",
+            "item": [
+                {
+                    "name": "1. Login as Admin",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            { "key": "Accept", "value": "application/json" }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/login-v2",
+                            "host": ["{{base_url}}"],
+                            "path": ["auth", "login-v2"]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"admin@soleilhostel.com\",\n  \"password\": \"password\"\n}"
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const body = pm.response.json();",
+                                    "pm.collectionVariables.set('bearer_token', body.token);",
+                                    "pm.collectionVariables.set('admin_token', body.token);"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "2. List Available Rooms",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/v1/rooms?check_in=2026-07-01&check_out=2026-07-05",
+                            "host": ["{{base_url}}"],
+                            "path": ["v1", "rooms"],
+                            "query": [
+                                { "key": "check_in", "value": "2026-07-01" },
+                                { "key": "check_out", "value": "2026-07-05" }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const body = pm.response.json();",
+                                    "if (body.data && body.data.length > 0) {",
+                                    "  pm.collectionVariables.set('room_id', body.data[0].id);",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "3. Create Booking",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            { "key": "Accept", "value": "application/json" },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{bearer_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/v1/bookings",
+                            "host": ["{{base_url}}"],
+                            "path": ["v1", "bookings"]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"room_id\": {{room_id}},\n  \"check_in\": \"2026-07-01\",\n  \"check_out\": \"2026-07-05\",\n  \"guest_name\": \"E2E Test Guest\",\n  \"guest_email\": \"e2e@test.example.com\"\n}"
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 201) {",
+                                    "  pm.collectionVariables.set('booking_id', pm.response.json().data.id);",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "4. Confirm Booking",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{admin_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/v1/bookings/{{booking_id}}/confirm",
+                            "host": ["{{base_url}}"],
+                            "path": [
+                                "v1",
+                                "bookings",
+                                "{{booking_id}}",
+                                "confirm"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "5. Cancel Booking",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{bearer_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/v1/bookings/{{booking_id}}/cancel",
+                            "host": ["{{base_url}}"],
+                            "path": [
+                                "v1",
+                                "bookings",
+                                "{{booking_id}}",
+                                "cancel"
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}

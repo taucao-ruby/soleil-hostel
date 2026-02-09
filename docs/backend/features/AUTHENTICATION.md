@@ -50,7 +50,7 @@ public function rules(): array
 
 ## Token Lifecycle
 
-```
+```bash
 1. Login     → Create token (expires_at = now + 1h hoặc 30 ngày)
 2. Use       → Update last_used_at mỗi request
 3. Refresh   → Create new token + revoke old token
@@ -165,11 +165,11 @@ await fetch("/api/auth/refresh-httponly", {
 
 ## Email Verification
 
-### Overview
+### Overview1
 
 Email verification is **required** before users can access protected routes (bookings, etc.).
 
-```
+```bash
 Registration → Verification Email → User Clicks Link → Email Verified → Access Granted
 ```
 
@@ -215,7 +215,7 @@ await api.post("/email/verification-notification");
 
 ### Response Examples
 
-**Verification Status (Unverified)**
+#### Verification Status (Unverified)
 
 ```json
 {

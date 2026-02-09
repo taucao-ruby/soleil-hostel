@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Soleil Hostel — API Reference</title>
+  <meta name="description" content="Interactive API documentation for Soleil Hostel REST API v1" />
+
+  <!-- Redoc fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ---------- page-level overrides ---------- */
+    body { margin: 0; padding: 0; }
+
+    /* sticky banner */
+    .api-banner {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 1.5rem;
+      background: #1a1a2e;
+      color: #f5f5f5;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    }
+    .api-banner a {
+      color: #fca311;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .api-banner a:hover { text-decoration: underline; }
+    .api-banner .logo { font-size: 1.1rem; font-weight: 700; letter-spacing: .5px; }
+    .api-banner .links { display: flex; gap: 1.2rem; }
+
+    /* environment selector */
+    .env-selector {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .env-selector label { font-size: 0.78rem; opacity: 0.8; }
+    .env-selector select {
+      background: #16213e;
+      color: #f5f5f5;
+      border: 1px solid #334;
+      border-radius: 4px;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top banner -->
+  <div class="api-banner">
+    <span class="logo">☀️ Soleil Hostel API</span>
+
+    <div class="links">
+      <a href="../PERFORMANCE_BASELINE.md">Performance</a>
+      <a href="../backend/guides/API_MIGRATION_V1_TO_V2.md">Migration Guide</a>
+      <a href="../API_DEPRECATION.md">Deprecation Policy</a>
+      <a href="openapi.yaml" download>Download OpenAPI ↓</a>
+    </div>
+
+    <div class="env-selector">
+      <label for="env">Server:</label>
+      <select id="env" onchange="switchServer(this.value)">
+        <option value="0">Local (localhost:8000)</option>
+        <option value="1">Staging</option>
+        <option value="2">Production</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Redoc container -->
+  <div id="redoc-container"></div>
+
+  <!-- Redoc from CDN -->
+  <script src="https://cdn.redoc.ly/redoc/v2.1.5/bundles/redoc.standalone.js"></script>
+
+  <script>
+    // ---- Configuration ----
+    const SPEC_URL = 'openapi.yaml';
+
+    const redocOptions = {
+      scrollYOffset: 52,            // banner height offset
+      hideDownloadButton: false,
+      expandResponses: '200,201',
+      requiredPropsFirst: true,
+      sortPropsAlphabetically: false,
+      pathInMiddlePanel: true,
+      hideHostname: false,
+      nativeScrollbars: true,
+
+      theme: {
+        colors: {
+          primary: { main: '#e07a00' },
+          success: { main: '#2e7d32' },
+          warning: { main: '#ed6c02' },
+          error:   { main: '#d32f2f' },
+          text:    { primary: '#1a1a2e' },
+        },
+        typography: {
+          fontFamily: "'Inter', sans-serif",
+          fontSize: '15px',
+          headings: { fontFamily: "'Inter', sans-serif", fontWeight: '700' },
+          code: { fontFamily: "'JetBrains Mono', monospace", fontSize: '13px' },
+        },
+        sidebar: {
+          backgroundColor: '#fafafa',
+          textColor: '#333',
+          activeTextColor: '#e07a00',
+          width: '280px',
+        },
+        rightPanel: {
+          backgroundColor: '#1a1a2e',
+          textColor: '#f5f5f5',
+        },
+      },
+    };
+
+    // ---- Render ----
+    Redoc.init(SPEC_URL, redocOptions, document.getElementById('redoc-container'));
+
+    // ---- Server switcher (updates URL hint only — Redoc reads servers from spec) ----
+    function switchServer(index) {
+      // Redoc doesn't natively support runtime server switching,
+      // so we re-init with a patched spec when the user changes env.
+      // For now this is a UX placeholder; the spec lists all three servers.
+      console.info('[Soleil API Docs] Server selector changed to index', index);
+    }
+  </script>
+
+</body>
+</html>

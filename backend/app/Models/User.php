@@ -185,6 +185,14 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Booking::class);
     }
 
+    /**
+     * Get the reviews written by the user.
+     */
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
+    }
+
     // ===== EMAIL MANAGEMENT =====
 
     /**

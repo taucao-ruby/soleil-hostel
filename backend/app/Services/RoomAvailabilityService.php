@@ -89,18 +89,25 @@ class RoomAvailabilityService
     {
         $cacheKey = "room-availability:available:{$roomId}:{$checkInDate}:{$checkOutDate}";
         
+        $checkAvailability = function () use ($roomId, $checkInDate, $checkOutDate) {
+            $room = Room::find($roomId);
+            if (!$room) {
+                return false;
+            }
+            return !$room->activeBookings()
+                ->overlappingBookings(
+                    roomId: $roomId,
+                    checkIn: $checkInDate,
+                    checkOut: $checkOutDate
+                )
+                ->exists();
+        };
+
         if (!$this->supportsTags()) {
             return Cache::remember(
                 $cacheKey,
                 self::CACHE_TTL,
-                fn() => !Room::find($roomId)
-                    ->activeBookings()
-                    ->overlappingBookings(
-                        roomId: $roomId,
-                        checkIn: $checkInDate,
-                        checkOut: $checkOutDate
-                    )
-                    ->exists()
+                $checkAvailability
             );
         }
         
@@ -108,14 +115,7 @@ class RoomAvailabilityService
             ->remember(
                 $cacheKey,
                 self::CACHE_TTL,
-                fn() => !Room::find($roomId)
-                    ->activeBookings()
-                    ->overlappingBookings(
-                        roomId: $roomId,
-                        checkIn: $checkInDate,
-                        checkOut: $checkOutDate
-                    )
-                    ->exists()
+                $checkAvailability
             );
     }
 

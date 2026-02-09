@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Database\TransactionIsolation;
 use App\Database\TransactionMetrics;
+use App\Enums\BookingStatus;
 use App\Exceptions\DoubleBookingException;
 use App\Models\Booking;
 use App\Models\Room;
@@ -320,7 +321,7 @@ class CreateBookingService
                 'check_out' => $checkOut,
                 'guest_name' => $guestName,
                 'guest_email' => $guestEmail,
-                'status' => Booking::STATUS_PENDING,
+                'status' => BookingStatus::PENDING,
                 'user_id' => $userId,
                 ...$additionalData,
             ]);

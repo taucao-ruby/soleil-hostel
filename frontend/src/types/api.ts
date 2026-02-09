@@ -94,7 +94,7 @@ export type Room = z.infer<typeof RoomSchema>
 export type RoomsResponse = z.infer<typeof RoomsResponseSchema>
 
 export type User = z.infer<typeof UserSchema>
-export type AuthResponse = z.infer<typeof AuthResponseSchema>
+export type { AuthResponse } from '@/features/auth/auth.api'
 
 export type Booking = z.infer<typeof BookingSchema>
 export type BookingResponse = z.infer<typeof BookingResponseSchema>

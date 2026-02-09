@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Models\User;
+use App\Traits\ApiResponse;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -13,6 +14,7 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    use ApiResponse;
     /**
      * Register a new user
      */
@@ -31,15 +33,16 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        return response()->json([
-            'success' => true,
-            'message' => 'User registered successfully',
-            'data' => [
-                'user' => $user,
-                'access_token' => $token,
-                'token_type' => 'Bearer',
+        return $this->success([
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
             ],
-        ], 201);
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+        ], 'User registered successfully', 201);
     }
 
     /**
@@ -64,15 +67,16 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Login successful',
-            'data' => [
-                'user' => $user,
-                'access_token' => $token,
-                'token_type' => 'Bearer',
+        return $this->success([
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
             ],
-        ]);
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+        ], 'Login successful');
     }
 
     /**
@@ -80,9 +84,13 @@ class AuthController extends Controller
      */
     public function me(Request $request): JsonResponse
     {
-        return response()->json([
-            'success' => true,
-            'data' => $request->user(),
+        $user = $request->user();
+
+        return $this->success([
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role,
         ]);
     }
 
@@ -93,10 +101,7 @@ class AuthController extends Controller
     {
         $request->user()->currentAccessToken()->delete();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Logged out successfully',
-        ]);
+        return $this->success(null, 'Logged out successfully');
     }
 
     /**
@@ -112,13 +117,9 @@ class AuthController extends Controller
         // Create new token
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Token refreshed',
-            'data' => [
-                'access_token' => $token,
-                'token_type' => 'Bearer',
-            ],
-        ]);
+        return $this->success([
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+        ], 'Token refreshed');
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Models\User;
 use App\Models\PersonalAccessToken;
+use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -22,6 +23,7 @@ use Illuminate\Auth\AuthenticationException;
  */
 class HttpOnlyTokenController extends Controller
 {
+    use ApiResponse;
     /**
      * LOGIN - Cấp httpOnly Cookie token
      * 
@@ -90,9 +92,7 @@ class HttpOnlyTokenController extends Controller
         ]);
 
         // ========== Build Response ==========
-        $response = response()->json([
-            'success' => true,
-            'message' => 'Login thành công. Token đã được set trong httpOnly cookie.',
+        $response = $this->success([
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -101,10 +101,8 @@ class HttpOnlyTokenController extends Controller
             'expires_in_minutes' => $expiresInMinutes,
             'expires_at' => $expiresAt->toIso8601String(),
             'token_type' => $tokenType,
-            // CSRF token dùng cho X-XSRF-TOKEN header
-            // Generate a random token for HTTP-only API
             'csrf_token' => \Illuminate\Support\Str::random(64),
-        ], 200);
+        ], 'Login thành công. Token đã được set trong httpOnly cookie.');
 
         // ========== SET httpOnly COOKIE ==========
         // 🔐 CRITICAL SECURITY FLAGS:
@@ -115,7 +113,7 @@ class HttpOnlyTokenController extends Controller
         // - Domain=.soleilhostel.com: Share với subdomains
         
         $response->cookie(
-            env('SANCTUM_COOKIE_NAME', 'soleil_token'),  // name
+            config('sanctum.cookie_name', 'soleil_token'),  // name
             $tokenIdentifier,  // Plain UUID token (value)
             ceil($expiresInMinutes / 60),  // minutes
             '/',  // path
@@ -162,11 +160,7 @@ class HttpOnlyTokenController extends Controller
         if ($oldToken->refresh_count >= config('sanctum.max_refresh_count_per_hour', 10)) {
             $oldToken->revoke();
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Phát hiện hoạt động bất thường. Vui lòng login lại.',
-                'code' => 'SUSPICIOUS_ACTIVITY',
-            ], 401);
+            return $this->error('Phát hiện hoạt động bất thường. Vui lòng login lại.', 401, ['code' => 'SUSPICIOUS_ACTIVITY']);
         }
 
         $oldToken->incrementRefreshCount();
@@ -209,18 +203,16 @@ class HttpOnlyTokenController extends Controller
         $oldToken->revoke();
 
         // ========== Response ==========
-        $response = response()->json([
-            'success' => true,
-            'message' => 'Token refreshed thành công.',
+        $response = $this->success([
             'expires_in_minutes' => $expiresInMinutes,
             'expires_at' => $expiresAt->toIso8601String(),
             'token_type' => $tokenType,
             'csrf_token' => csrf_token(),
-        ], 200);
+        ], 'Token refreshed thành công.');
 
         // ========== Set New httpOnly Cookie ==========
         $response->cookie(
-            env('SANCTUM_COOKIE_NAME', 'soleil_token'),  // name
+            config('sanctum.cookie_name', 'soleil_token'),  // name
             $newTokenIdentifier,  // value
             ceil($expiresInMinutes / 60),  // minutes
             '/',  // path
@@ -252,13 +244,10 @@ class HttpOnlyTokenController extends Controller
         }
 
         // Clear httpOnly cookie by setting empty value with past expiry
-        $response = response()->json([
-            'success' => true,
-            'message' => 'Logout thành công.',
-        ], 200);
+        $response = $this->success(null, 'Logout thành công.');
 
         $response->cookie(
-            env('SANCTUM_COOKIE_NAME', 'soleil_token'),  // name
+            config('sanctum.cookie_name', 'soleil_token'),  // name
             '',  // value (empty to clear)
             -1,  // minutes (expire immediately)
             '/',  // path
@@ -288,8 +277,7 @@ class HttpOnlyTokenController extends Controller
 
         $user = $token->tokenable;
 
-        return response()->json([
-            'success' => true,
+        return $this->success([
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -302,7 +290,7 @@ class HttpOnlyTokenController extends Controller
                 'expires_in_minutes' => $token->getMinutesUntilExpiration(),
                 'last_used_at' => $token->last_used_at?->toIso8601String(),
             ],
-        ], 200);
+        ]);
     }
 
     /**

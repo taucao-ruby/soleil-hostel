@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use App\Enums\BookingStatus;
 
 /**
  * Room Model
@@ -49,16 +50,6 @@ class Room extends Model
         'status',
     ];
 
-    /**
-     * The attributes that are guarded from mass assignment.
-     * lock_version is internal concurrency control - never allow mass assignment.
-     *
-     * @var array<int, string>
-     */
-    protected $guarded = [
-        'lock_version',
-    ];
-    
     protected $casts = [
         'price' => 'decimal:2',
         'lock_version' => 'integer', // Ensure version is always an integer
@@ -100,12 +91,20 @@ class Room extends Model
     }
 
     /**
+     * Get the reviews for the room.
+     */
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    /**
      * Get active bookings for the room (for availability checking).
      */
     public function activeBookings(): HasMany
     {
         return $this->bookings()
-            ->whereIn('status', Booking::ACTIVE_STATUSES);
+            ->whereIn('status', [BookingStatus::PENDING, BookingStatus::CONFIRMED]);
     }
 
     // ===== SCOPES =====
@@ -181,7 +180,7 @@ class Room extends Model
 
         return $query->where('status', 'available')
             ->whereDoesntHave('bookings', function (Builder $q) use ($checkInDt, $checkOutDt) {
-                $q->whereIn('status', Booking::ACTIVE_STATUSES)
+                $q->whereIn('status', [BookingStatus::PENDING, BookingStatus::CONFIRMED])
                     ->where('check_in', '<', $checkOutDt)
                     ->where('check_out', '>', $checkInDt);
             });

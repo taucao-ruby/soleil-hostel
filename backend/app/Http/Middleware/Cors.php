@@ -15,8 +15,11 @@ class Cors
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Get allowed origins from env (comma-separated)
-        $allowedOrigins = explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:5173'));
+        // Get allowed origins from config (array)
+        $allowedOrigins = config('cors.allowed_origins', ['http://localhost:5173']);
+        if (is_string($allowedOrigins)) {
+            $allowedOrigins = explode(',', $allowedOrigins);
+        }
         $origin = $request->header('Origin');
 
         // Handle preflight requests

@@ -13,7 +13,7 @@ return [
      */
     'csp' => [
         // Enable CSP reporting to detect violations
-        'reporting_enabled' => env('CSP_REPORTING', false),
+        'reporting_enabled' => env('CSP_REPORTING', true),
         
         // Report endpoint (relative URL)
         'report_uri' => '/api/csp-violation-report',

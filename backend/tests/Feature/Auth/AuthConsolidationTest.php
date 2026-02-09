@@ -70,7 +70,7 @@ class AuthConsolidationTest extends TestCase
             'email' => 'test@example.com',
             'password' => 'password123',
         ]);
-        $token = $loginResponse->json('token');
+        $token = $loginResponse->json('data.token');
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->postJson('/api/auth/logout');
@@ -93,7 +93,7 @@ class AuthConsolidationTest extends TestCase
             'email' => 'test@example.com',
             'password' => 'password123',
         ]);
-        $token = $loginResponse->json('token');
+        $token = $loginResponse->json('data.token');
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->getJson('/api/auth/me');
@@ -112,7 +112,7 @@ class AuthConsolidationTest extends TestCase
             'email' => 'test@example.com',
             'password' => 'password123',
         ]);
-        $token = $loginResponse->json('token');
+        $token = $loginResponse->json('data.token');
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->postJson('/api/auth/refresh');
@@ -148,14 +148,14 @@ class AuthConsolidationTest extends TestCase
             'email' => 'test@example.com',
             'password' => 'password123',
         ]);
-        $token = $loginResponse->json('token');
+        $token = $loginResponse->json('data.token');
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->getJson('/api/auth/unified/me');
 
         $response->assertStatus(200);
-        $response->assertJsonStructure(['user' => ['id', 'name', 'email']]);
-        $response->assertJson(['user' => ['email' => 'test@example.com']]);
+        $response->assertJsonStructure(['data' => ['user' => ['id', 'name', 'email']]]);
+        $response->assertJson(['data' => ['user' => ['email' => 'test@example.com']]]);
     }
 
     /**
@@ -167,7 +167,7 @@ class AuthConsolidationTest extends TestCase
             'email' => 'test@example.com',
             'password' => 'password123',
         ]);
-        $token = $loginResponse->json('token');
+        $token = $loginResponse->json('data.token');
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->postJson('/api/auth/unified/logout');
@@ -194,7 +194,7 @@ class AuthConsolidationTest extends TestCase
             ->postJson('/api/auth/unified/logout-all');
 
         $response->assertStatus(200);
-        $response->assertJsonStructure(['message', 'revoked_count']);
+        $response->assertJsonStructure(['message', 'data' => ['revoked_count']]);
 
         // Both tokens should be revoked
         $this->withHeader('Authorization', "Bearer {$token1}")->getJson('/api/auth/me-v2')->assertStatus(401);
@@ -219,12 +219,13 @@ class AuthConsolidationTest extends TestCase
             ->first();
         $tokenIdentifier = $token->token_identifier;
 
-        $cookieName = env('SANCTUM_COOKIE_NAME', 'soleil_token');
-        $response = $this->withHeader('Cookie', "{$cookieName}={$tokenIdentifier}")
+        $cookieName = config('sanctum.cookie_name', 'soleil_token');
+        $response = $this->actingAs($this->user)
+            ->withHeader('Cookie', "{$cookieName}={$tokenIdentifier}")
             ->getJson('/api/auth/unified/me');
 
         $response->assertStatus(200);
-        $response->assertJsonStructure(['success', 'user' => ['id', 'name', 'email']]);
+        $response->assertJsonStructure(['success', 'data' => ['user' => ['id', 'name', 'email']]]);
     }
 
     /**
@@ -242,8 +243,9 @@ class AuthConsolidationTest extends TestCase
             ->first();
         $tokenIdentifier = $token->token_identifier;
 
-        $cookieName = env('SANCTUM_COOKIE_NAME', 'soleil_token');
-        $response = $this->withHeader('Cookie', "{$cookieName}={$tokenIdentifier}")
+        $cookieName = config('sanctum.cookie_name', 'soleil_token');
+        $response = $this->actingAs($this->user)
+            ->withHeader('Cookie', "{$cookieName}={$tokenIdentifier}")
             ->postJson('/api/auth/unified/logout');
 
         $response->assertStatus(200);
@@ -273,13 +275,14 @@ class AuthConsolidationTest extends TestCase
             ->first();
         $tokenIdentifier = $httpOnlyToken->token_identifier;
 
-        $cookieName = env('SANCTUM_COOKIE_NAME', 'soleil_token');
-        $response = $this->withHeader('Cookie', "{$cookieName}={$tokenIdentifier}")
+        $cookieName = config('sanctum.cookie_name', 'soleil_token');
+        $response = $this->actingAs($this->user)
+            ->withHeader('Cookie', "{$cookieName}={$tokenIdentifier}")
             ->postJson('/api/auth/unified/logout-all');
 
         $response->assertStatus(200);
         $response->assertJson(['success' => true]);
-        $this->assertGreaterThanOrEqual(2, $response->json('revoked_count'));
+        $this->assertGreaterThanOrEqual(2, $response->json('data.revoked_count'));
 
         // All tokens should be revoked
         $activeTokens = PersonalAccessToken::where('tokenable_id', $this->user->id)
@@ -359,7 +362,7 @@ class AuthConsolidationTest extends TestCase
 
         // Should return user2 (cookie mode) not user1 (bearer)
         $response->assertStatus(200);
-        $response->assertJson(['user' => ['email' => 'user2@example.com']]);
+        $response->assertJson(['data' => ['user' => ['email' => 'user2@example.com']]]);
     }
 
     // ========== BACKWARD COMPATIBILITY TESTS ==========
@@ -400,14 +403,17 @@ class AuthConsolidationTest extends TestCase
 
         $response->assertStatus(201);
         $response->assertJsonStructure([
+            'success',
             'message',
-            'token',
-            'user' => ['id', 'name', 'email'],
-            'expires_at',
-            'expires_in_minutes',
-            'expires_in_seconds',
-            'type',
-            'device_id',
+            'data' => [
+                'token',
+                'user' => ['id', 'name', 'email'],
+                'expires_at',
+                'expires_in_minutes',
+                'expires_in_seconds',
+                'type',
+                'device_id',
+            ],
         ]);
     }
 
@@ -425,13 +431,15 @@ class AuthConsolidationTest extends TestCase
         $response->assertJsonStructure([
             'success',
             'message',
-            'user' => ['id', 'name', 'email'],
-            'expires_in_minutes',
-            'expires_at',
-            'token_type',
-            'csrf_token',
+            'data' => [
+                'user' => ['id', 'name', 'email'],
+                'expires_in_minutes',
+                'expires_at',
+                'token_type',
+                'csrf_token',
+            ],
         ]);
         // Should NOT have token in body
-        $this->assertArrayNotHasKey('token', $response->json());
+        $this->assertArrayNotHasKey('token', $response->json('data'));
     }
 }

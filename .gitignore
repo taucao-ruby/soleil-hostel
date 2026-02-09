@@ -18,7 +18,6 @@ yarn-error.log
 
 # PHP
 vendor/
-composer.lock
 storage/logs/
 bootstrap/cache/
 

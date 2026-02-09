@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Test & build outputs
+playwright-report/
+test-results/
+coverage/
+
+# Temp files
+temp_*

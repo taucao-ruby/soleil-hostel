@@ -10,7 +10,6 @@ import {
   getMinCheckOutDate,
   calculateNights,
 } from './booking.validation'
-import { sanitizeInput } from '@/shared/utils/security'
 
 /**
  * BookingForm Component
@@ -89,17 +88,14 @@ const BookingForm: React.FC = () => {
     setSuccess(false)
 
     try {
-      // Sanitize text inputs
       const bookingData: BookingFormData = {
         room_id: formData.room_id!,
-        guest_name: sanitizeInput(formData.guest_name),
-        guest_email: sanitizeInput(formData.guest_email),
+        guest_name: formData.guest_name,
+        guest_email: formData.guest_email,
         check_in: formData.check_in,
         check_out: formData.check_out,
         number_of_guests: formData.number_of_guests,
-        special_requests: formData.special_requests
-          ? sanitizeInput(formData.special_requests)
-          : undefined,
+        special_requests: formData.special_requests || undefined,
       }
 
       await createBooking(bookingData)

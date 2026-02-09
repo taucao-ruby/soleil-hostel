@@ -9,7 +9,7 @@ export interface Room {
   name: string
   description: string
   price: number
-  status: 'available' | 'occupied' | 'maintenance'
+  status: 'available' | 'booked' | 'maintenance'
   image_url: string | null
   created_at: string
   updated_at: string

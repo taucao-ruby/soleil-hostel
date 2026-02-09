@@ -37,11 +37,11 @@ class RoomTest extends TestCase
         );
     }
 
-    public function test_room_has_lock_version_in_guarded(): void
+    public function test_lock_version_not_in_fillable(): void
     {
         $room = new Room();
 
-        $this->assertContains('lock_version', $room->getGuarded());
+        $this->assertNotContains('lock_version', $room->getFillable());
     }
 
     public function test_lock_version_cannot_be_mass_assigned(): void

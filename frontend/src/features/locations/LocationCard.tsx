@@ -1,23 +1,6 @@
 import React from 'react'
 import type { Location } from './location.types'
-
-/**
- * Amenity icon mapping
- */
-const amenityIcons: Record<string, string> = {
-  wifi: '📶',
-  air_conditioning: '❄️',
-  hot_water: '🚿',
-  breakfast: '🍳',
-  parking: '🅿️',
-  pool: '🏊',
-  gym: '🏋️',
-  laundry: '🧺',
-  garden: '🌿',
-  bbq: '🍖',
-  kayaking: '🛶',
-  fishing: '🎣',
-}
+import { amenityIcons } from './constants'
 
 interface LocationCardProps {
   location: Location

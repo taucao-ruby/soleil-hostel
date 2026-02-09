@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Gate;
 
 return [
 
-    'name' => env('APP_NAME', 'Laravel'),
+    'name' => env('APP_NAME', 'Soleil Hostel'),
 
     'env' => env('APP_ENV', 'production'),
 

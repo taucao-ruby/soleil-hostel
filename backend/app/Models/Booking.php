@@ -61,15 +61,8 @@ class Booking extends Model
         return ['guest_name'];
     }
 
-    // ===== CONSTANTS (Legacy - use BookingStatus enum) =====
-    /** @deprecated Use BookingStatus::PENDING */
-    public const STATUS_PENDING = 'pending';
-    /** @deprecated Use BookingStatus::CONFIRMED */
-    public const STATUS_CONFIRMED = 'confirmed';
-    /** @deprecated Use BookingStatus::CANCELLED */
-    public const STATUS_CANCELLED = 'cancelled';
-
-    public const ACTIVE_STATUSES = ['pending', 'confirmed'];
+    /** Active booking statuses for query scopes. */
+    public const ACTIVE_STATUSES = [BookingStatus::PENDING, BookingStatus::CONFIRMED];
 
     /**
      * Get the room that owns the booking.
@@ -287,7 +280,7 @@ class Booking extends Model
      */
     public function scopeCancelled(Builder $query): Builder
     {
-        return $query->where('status', self::STATUS_CANCELLED);
+        return $query->where('status', BookingStatus::CANCELLED);
     }
 
     /**

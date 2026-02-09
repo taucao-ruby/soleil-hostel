@@ -1,17 +1,22 @@
-version: '3.8'
+version: "3.8"
 
 services:
   db:
-    image: mysql:8.0
+    image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-homestay}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-root}
+      POSTGRES_USER: ${DB_USERNAME:-soleil}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+      POSTGRES_DB: ${DB_DATABASE:-homestay}
     ports:
-      - "3306:3306"
+      - "127.0.0.1:5432:5432"
     volumes:
-      - dbdata:/var/lib/mysql
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-soleil}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   # ========== REDIS SERVICE (NEW) ==========
   # Cache + Session + Rate Limiting + Queue
@@ -20,7 +25,7 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
       - redisdata:/data
@@ -33,7 +38,7 @@ services:
         soft: 262144
         hard: 262144
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "-a", "soleil_redis_secret_2026", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -55,14 +60,15 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-local}
       APP_DEBUG: ${APP_DEBUG:-false}
-      DB_CONNECTION: ${DB_CONNECTION:-mysql}
+      DB_CONNECTION: ${DB_CONNECTION:-pgsql}
       DB_HOST: ${DB_HOST:-db}
-      DB_PORT: ${DB_PORT:-3306}
+      DB_PORT: ${DB_PORT:-5432}
       DB_DATABASE: ${DB_DATABASE:-homestay}
-      DB_USERNAME: ${DB_USERNAME:-root}
-      DB_PASSWORD: ${DB_PASSWORD:-root}
+      DB_USERNAME: ${DB_USERNAME:-soleil}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-soleil_redis_secret_2026}
       REDIS_CLIENT: phpredis
       CACHE_DRIVER: redis
       SESSION_DRIVER: redis

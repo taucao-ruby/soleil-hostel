@@ -18,7 +18,7 @@ function sendToAnalytics(metric: Metric): void {
   // In production, send to your analytics service
   // Example: Google Analytics, Vercel Analytics, or custom endpoint
 
-  if (process.env.NODE_ENV === 'development') {
+  if (import.meta.env.DEV) {
     console.log(`[Web Vitals] ${metric.name}:`, metric.value, metric)
   }
 

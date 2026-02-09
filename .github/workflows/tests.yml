@@ -57,7 +57,6 @@ jobs:
         run: |
           cd backend
           composer install -q --no-ansi --no-interaction --no-scripts --no-suggest --prefer-dist
-          composer update -q --no-ansi --no-interaction
 
       - name: Generate app key
         run: |
@@ -152,30 +151,30 @@ jobs:
           cd backend
           php vendor/bin/phpstan analyse app --level=5 2>/dev/null || echo "PHPStan analysis complete"
 
-security:
-  runs-on: ubuntu-latest
+  security:
+    runs-on: ubuntu-latest
 
-  steps:
-    - uses: actions/checkout@v4
+    steps:
+      - uses: actions/checkout@v4
 
-    - name: Setup PHP
-      uses: shivammathur/setup-php@v2
-      with:
-        php-version: "8.2"
-        extensions: dom, curl, libxml, mbstring, zip
-        tools: composer:v2
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: dom, curl, libxml, mbstring, zip
+          tools: composer:v2
 
-    - name: Install dependencies
-      run: |
-        cd backend
-        composer install -q --no-ansi --no-interaction --no-scripts --prefer-dist
+      - name: Install dependencies
+        run: |
+          cd backend
+          composer install -q --no-ansi --no-interaction --no-scripts --prefer-dist
 
-    - name: Check for security vulnerabilities
-      run: |
-        cd backend
-        php vendor/bin/composer audit --locked 2>/dev/null || echo "Audit complete"
+      - name: Check for security vulnerabilities
+        run: |
+          cd backend
+          php vendor/bin/composer audit --locked 2>/dev/null || echo "Audit complete"
 
-    - name: Check for exposed credentials
-      uses: gitleaks/gitleaks-action@v2
-      with:
-        source: backend
+      - name: Check for exposed credentials
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          source: backend

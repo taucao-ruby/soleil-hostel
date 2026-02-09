@@ -156,10 +156,13 @@ class BookingNotificationTest extends TestCase
 
         $this->bookingService->cancelBooking($booking, $this->admin->id);
 
-        Notification::assertSentTo(
-            $this->user,
+        // CancellationService dispatches BookingCancelled event → SendBookingCancellation listener
+        // sends notification via on-demand routing to guest_email (not to User model)
+        Notification::assertSentOnDemand(
             BookingCancelled::class,
-            fn ($notification) => $notification->booking->id === $booking->id
+            fn ($notification, $channels, $notifiable) =>
+                $notification->booking->id === $booking->id
+                && $notifiable->routes['mail'] === $booking->guest_email
         );
     }
 

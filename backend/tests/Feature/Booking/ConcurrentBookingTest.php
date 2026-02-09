@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Booking;
 
+use App\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
@@ -100,7 +101,7 @@ class ConcurrentBookingTest extends TestCase
                     'room_id' => $this->room->id,
                     'guest_name' => 'John Doe',
                     'guest_email' => 'john@example.com',
-                    'status' => Booking::STATUS_PENDING,
+                    'status' => BookingStatus::PENDING->value,
                 ],
             ]);
 

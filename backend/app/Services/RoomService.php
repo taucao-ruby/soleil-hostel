@@ -25,34 +25,6 @@ class RoomService
     }
 
     /**
-     * Get all active rooms with availability - CACHED
-     * 
-     * Cache Strategy:
-     * - Tag-based: tags(['rooms']) → flush all on any room change
-     * - TTL: 60s (rooms list changes rarely)
-     * - Fallback: DB query if cache miss
-     */
-    public function getAllRoomsWithAvailability(): Collection
-    {
-        $cacheKey = 'rooms:list:all:active';
-
-        if (!$this->supportsTags()) {
-            return Cache::remember(
-                $cacheKey,
-                self::CACHE_TTL_ROOMS,
-                fn() => $this->fetchRoomsFromDB()
-            );
-        }
-
-        return Cache::tags([self::CACHE_TAG_ROOMS])
-            ->remember(
-                $cacheKey,
-                self::CACHE_TTL_ROOMS,
-                fn() => $this->fetchRoomsFromDB()
-            );
-    }
-
-    /**
      * Get room by ID with availability info - CACHED
      * 
      * Cache Strategy:
@@ -79,56 +51,6 @@ class RoomService
                 self::CACHE_TTL_ROOMS,
                 fn() => $this->roomRepository->findByIdWithBookings($roomId)
             );
-    }
-
-    /**
-     * Check room availability - CACHED with shorter TTL
-     * 
-     * Cache Strategy:
-     * - Key: rooms:availability:{roomId}:{checkIn}:{checkOut}
-     * - Tags: ['availability', 'availability-room-{roomId}']
-     * - TTL: 30s (critical - bookings change frequently)
-     * - Negative cache: cache "false" results too (prevent DB hammering)
-     */
-    public function isRoomAvailable(int $roomId, string $checkIn, string $checkOut): bool
-    {
-        $cacheKey = "rooms:availability:{$roomId}:{$checkIn}:{$checkOut}";
-
-        try {
-            if ($this->supportsTags()) {
-                // Try to acquire lock to prevent thundering herd
-                $lockKey = "rooms:availability:lock:{$roomId}";
-                $lock = Cache::lock($lockKey, 5);
-
-                if ($lock->get()) {
-                    $result = Cache::tags([self::CACHE_TAG_AVAILABILITY, "availability-room-{$roomId}"])
-                        ->remember(
-                            $cacheKey,
-                            self::CACHE_TTL_AVAILABILITY,
-                            fn() => $this->checkOverlappingBookings($roomId, $checkIn, $checkOut)
-                        );
-
-                    $lock->release();
-                    return $result;
-                }
-
-                // If lock acquisition fails, fallback to DB (prevent cascading failures)
-                Log::warning("Cache lock failed for room availability", ['room_id' => $roomId]);
-                return $this->checkOverlappingBookings($roomId, $checkIn, $checkOut);
-            } else {
-                // For array cache (tests), just use simple remember without tags
-                return Cache::remember(
-                    $cacheKey,
-                    self::CACHE_TTL_AVAILABILITY,
-                    fn() => $this->checkOverlappingBookings($roomId, $checkIn, $checkOut)
-                );
-            }
-
-        } catch (\Exception $e) {
-            Log::error("Cache availability check failed: {$e->getMessage()}");
-            // Fallback to direct DB query
-            return $this->checkOverlappingBookings($roomId, $checkIn, $checkOut);
-        }
     }
 
     /**

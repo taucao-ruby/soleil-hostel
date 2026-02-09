@@ -66,13 +66,15 @@ class TokenExpirationTest extends TestCase
 
         $response->assertStatus(201)
             ->assertJsonStructure([
-                'token',
-                'expires_at',
-                'expires_in_minutes',
-                'type',
+                'data' => [
+                    'token',
+                    'expires_at',
+                    'expires_in_minutes',
+                    'type',
+                ],
             ])
             ->assertJson([
-                'type' => 'short_lived',
+                'data' => ['type' => 'short_lived'],
             ]);
 
         // Verify token in database
@@ -154,11 +156,13 @@ class TokenExpirationTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonStructure([
-                'token',
-                'expires_at',
+                'data' => [
+                    'token',
+                    'expires_at',
+                ],
             ])
             ->assertJson([
-                'old_token_status' => 'revoked',
+                'data' => ['old_token_status' => 'revoked'],
             ]);
 
         // Verify old token revoked
@@ -166,7 +170,7 @@ class TokenExpirationTest extends TestCase
         $this->assertNotNull($oldTokenModel->revoked_at);
 
         // Verify new token created and not revoked
-        $newToken = $response->json('token');
+        $newToken = $response->json('data.token');
         $newTokenModel = PersonalAccessToken::where(
             'token',
             hash('sha256', $newToken)
@@ -282,7 +286,7 @@ class TokenExpirationTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJson([
-                'revoked_count' => 3,
+                'data' => ['revoked_count' => 3],
             ]);
 
         // Verify tất cả token revoked
@@ -320,7 +324,7 @@ class TokenExpirationTest extends TestCase
             'device_name' => 'iPhone',
         ]);
 
-        $token1 = $response1->json('token');
+        $token1 = $response1->json('data.token');
 
         // Login device 2
         $response2 = $this->postJson('/api/auth/login-v2', [
@@ -329,7 +333,7 @@ class TokenExpirationTest extends TestCase
             'device_name' => 'Android',
         ]);
 
-        $token2 = $response2->json('token');
+        $token2 = $response2->json('data.token');
 
         // Verify device 1 token revoked
         $tokenModel1 = PersonalAccessToken::where(
@@ -387,25 +391,25 @@ class TokenExpirationTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonStructure([
-                'user' => ['id', 'name', 'email'],
-                'token' => [
-                    'name',
-                    'type',
-                    'expires_at',
-                    'expires_in_minutes',
-                    'expires_in_seconds',
-                    'created_at',
-                    'last_used_at',
+                'data' => [
+                    'user' => ['id', 'name', 'email'],
+                    'token' => [
+                        'name',
+                        'type',
+                        'expires_at',
+                        'expires_in_minutes',
+                        'expires_in_seconds',
+                        'created_at',
+                        'last_used_at',
+                    ],
                 ],
             ])
             ->assertJson([
-                'token' => [
-                    'name' => 'iPhone',
-                ],
+                'data' => ['token' => ['name' => 'iPhone']],
             ]);
 
         // Verify expires_in_minutes ~ 45
-        $expiresInMinutes = $response->json('token.expires_in_minutes');
+        $expiresInMinutes = $response->json('data.token.expires_in_minutes');
         $this->assertGreaterThan(40, $expiresInMinutes);
         $this->assertLessThanOrEqual(45, $expiresInMinutes);
     }
@@ -436,11 +440,11 @@ class TokenExpirationTest extends TestCase
 
         $response->assertStatus(201)
             ->assertJson([
-                'type' => 'long_lived',
+                'data' => ['type' => 'long_lived'],
             ]);
 
         // Verify expires_in_minutes ~ 43200 (30 ngày = 30*24*60 = 43200)
-        $expiresInMinutes = $response->json('expires_in_minutes');
+        $expiresInMinutes = $response->json('data.expires_in_minutes');
         $this->assertGreaterThan(43000, $expiresInMinutes);
         $this->assertLessThanOrEqual(43200, $expiresInMinutes);
     }
@@ -475,11 +479,11 @@ class TokenExpirationTest extends TestCase
 
             if ($i < 3) {
                 $this->assertEquals(200, $response->status());
-                $token->plainTextToken = $response->json('token');
+                $token->plainTextToken = $response->json('data.token');
             } else {
                 // 4th refresh → 401 (suspicious)
                 $this->assertEquals(401, $response->status());
-                $this->assertEquals('SUSPICIOUS_ACTIVITY', $response->json('code'));
+                $this->assertEquals('SUSPICIOUS_ACTIVITY', $response->json('errors.code'));
             }
         }
     }

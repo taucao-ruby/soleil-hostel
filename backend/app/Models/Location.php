@@ -58,10 +58,6 @@ class Location extends Model
         'total_rooms',
     ];
 
-    protected $guarded = [
-        'lock_version',
-    ];
-
     protected $casts = [
         'amenities' => 'array',
         'images' => 'array',

@@ -23,11 +23,14 @@ class Review extends Model
         'rating',
         'room_id',
         'user_id',
+        'booking_id',
         'guest_name',
         'guest_email',
     ];
 
     protected $casts = [
+        'rating' => 'integer',
+        'approved' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

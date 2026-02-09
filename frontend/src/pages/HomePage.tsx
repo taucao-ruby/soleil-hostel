@@ -113,6 +113,7 @@ const HomePage: React.FC = () => {
                         <img
                           src={room.image_url}
                           alt={room.name}
+                          loading="lazy"
                           className="object-cover w-full h-full"
                         />
                       ) : (

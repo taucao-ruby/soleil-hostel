@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
 use App\Services\BookingService;
+use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
  * AdminBookingController - Admin-only booking management
@@ -19,6 +21,7 @@ use Illuminate\Http\JsonResponse;
  */
 class AdminBookingController extends Controller
 {
+    use ApiResponse;
     public function __construct(
         private BookingService $bookingService
     ) {}
@@ -39,11 +42,16 @@ class AdminBookingController extends Controller
                 'deletedBy' => fn($q) => $q->select(['id', 'name', 'email', 'role', 'created_at', 'updated_at']),
             ])
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->paginate(50);
 
-        return response()->json([
-            'success' => true,
-            'data' => BookingResource::collection($bookings),
+        return $this->success([
+            'bookings' => BookingResource::collection($bookings),
+            'meta' => [
+                'current_page' => $bookings->currentPage(),
+                'last_page' => $bookings->lastPage(),
+                'per_page' => $bookings->perPage(),
+                'total' => $bookings->total(),
+            ],
         ]);
     }
 
@@ -58,9 +66,8 @@ class AdminBookingController extends Controller
     {
         $bookings = $this->bookingService->getTrashedBookings();
 
-        return response()->json([
-            'success' => true,
-            'data' => BookingResource::collection($bookings),
+        return $this->success([
+            'bookings' => BookingResource::collection($bookings),
             'meta' => [
                 'total_trashed' => $bookings->count(),
             ],
@@ -77,16 +84,10 @@ class AdminBookingController extends Controller
         $booking = $this->bookingService->getTrashedBookingById($id);
 
         if (!$booking) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Trashed booking not found.',
-            ], 404);
+            return $this->error('Trashed booking not found.', 404);
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => new BookingResource($booking),
-        ]);
+        return $this->success(new BookingResource($booking));
     }
 
     /**
@@ -102,10 +103,7 @@ class AdminBookingController extends Controller
         $booking = $this->bookingService->getTrashedBookingById($id);
 
         if (!$booking) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Trashed booking not found.',
-            ], 404);
+            return $this->error('Trashed booking not found.', 404);
         }
 
         // Check for overlapping active bookings before restoring
@@ -117,26 +115,19 @@ class AdminBookingController extends Controller
         )->exists();
 
         if ($hasOverlap) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cannot restore booking: date range conflicts with existing bookings.',
-            ], 422);
+            return $this->error('Cannot restore booking: date range conflicts with existing bookings.', 422);
         }
 
         $result = $this->bookingService->restore($booking);
 
         if ($result) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Booking restored successfully.',
-                'data' => new BookingResource($booking->fresh(['room', 'user'])),
-            ]);
+            return $this->success(
+                new BookingResource($booking->fresh(['room', 'user'])),
+                'Booking restored successfully.'
+            );
         }
 
-        return response()->json([
-            'success' => false,
-            'message' => 'Failed to restore booking.',
-        ], 500);
+        return $this->error('Failed to restore booking.', 500);
     }
 
     /**
@@ -153,25 +144,16 @@ class AdminBookingController extends Controller
         $booking = $this->bookingService->getTrashedBookingById($id);
 
         if (!$booking) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Trashed booking not found. Only soft-deleted bookings can be permanently deleted.',
-            ], 404);
+            return $this->error('Trashed booking not found. Only soft-deleted bookings can be permanently deleted.', 404);
         }
 
         $result = $this->bookingService->forceDelete($booking);
 
         if ($result) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Booking permanently deleted.',
-            ]);
+            return $this->success(null, 'Booking permanently deleted.');
         }
 
-        return response()->json([
-            'success' => false,
-            'message' => 'Failed to permanently delete booking.',
-        ], 500);
+        return $this->error('Failed to permanently delete booking.', 500);
     }
 
     /**
@@ -181,16 +163,14 @@ class AdminBookingController extends Controller
      * 
      * @param array $ids Array of booking IDs to restore
      */
-    public function restoreBulk(): JsonResponse
+    public function restoreBulk(Request $request): JsonResponse
     {
-        $ids = request()->input('ids', []);
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:bookings,id',
+        ]);
 
-        if (empty($ids)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No booking IDs provided.',
-            ], 422);
-        }
+        $ids = $validated['ids'];
 
         $restored = 0;
         $failed = [];
@@ -223,13 +203,9 @@ class AdminBookingController extends Controller
             }
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => "{$restored} booking(s) restored.",
-            'data' => [
-                'restored_count' => $restored,
-                'failed' => $failed,
-            ],
-        ]);
+        return $this->success([
+            'restored_count' => $restored,
+            'failed' => $failed,
+        ], "{$restored} booking(s) restored.");
     }
 }

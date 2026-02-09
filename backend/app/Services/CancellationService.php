@@ -242,45 +242,14 @@ final class CancellationService
     /**
      * Calculate refund amount based on cancellation policy.
      *
+     * Delegates to the Booking model's calculateRefundAmount() method
+     * which is the single source of truth for refund policy.
+     *
      * @return int Amount in cents
      */
     private function calculateRefundAmount(Booking $booking): int
     {
-        // Use model method if available, otherwise calculate here
-        if (method_exists($booking, 'calculateRefundAmount')) {
-            return $booking->calculateRefundAmount();
-        }
-
-        $hoursUntilCheckIn = now()->diffInHours($booking->check_in, false);
-        $config = config('booking.cancellation');
-
-        // Before check-in date
-        if ($hoursUntilCheckIn < 0) {
-            return 0;
-        }
-
-        // Full refund window
-        if ($hoursUntilCheckIn >= $config['full_refund_hours']) {
-            $refundPct = 100;
-        }
-        // Partial refund window
-        elseif ($hoursUntilCheckIn >= $config['partial_refund_hours']) {
-            $refundPct = $config['partial_refund_pct'];
-        }
-        // No refund
-        else {
-            return 0;
-        }
-
-        // Apply cancellation fee if enabled
-        if ($config['allow_fee']) {
-            $refundPct -= $config['fee_pct'];
-        }
-
-        // Assuming 'amount' field exists on booking (in cents)
-        $bookingAmount = $booking->amount ?? 0;
-
-        return (int) ($bookingAmount * $refundPct / 100);
+        return $booking->calculateRefundAmount();
     }
 
     /**

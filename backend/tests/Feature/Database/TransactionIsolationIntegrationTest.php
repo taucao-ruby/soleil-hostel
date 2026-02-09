@@ -3,6 +3,7 @@
 namespace Tests\Feature\Database;
 
 use App\Database\TransactionIsolation;
+use App\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
@@ -239,7 +240,7 @@ class TransactionIsolationIntegrationTest extends TestCase
                 'check_out' => $checkOut,
                 'guest_name' => 'Transaction Test',
                 'guest_email' => 'txn@example.com',
-                'status' => Booking::STATUS_PENDING,
+                'status' => BookingStatus::PENDING,
                 'user_id' => $this->user->id,
             ]);
 

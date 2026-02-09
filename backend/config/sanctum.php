@@ -194,7 +194,7 @@ return [
     |
     */
 
-    'token_prefix' => env('SANCTUM_TOKEN_PREFIX', ''),
+    'token_prefix' => env('SANCTUM_TOKEN_PREFIX', 'soleil_'),
 
     /*
     |--------------------------------------------------------------------------
@@ -275,7 +275,7 @@ return [
     */
     'verify_device_fingerprint' => (bool) env(
         'SANCTUM_VERIFY_DEVICE_FINGERPRINT',
-        false // Disable by default (easier development), enable for production
+        true // Enable by default for production security
     ),
 
 ];

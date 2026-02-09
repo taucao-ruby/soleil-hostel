@@ -160,7 +160,7 @@ class BookingSoftDeleteTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonPath('success', true);
 
-        $trashedIds = collect($response->json('data'))->pluck('id')->toArray();
+        $trashedIds = collect($response->json('data.bookings'))->pluck('id')->toArray();
         $this->assertContains($this->booking->id, $trashedIds);
     }
 
@@ -197,7 +197,7 @@ class BookingSoftDeleteTest extends TestCase
 
         $response->assertStatus(200);
 
-        $bookingIds = collect($response->json('data'))->pluck('id')->toArray();
+        $bookingIds = collect($response->json('data.bookings'))->pluck('id')->toArray();
         $this->assertContains($this->booking->id, $bookingIds);
         $this->assertContains($activeBooking->id, $bookingIds);
     }

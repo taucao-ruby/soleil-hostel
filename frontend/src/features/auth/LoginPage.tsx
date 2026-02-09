@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthContext'
-import { sanitizeInput } from '@/shared/utils/security'
 
 /**
  * LoginPage Component
@@ -62,10 +61,7 @@ const LoginPage: React.FC = () => {
     setSuccess(false)
 
     try {
-      // Sanitize inputs before sending
-      const sanitizedEmail = sanitizeInput(formData.email)
-
-      await loginHttpOnly(sanitizedEmail, formData.password, formData.rememberMe)
+      await loginHttpOnly(formData.email, formData.password, formData.rememberMe)
 
       setSuccess(true)
 

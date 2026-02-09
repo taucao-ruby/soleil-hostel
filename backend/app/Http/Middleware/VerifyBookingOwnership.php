@@ -17,7 +17,7 @@ class VerifyBookingOwnership
     {
         $booking = $request->route('booking');
         
-        if ($booking && $booking->user_id !== auth()->id()) {
+        if ($booking && $booking->user_id !== auth()->id() && !auth()->user()?->isAdmin()) {
             return response()->json([
                 'success' => false,
                 'message' => 'You are not authorized to access this booking.',

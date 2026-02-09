@@ -46,7 +46,7 @@ const RoomList: React.FC = () => {
     switch (status) {
       case 'available':
         return 'bg-green-100 text-green-800'
-      case 'occupied':
+      case 'booked':
         return 'bg-red-100 text-red-800'
       case 'maintenance':
         return 'bg-yellow-100 text-yellow-800'
@@ -129,6 +129,7 @@ const RoomList: React.FC = () => {
                     <img
                       src={room.image_url}
                       alt={room.name}
+                      loading="lazy"
                       className="object-cover w-full h-full"
                     />
                   ) : (

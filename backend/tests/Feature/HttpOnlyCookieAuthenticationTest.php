@@ -55,23 +55,25 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
         $response->assertJsonStructure([
             'success',
             'message',
-            'user' => ['id', 'name', 'email'],
-            'csrf_token',
-            'expires_in_minutes',
-            'expires_at',
-            'token_type',
+            'data' => [
+                'user' => ['id', 'name', 'email'],
+                'csrf_token',
+                'expires_in_minutes',
+                'expires_at',
+                'token_type',
+            ],
         ]);
 
         // ========== CRITICAL: Token NOT in response body ==========
         // Frontend cannot store token in localStorage
-        $this->assertArrayNotHasKey('token', $response->json());
-        $this->assertArrayNotHasKey('access_token', $response->json());
-        $this->assertArrayNotHasKey('bearer_token', $response->json());
+        $this->assertArrayNotHasKey('token', $response->json('data'));
+        $this->assertArrayNotHasKey('access_token', $response->json('data'));
+        $this->assertArrayNotHasKey('bearer_token', $response->json('data'));
 
         // ========== Check Response Data ==========
         $this->assertTrue($response->json('success'));
-        $this->assertNotEmpty($response->json('csrf_token'));
-        $this->assertNotEmpty($response->json('user.id'));
+        $this->assertNotEmpty($response->json('data.csrf_token'));
+        $this->assertNotEmpty($response->json('data.user.id'));
 
         // ========== Check Cookie Header ==========
         // Extract Set-Cookie header
@@ -332,13 +334,15 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
         $response->assertStatus(200);
         $response->assertJsonStructure([
             'success',
-            'user' => ['id', 'name', 'email'],
-            'token' => ['name', 'type', 'expires_at'],
+            'data' => [
+                'user' => ['id', 'name', 'email'],
+                'token' => ['name', 'type', 'expires_at'],
+            ],
         ]);
 
         $this->assertTrue($response->json('success'));
-        $this->assertEquals($this->user->id, $response->json('user.id'));
-        $this->assertEquals($this->user->email, $response->json('user.email'));
+        $this->assertEquals($this->user->id, $response->json('data.user.id'));
+        $this->assertEquals($this->user->email, $response->json('data.user.email'));
     }
 
     /**
@@ -391,6 +395,6 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
         $refresh3 = $this->withHeader('Cookie', "{$cookieName}={$tokenIdentifier3}")
             ->postJson('/api/auth/refresh-httponly');
         $refresh3->assertStatus(401);
-        $this->assertEquals('SUSPICIOUS_ACTIVITY', $refresh3->json('code'));
+        $this->assertEquals('SUSPICIOUS_ACTIVITY', $refresh3->json('errors.code'));
     }
 }

@@ -3,6 +3,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import ProtectedRoute from '@/features/auth/ProtectedRoute'
 import LoadingSpinner from '@/shared/components/feedback/LoadingSpinner'
 import Layout from './Layout'
+import NotFoundPage from '@/pages/NotFoundPage'
 
 // Eager-loaded pages (critical for initial render)
 import HomePage from '@/pages/HomePage'
@@ -103,6 +104,10 @@ export const router = createBrowserRouter([
             <DashboardPage />
           </ProtectedRoute>
         ),
+      },
+      {
+        path: '*',
+        element: <NotFoundPage />,
       },
     ],
   },

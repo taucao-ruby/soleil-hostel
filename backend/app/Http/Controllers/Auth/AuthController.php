@@ -6,6 +6,7 @@ use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RefreshTokenRequest;
 use App\Models\PersonalAccessToken;
 use App\Models\User;
+use App\Traits\ApiResponse;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -32,6 +33,7 @@ use Illuminate\Support\Str;
  */
 class AuthController
 {
+    use ApiResponse;
     /**
      * Login - Tạo personal access token
      * 
@@ -126,8 +128,7 @@ class AuthController
         $tokenModel = PersonalAccessToken::find($tokenModel);
 
         // ========== Response ==========
-        return response()->json([
-            'message' => 'Đăng nhập thành công.',
+        return $this->success([
             'token' => $plainTextToken,
             'user' => [
                 'id' => $user->id,
@@ -139,7 +140,7 @@ class AuthController
             'expires_in_seconds' => $expiresAt->diffInSeconds(now()),
             'type' => $tokenType,
             'device_id' => $deviceId,
-        ], 201);
+        ], 'Đăng nhập thành công.', 201);
     }
 
     /**
@@ -188,18 +189,12 @@ class AuthController
 
         // ========== Validate: Token chưa expire? ==========
         if ($oldToken->isExpired()) {
-            return response()->json([
-                'message' => 'Token đã hết hạn. Vui lòng login lại.',
-                'code' => 'TOKEN_EXPIRED',
-            ], 401);
+            return $this->error('Token đã hết hạn. Vui lòng login lại.', 401, ['code' => 'TOKEN_EXPIRED']);
         }
 
         // ========== Validate: Token chưa revoke? ==========
         if ($oldToken->isRevoked()) {
-            return response()->json([
-                'message' => 'Token đã bị revoke. Vui lòng login lại.',
-                'code' => 'TOKEN_REVOKED',
-            ], 401);
+            return $this->error('Token đã bị revoke. Vui lòng login lại.', 401, ['code' => 'TOKEN_REVOKED']);
         }
 
         // ========== Check: Refresh count (suspicious activity) ==========
@@ -209,10 +204,7 @@ class AuthController
         if ($oldToken->refresh_count > config('sanctum.max_refresh_count_per_hour')) {
             $oldToken->revoke();
 
-            return response()->json([
-                'message' => 'Phát hiện hoạt động bất thường. Vui lòng login lại.',
-                'code' => 'SUSPICIOUS_ACTIVITY',
-            ], 401);
+            return $this->error('Phát hiện hoạt động bất thường. Vui lòng login lại.', 401, ['code' => 'SUSPICIOUS_ACTIVITY']);
         }
 
         // ========== Get user + token info ==========
@@ -259,8 +251,7 @@ class AuthController
         // Note: refresh_count already incremented in suspicious activity check above
 
         // ========== Response ==========
-        return response()->json([
-            'message' => 'Token refreshed thành công.',
+        return $this->success([
             'token' => $newPlainTextToken,
             'user' => [
                 'id' => $user->id,
@@ -272,7 +263,7 @@ class AuthController
             'expires_in_seconds' => $expiresAt->diffInSeconds(now()),
             'type' => $tokenType,
             'old_token_status' => 'revoked',
-        ], 200);
+        ], 'Token refreshed thành công.');
     }
 
     /**
@@ -313,10 +304,9 @@ class AuthController
         $revokedAt = $token->revoked_at;
 
         // ========== Response ==========
-        return response()->json([
-            'message' => 'Logout thành công.',
+        return $this->success([
             'revoked_at' => $revokedAt?->toIso8601String(),
-        ], 200);
+        ], 'Logout thành công.');
     }
 
     /**
@@ -362,10 +352,9 @@ class AuthController
                 }
             });
 
-        return response()->json([
-            'message' => "Logout tất cả thiết bị thành công. Đã revoke $revokedCount token.",
+        return $this->success([
             'revoked_count' => $revokedCount,
-        ], 200);
+        ], "Logout tất cả thiết bị thành công. Đã revoke $revokedCount token.");
     }
 
     /**
@@ -418,13 +407,10 @@ class AuthController
         }
 
         if (!$token) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Token not found',
-            ], 401);
+            return $this->error('Token not found', 401);
         }
 
-        return response()->json([
+        return $this->success([
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -440,6 +426,6 @@ class AuthController
                 'created_at' => $token->created_at?->toIso8601String(),
                 'last_used_at' => $token->last_used_at?->toIso8601String(),
             ],
-        ], 200);
+        ]);
     }
 }

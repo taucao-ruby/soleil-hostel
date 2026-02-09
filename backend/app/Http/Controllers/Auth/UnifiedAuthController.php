@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Models\PersonalAccessToken;
+use App\Traits\ApiResponse;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,6 +28,7 @@ use Illuminate\Routing\Controller;
  */
 class UnifiedAuthController extends Controller
 {
+    use ApiResponse;
     private AuthController $bearerController;
     private HttpOnlyTokenController $cookieController;
 
@@ -111,14 +113,12 @@ class UnifiedAuthController extends Controller
                 });
 
             // Clear the httpOnly cookie
-            $response = response()->json([
-                'success' => true,
-                'message' => "Logout tất cả thiết bị thành công. Đã revoke {$revokedCount} token.",
+            $response = $this->success([
                 'revoked_count' => $revokedCount,
-            ], 200);
+            ], "Logout tất cả thiết bị thành công. Đã revoke {$revokedCount} token.");
 
             $response->cookie(
-                env('SANCTUM_COOKIE_NAME', 'soleil_token'),
+                config('sanctum.cookie_name', 'soleil_token'),
                 '',
                 -1,
                 '/',
@@ -146,7 +146,7 @@ class UnifiedAuthController extends Controller
     private function detectAuthMode(Request $request): ?string
     {
         // Check for HttpOnly cookie first (preferred for web)
-        $cookieName = env('SANCTUM_COOKIE_NAME', 'soleil_token');
+        $cookieName = config('sanctum.cookie_name', 'soleil_token');
         $cookieToken = $request->cookie($cookieName);
         
         // Fallback: parse Cookie header manually for testing

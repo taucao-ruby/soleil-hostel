@@ -56,19 +56,22 @@ class AuthenticationTest extends TestCase
 
         $response->assertStatus(201)
             ->assertJsonStructure([
+                'success',
                 'message',
-                'token',
-                'user' => [
-                    'id',
-                    'name',
-                    'email',
+                'data' => [
+                    'token',
+                    'user' => [
+                        'id',
+                        'name',
+                        'email',
+                    ],
+                    'expires_at',
+                    'expires_in_minutes',
+                    'type',
                 ],
-                'expires_at',
-                'expires_in_minutes',
-                'type',
             ])
             ->assertJson([
-                'type' => 'short_lived',
+                'data' => ['type' => 'short_lived'],
             ]);
 
         // Verify token stored in database
@@ -139,7 +142,7 @@ class AuthenticationTest extends TestCase
             'device_name' => 'Test Device',
         ]);
 
-        $token = $loginResponse->json('token');
+        $token = $loginResponse->json('data.token');
 
         // Get current user
         $response = $this->withHeader('Authorization', "Bearer {$token}")
@@ -147,24 +150,28 @@ class AuthenticationTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonStructure([
-                'user' => [
-                    'id',
-                    'name',
-                    'email',
-                ],
-                'token' => [
-                    'name',
-                    'type',
+                'data' => [
+                    'user' => [
+                        'id',
+                        'name',
+                        'email',
+                    ],
+                    'token' => [
+                        'name',
+                        'type',
+                    ],
                 ],
             ])
             ->assertJson([
-                'user' => [
-                    'id' => $this->user->id,
-                    'name' => 'Test User',
-                    'email' => 'user@example.com',
-                ],
-                'token' => [
-                    'type' => 'short_lived',
+                'data' => [
+                    'user' => [
+                        'id' => $this->user->id,
+                        'name' => 'Test User',
+                        'email' => 'user@example.com',
+                    ],
+                    'token' => [
+                        'type' => 'short_lived',
+                    ],
                 ],
             ]);
     }
@@ -202,7 +209,7 @@ class AuthenticationTest extends TestCase
             'device_name' => 'Test Device',
         ]);
 
-        $oldToken = $loginResponse->json('token');
+        $oldToken = $loginResponse->json('data.token');
 
         // Refresh token
         $response = $this->withHeader('Authorization', "Bearer {$oldToken}")
@@ -211,13 +218,15 @@ class AuthenticationTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonStructure([
                 'message',
-                'token',
-                'user' => ['id', 'name', 'email'],
-                'expires_at',
-                'expires_in_minutes',
+                'data' => [
+                    'token',
+                    'user' => ['id', 'name', 'email'],
+                    'expires_at',
+                    'expires_in_minutes',
+                ],
             ]);
 
-        $newToken = $response->json('token');
+        $newToken = $response->json('data.token');
         $this->assertNotEquals($oldToken, $newToken);
 
         // Old token should be revoked
@@ -243,7 +252,7 @@ class AuthenticationTest extends TestCase
             'device_name' => 'Test Device',
         ]);
 
-        $token = $loginResponse->json('token');
+        $token = $loginResponse->json('data.token');
 
         // Logout
         $response = $this->withHeader('Authorization', "Bearer {$token}")
@@ -282,7 +291,7 @@ class AuthenticationTest extends TestCase
 
         $response->assertStatus(200);
         // Check for revoked count instead of exact message
-        $response->assertJsonStructure(['message', 'revoked_count']);
+        $response->assertJsonStructure(['message', 'data' => ['revoked_count']]);
 
         // All tokens should now be revoked
         $this->withHeader('Authorization', "Bearer {$token1}")->getJson('/api/auth/me-v2')->assertStatus(401);
@@ -305,7 +314,7 @@ class AuthenticationTest extends TestCase
             'password' => 'password123',
             'device_name' => 'Test Device',
         ]);
-        $token1 = $response1->json('token');
+        $token1 = $response1->json('data.token');
 
         // Verify first token works
         $this->withHeader('Authorization', "Bearer {$token1}")
@@ -318,7 +327,7 @@ class AuthenticationTest extends TestCase
             'password' => 'password123',
             'device_name' => 'Test Device',
         ]);
-        $token2 = $response2->json('token');
+        $token2 = $response2->json('data.token');
 
         // First token should be revoked
         $this->withHeader('Authorization', "Bearer {$token1}")
@@ -345,7 +354,7 @@ class AuthenticationTest extends TestCase
         ]);
 
         $response->assertStatus(201)
-            ->assertJson(['type' => 'long_lived']);
+            ->assertJson(['data' => ['type' => 'long_lived']]);
 
         // Verify token expires in ~30 days
         $token = PersonalAccessToken::where('tokenable_id', $this->user->id)
@@ -373,7 +382,7 @@ class AuthenticationTest extends TestCase
             'password' => 'password123',
             'device_name' => 'iPhone',
         ]);
-        $token1 = $response1->json('token');
+        $token1 = $response1->json('data.token');
 
         // Login from device 2
         $response2 = $this->postJson('/api/auth/login-v2', [
@@ -381,7 +390,7 @@ class AuthenticationTest extends TestCase
             'password' => 'password123',
             'device_name' => 'iPad',
         ]);
-        $token2 = $response2->json('token');
+        $token2 = $response2->json('data.token');
 
         // Both tokens should work simultaneously
         $this->withHeader('Authorization', "Bearer {$token1}")
@@ -448,14 +457,14 @@ class AuthenticationTest extends TestCase
             'password' => 'password123',
             'device_name' => 'Test Device',
         ]);
-        $token = $response->json('token');
+        $token = $response->json('data.token');
 
         // Use token to access user info
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->getJson('/api/auth/me-v2');
 
         $response->assertStatus(200)
-            ->assertJson(['user' => ['id' => $this->user->id]]);
+            ->assertJson(['data' => ['user' => ['id' => $this->user->id]]]);
     }
 
     /**

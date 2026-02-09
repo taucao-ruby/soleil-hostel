@@ -29,7 +29,7 @@ class CheckHttpOnlyTokenValid
     {
         // ========== Extract Token from Cookie ==========
         // Browser automatically sends httpOnly cookie
-        $cookieName = env('SANCTUM_COOKIE_NAME', 'soleil_token');
+        $cookieName = config('sanctum.cookie_name', 'soleil_token');
         $tokenIdentifier = $request->cookie($cookieName);
 
         // Fallback: Try to extract from Cookie header for testing compatibility

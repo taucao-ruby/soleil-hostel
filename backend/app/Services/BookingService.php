@@ -82,7 +82,10 @@ class BookingService
     }
 
     /**
-     * Cancel a booking and trigger cancellation email notification.
+     * Cancel a booking with refund processing.
+     * 
+     * Delegates to CancellationService which handles the complete cancellation flow
+     * including refund processing, idempotency, and state machine transitions.
      * 
      * @param Booking $booking The booking to cancel
      * @param int|null $cancelledByUserId User performing the cancellation
@@ -95,23 +98,11 @@ class BookingService
             throw new \RuntimeException('Booking is already cancelled');
         }
 
-        return DB::transaction(function () use ($booking, $cancelledByUserId) {
-            $booking->update(['status' => BookingStatus::CANCELLED]);
-            
-            // Invalidate cache
-            $this->invalidateBooking($booking->id, $booking->user_id);
+        $actor = $cancelledByUserId
+            ? \App\Models\User::findOrFail($cancelledByUserId)
+            : auth()->user();
 
-            // Dispatch cancellation notification
-            $booking->user->notify(new BookingCancelled($booking));
-            
-            Log::info('Booking cancelled and notification queued', [
-                'booking_id' => $booking->id,
-                'user_id' => $booking->user_id,
-                'cancelled_by' => $cancelledByUserId ?? auth()->id(),
-            ]);
-
-            return $booking->fresh();
-        });
+        return app(CancellationService::class)->cancel($booking, $actor);
     }
 
     /**

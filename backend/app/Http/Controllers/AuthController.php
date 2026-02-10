@@ -12,6 +12,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
+/**
+ * @deprecated Use Auth\AuthController (Bearer token) or HttpOnlyTokenController (httpOnly cookies) instead.
+ *             This controller is maintained for backward compatibility with legacy endpoints only.
+ *             Sunset date: July 2026 (see routes/api.php deprecation middleware)
+ */
 class AuthController extends Controller
 {
     use ApiResponse;

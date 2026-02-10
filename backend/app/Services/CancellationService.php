@@ -14,7 +14,6 @@ use App\Models\Booking;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Laravel\Cashier\Exceptions\IncompletePayment;
 
 /**
  * Handles booking cancellation with optional refund processing.
@@ -232,8 +231,9 @@ final class CancellationService
                 $result['result']['refund_amount']
             );
 
-        } catch (IncompletePayment $e) {
-            return $this->handleRefundFailure($booking, $e);
+        // TODO: Add Cashier exception handling when payment integration is implemented
+        // } catch (\Laravel\Cashier\Exceptions\IncompletePayment $e) {
+        //     return $this->handleRefundFailure($booking, $e);
         } catch (\Stripe\Exception\ApiErrorException $e) {
             return $this->handleRefundFailure($booking, $e);
         }

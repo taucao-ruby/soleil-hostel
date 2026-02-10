@@ -137,11 +137,17 @@ class UnifiedAuthController extends Controller
 
     /**
      * Detect authentication mode from request
-     * 
+     *
      * Priority:
      * 1. HttpOnly cookie present → 'cookie'
      * 2. Bearer token in Authorization header → 'bearer'
      * 3. Neither → null
+     *
+     * SECURITY NOTE [SEC-NEW-05]: This method performs token validation directly,
+     * bypassing the standard middleware checks. It's acceptable here because:
+     * - This controller is behind auth:sanctum + check_token_valid middleware
+     * - We re-validate token validity via isValid() before returning mode
+     * - Used only for mode detection, not as sole authentication mechanism
      */
     private function detectAuthMode(Request $request): ?string
     {

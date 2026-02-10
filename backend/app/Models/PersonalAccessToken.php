@@ -36,6 +36,10 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
         'type',
         'device_id',
         'refresh_count',
+        'token_identifier',
+        'token_hash',
+        'device_fingerprint',
+        'last_rotated_at',
     ];
 
     /**

@@ -147,17 +147,23 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * Override createToken to handle abilities JSON encoding properly
      * for SQLite compatibility
+     *
+     * @deprecated Use Auth\AuthController or HttpOnlyTokenController instead.
+     *             This method is kept for backward compatibility only.
      */
     public function createToken($name, $abilities = ['*'], $expiresAt = null)
     {
+        // Default expiration: 24 hours (safety net for tokens without explicit expiration)
+        $expiresAt = $expiresAt ?? now()->addHours(24);
+
         // Generate token
         $token = Str::random(80);
-        
+
         // Prepare abilities as JSON string
-        $abilitiesJson = is_array($abilities) 
+        $abilitiesJson = is_array($abilities)
             ? json_encode($abilities)
             : $abilities;
-        
+
         // Use DB directly to avoid double-encoding
         $tokenId = \Illuminate\Support\Facades\DB::table('personal_access_tokens')->insertGetId([
             'tokenable_type' => static::class,
@@ -169,10 +175,10 @@ class User extends Authenticatable implements MustVerifyEmail
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        
+
         // Load the created model
         $tokenModel = PersonalAccessToken::find($tokenId);
-        
+
         // Return token with plain text for API response
         return new \Laravel\Sanctum\NewAccessToken($tokenModel, $token);
     }

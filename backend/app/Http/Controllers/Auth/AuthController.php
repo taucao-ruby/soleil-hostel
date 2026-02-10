@@ -10,20 +10,21 @@ use App\Traits\ApiResponse;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
  * AuthController - Token-based authentication (Sanctum)
- * 
+ *
  * CRITICAL: Token expiration + refresh logic
- * 
+ *
  * Endpoints:
  * - POST /api/auth/login → Tạo token (short_lived hoặc long_lived)
  * - POST /api/auth/refresh → Tạo token mới + revoke token cũ
  * - POST /api/auth/logout → Revoke token hiện tại
  * - GET /api/auth/me → Get current user info + token expiration
- * 
+ *
  * Token lifecycle:
  * 1. Login: Create token (expires_at = now + 1h hoặc 30 ngày)
  * 2. Use: Update last_used_at mỗi request
@@ -31,7 +32,7 @@ use Illuminate\Support\Str;
  * 4. Logout: Revoke token
  * 5. Expired: Return 401
  */
-class AuthController
+class AuthController extends Controller
 {
     use ApiResponse;
     /**
@@ -177,93 +178,96 @@ class AuthController
             throw new AuthenticationException('Authorization header không tồn tại.');
         }
 
-        // Tìm token ở database
-        $oldToken = PersonalAccessToken::where(
-            'token',
-            hash('sha256', $bearerToken)
-        )->first();
+        // ========== Transaction với pessimistic lock (phòng race condition) ==========
+        return DB::transaction(function () use ($bearerToken, $request) {
+            // Lock token row để prevent concurrent refresh
+            $oldToken = PersonalAccessToken::where(
+                'token',
+                hash('sha256', $bearerToken)
+            )->lockForUpdate()->first();
 
-        if (!$oldToken) {
-            throw new AuthenticationException('Token không hợp lệ.');
-        }
+            if (!$oldToken) {
+                throw new AuthenticationException('Token không hợp lệ.');
+            }
 
-        // ========== Validate: Token chưa expire? ==========
-        if ($oldToken->isExpired()) {
-            return $this->error('Token đã hết hạn. Vui lòng login lại.', 401, ['code' => 'TOKEN_EXPIRED']);
-        }
+            // ========== Validate: Token chưa expire? ==========
+            if ($oldToken->isExpired()) {
+                return $this->error('Token đã hết hạn. Vui lòng login lại.', 401, ['code' => 'TOKEN_EXPIRED']);
+            }
 
-        // ========== Validate: Token chưa revoke? ==========
-        if ($oldToken->isRevoked()) {
-            return $this->error('Token đã bị revoke. Vui lòng login lại.', 401, ['code' => 'TOKEN_REVOKED']);
-        }
+            // ========== Validate: Token chưa revoke? ==========
+            if ($oldToken->isRevoked()) {
+                return $this->error('Token đã bị revoke. Vui lòng login lại.', 401, ['code' => 'TOKEN_REVOKED']);
+            }
 
-        // ========== Check: Refresh count (suspicious activity) ==========
-        // Increment refresh count BEFORE checking to detect suspicious activity
-        $oldToken->incrementRefreshCount();
-        
-        if ($oldToken->refresh_count > config('sanctum.max_refresh_count_per_hour')) {
+            // ========== Check: Refresh count (suspicious activity) ==========
+            // IMPORTANT: Check threshold BEFORE incrementing using >= to catch exact threshold
+            if ($oldToken->refresh_count >= config('sanctum.max_refresh_count_per_hour')) {
+                $oldToken->revoke();
+
+                return $this->error('Phát hiện hoạt động bất thường. Vui lòng login lại.', 401, ['code' => 'SUSPICIOUS_ACTIVITY']);
+            }
+
+            // Only increment after passing threshold check
+            $oldToken->incrementRefreshCount();
+
+            // ========== Get user + token info ==========
+            $user = $oldToken->tokenable;
+            $tokenType = $oldToken->type;
+
+            // ========== Determine expiration (giữ nguyên type) ==========
+            if ($tokenType === 'long_lived') {
+                $expiresInMinutes = config('sanctum.long_lived_token_expiration_days') * 24 * 60;
+                $expiresAt = now()->addDays(config('sanctum.long_lived_token_expiration_days'));
+            } else {
+                $expiresInMinutes = config('sanctum.short_lived_token_expiration_minutes');
+                $expiresAt = now()->addMinutes($expiresInMinutes);
+            }
+
+            // ========== Create token mới ==========
+            $newPlainTextToken = \Illuminate\Support\Str::random(40);
+            $newHashedToken = hash('sha256', $newPlainTextToken);
+
+            // Manually create new token using raw SQL
+            $newTokenId = DB::table('personal_access_tokens')->insertGetId([
+                'name' => $oldToken->name, // Giữ nguyên device name
+                'token' => $newHashedToken,
+                'abilities' => is_array($oldToken->abilities)
+                    ? json_encode($oldToken->abilities)
+                    : $oldToken->attributes['abilities'], // Get raw from DB
+                'expires_at' => $expiresAt->toDateTimeString(),
+                'type' => $tokenType,
+                'device_id' => $oldToken->device_id,
+                'remember_token_id' => $oldToken->remember_token_id,
+                'refresh_count' => $oldToken->refresh_count, // Copy refresh count to track token chain
+                'tokenable_id' => $user->id,
+                'tokenable_type' => 'App\\Models\\User',
+                'created_at' => now()->toDateTimeString(),
+                'updated_at' => now()->toDateTimeString(),
+            ]);
+
+            $newTokenModel = PersonalAccessToken::find($newTokenId);
+
+            // ========== Revoke token cũ (inside transaction) ==========
+            // CRITICAL: Refresh token rotation with pessimistic lock
+            // Revoke token cũ → tránh duplicate token access
             $oldToken->revoke();
 
-            return $this->error('Phát hiện hoạt động bất thường. Vui lòng login lại.', 401, ['code' => 'SUSPICIOUS_ACTIVITY']);
-        }
-
-        // ========== Get user + token info ==========
-        $user = $oldToken->tokenable;
-        $tokenType = $oldToken->type;
-
-        // ========== Determine expiration (giữ nguyên type) ==========
-        if ($tokenType === 'long_lived') {
-            $expiresInMinutes = config('sanctum.long_lived_token_expiration_days') * 24 * 60;
-            $expiresAt = now()->addDays(config('sanctum.long_lived_token_expiration_days'));
-        } else {
-            $expiresInMinutes = config('sanctum.short_lived_token_expiration_minutes');
-            $expiresAt = now()->addMinutes($expiresInMinutes);
-        }
-
-        // ========== Create token mới ==========
-        $newPlainTextToken = \Illuminate\Support\Str::random(40);
-        $newHashedToken = hash('sha256', $newPlainTextToken);
-
-        // Manually create new token using raw SQL
-        $newTokenId = DB::table('personal_access_tokens')->insertGetId([
-            'name' => $oldToken->name, // Giữ nguyên device name
-            'token' => $newHashedToken,
-            'abilities' => is_array($oldToken->abilities) 
-                ? json_encode($oldToken->abilities)
-                : $oldToken->attributes['abilities'], // Get raw from DB
-            'expires_at' => $expiresAt->toDateTimeString(),
-            'type' => $tokenType,
-            'device_id' => $oldToken->device_id,
-            'remember_token_id' => $oldToken->remember_token_id,
-            'refresh_count' => $oldToken->refresh_count, // Copy refresh count to track token chain
-            'tokenable_id' => $user->id,
-            'tokenable_type' => 'App\\Models\\User',
-            'created_at' => now()->toDateTimeString(),
-            'updated_at' => now()->toDateTimeString(),
-        ]);
-
-        $newTokenModel = PersonalAccessToken::find($newTokenId);
-
-        // ========== Revoke token cũ ==========
-        // CRITICAL: Refresh token rotation
-        // Revoke token cũ → tránh duplicate token access
-        $oldToken->revoke();
-        // Note: refresh_count already incremented in suspicious activity check above
-
-        // ========== Response ==========
-        return $this->success([
-            'token' => $newPlainTextToken,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-            ],
-            'expires_at' => $expiresAt->toIso8601String(),
-            'expires_in_minutes' => $expiresInMinutes,
-            'expires_in_seconds' => $expiresAt->diffInSeconds(now()),
-            'type' => $tokenType,
-            'old_token_status' => 'revoked',
-        ], 'Token refreshed thành công.');
+            // ========== Response ==========
+            return $this->success([
+                'token' => $newPlainTextToken,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                ],
+                'expires_at' => $expiresAt->toIso8601String(),
+                'expires_in_minutes' => $expiresInMinutes,
+                'expires_in_seconds' => $expiresAt->diffInSeconds(now()),
+                'type' => $tokenType,
+                'old_token_status' => 'revoked',
+            ], 'Token refreshed thành công.');
+        });
     }
 
     /**

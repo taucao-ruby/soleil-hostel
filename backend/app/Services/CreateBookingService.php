@@ -333,7 +333,7 @@ class CreateBookingService
 
     /**
      * Update booking với check overlap (exclude chính nó)
-     * 
+     *
      * Giống như create, nhưng exclude booking id hiện tại
      * để tránh check constraint với chính nó
      */
@@ -341,9 +341,10 @@ class CreateBookingService
         Booking $booking,
         Carbon $checkIn,
         Carbon $checkOut,
-        array $additionalData = []
+        array $additionalData = [],
+        $request = null
     ): Booking {
-        $this->validateDates($checkIn, $checkOut);
+        $this->validateDates($checkIn, $checkOut, true, $request);
 
         return DB::transaction(function () use ($booking, $checkIn, $checkOut, $additionalData) {
             // Lấy lock trên overlapping bookings (exclude current booking)
@@ -370,9 +371,20 @@ class CreateBookingService
 
     /**
      * Validate date range
+     *
+     * @param Carbon $checkIn
+     * @param Carbon $checkOut
+     * @param bool $isUpdate Whether this is an update operation
+     * @param \Illuminate\Http\Request|null $request The request object (for updates)
+     * @return void
      */
-    private function validateDates(Carbon $checkIn, Carbon $checkOut): void
+    private function validateDates(Carbon $checkIn, Carbon $checkOut, bool $isUpdate = false, $request = null): void
     {
+        // Skip validation for updates where dates aren't being changed
+        if ($isUpdate && $request && !$request->has(['check_in_date', 'check_out_date'])) {
+            return;
+        }
+
         if (!$checkIn->lessThan($checkOut)) {
             throw new RuntimeException(
                 'Ngày check-out phải sau ngày check-in'

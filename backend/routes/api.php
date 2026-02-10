@@ -39,21 +39,26 @@ require base_path('routes/api/legacy.php');
 // ========== PUBLIC ROUTES (No authentication) ==========
 
 // ========== HEALTH CHECK (Consolidated into HealthController) ==========
+// Public health endpoints (for load balancers and monitoring)
 Route::get('/health', [HealthController::class, 'check']);
-Route::get('/health/detailed', [HealthController::class, 'detailed']);
 
-// ========== KUBERNETES/DOCKER HEALTH PROBES ==========
+// ========== KUBERNETES/DOCKER HEALTH PROBES (Public) ==========
 // Failure Semantics: DB=CRITICAL (503), Cache/Queue=DEGRADED (200 with warning)
 Route::prefix('health')->group(function () {
     // Liveness: Is the app process alive? (shallow check)
     Route::get('/live', [HealthController::class, 'liveness'])->name('health.liveness');
-    
+
     // Readiness: Can the app accept traffic? (checks critical deps)
     Route::get('/ready', [HealthController::class, 'readiness'])->name('health.readiness');
-    
-    // Full: Detailed health for monitoring dashboards
+});
+
+// ========== DETAILED HEALTH ENDPOINTS (Admin only) ==========
+// These expose sensitive system information - restrict to authenticated admins
+Route::prefix('health')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
+    // Detailed: Full system health with component breakdown
+    Route::get('/detailed', [HealthController::class, 'detailed'])->name('health.detailed');
     Route::get('/full', [HealthController::class, 'detailed'])->name('health.full');
-    
+
     // Individual component checks for granular monitoring
     Route::get('/db', [HealthController::class, 'database'])->name('health.database');
     Route::get('/cache', [HealthController::class, 'cache'])->name('health.cache');

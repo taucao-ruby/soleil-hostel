@@ -52,17 +52,10 @@ class AdvancedRateLimitMiddleware
         // Build rate limit key
         $key = $this->buildKey($request, $limits);
 
-        // Check rate limits
+        // Check rate limits BEFORE processing request
         $result = $this->rateLimiter->check($key, $limits);
 
-        // Add rate limit headers to response
-        $response = $next($request);
-
-        $response->header('X-RateLimit-Limit', $this->getLimitValue($limits[0] ?? []))
-                 ->header('X-RateLimit-Remaining', $result['remaining'])
-                 ->header('X-RateLimit-Reset', now()->addSeconds($result['reset_after'])->timestamp);
-
-        // If throttled, return 429
+        // If throttled, return 429 immediately WITHOUT processing request
         if (!$result['allowed']) {
             Log::warning('Rate limit exceeded', [
                 'user_id' => $request->user()?->id,
@@ -87,9 +80,18 @@ class AdvancedRateLimitMiddleware
                 'retry_after' => $result['retry_after'],
             ], Response::HTTP_TOO_MANY_REQUESTS)
             ->header('Retry-After', $result['retry_after'])
+            ->header('X-RateLimit-Limit', $this->getLimitValue($limits[0] ?? []))
             ->header('X-RateLimit-Remaining', 0)
             ->header('X-RateLimit-Reset', now()->addSeconds($result['retry_after'])->timestamp);
         }
+
+        // Rate limit passed, process request
+        $response = $next($request);
+
+        // Add rate limit headers to successful response
+        $response->header('X-RateLimit-Limit', $this->getLimitValue($limits[0] ?? []))
+                 ->header('X-RateLimit-Remaining', $result['remaining'])
+                 ->header('X-RateLimit-Reset', now()->addSeconds($result['reset_after'])->timestamp);
 
         return $response;
     }

@@ -27,6 +27,29 @@ class BookingService
     // Rate limiting: max 5 confirmation emails per user per minute
     private const RATE_LIMIT_CONFIRMATIONS_PER_MINUTE = 5;
 
+    // Column list for booking queries (consistent across all queries)
+    private const BOOKING_COLUMNS = [
+        'id',
+        'room_id',
+        'user_id',
+        'check_in',
+        'check_out',
+        'status',
+        'guest_name',
+        'guest_email',
+        'amount',
+        'payment_intent_id',
+        'refund_id',
+        'refund_status',
+        'refund_amount',
+        'refund_error',
+        'cancelled_by',
+        'cancelled_at',
+        'cancellation_reason',
+        'created_at',
+        'updated_at',
+    ];
+
     /**
      * Confirm a pending booking and trigger confirmation email notification.
      * 
@@ -127,7 +150,7 @@ class BookingService
                     ->with(['room' => function ($q) {
                         $q->select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'created_at', 'updated_at']);
                     }])
-                    ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'guest_name', 'guest_email', 'amount', 'payment_intent_id', 'refund_id', 'refund_status', 'refund_amount', 'refund_error', 'cancelled_by', 'cancelled_at', 'cancellation_reason', 'created_at', 'updated_at'])
+                    ->select(self::BOOKING_COLUMNS)
                     ->orderBy('check_in', 'desc')
                     ->get()
             );
@@ -141,7 +164,7 @@ class BookingService
                     ->with(['room' => function ($q) {
                         $q->select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'created_at', 'updated_at']);
                     }])
-                    ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'guest_name', 'guest_email', 'amount', 'payment_intent_id', 'refund_id', 'refund_status', 'refund_amount', 'refund_error', 'cancelled_by', 'cancelled_at', 'cancellation_reason', 'created_at', 'updated_at'])
+                    ->select(self::BOOKING_COLUMNS)
                     ->orderBy('check_in', 'desc')
                     ->get()
             );
@@ -165,7 +188,7 @@ class BookingService
                 $cacheKey,
                 self::CACHE_TTL_BOOKING,
                 fn() => Booking::with(['room', 'user'])
-                    ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'guest_name', 'guest_email', 'amount', 'payment_intent_id', 'refund_id', 'refund_status', 'refund_amount', 'refund_error', 'cancelled_by', 'cancelled_at', 'cancellation_reason', 'created_at', 'updated_at'])
+                    ->select(self::BOOKING_COLUMNS)
                     ->find($bookingId)
             );
         }
@@ -175,7 +198,7 @@ class BookingService
                 $cacheKey,
                 self::CACHE_TTL_BOOKING,
                 fn() => Booking::with(['room', 'user'])
-                    ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'guest_name', 'guest_email', 'amount', 'payment_intent_id', 'refund_id', 'refund_status', 'refund_amount', 'refund_error', 'cancelled_by', 'cancelled_at', 'cancellation_reason', 'created_at', 'updated_at'])
+                    ->select(self::BOOKING_COLUMNS)
                     ->find($bookingId)
             );
     }

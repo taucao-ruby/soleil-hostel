@@ -320,7 +320,7 @@ jobs:
     timeout-minutes: 15
     environment:
       name: production
-      url: https://solelhotel.com
+      url: https://soleilhotel.com
     steps:
       - uses: actions/checkout@v4
       - name: Setup deployment tools
@@ -365,7 +365,7 @@ jobs:
           echo "Deployment configured"
       - name: Health Check
         run: |
-          APP_URL="${{ vars.APP_URL || 'https://solelhotel.com' }}"
+          APP_URL="${{ vars.APP_URL || 'https://soleilhotel.com' }}"
           for i in {1..10}; do
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${APP_URL}/api/health")
             if [ "$STATUS" = "200" ]; then echo "Health check passed"; exit 0; fi
@@ -376,17 +376,16 @@ jobs:
           exit 1
       - name: Warm up cache post-deploy
         run: |
-          APP_URL="${{ vars.APP_URL || 'https://solelhotel.com' }}"
+          APP_URL="${{ vars.APP_URL || 'https://soleilhotel.com' }}"
           curl -X POST "${APP_URL}/api/cache/warmup" \
             -H "Authorization: Bearer ${{ secrets.INTERNAL_API_TOKEN }}" \
             -H "Content-Type: application/json" || true
+      # Migrations should run via SSH or deploy hook, never via HTTP endpoint
       - name: Run database migrations
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          APP_URL="${{ vars.APP_URL || 'https://solelhotel.com' }}"
-          curl -X POST "${APP_URL}/api/migrations/run" \
-            -H "Authorization: Bearer ${{ secrets.INTERNAL_API_TOKEN }}" \
-            -H "Content-Type: application/json"
+          echo "⚠️ Migrations should be run via SSH or deploy hook (Forge/Coolify handles this automatically)"
+          echo "If manual migration needed, SSH to server and run: php artisan migrate --force"
       - name: Slack notification (Success)
         if: success()
         uses: slackapi/slack-github-action@v1.24.0

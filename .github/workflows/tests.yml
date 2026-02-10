@@ -43,7 +43,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ env.PHP_VERSION }}
-          extensions: redis,pdo_mysql,gd,bcmath,ctype,json,mbstring,openssl,tokenizer,xml
+          extensions: redis,pdo_pgsql,gd,bcmath,ctype,json,mbstring,openssl,tokenizer,xml
           tools: composer,phpstan
           coverage: xdebug
       - name: Composer cache
@@ -99,18 +99,19 @@ jobs:
     needs: [backend-setup, setup]
     timeout-minutes: 15
     services:
-      mysql:
-        image: mysql:8.0
+      postgres:
+        image: postgres:16-alpine
         env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: soleil_test
+          POSTGRES_USER: testing
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: testing
         options: >-
-          --health-cmd="mysqladmin ping"
+          --health-cmd="pg_isready -U testing"
           --health-interval=10s
           --health-timeout=5s
-          --health-retries=3
+          --health-retries=5
         ports:
-          - 3306:3306
+          - 5432:5432
       redis:
         image: redis:7-alpine
         options: >-
@@ -126,7 +127,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ env.PHP_VERSION }}
-          extensions: redis,pdo_mysql
+          extensions: redis,pdo_pgsql
           coverage: xdebug
       - name: Restore vendor
         uses: actions/cache/restore@v4
@@ -143,11 +144,12 @@ jobs:
         working-directory: ./backend
         env:
           APP_ENV: testing
-          DB_CONNECTION: mysql
+          DB_CONNECTION: pgsql
           DB_HOST: 127.0.0.1
-          DB_DATABASE: soleil_test
-          DB_USERNAME: root
-          DB_PASSWORD: root
+          DB_PORT: 5432
+          DB_DATABASE: testing
+          DB_USERNAME: testing
+          DB_PASSWORD: password
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: 6379
           CACHE_DRIVER: redis
@@ -191,18 +193,19 @@ jobs:
     needs: [backend-setup, setup]
     timeout-minutes: 10
     services:
-      mysql:
-        image: mysql:8.0
+      postgres:
+        image: postgres:16-alpine
         env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: soleil_test
+          POSTGRES_USER: testing
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: testing
         options: >-
-          --health-cmd="mysqladmin ping"
+          --health-cmd="pg_isready -U testing"
           --health-interval=10s
           --health-timeout=5s
-          --health-retries=3
+          --health-retries=5
         ports:
-          - 3306:3306
+          - 5432:5432
       redis:
         image: redis:7-alpine
         options: >-
@@ -218,7 +221,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ env.PHP_VERSION }}
-          extensions: redis,pdo_mysql
+          extensions: redis,pdo_pgsql
       - name: Restore vendor
         uses: actions/cache/restore@v4
         with:
@@ -247,18 +250,19 @@ jobs:
     needs: [backend-setup, setup]
     timeout-minutes: 10
     services:
-      mysql:
-        image: mysql:8.0
+      postgres:
+        image: postgres:16-alpine
         env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: soleil_hostel_test
+          POSTGRES_USER: testing
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: testing
         options: >-
-          --health-cmd="mysqladmin ping"
+          --health-cmd="pg_isready -U testing"
           --health-interval=10s
           --health-timeout=5s
-          --health-retries=3
+          --health-retries=5
         ports:
-          - 3306:3306
+          - 5432:5432
       redis:
         image: redis:7-alpine
         options: >-
@@ -274,7 +278,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ env.PHP_VERSION }}
-          extensions: pdo_mysql, redis, curl, mbstring
+          extensions: pdo_pgsql, redis, curl, mbstring
           tools: composer:v2
       - name: Restore vendor
         uses: actions/cache/restore@v4
@@ -293,10 +297,10 @@ jobs:
         env:
           DB_CONNECTION: testing
           DB_HOST: 127.0.0.1
-          DB_PORT: 3306
-          DB_DATABASE: soleil_hostel_test
-          DB_USERNAME: root
-          DB_PASSWORD: root
+          DB_PORT: 5432
+          DB_DATABASE: testing
+          DB_USERNAME: testing
+          DB_PASSWORD: password
           CACHE_DRIVER: array
           SESSION_DRIVER: array
       - name: Run N+1 Query Tests
@@ -306,10 +310,10 @@ jobs:
         env:
           DB_CONNECTION: testing
           DB_HOST: 127.0.0.1
-          DB_PORT: 3306
-          DB_DATABASE: soleil_hostel_test
-          DB_USERNAME: root
-          DB_PASSWORD: root
+          DB_PORT: 5432
+          DB_DATABASE: testing
+          DB_USERNAME: testing
+          DB_PASSWORD: password
           CACHE_DRIVER: array
           SESSION_DRIVER: array
           QUERY_DETECTOR_ENABLED: true
@@ -335,7 +339,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ env.PHP_VERSION }}
-          extensions: redis,pdo_mysql
+          extensions: redis,pdo_pgsql
           tools: phpstan
       - name: Restore vendor
         uses: actions/cache/restore@v4
@@ -359,7 +363,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ env.PHP_VERSION }}
-          extensions: redis,pdo_mysql
+          extensions: redis,pdo_pgsql
           tools: psalm
       - name: Restore vendor
         uses: actions/cache/restore@v4
@@ -475,7 +479,7 @@ jobs:
       - name: Check for exposed credentials
         uses: gitleaks/gitleaks-action@v2
         with:
-          source: backend
+          source: .
 
   # ========== FRONTEND TESTS (Vitest) ==========
   frontend-unit-tests:

@@ -243,7 +243,7 @@ warm_up_cache() {
     # This runs the cache:warmup command on the server
     if [ -n "${FORGE_SSH_HOST:-}" ]; then
         local ssh_result=$(ssh -o ConnectTimeout=10 "${FORGE_SSH_USER:-forge}@${FORGE_SSH_HOST}" \
-            "cd ${FORGE_SITE_PATH:-/home/forge/solelhotel.com} && php artisan cache:warmup --force --no-progress 2>&1" \
+            "cd ${FORGE_SITE_PATH:-/home/forge/soleilhotel.com} && php artisan cache:warmup --force --no-progress 2>&1" \
             --max-time "$CACHE_WARMUP_TIMEOUT")
 
         if echo "$ssh_result" | grep -q "completed successfully"; then
@@ -258,7 +258,7 @@ warm_up_cache() {
     fi
 
     # Method 2: Fallback to API endpoint (for environments without SSH)
-    local cache_url="${SITE_URL:-https://solelhotel.com}/api/cache/warmup"
+    local cache_url="${SITE_URL:-https://soleilhotel.com}/api/cache/warmup"
 
     local response=$(curl -s -X POST "$cache_url" \
         -H "Authorization: Bearer ${INTERNAL_API_TOKEN:-}" \
@@ -313,7 +313,7 @@ rollback_deployment() {
 main() {
     local commit="${CI_COMMIT_SHA:-$(git rev-parse HEAD)}"
     local branch="${CI_COMMIT_BRANCH:-main}"
-    local site_url="${SITE_URL:-https://solelhotel.com}"
+    local site_url="${SITE_URL:-https://soleilhotel.com}"
 
     log_info "========== SOLEIL HOSTEL ZERO-DOWNTIME DEPLOYMENT =========="
     log_info "🌍 Site URL: $site_url"

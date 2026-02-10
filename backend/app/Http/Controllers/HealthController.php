@@ -31,6 +31,74 @@ class HealthController extends Controller
     private const DEGRADED_COMPONENTS = ['cache', 'queue', 'redis'];
 
     /**
+     * Basic health check endpoint.
+     *
+     * Returns a simple {"status": "ok"} response for basic monitoring.
+     * Merged from HealthCheckController for consolidation.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function check(): JsonResponse
+    {
+        $health = [
+            'status' => 'healthy',
+            'timestamp' => now()->toIso8601String(),
+            'services' => [],
+        ];
+
+        // ========== DATABASE CHECK ==========
+        try {
+            DB::connection()->getPdo();
+            $health['services']['database'] = [
+                'status' => 'up',
+                'connection' => config('database.default'),
+            ];
+        } catch (\Exception $e) {
+            $health['status'] = 'unhealthy';
+            $health['services']['database'] = [
+                'status' => 'down',
+                'error' => $e->getMessage(),
+            ];
+        }
+
+        // ========== REDIS CHECK ==========
+        try {
+            if (!extension_loaded('redis')) {
+                $health['status'] = 'unhealthy';
+                $health['services']['redis'] = [
+                    'status' => 'down',
+                    'error' => 'Redis PHP extension not loaded',
+                ];
+            } else {
+                Redis::ping();
+                $health['services']['redis'] = [
+                    'status' => 'up',
+                    'connections' => ['default'],
+                ];
+            }
+        } catch (\Throwable $e) {
+            $health['status'] = 'unhealthy';
+            $health['services']['redis'] = [
+                'status' => 'down',
+                'error' => $e->getMessage(),
+            ];
+        }
+
+        // ========== MEMORY CHECK ==========
+        $health['services']['memory'] = [
+            'status' => 'ok',
+            'usage_mb' => round(memory_get_usage() / 1024 / 1024, 2),
+            'limit_mb' => (int) ini_get('memory_limit'),
+        ];
+
+        $statusCode = $health['status'] === 'healthy' ? 200 : 503;
+
+        return response()->json($health, $statusCode, [
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+        ]);
+    }
+
+    /**
      * Basic liveness probe.
      *
      * Returns 200 if the application is running.

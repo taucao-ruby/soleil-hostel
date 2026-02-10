@@ -11,7 +11,6 @@ use App\Http\Controllers\RoomController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\AdminBookingController;
 use App\Http\Controllers\ContactController;
-use App\Http\Controllers\HealthCheckController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\CspViolationReportController;
 
@@ -39,9 +38,9 @@ require base_path('routes/api/legacy.php');
 
 // ========== PUBLIC ROUTES (No authentication) ==========
 
-// ========== HEALTH CHECK ==========
-Route::get('/health', [HealthCheckController::class, 'check']);
-Route::get('/health/detailed', [HealthCheckController::class, 'detailed']);
+// ========== HEALTH CHECK (Consolidated into HealthController) ==========
+Route::get('/health', [HealthController::class, 'check']);
+Route::get('/health/detailed', [HealthController::class, 'detailed']);
 
 // ========== KUBERNETES/DOCKER HEALTH PROBES ==========
 // Failure Semantics: DB=CRITICAL (503), Cache/Queue=DEGRADED (200 with warning)
@@ -74,7 +73,8 @@ Route::get('ping', function() {
 // ========== LEGACY ENDPOINTS (Deprecated - Sunset July 2026) ==========
 // These endpoints are maintained for backward compatibility.
 // New clients SHOULD use -v2 or -httponly variants.
-Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
+Route::post('/auth/register', [AuthController::class, 'register'])
+    ->middleware(['throttle:5,1', 'deprecated:2026-07-01,/api/v2/auth/register']);
 Route::post('/auth/login', [AuthController::class, 'login'])
     ->middleware(['throttle:5,1', 'deprecated:2026-07-01,/api/auth/login-v2']);
 
@@ -90,7 +90,8 @@ Route::get('/auth/csrf-token', function(Request $request) {
 });
 
 // Security: CSP violation reporting
-Route::post('/csp-violation-report', [CspViolationReportController::class, 'report'])->withoutMiddleware(['api']);
+Route::post('/csp-violation-report', [CspViolationReportController::class, 'report'])
+    ->withoutMiddleware(['throttle:api']);
 
 // Contact form (public - with rate limiting)
 Route::post('/contact', [ContactController::class, 'store'])->middleware('throttle:3,1');

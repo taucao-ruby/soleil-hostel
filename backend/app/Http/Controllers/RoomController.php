@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Room;
 use Illuminate\Http\Request;
+use App\Http\Requests\ListRoomsRequest;
 use App\Http\Requests\RoomRequest;
 use App\Http\Resources\RoomResource;
 use App\Services\RoomService;
@@ -38,14 +39,8 @@ class RoomController extends Controller
      * - check_in: date - filter available rooms (requires check_out)
      * - check_out: date - filter available rooms (requires check_in)
      */
-    public function index(Request $request): JsonResponse
+    public function index(ListRoomsRequest $request): JsonResponse
     {
-        $request->validate([
-            'location_id' => 'nullable|integer|exists:locations,id',
-            'check_in' => 'nullable|date|required_with:check_out',
-            'check_out' => 'nullable|date|after:check_in',
-        ]);
-
         $rooms = Room::query()
             ->with('location:id,name,slug')
             ->withCount('activeBookings')

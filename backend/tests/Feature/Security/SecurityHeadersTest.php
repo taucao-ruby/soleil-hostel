@@ -131,10 +131,15 @@ class SecurityHeadersTest extends TestCase
     {
         $response = $this->get('/');
         
-        // Nonce should be in response headers
-        $nonce = $response->headers->get('X-CSP-Nonce');
-        $this->assertNotEmpty($nonce, 'CSP nonce should be generated');
-        $this->assertGreaterThanOrEqual(32, strlen($nonce), 'Nonce should be at least 32 chars');
+        // Nonce should NOT be exposed via X-CSP-Nonce header (BE-028 security fix)
+        $this->assertNull($response->headers->get('X-CSP-Nonce'), 'X-CSP-Nonce header should not be exposed');
+
+        // Nonce should be embedded in the CSP header
+        $csp = $response->headers->get('Content-Security-Policy');
+        $this->assertNotEmpty($csp, 'CSP header should be present');
+        preg_match("/nonce-([A-Za-z0-9]+)/", $csp, $matches);
+        $this->assertNotEmpty($matches[1] ?? null, 'CSP nonce should be generated and embedded in CSP header');
+        $this->assertGreaterThanOrEqual(32, strlen($matches[1]), 'Nonce should be at least 32 chars');
     }
 
     /**
@@ -145,7 +150,11 @@ class SecurityHeadersTest extends TestCase
         $response = $this->get('/');
         
         $csp = $response->headers->get('Content-Security-Policy');
-        $nonce = $response->headers->get('X-CSP-Nonce');
+        
+        // Extract nonce from CSP header
+        preg_match("/nonce-([A-Za-z0-9]+)/", $csp, $matches);
+        $nonce = $matches[1] ?? null;
+        $this->assertNotEmpty($nonce, 'Nonce should be present in CSP header');
         
         // CSP should include nonce in script-src
         $this->assertStringContainsString("nonce-{$nonce}", $csp);

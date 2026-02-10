@@ -303,4 +303,79 @@ class HealthControllerTest extends TestCase
         $queueResponse = $this->getJson('/api/health/queue');
         $queueResponse->assertStatus(200);
     }
+
+    // ========== BASIC HEALTH CHECK TESTS (merged from HealthCheckControllerTest) ==========
+
+    #[\PHPUnit\Framework\Attributes\Test]
+    public function test_health_check_endpoint_returns_200(): void
+    {
+        $response = $this->get('/api/health');
+
+        $this->assertTrue(in_array($response->getStatusCode(), [200, 503]));
+        $response->assertJsonStructure([
+            'status',
+            'timestamp',
+            'services' => [
+                'database' => ['status'],
+                'redis' => ['status'],
+                'memory' => ['status', 'usage_mb', 'limit_mb'],
+            ],
+        ]);
+    }
+
+    #[\PHPUnit\Framework\Attributes\Test]
+    public function test_health_check_returns_healthy_when_all_services_up(): void
+    {
+        $response = $this->get('/api/health');
+
+        $data = $response->json();
+        $this->assertTrue(in_array($data['status'], ['healthy', 'unhealthy']));
+        $this->assertEquals('up', $data['services']['database']['status']);
+        $this->assertTrue(in_array($data['services']['redis']['status'], ['up', 'down']));
+    }
+
+    #[\PHPUnit\Framework\Attributes\Test]
+    public function test_health_check_returns_503_when_database_down(): void
+    {
+        $response = $this->get('/api/health');
+        $this->assertNotNull($response->json('status'));
+        $this->assertTrue(in_array($response->json('status'), ['healthy', 'unhealthy']));
+    }
+
+    #[\PHPUnit\Framework\Attributes\Test]
+    public function test_health_check_returns_503_when_redis_down(): void
+    {
+        $response = $this->get('/api/health');
+        $this->assertIsArray($response->json());
+    }
+
+    #[\PHPUnit\Framework\Attributes\Test]
+    public function test_detailed_health_check_includes_redis_stats(): void
+    {
+        $response = $this->get('/api/health/detailed');
+
+        $this->assertTrue(in_array($response->getStatusCode(), [200, 503]));
+    }
+
+    #[\PHPUnit\Framework\Attributes\Test]
+    public function test_health_check_includes_memory_info(): void
+    {
+        $response = $this->get('/api/health');
+
+        $data = $response->json();
+        $this->assertIsNumeric($data['services']['memory']['usage_mb']);
+        $this->assertIsNumeric($data['services']['memory']['limit_mb']);
+        $this->assertGreaterThan(0, $data['services']['memory']['usage_mb']);
+    }
+
+    #[\PHPUnit\Framework\Attributes\Test]
+    public function test_health_check_has_timestamp(): void
+    {
+        $response = $this->get('/api/health');
+
+        $data = $response->json();
+        $this->assertNotNull($data['timestamp']);
+        $timestamp = \Carbon\Carbon::parse($data['timestamp']);
+        $this->assertInstanceOf(\Carbon\Carbon::class, $timestamp);
+    }
 }

@@ -1,5 +1,7 @@
-import React, { Suspense, lazy } from 'react'
-import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import React, { Suspense, lazy, useEffect } from 'react'
+import { createBrowserRouter, RouterProvider, Outlet, useNavigate } from 'react-router-dom'
+import { AuthProvider } from '@/features/auth/AuthContext'
+import { setNavigate } from '@/shared/lib/navigation'
 import ProtectedRoute from '@/features/auth/ProtectedRoute'
 import LoadingSpinner from '@/shared/components/feedback/LoadingSpinner'
 import Layout from './Layout'
@@ -28,6 +30,35 @@ const DashboardPage = () => (
     </div>
   </div>
 )
+
+/**
+ * NavigationSetter - Registers React Router's navigate function
+ * with the navigation service so it can be used outside the component tree.
+ *
+ * Must be rendered inside RouterProvider to access useNavigate().
+ */
+const NavigationSetter: React.FC = () => {
+  const navigate = useNavigate()
+  useEffect(() => {
+    setNavigate(navigate)
+  }, [navigate])
+  return null
+}
+
+/**
+ * AuthLayout - Wraps all routes with AuthProvider inside the Router tree.
+ *
+ * This ensures AuthProvider has access to React Router hooks (useNavigate,
+ * useLocation, etc.) which is required for auth-driven redirects.
+ */
+const AuthLayout: React.FC = () => {
+  return (
+    <AuthProvider>
+      <NavigationSetter />
+      <Outlet />
+    </AuthProvider>
+  )
+}
 
 /**
  * Suspense Wrapper Component
@@ -60,54 +91,59 @@ const withSuspense = (Component: React.LazyExoticComponent<React.ComponentType>)
  */
 export const router = createBrowserRouter([
   {
-    path: '/',
-    element: <Layout />,
+    element: <AuthLayout />,
     children: [
       {
-        index: true,
-        element: <HomePage />,
-      },
-      {
-        path: 'login',
-        element: withSuspense(LoginPage),
-      },
-      {
-        path: 'register',
-        element: withSuspense(RegisterPage),
-      },
-      {
-        path: 'rooms',
-        element: withSuspense(RoomList),
-      },
-      {
-        path: 'locations',
-        element: withSuspense(LocationList),
-      },
-      {
-        path: 'locations/:slug',
-        element: withSuspense(LocationDetail),
-      },
-      {
-        path: 'booking',
-        element: (
-          <ProtectedRoute>
-            <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Loading..." />}>
-              <BookingForm />
-            </Suspense>
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: 'dashboard',
-        element: (
-          <ProtectedRoute>
-            <DashboardPage />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: '*',
-        element: <NotFoundPage />,
+        path: '/',
+        element: <Layout />,
+        children: [
+          {
+            index: true,
+            element: <HomePage />,
+          },
+          {
+            path: 'login',
+            element: withSuspense(LoginPage),
+          },
+          {
+            path: 'register',
+            element: withSuspense(RegisterPage),
+          },
+          {
+            path: 'rooms',
+            element: withSuspense(RoomList),
+          },
+          {
+            path: 'locations',
+            element: withSuspense(LocationList),
+          },
+          {
+            path: 'locations/:slug',
+            element: withSuspense(LocationDetail),
+          },
+          {
+            path: 'booking',
+            element: (
+              <ProtectedRoute>
+                <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Loading..." />}>
+                  <BookingForm />
+                </Suspense>
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: 'dashboard',
+            element: (
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: '*',
+            element: <NotFoundPage />,
+          },
+        ],
       },
     ],
   },

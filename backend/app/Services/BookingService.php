@@ -127,7 +127,7 @@ class BookingService
                     ->with(['room' => function ($q) {
                         $q->select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'created_at', 'updated_at']);
                     }])
-                    ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'guest_name', 'guest_email', 'created_at', 'updated_at'])
+                    ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'guest_name', 'guest_email', 'amount', 'payment_intent_id', 'refund_id', 'refund_status', 'refund_amount', 'refund_error', 'cancelled_by', 'cancelled_at', 'cancellation_reason', 'created_at', 'updated_at'])
                     ->orderBy('check_in', 'desc')
                     ->get()
             );
@@ -141,7 +141,7 @@ class BookingService
                     ->with(['room' => function ($q) {
                         $q->select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'created_at', 'updated_at']);
                     }])
-                    ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'guest_name', 'guest_email', 'created_at', 'updated_at'])
+                    ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'guest_name', 'guest_email', 'amount', 'payment_intent_id', 'refund_id', 'refund_status', 'refund_amount', 'refund_error', 'cancelled_by', 'cancelled_at', 'cancellation_reason', 'created_at', 'updated_at'])
                     ->orderBy('check_in', 'desc')
                     ->get()
             );
@@ -165,7 +165,7 @@ class BookingService
                 $cacheKey,
                 self::CACHE_TTL_BOOKING,
                 fn() => Booking::with(['room', 'user'])
-                    ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'guest_name', 'guest_email', 'created_at', 'updated_at'])
+                    ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'guest_name', 'guest_email', 'amount', 'payment_intent_id', 'refund_id', 'refund_status', 'refund_amount', 'refund_error', 'cancelled_by', 'cancelled_at', 'cancellation_reason', 'created_at', 'updated_at'])
                     ->find($bookingId)
             );
         }
@@ -175,7 +175,7 @@ class BookingService
                 $cacheKey,
                 self::CACHE_TTL_BOOKING,
                 fn() => Booking::with(['room', 'user'])
-                    ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'guest_name', 'guest_email', 'created_at', 'updated_at'])
+                    ->select(['id', 'room_id', 'user_id', 'check_in', 'check_out', 'status', 'guest_name', 'guest_email', 'amount', 'payment_intent_id', 'refund_id', 'refund_status', 'refund_amount', 'refund_error', 'cancelled_by', 'cancelled_at', 'cancellation_reason', 'created_at', 'updated_at'])
                     ->find($bookingId)
             );
     }

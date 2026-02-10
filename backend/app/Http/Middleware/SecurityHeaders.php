@@ -41,9 +41,6 @@ class SecurityHeaders
         // Get response from next middleware
         $response = $next($request);
 
-        // Store nonce in response headers for Blade/React access
-        $response->headers->set('X-CSP-Nonce', $this->nonce);
-
         // Apply security headers based on environment
         return $this->applySecurityHeaders($response);
     }

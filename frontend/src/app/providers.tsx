@@ -1,14 +1,13 @@
 import React from 'react'
-import { AuthProvider } from '@/features/auth/AuthContext'
 
 /**
  * Providers Component
  *
- * Wraps all context providers for the application.
+ * Wraps non-router context providers for the application.
  * Centralizes provider hierarchy for clean App.tsx.
  *
- * Current Providers:
- * - AuthProvider: Authentication state management
+ * NOTE: AuthProvider has been moved inside the Router tree (see router.tsx)
+ * so it can access React Router hooks (useNavigate, useLocation, etc.).
  *
  * Future Providers:
  * - ThemeProvider: Light/dark mode
@@ -21,7 +20,7 @@ interface ProvidersProps {
 }
 
 const Providers: React.FC<ProvidersProps> = ({ children }) => {
-  return <AuthProvider>{children}</AuthProvider>
+  return <>{children}</>
 }
 
 export default Providers

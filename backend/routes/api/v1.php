@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\AdminBookingController;
+use App\Http\Controllers\ContactController;
 use App\Http\Controllers\LocationController;
 
 /*
@@ -59,5 +60,11 @@ Route::middleware(['check_token_valid', 'verified'])->group(function () {
         Route::post('/{id}/restore', [AdminBookingController::class, 'restore']);
         Route::post('/restore-bulk', [AdminBookingController::class, 'restoreBulk']);
         Route::delete('/{id}/force', [AdminBookingController::class, 'forceDelete']);
+    });
+
+    // ========== ADMIN CONTACT MESSAGE ENDPOINTS (v1) ==========
+    Route::prefix('admin/contact-messages')->middleware('role:admin')->group(function () {
+        Route::get('/', [ContactController::class, 'index']);
+        Route::patch('/{id}/read', [ContactController::class, 'markAsRead']);
     });
 });

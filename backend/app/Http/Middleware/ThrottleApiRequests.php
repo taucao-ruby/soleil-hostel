@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class ThrottleApiRequests
 {
@@ -28,16 +29,30 @@ class ThrottleApiRequests
     public function handle(Request $request, Closure $next, ...$limits): Response
     {
         foreach ($limits as $limit) {
-            if ($this->limiter->tooManyAttempts($limit, $this->resolveMaxAttempts($limit), $request)) {
-                throw $this->buildException($request, $limit);
+            $key = $this->resolveRequestKey($request, $limit);
+            $maxAttempts = $this->resolveMaxAttempts($limit);
+
+            if ($this->limiter->tooManyAttempts($key, $maxAttempts)) {
+                throw $this->buildException($request, $key, $maxAttempts);
             }
 
-            $this->limiter->hit($limit, $this->resolveLimitingPeriod($limit), $request);
+            $this->limiter->hit($key, $this->resolveLimitingPeriod($limit));
         }
 
+        $key = $this->resolveRequestKey($request, $limits[0]);
+        $maxAttempts = $this->resolveMaxAttempts($limits[0]);
+
         return $next($request)
-            ->header('X-RateLimit-Limit', $this->resolveMaxAttempts($limits[0]))
-            ->header('X-RateLimit-Remaining', $this->limiter->remaining($limits[0], $this->resolveMaxAttempts($limits[0]), $request));
+            ->header('X-RateLimit-Limit', $maxAttempts)
+            ->header('X-RateLimit-Remaining', $this->limiter->remaining($key, $maxAttempts));
+    }
+
+    /**
+     * Resolve the cache key for the rate limiter.
+     */
+    protected function resolveRequestKey(Request $request, string $limit): string
+    {
+        return $limit . '|' . ($request->user()?->id ?: $request->ip());
     }
 
     /**
@@ -68,19 +83,18 @@ class ThrottleApiRequests
     }
 
     /**
-     * Create a rate limit exceeded response.
+     * Create a rate limit exceeded exception.
+     *
+     * @throws \Symfony\Component\HttpKernel\Exception\HttpException
      */
-    protected function buildException(Request $request, string $limit)
+    protected function buildException(Request $request, string $key, int $maxAttempts): HttpException
     {
-        $maxAttempts = $this->resolveMaxAttempts($limit);
-        $retryAfter = $this->limiter->availableIn($limit, $request);
+        $retryAfter = $this->limiter->availableIn($key);
 
-        return response()->json([
-            'success' => false,
-            'message' => 'Too many requests. Please try again in ' . $retryAfter . ' seconds.',
-        ], 429)
-        ->header('Retry-After', $retryAfter)
-        ->header('X-RateLimit-Limit', $maxAttempts)
-        ->header('X-RateLimit-Remaining', 0);
+        return new HttpException(429, 'Too many requests. Please try again in ' . $retryAfter . ' seconds.', null, [
+            'Retry-After' => $retryAfter,
+            'X-RateLimit-Limit' => $maxAttempts,
+            'X-RateLimit-Remaining' => 0,
+        ]);
     }
 }

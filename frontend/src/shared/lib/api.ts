@@ -1,5 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import { getCsrfToken, setCsrfToken } from '@/shared/utils/csrf'
+import { appNavigate } from '@/shared/lib/navigation'
 
 /**
  * Shared API Client - Single Axios Instance
@@ -124,15 +125,18 @@ api.interceptors.response.use(
           console.error('Token refresh failed:', refreshError)
         }
 
-        // Clear all auth data
-        sessionStorage.clear()
-        localStorage.clear()
+        // Clear auth-related storage only (preserve user preferences, UI state, etc.)
+        const AUTH_STORAGE_KEYS = ['csrf_token', 'auth_token', 'user', 'refresh_token']
+        AUTH_STORAGE_KEYS.forEach(key => {
+          sessionStorage.removeItem(key)
+          localStorage.removeItem(key)
+        })
 
         // Only redirect if user was trying to access protected route
         // Don't redirect on public pages (home, rooms list, etc.)
         const isPublicRoute = originalRequest.url?.match(/\/(rooms|$)/)
         if (typeof window !== 'undefined' && !isPublicRoute) {
-          window.location.href = '/login'
+          appNavigate('/login')
         }
 
         return Promise.reject(refreshError)

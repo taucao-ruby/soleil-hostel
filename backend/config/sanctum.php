@@ -57,7 +57,8 @@ return [
     // ========== CRITICAL: Token Expiration ==========
     // Sanctum default không hỗ trợ expiration → implement custom
     // BẮTBUỘC: token phải có expires_at, không có exception
-    'expiration' => null, // Custom implementation ở PersonalAccessToken model
+    // Custom CheckTokenNotRevokedAndNotExpired middleware provides additional checks
+    'expiration' => 60 * 24, // 24 hours — safety net for routes using raw auth:sanctum
 
     /*
     |--------------------------------------------------------------------------
@@ -176,10 +177,11 @@ return [
     | "expires_at" attribute, but first-party sessions are not affected.
     |
     | DEPRECATED: Sử dụng short_lived_token_expiration_minutes thay thế
+    | Custom CheckTokenNotRevokedAndNotExpired middleware provides additional checks
     |
     */
 
-    'expiration' => null,
+    'expiration' => 60 * 24, // 24 hours — safety net for routes using raw auth:sanctum
 
     /*
     |--------------------------------------------------------------------------

@@ -111,11 +111,11 @@ class HttpOnlyTokenController extends Controller
         // - SameSite=Strict: Không gửi cross-site requests (phòng CSRF + XSS worm)
         // - Path=/: Accessible ở tất cả routes
         // - Domain=.soleilhostel.com: Share với subdomains
-        
+
         $response->cookie(
             config('sanctum.cookie_name', 'soleil_token'),  // name
             $tokenIdentifier,  // Plain UUID token (value)
-            ceil($expiresInMinutes / 60),  // minutes
+            $expiresInMinutes,  // cookie() 3rd param expects minutes — pass $expiresInMinutes directly
             '/',  // path
             config('session.domain'),  // domain
             config('app.env') === 'production',  // secure (HTTPS only in production)
@@ -214,7 +214,7 @@ class HttpOnlyTokenController extends Controller
         $response->cookie(
             config('sanctum.cookie_name', 'soleil_token'),  // name
             $newTokenIdentifier,  // value
-            ceil($expiresInMinutes / 60),  // minutes
+            $expiresInMinutes,  // cookie() 3rd param expects minutes — pass $expiresInMinutes directly
             '/',  // path
             config('session.domain'),  // domain
             config('app.env') === 'production',  // secure

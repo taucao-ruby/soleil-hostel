@@ -54,26 +54,8 @@ class CheckTokenNotRevokedAndNotExpired
             throw new AuthenticationException('Token không hợp lệ hoặc không tồn tại.');
         }
 
-        // Authenticate the user (since we're not using auth:sanctum middleware)
-        $user = $token->tokenable;
-        if (!$user) {
-            throw new AuthenticationException('Không tìm được user cho token này.');
-        }
-        
-        // Set user resolver so $request->user() works
-        $request->setUserResolver(fn () => $user);
-        
-        // Also authenticate on the 'sanctum' guard for Laravel compatibility
-        try {
-            auth()->guard('sanctum')->setUser($user);
-        } catch (\Throwable $e) {
-            // If guard doesn't exist, just continue - the request resolver should work
-        }
-        
-        // Store the access token on the user so currentAccessToken() works
-        $user->withAccessToken($token);
-
         // ========== CHECK: Token hết hạn? ==========
+        // IMPORTANT: Check expiration BEFORE authenticating user
         if ($token->isExpired()) {
             // Token hết hạn → 401
             // Frontend sẽ nhận 401 → gọi refresh endpoint
@@ -85,6 +67,7 @@ class CheckTokenNotRevokedAndNotExpired
         }
 
         // ========== CHECK: Token bị revoke? ==========
+        // IMPORTANT: Check revocation BEFORE authenticating user
         if ($token->isRevoked()) {
             // Token bị revoke (logout/refresh/force logout) → 401
             // User phải login lại
@@ -94,6 +77,26 @@ class CheckTokenNotRevokedAndNotExpired
                 'revoked_at' => $token->revoked_at?->toIso8601String(),
             ], 401);
         }
+
+        // ========== AUTHENTICATE USER (ONLY AFTER validation checks pass) ==========
+        // Now that we've verified token is valid, not expired, and not revoked, authenticate the user
+        $user = $token->tokenable;
+        if (!$user) {
+            throw new AuthenticationException('Không tìm được user cho token này.');
+        }
+
+        // Set user resolver so $request->user() works
+        $request->setUserResolver(fn () => $user);
+
+        // Also authenticate on the 'sanctum' guard for Laravel compatibility
+        try {
+            auth()->guard('sanctum')->setUser($user);
+        } catch (\Throwable $e) {
+            // If guard doesn't exist, just continue - the request resolver should work
+        }
+
+        // Store the access token on the user so currentAccessToken() works
+        $user->withAccessToken($token);
 
         // ========== CHECK: Refresh count (suspicious activity) ==========
         if ($token->refresh_count > config('sanctum.max_refresh_count_per_hour')) {

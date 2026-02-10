@@ -155,7 +155,7 @@ Route::middleware(['check_token_valid'])->group(function () {
 // ========== UNIFIED AUTH ENDPOINTS (NEW - Mode-agnostic) ==========
 // These endpoints detect auth mode (Bearer/Cookie) and delegate appropriately.
 // Use these for new clients that want mode-agnostic auth handling.
-Route::prefix('auth/unified')->middleware('auth:sanctum')->group(function () {
+Route::prefix('auth/unified')->middleware(['auth:sanctum', 'check_token_valid'])->group(function () {
     Route::get('/me', [UnifiedAuthController::class, 'me']);
     Route::post('/logout', [UnifiedAuthController::class, 'logout']);
     Route::post('/logout-all', [UnifiedAuthController::class, 'logoutAll']);

@@ -1,5 +1,6 @@
 import api from '@/shared/lib/api'
 import { setCsrfToken } from '@/shared/utils/csrf'
+import { User } from '@/types/api'
 
 /**
  * Auth API Service
@@ -7,12 +8,6 @@ import { setCsrfToken } from '@/shared/utils/csrf'
  * All authentication-related API calls using the shared api instance.
  * Handles httpOnly cookie authentication with CSRF protection.
  */
-
-export interface User {
-  id: number
-  name: string
-  email: string
-}
 
 export interface LoginRequest {
   email: string

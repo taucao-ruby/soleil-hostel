@@ -16,6 +16,15 @@ import { appNavigate } from '@/shared/lib/navigation'
 // Default to localhost for development
 const BASE_URL = (import.meta.env.VITE_API_URL as string) || 'http://localhost:8000/api'
 
+// Refresh mutex - prevents multiple concurrent refresh requests
+let isRefreshing = false
+let failedQueue: Array<{ resolve: (v?: unknown) => void; reject: (e?: unknown) => void }> = []
+
+function processQueue(error: unknown = null) {
+  failedQueue.forEach(({ resolve, reject }) => (error ? reject(error) : resolve()))
+  failedQueue = []
+}
+
 /**
  * Main API client instance
  *
@@ -96,7 +105,15 @@ api.interceptors.response.use(
         return Promise.reject(error)
       }
 
+      // If already refreshing, queue this request
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject })
+        }).then(() => api(originalRequest))
+      }
+
       originalRequest._retry = true
+      isRefreshing = true
 
       try {
         // ========== REFRESH TOKEN ==========
@@ -109,6 +126,9 @@ api.interceptors.response.use(
           setCsrfToken(refreshResponse.data.csrf_token)
         }
 
+        // Process all queued requests
+        processQueue()
+
         // ========== RETRY ORIGINAL REQUEST ==========
         // Browser now has new token in httpOnly cookie
         return api(originalRequest)
@@ -116,6 +136,8 @@ api.interceptors.response.use(
         // ========== REFRESH FAILED ==========
         // Token is invalid/expired/revoked - force logout
         // Note: 401 on refresh is expected when user is not logged in
+        processQueue(refreshError)
+
         const isAxiosError = (error: unknown): error is AxiosError => {
           return (error as AxiosError).isAxiosError === true
         }
@@ -139,7 +161,9 @@ api.interceptors.response.use(
           appNavigate('/login')
         }
 
-        return Promise.reject(refreshError)
+        throw refreshError
+      } finally {
+        isRefreshing = false
       }
     }
 

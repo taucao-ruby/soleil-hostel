@@ -44,6 +44,7 @@ const BookingForm: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [bookingReference, setBookingReference] = useState<string | null>(null)
 
   // Fetch available rooms on mount
   useEffect(() => {
@@ -98,9 +99,10 @@ const BookingForm: React.FC = () => {
         special_requests: formData.special_requests || undefined,
       }
 
-      await createBooking(bookingData)
+      const booking = await createBooking(bookingData)
 
       setSuccess(true)
+      setBookingReference(booking.id.toString().padStart(8, '0'))
 
       // Redirect to success page or bookings list
       setTimeout(() => {
@@ -152,20 +154,25 @@ const BookingForm: React.FC = () => {
         </div>
 
         {/* Booking Form Card */}
-        <div className="p-8 bg-white shadow-xl rounded-2xl">
+        <div data-testid="booking-modal" className="p-8 bg-white shadow-xl rounded-2xl">
           <form onSubmit={handleSubmit} noValidate>
             {/* Success Message */}
             {success && (
-              <div className="p-4 mb-6 border border-green-200 rounded-lg bg-green-50">
+              <div data-testid="success-message" className="p-4 mb-6 border border-green-200 rounded-lg bg-green-50">
                 <p className="text-sm font-medium text-green-800">
                   ✓ Booking created successfully! Redirecting...
                 </p>
+                {bookingReference && (
+                  <p className="mt-2 text-sm text-green-700">
+                    Booking Reference: <span data-testid="booking-reference" className="font-mono font-bold">{bookingReference}</span>
+                  </p>
+                )}
               </div>
             )}
 
             {/* Error Message */}
             {errors.submit && (
-              <div className="p-4 mb-6 border border-red-200 rounded-lg bg-red-50">
+              <div data-testid="error-message" className="p-4 mb-6 border border-red-200 rounded-lg bg-red-50">
                 <p className="text-sm font-medium text-red-800">{errors.submit}</p>
               </div>
             )}

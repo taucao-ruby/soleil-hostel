@@ -121,6 +121,7 @@ const RoomList: React.FC = () => {
             {rooms.map(room => (
               <article
                 key={room.id}
+                data-testid="room-card"
                 className="overflow-hidden transition-shadow duration-300 bg-white shadow-md rounded-xl hover:shadow-xl"
               >
                 {/* Room Image */}
@@ -164,7 +165,7 @@ const RoomList: React.FC = () => {
                   {/* Price and Status */}
                   <div className="flex items-center justify-between">
                     {/* Price */}
-                    <div className="text-2xl font-bold text-blue-600">
+                    <div data-testid="room-price" className="text-2xl font-bold text-blue-600">
                       ${room.price}
                       <span className="text-sm font-normal text-gray-500">/night</span>
                     </div>

@@ -1,15 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import api from '@/shared/lib/api'
 import { setCsrfToken, clearCsrfToken } from '@/shared/utils/csrf'
-
-/**
- * User Interface
- */
-export interface User {
-  id: number
-  name: string
-  email: string
-}
+import { User } from '@/types/api'
 
 /**
  * Auth Context Type

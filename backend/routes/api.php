@@ -65,14 +65,8 @@ Route::prefix('health')->middleware(['auth:sanctum', 'role:admin'])->group(funct
     Route::get('/queue', [HealthController::class, 'queue'])->name('health.queue');
 });
 
-// Health check
-Route::get('ping', function() {
-    return response()->json([
-        'ok' => true, 
-        'message' => 'API is working!',
-        'timestamp' => now()
-    ]);
-});
+// TODO: Add ReviewController route when ReviewController is implemented
+// Route::apiResource('reviews', ReviewController::class);
 
 // Auth routes (public - with rate limiting)
 // ========== LEGACY ENDPOINTS (Deprecated - Sunset July 2026) ==========
@@ -90,8 +84,8 @@ Route::post('/auth/login-v2', [TokenAuthController::class, 'login'])->middleware
 // Token stored in httpOnly Cookie, NOT localStorage - XSS-safe
 Route::post('/auth/login-httponly', [HttpOnlyTokenController::class, 'login'])->middleware('throttle:5,1');
 Route::get('/auth/csrf-token', function(Request $request) {
-    // Generate a random CSRF token (not session-based for API)
-    return response()->json(['csrf_token' => \Illuminate\Support\Str::random(64)]);
+    // Return Laravel session CSRF token for form submissions
+    return response()->json(['csrf_token' => \Illuminate\Support\Facades\Session::token()]);
 });
 
 // Security: CSP violation reporting

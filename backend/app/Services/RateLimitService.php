@@ -12,10 +12,10 @@ use stdClass;
 
 /**
  * Advanced Rate Limiting Service
- * 
+ *
  * Implements dual-layer rate limiting (sliding window + token bucket)
  * with Redis backend and in-memory fallback for production resilience.
- * 
+ *
  * Features:
  * - Atomic Redis operations (zero race conditions)
  * - Sliding window for time-strict limits
@@ -23,6 +23,9 @@ use stdClass;
  * - Circuit breaker fallback to in-memory
  * - Per-user, per-IP, per-room, per-endpoint limiting
  * - Prometheus metrics + structured logging
+ *
+ * @deprecated This service may not be actively used. Used by AdvancedRateLimitMiddleware.
+ *             Consider consolidating rate limiting logic if not needed.
  */
 class RateLimitService
 {

@@ -26,6 +26,7 @@ class Review extends Model
         'booking_id',
         'guest_name',
         'guest_email',
+        'approved',
     ];
 
     protected $casts = [
@@ -33,6 +34,10 @@ class Review extends Model
         'approved' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+    ];
+
+    protected $attributes = [
+        'approved' => false,
     ];
 
     /**

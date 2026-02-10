@@ -145,13 +145,13 @@ class Room extends Model
     }
 
     /**
-     * Scope: Only active rooms
-     * 
+     * Scope: Only active (available) rooms
+     *
      * Usage: Room::active()->get()
      */
     public function scopeActive(Builder $query): Builder
     {
-        return $query->where('status', 'active');
+        return $query->where('status', 'available');
     }
 
     /**

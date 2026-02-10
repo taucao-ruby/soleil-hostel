@@ -213,7 +213,7 @@ class Booking extends Model
 
     /**
      * Scope: Select only commonly needed columns to reduce memory + bandwidth
-     * 
+     *
      * Usage: Booking::selectColumns()->get()
      */
     public function scopeSelectColumns(Builder $query): Builder
@@ -227,6 +227,13 @@ class Booking extends Model
             'bookings.guest_name',
             'bookings.guest_email',
             'bookings.status',
+            'bookings.amount',
+            'bookings.payment_intent_id',
+            'bookings.refund_amount',
+            'bookings.refund_status',
+            'bookings.cancelled_at',
+            'bookings.cancelled_by',
+            'bookings.cancellation_reason',
             'bookings.created_at',
             'bookings.updated_at',
         ]);
@@ -286,7 +293,7 @@ class Booking extends Model
     /**
      * Scope: Lọc booking theo status
      */
-    public function scopeByStatus(Builder $query, string $status): Builder
+    public function scopeByStatus(Builder $query, BookingStatus $status): Builder
     {
         return $query->where('status', $status);
     }

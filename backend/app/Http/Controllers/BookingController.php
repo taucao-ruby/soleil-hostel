@@ -16,11 +16,13 @@ use App\Services\CreateBookingService;
 use App\Services\BookingService;
 use App\Services\CancellationService;
 use App\Services\RoomService;
+use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use RuntimeException;
 
 class BookingController extends Controller
 {
+    use ApiResponse;
     public function __construct(
         private CreateBookingService $createBookingService,
         private BookingService $bookingService,

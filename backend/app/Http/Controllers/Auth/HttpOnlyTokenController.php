@@ -101,7 +101,7 @@ class HttpOnlyTokenController extends Controller
             'expires_in_minutes' => $expiresInMinutes,
             'expires_at' => $expiresAt->toIso8601String(),
             'token_type' => $tokenType,
-            'csrf_token' => \Illuminate\Support\Str::random(64),
+            'csrf_token' => \Illuminate\Support\Facades\Session::token(),
         ], 'Login thành công. Token đã được set trong httpOnly cookie.');
 
         // ========== SET httpOnly COOKIE ==========

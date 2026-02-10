@@ -37,16 +37,22 @@ class ContactController extends Controller
             'message.max' => 'Message cannot exceed 5000 characters.',
         ]);
 
-        // Purify message using HTML Purifier (whitelist approach, not regex blacklist)
+        // Purify name, subject, and message using HTML Purifier (whitelist approach, not regex blacklist)
+        // SEC-NEW-06: Purify all text inputs to prevent XSS
+        $validated['name'] = HtmlPurifierService::purify($validated['name']);
+        $validated['subject'] = HtmlPurifierService::purify($validated['subject'] ?? '');
         $validated['message'] = HtmlPurifierService::purify($validated['message']);
 
         // Persist the contact message to database
+        // Note: ContactMessage model also has Purifiable trait as additional layer
         $contactMessage = ContactMessage::create($validated);
 
-        // Log as additional audit trail
+        // Log as additional audit trail with masked email
         \Log::info('Contact message received', [
             'id' => $contactMessage->id,
-            ...$validated,
+            'name' => $validated['name'],
+            'email' => \Illuminate\Support\Str::mask($validated['email'], '*', 3),
+            'subject' => $validated['subject'] ?? '',
         ]);
 
         return $this->success($contactMessage, 'Message received. We will get back to you soon.', 201);

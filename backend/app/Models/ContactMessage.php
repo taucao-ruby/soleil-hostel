@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\Purifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class ContactMessage extends Model
 {
-    use HasFactory;
+    use HasFactory, Purifiable;
 
     protected $fillable = [
         'name',
@@ -16,6 +17,13 @@ class ContactMessage extends Model
         'message',
         'read_at',
     ];
+
+    /**
+     * Fields to auto-purify when saving.
+     *
+     * HTML Purifier whitelist to prevent XSS in contact form submissions.
+     */
+    protected $purifiable = ['name', 'subject', 'message'];
 
     protected $casts = [
         'read_at' => 'datetime',

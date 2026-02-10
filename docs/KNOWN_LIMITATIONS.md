@@ -437,6 +437,7 @@ The following critical/high-severity issues were identified during the v2 audit.
 | DV-NEW-01  | CRITICAL | APP_KEY regenerated on every Docker start                       | Pending |
 | DV-NEW-02  | CRITICAL | CI tests run MySQL but production uses PostgreSQL               | Pending |
 | SEC-NEW-02 | CRITICAL | Redis password committed to VCS in plaintext                    | Pending |
+| DV-NEW-03  | CRITICAL | Redis password hardcoded in Docker healthcheck                  | Pending |
 | BE-NEW-02  | HIGH     | Rate limit middleware runs business logic before throttle check | Pending |
 | BE-NEW-03  | HIGH     | `cancellation_reason` column queried but never created          | Pending |
 | SEC-NEW-03 | HIGH     | Legacy token creation has no expiration                         | Pending |

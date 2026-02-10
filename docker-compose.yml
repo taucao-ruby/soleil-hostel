@@ -29,7 +29,7 @@ services:
     volumes:
       - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
       - redisdata:/data
-    command: redis-server /usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf --requirepass ${REDIS_PASSWORD:-soleil_redis_secret_2026}
     environment:
       REDIS_REPL_DISKLESS_SYNC: "yes"
       REDIS_MAX_CLIENTS: 50000
@@ -38,7 +38,7 @@ services:
         soft: 262144
         hard: 262144
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "soleil_redis_secret_2026", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD:-soleil_redis_secret_2026} ping || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -75,7 +75,7 @@ services:
       QUEUE_CONNECTION: redis
       SANCTUM_STATEFUL_DOMAINS: ${SANCTUM_STATEFUL_DOMAINS:-localhost:5173,127.0.0.1:5173}
       SESSION_DOMAIN: ${SESSION_DOMAIN:-localhost}
-    command: bash -lc "set -e; composer install --no-interaction --prefer-dist; php artisan key:generate --force; php artisan migrate --force; php artisan serve --host=0.0.0.0 --port=8000"
+    command: bash -lc "set -e; composer install --no-interaction --prefer-dist; (grep -q \"^APP_KEY=base64:\" .env || php artisan key:generate --force); php artisan migrate --force; php artisan serve --host=0.0.0.0 --port=8000"
 
   frontend:
     build:

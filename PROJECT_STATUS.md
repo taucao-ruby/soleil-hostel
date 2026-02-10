@@ -11,7 +11,7 @@
 All **698 backend tests** passing with 1958 assertions verified.  
 All **90 frontend unit tests** passing across 7 test files.  
 Full audit report: [AUDIT_REPORT.md](./AUDIT_REPORT.md) (v2)  
-Fix prompts: [AUDIT_FIX_PROMPTS.md](./AUDIT_FIX_PROMPTS.md) (v1) | [AUDIT_FIX_PROMPTS_2.md](./AUDIT_FIX_PROMPTS_2.md) (Phase 2)
+Fix prompts: [AUDIT_FIX_PROMPTS.md](./AUDIT_FIX_PROMPTS.md) (consolidated — all phases)
 
 ---
 
@@ -154,8 +154,7 @@ Total Progress     █████████████████▓░░�
 | Document                                                       | Description                                  |
 | -------------------------------------------------------------- | -------------------------------------------- |
 | [AUDIT_REPORT.md](./AUDIT_REPORT.md)                           | Full audit report v2 (98 issues)             |
-| [AUDIT_FIX_PROMPTS.md](./AUDIT_FIX_PROMPTS.md)                 | 16 fix prompts from v1 audit                 |
-| [AUDIT_FIX_PROMPTS_2.md](./AUDIT_FIX_PROMPTS_2.md)             | Phase 2 fix prompts (22 remaining)           |
+| [AUDIT_FIX_PROMPTS.md](./AUDIT_FIX_PROMPTS.md)                 | Consolidated fix prompts (all phases)        |
 | [docs/ADR.md](./docs/ADR.md)                                   | Architecture Decision Records (12 decisions) |
 | [docs/KNOWN_LIMITATIONS.md](./docs/KNOWN_LIMITATIONS.md)       | System constraints & tech debt               |
 | [docs/OPERATIONAL_PLAYBOOK.md](./docs/OPERATIONAL_PLAYBOOK.md) | Incident runbooks                            |

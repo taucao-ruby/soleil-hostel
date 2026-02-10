@@ -10,7 +10,7 @@ This file documents how to run the project locally (Windows-optimized) and with 
 
 Two main approaches:
 
-- Local (no Docker): install PHP/Composer/MySQL locally and run both servers
+- Local (no Docker): install PHP/Composer/PostgreSQL locally and run both servers
 - Docker Compose: single command to start DB, backend and frontend
 
 ---
@@ -35,7 +35,7 @@ cd backend
 composer install
 copy .env.example .env  # or copy on Windows PowerShell: Copy-Item .env.example .env
 php artisan key:generate
-# if you use MySQL, ensure DB settings in .env are correct and database exists
+# ensure DB settings in .env are correct and PostgreSQL database exists
 php artisan migrate
 php artisan serve --host=127.0.0.1 --port=8000
 ```
@@ -133,6 +133,7 @@ If you're still stuck, follow this checklist in order — it covers the common r
    - Run `php artisan route:list` from `backend/` and look for `api/rooms`.
    - If the route is missing:
      - Open `backend/routes/api.php` and confirm you have the route registration, for example:
+
      ```php
      use App\Http\Controllers\RoomController;
      Route::apiResource('rooms', RoomController::class);

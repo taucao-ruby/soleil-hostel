@@ -342,6 +342,12 @@ class HealthControllerTest extends TestCase
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
+    public function test_framework_default_up_route_is_not_exposed(): void
+    {
+        $this->get('/up')->assertNotFound();
+    }
+
+    #[\PHPUnit\Framework\Attributes\Test]
     public function test_health_check_returns_healthy_when_all_services_up(): void
     {
         $response = $this->get('/api/health');

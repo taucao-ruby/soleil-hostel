@@ -176,7 +176,7 @@ jobs:
         with:
           files: ./backend/coverage.xml
           flags: backend
-          fail_ci_if_error: true
+          fail_ci_if_error: false
           verbose: true
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4

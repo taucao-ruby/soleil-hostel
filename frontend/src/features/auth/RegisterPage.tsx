@@ -1,8 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthContext'
-import { sanitizeInput } from '@/shared/utils/security'
-
 /**
  * RegisterPage Component
  *
@@ -81,13 +79,9 @@ const RegisterPage: React.FC = () => {
     setSuccess(false)
 
     try {
-      // Sanitize inputs before sending
-      const sanitizedName = sanitizeInput(formData.name)
-      const sanitizedEmail = sanitizeInput(formData.email)
-
       await registerHttpOnly(
-        sanitizedName,
-        sanitizedEmail,
+        formData.name.trim(),
+        formData.email.trim(),
         formData.password,
         formData.passwordConfirmation
       )

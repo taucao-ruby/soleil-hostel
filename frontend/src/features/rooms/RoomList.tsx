@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { getRooms } from './room.api'
 import { Room } from './room.types'
 
@@ -17,6 +18,7 @@ import { Room } from './room.types'
  */
 
 const RoomList: React.FC = () => {
+  const navigate = useNavigate()
   const [rooms, setRooms] = useState<Room[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -182,7 +184,10 @@ const RoomList: React.FC = () => {
 
                   {/* Book Button (if available) */}
                   {room.status === 'available' && (
-                    <button className="w-full px-4 py-2 mt-4 font-semibold text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700">
+                    <button
+                      onClick={() => navigate(`/booking?room_id=${room.id}`)}
+                      className="w-full px-4 py-2 mt-4 font-semibold text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
+                    >
                       Book Now
                     </button>
                   )}

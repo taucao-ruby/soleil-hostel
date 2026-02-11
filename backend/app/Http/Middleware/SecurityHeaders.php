@@ -105,9 +105,9 @@ class SecurityHeaders
         $response->headers->set('Cross-Origin-Opener-Policy', 'same-origin', true);
 
         // ========== 7. Cross-Origin-Embedder-Policy ==========
-        // Require cross-origin resources phải opt-in (prevent Spectre leaks)
-        // require-corp: Tất cả cross-origin resources phải có CORP header
-        $response->headers->set('Cross-Origin-Embedder-Policy', 'require-corp', true);
+        // credentialless: allows cross-origin resources without CORP header, but strips credentials
+        // Less restrictive than require-corp while still mitigating Spectre-style attacks
+        $response->headers->set('Cross-Origin-Embedder-Policy', 'credentialless', true);
 
         // ========== 8. Cross-Origin-Resource-Policy ==========
         // Control who can load this resource (prevent clickjacking, Spectre)

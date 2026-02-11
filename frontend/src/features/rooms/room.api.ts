@@ -17,13 +17,3 @@ export async function getRooms(): Promise<Room[]> {
   const response = await api.get<RoomsResponse>('/rooms')
   return response.data.data
 }
-
-/**
- * Get single room by ID
- *
- * GET /rooms/:id
- */
-export async function getRoomById(id: number): Promise<Room> {
-  const response = await api.get<{ data: Room }>(`/rooms/${id}`)
-  return response.data.data
-}

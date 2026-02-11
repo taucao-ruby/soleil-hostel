@@ -38,7 +38,11 @@ export interface User {
   updated_at: string
 }
 
-export type { AuthResponse } from '@/features/auth/auth.api'
+// Auth Response
+export interface AuthResponse {
+  user: User
+  csrf_token: string
+}
 
 // Booking Type
 export interface Booking {
@@ -49,7 +53,7 @@ export interface Booking {
   guest_email: string
   check_in: string
   check_out: string
-  guests?: number
+  number_of_guests?: number
   status?: 'pending' | 'confirmed' | 'cancelled' | 'completed'
   total_price?: number
   created_at?: string

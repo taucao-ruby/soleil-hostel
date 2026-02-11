@@ -4,8 +4,6 @@ import type {
   LocationWithRooms,
   LocationsResponse,
   LocationResponse,
-  AvailabilityResponse,
-  LocationRoom,
 } from './location.types'
 
 /**
@@ -47,32 +45,3 @@ export async function getLocationBySlug(
   return response.data.data
 }
 
-/**
- * Check room availability at a specific location.
- *
- * GET /v1/locations/:slug/availability
- *
- * @param slug - Location URL slug
- * @param checkIn - Check-in date (YYYY-MM-DD)
- * @param checkOut - Check-out date (YYYY-MM-DD)
- * @param guests - Optional minimum guest capacity
- */
-export async function checkAvailability(
-  slug: string,
-  checkIn: string,
-  checkOut: string,
-  guests?: number
-): Promise<{
-  location: Location
-  available_rooms: LocationRoom[]
-  total_available: number
-}> {
-  const response = await api.get<AvailabilityResponse>(`/v1/locations/${slug}/availability`, {
-    params: {
-      check_in: checkIn,
-      check_out: checkOut,
-      ...(guests ? { guests } : {}),
-    },
-  })
-  return response.data.data
-}

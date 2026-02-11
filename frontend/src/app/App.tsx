@@ -1,5 +1,6 @@
 import React from 'react'
 import ErrorBoundary from '@/shared/components/ErrorBoundary'
+import { ToastContainer } from '@/utils/toast'
 import Router from './router'
 
 /**
@@ -20,6 +21,7 @@ const App: React.FC = () => {
   return (
     <ErrorBoundary>
       <Router />
+      <ToastContainer />
     </ErrorBoundary>
   )
 }

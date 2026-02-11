@@ -110,8 +110,10 @@ class CheckHttpOnlyTokenValid
         $request->attributes->set('user', $token->tokenable);
         $request->attributes->set('token', $token);
 
-        // Update last_used_at
-        $token->update(['last_used_at' => now()]);
+        // Throttle last_used_at updates to 1-minute intervals to reduce DB writes
+        if (!$token->last_used_at || $token->last_used_at->diffInMinutes(now()) >= 1) {
+            $token->update(['last_used_at' => now()]);
+        }
 
         return $next($request);
     }

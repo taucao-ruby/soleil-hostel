@@ -1,6 +1,11 @@
 /**
  * CSRF Token Management Utility
  *
+ * SECURITY NOTE: HttpOnly cookie authentication provides inherent CSRF protection.
+ * The browser sends the httpOnly cookie automatically, but JavaScript (and therefore
+ * XSS) cannot read it. The X-XSRF-TOKEN header acts as a double-submit cookie pattern
+ * for additional defence-in-depth on state-changing requests.
+ *
  * IMPORTANT: CSRF tokens are stored in sessionStorage (NOT localStorage)
  * - sessionStorage is cleared when browser closes
  * - Reduces attack surface for CSRF token theft

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { createBooking } from './booking.api'
 import { getRooms } from '../rooms/room.api'
 import { Room } from '../rooms/room.types'
@@ -26,10 +26,12 @@ import {
 
 const BookingForm: React.FC = () => {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const roomIdFromUrl = searchParams.get('room_id')
 
   // Form state
   const [formData, setFormData] = useState({
-    room_id: null as number | null,
+    room_id: roomIdFromUrl ? parseInt(roomIdFromUrl, 10) : (null as number | null),
     guest_name: '',
     guest_email: '',
     check_in: '',

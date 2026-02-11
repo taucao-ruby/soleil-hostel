@@ -156,7 +156,7 @@ api.interceptors.response.use(
 
         // Only redirect if user was trying to access protected route
         // Don't redirect on public pages (home, rooms list, etc.)
-        const isPublicRoute = originalRequest.url?.match(/\/(rooms|$)/)
+        const isPublicRoute = /^\/(rooms)?$/.test(originalRequest.url || '')
         if (typeof window !== 'undefined' && !isPublicRoute) {
           appNavigate('/login')
         }

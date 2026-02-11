@@ -145,8 +145,7 @@ class AdvancedRateLimitMiddleware
      */
     private function adjustForUserTier(array $limits, $user): array
     {
-        // Assuming user model has 'subscription_tier' attribute
-        $tier = $user->subscription_tier ?? 'free';
+        $tier = 'free';
 
         $multipliers = [
             'free' => 1.0,

@@ -73,7 +73,7 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText('Password'), '12345')
     await user.click(screen.getByRole('button', { name: 'Sign In' }))
 
-    expect(screen.getByText('Password must be at least 6 characters')).toBeInTheDocument()
+    expect(screen.getByText('Password must be at least 8 characters')).toBeInTheDocument()
   })
 
   it('calls loginHttpOnly with form data on valid submission', async () => {

@@ -30,7 +30,3 @@ parameters:
   typeAliases:
     ID: 'int|string'
     BookingRequest: 'App\Http\Requests\StoreBookingRequest'
-
-rules:
-  - PHPStan\Rules\Operators\InvalidComparisonOperationRule
-  - PHPStan\Rules\Methods\NullSafeMethodCallRule

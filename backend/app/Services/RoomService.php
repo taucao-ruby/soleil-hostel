@@ -18,7 +18,8 @@ class RoomService
     private const CACHE_TAG_ROOMS = 'rooms';
 
     public function __construct(
-        private readonly RoomRepositoryInterface $roomRepository
+        private readonly RoomRepositoryInterface $roomRepository,
+        private readonly RoomAvailabilityService $roomAvailabilityService
     ) {
     }
 
@@ -33,22 +34,8 @@ class RoomService
      */
     public function getRoomById(int $roomId): ?Room
     {
-        $cacheKey = "rooms:id:{$roomId}";
-
-        if (!$this->supportsTags()) {
-            return Cache::remember(
-                $cacheKey,
-                self::CACHE_TTL_ROOMS,
-                fn() => $this->roomRepository->findByIdWithBookings($roomId)
-            );
-        }
-
-        return Cache::tags([self::CACHE_TAG_ROOMS, "room-{$roomId}"])
-            ->remember(
-                $cacheKey,
-                self::CACHE_TTL_ROOMS,
-                fn() => $this->roomRepository->findByIdWithBookings($roomId)
-            );
+        // Canonical availability/read path lives in RoomAvailabilityService.
+        return $this->roomAvailabilityService->getRoomAvailability($roomId);
     }
 
     /**
@@ -77,6 +64,7 @@ class RoomService
             Cache::forget("rooms:id:{$roomId}");
             Cache::forget('rooms:list:all:active');
         }
+        $this->roomAvailabilityService->invalidateRoomCache($roomId);
         Log::info("Cache invalidated for room {$roomId}");
     }
 
@@ -88,6 +76,7 @@ class RoomService
             Cache::forget('rooms:list:all:active');
             Cache::flush();
         }
+        $this->roomAvailabilityService->invalidateAllCache();
         Log::info("Cache invalidated for all rooms");
     }
 

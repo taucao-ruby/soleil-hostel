@@ -288,4 +288,29 @@ class LocationApiTest extends TestCase
         $response->assertOk()
             ->assertJsonCount(1, 'data');
     }
+
+    /** @test */
+    public function room_show_endpoint_includes_active_booking_count(): void
+    {
+        $location = Location::factory()->create(['is_active' => true]);
+        $user = User::factory()->create();
+        $room = Room::factory()->create([
+            'location_id' => $location->id,
+            'status' => 'available',
+        ]);
+
+        Booking::factory()->create([
+            'room_id' => $room->id,
+            'user_id' => $user->id,
+            'check_in' => '2026-06-01',
+            'check_out' => '2026-06-05',
+            'status' => 'confirmed',
+        ]);
+
+        $response = $this->getJson("/api/v1/rooms/{$room->id}");
+
+        $response->assertOk()
+            ->assertJsonPath('data.id', $room->id)
+            ->assertJsonPath('data.active_bookings_count', 1);
+    }
 }

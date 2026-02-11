@@ -88,7 +88,7 @@ services:
       QUEUE_CONNECTION: redis
       SANCTUM_STATEFUL_DOMAINS: ${SANCTUM_STATEFUL_DOMAINS:-localhost:5173,127.0.0.1:5173}
       SESSION_DOMAIN: ${SESSION_DOMAIN:-localhost}
-    command: bash -lc "set -e; composer install --no-interaction --prefer-dist; (grep -q \"^APP_KEY=base64:\" .env || php artisan key:generate --force); echo \"Run: docker compose exec backend php artisan migrate\"; php artisan serve --host=0.0.0.0 --port=8000"
+    command: 'bash -lc "set -e; composer install --no-interaction --prefer-dist; (grep -q \"^APP_KEY=base64:\" .env || php artisan key:generate --force); echo \"Run: docker compose exec backend php artisan migrate\"; php artisan serve --host=0.0.0.0 --port=8000"'
 
   frontend:
     build:

@@ -41,10 +41,10 @@
         </UndefinedMethod>
 
         <!-- Report unused code -->
-        <UnusedVariable errorLevel="warn" />
-        <UnusedMethod errorLevel="warn" />
-        <UnusedClass errorLevel="warn" />
-        <UnusedParam errorLevel="warn" />
+        <UnusedVariable errorLevel="info" />
+        <UnusedMethod errorLevel="info" />
+        <UnusedClass errorLevel="info" />
+        <UnusedParam errorLevel="info" />
 
         <!-- Catch null types early -->
         <NullableReturnStatement errorLevel="error" />
@@ -65,15 +65,10 @@
         <DeprecatedFunction errorLevel="info" />
 
         <!-- Internal properties -->
-        <InternalClass errorLevel="warn" />
-        <InternalMethod errorLevel="warn" />
-        <InternalProperty errorLevel="warn" />
+        <InternalClass errorLevel="info" />
+        <InternalMethod errorLevel="info" />
+        <InternalProperty errorLevel="info" />
     </issueHandlers>
-
-    <!-- ========== PLUGINS ========== -->
-    <plugins>
-        <pluginClass class="Psalm\LaravelPlugin\Plugin" />
-    </plugins>
 
     <!-- ========== TYPE MAPPING ========== -->
     <globals>

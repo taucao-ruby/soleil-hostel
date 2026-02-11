@@ -40,8 +40,9 @@ describe('API Client', () => {
       }
 
       // Run through the request interceptors
-      const interceptor = api.interceptors.request as any
-      const handlers = (interceptor as any).handlers
+      type InterceptorHandler = { fulfilled?: (config: typeof config) => Promise<typeof config> | typeof config }
+      const interceptor = api.interceptors.request as unknown as { handlers: InterceptorHandler[] }
+      const handlers = interceptor.handlers
       let result = config
       for (const handler of handlers) {
         if (handler && handler.fulfilled) {
@@ -61,8 +62,9 @@ describe('API Client', () => {
         url: '/test',
       }
 
-      const interceptor = api.interceptors.request as any
-      const handlers = (interceptor as any).handlers
+      type InterceptorHandler = { fulfilled?: (config: typeof config) => Promise<typeof config> | typeof config }
+      const interceptor = api.interceptors.request as unknown as { handlers: InterceptorHandler[] }
+      const handlers = interceptor.handlers
       let result = config
       for (const handler of handlers) {
         if (handler && handler.fulfilled) {
@@ -82,8 +84,9 @@ describe('API Client', () => {
         url: '/test',
       }
 
-      const interceptor = api.interceptors.request as any
-      const handlers = (interceptor as any).handlers
+      type InterceptorHandler = { fulfilled?: (config: typeof config) => Promise<typeof config> | typeof config }
+      const interceptor = api.interceptors.request as unknown as { handlers: InterceptorHandler[] }
+      const handlers = interceptor.handlers
       let result = config
       for (const handler of handlers) {
         if (handler && handler.fulfilled) {

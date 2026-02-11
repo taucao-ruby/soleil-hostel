@@ -266,6 +266,14 @@ jobs:
         run: |
           sleep 3
           php backend/tests/stubs/concurrent_booking_test.php
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: testing
+          DB_USERNAME: testing
+          DB_PASSWORD: password
 
   # ========== N+1 QUERY DETECTION (merged from nplusone-detection.yml) ==========
   nplusone-detection:

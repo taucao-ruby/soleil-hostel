@@ -1,60 +1,80 @@
 <?php
 
+declare(strict_types=1);
+
+use App\Models\Room;
+use App\Models\User;
+use Illuminate\Contracts\Console\Kernel;
+
 /**
- * Concurrent Booking Stress Test (50 simultaneous requests)
- *
- * Tests that pessimistic locking prevents double-booking
- * Simulates 50 concurrent users trying to book same room
+ * Concurrent booking stress test (50 simultaneous requests).
  *
  * Usage:
  * php tests/stubs/concurrent_booking_test.php
  *
- * Expected result:
- * - 1 booking succeeds
- * - 49 bookings fail with 409 Conflict or 422 Unprocessable Entity
+ * This script bootstraps Laravel, creates one authenticated user per request
+ * (so route throttling does not dominate results), then sends concurrent
+ * booking requests for the same room and date range.
  */
-$apiUrl = 'http://localhost:8000/api';
-$roomId = 1; // Test with first room
-$totalRequests = 50;
+
+require __DIR__.'/../../vendor/autoload.php';
+
+$app = require __DIR__.'/../../bootstrap/app.php';
+$app->make(Kernel::class)->bootstrap();
+
+$apiUrl = rtrim((string) (getenv('STRESS_API_URL') ?: 'http://127.0.0.1:8000/api'), '/');
+$totalRequests = (int) (getenv('STRESS_TOTAL_REQUESTS') ?: 50);
+
+$room = Room::query()->first();
+if (! $room) {
+    $room = Room::factory()->available()->create();
+}
+
+$authTokens = [];
+for ($i = 0; $i < $totalRequests; $i++) {
+    $user = User::factory()->create([
+        'email' => 'stress-user-'.uniqid('', true)."-{$i}@example.com",
+    ]);
+    $authTokens[$i] = $user->createToken("stress-test-{$i}")->plainTextToken;
+}
+
+$roomId = (int) $room->id;
 $successCount = 0;
 $failureCount = 0;
 $results = [];
 
-echo "🔥 Starting concurrent booking stress test...\n";
-echo "📋 Total concurrent requests: $totalRequests\n";
-echo "🏨 Room ID: $roomId\n\n";
+echo "Starting concurrent booking stress test...\n";
+echo "Total concurrent requests: {$totalRequests}\n";
+echo "Room ID: {$roomId}\n\n";
 
-// Generate test date range
-$checkIn = (new DateTime)->modify('+5 days')->format('Y-m-d');
-$checkOut = (new DateTime)->modify('+7 days')->format('Y-m-d');
+$checkIn = (new DateTimeImmutable())->modify('+5 days')->format('Y-m-d');
+$checkOut = (new DateTimeImmutable())->modify('+7 days')->format('Y-m-d');
 
-echo "📅 Date range: $checkIn to $checkOut\n";
-echo "⏳ Sending requests...\n\n";
+echo "Date range: {$checkIn} to {$checkOut}\n";
+echo "Sending requests...\n\n";
 
-// Parallel curl requests using curl_multi
 $mh = curl_multi_init();
 $handles = [];
 
 for ($i = 0; $i < $totalRequests; $i++) {
     $ch = curl_init();
 
-    $guestEmail = 'stress-test-'.uniqid()."-user$i@example.com";
     $payload = json_encode([
         'room_id' => $roomId,
         'check_in' => $checkIn,
         'check_out' => $checkOut,
-        'guest_name' => "Stress Test User $i",
-        'guest_email' => $guestEmail,
-        'guest_phone' => '+84912345678',
-    ]);
+        'guest_name' => "Stress Test User {$i}",
+        'guest_email' => 'stress-booking-'.uniqid('', true)."-{$i}@example.com",
+    ], JSON_THROW_ON_ERROR);
 
     curl_setopt_array($ch, [
-        CURLOPT_URL => "$apiUrl/bookings",
+        CURLOPT_URL => "{$apiUrl}/bookings",
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 30,
         CURLOPT_HTTPHEADER => [
             'Content-Type: application/json',
             'Accept: application/json',
+            'Authorization: Bearer '.$authTokens[$i],
         ],
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => $payload,
@@ -64,18 +84,16 @@ for ($i = 0; $i < $totalRequests; $i++) {
     $handles[$i] = $ch;
 }
 
-// Execute all requests simultaneously
 $running = null;
 do {
     curl_multi_exec($mh, $running);
-    usleep(100000); // 100ms delay between checks
+    usleep(100000);
 } while ($running > 0);
 
-// Process results
 for ($i = 0; $i < $totalRequests; $i++) {
     $ch = $handles[$i];
     $response = curl_multi_getcontent($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
     $results[] = [
         'request' => $i + 1,
@@ -85,19 +103,19 @@ for ($i = 0; $i < $totalRequests; $i++) {
 
     if ($httpCode === 201) {
         $successCount++;
-        echo '✅ Request '.($i + 1).": SUCCESS (HTTP 201)\n";
+        echo 'Request '.($i + 1).": SUCCESS (HTTP 201)\n";
     } else {
         $failureCount++;
         $statusLabel = match ($httpCode) {
-            409 => 'Conflict (Double-booking prevented)',
-            422 => 'Unprocessable Entity (Validation failed)',
-            429 => 'Too Many Requests (Rate limited)',
+            409 => 'Conflict (double-booking prevented)',
+            422 => 'Unprocessable Entity (validation/conflict)',
+            429 => 'Too Many Requests (rate limited)',
             400 => 'Bad Request',
             401 => 'Unauthorized',
             500 => 'Server Error',
             default => 'Unknown',
         };
-        echo '❌ Request '.($i + 1).": FAILED (HTTP $httpCode - $statusLabel)\n";
+        echo 'Request '.($i + 1).": FAILED (HTTP {$httpCode} - {$statusLabel})\n";
     }
 
     curl_multi_remove_handle($mh, $ch);
@@ -106,41 +124,36 @@ for ($i = 0; $i < $totalRequests; $i++) {
 
 curl_multi_close($mh);
 
-// Print summary
-echo "\n";
-echo "========== STRESS TEST RESULTS ==========\n";
-echo "✅ Successful bookings: $successCount\n";
-echo "❌ Failed bookings: $failureCount\n";
-echo "📊 Total requests: $totalRequests\n";
-echo '✓ Success rate: '.round(($successCount / $totalRequests) * 100, 2)."%\n\n";
+echo "\n========== STRESS TEST RESULTS ==========\n";
+echo "Successful bookings: {$successCount}\n";
+echo "Failed bookings: {$failureCount}\n";
+echo "Total requests: {$totalRequests}\n";
+echo 'Success rate: '.round(($successCount / max($totalRequests, 1)) * 100, 2)."%\n\n";
 
-// Analyze results
-$statusCodes = array_count_values(array_map(fn ($r) => $r['status'], $results));
+$statusCodes = array_count_values(array_map(fn (array $r): int => (int) $r['status'], $results));
 echo "Status code distribution:\n";
 foreach ($statusCodes as $code => $count) {
     $statusLabel = match ($code) {
-        201 => 'Created (Booking successful)',
-        409 => 'Conflict (Double-booking prevented)',
+        201 => 'Created',
+        409 => 'Conflict',
         422 => 'Unprocessable Entity',
         429 => 'Rate Limited',
+        401 => 'Unauthorized',
         default => 'Other',
     };
-    echo "  HTTP $code ($statusLabel): $count requests\n";
+    echo "  HTTP {$code} ({$statusLabel}): {$count} requests\n";
 }
 
-// Test outcome
 echo "\n";
 if ($successCount === 1 && $failureCount === $totalRequests - 1) {
-    echo "🎯 TEST PASSED: Pessimistic locking working correctly!\n";
-    echo "   ✓ Exactly 1 booking succeeded\n";
-    echo "   ✓ 49 bookings blocked (double-booking prevented)\n";
+    echo "TEST PASSED: pessimistic locking behavior is valid.\n";
     exit(0);
-} elseif ($successCount > 1) {
-    echo "❌ TEST FAILED: Multiple bookings succeeded (double-booking NOT prevented!)\n";
-    echo "   This indicates pessimistic locking is not working correctly.\n";
-    exit(1);
-} else {
-    echo "⚠️  TEST WARNING: No bookings succeeded\n";
-    echo "   Check if the server is running and database is accessible.\n";
+}
+
+if ($successCount > 1) {
+    echo "TEST FAILED: multiple bookings succeeded for one room/date range.\n";
     exit(1);
 }
+
+echo "TEST FAILED: no booking succeeded.\n";
+exit(1);

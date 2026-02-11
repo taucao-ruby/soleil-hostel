@@ -27,12 +27,17 @@ class NPlusOneQueriesTest extends TestCase
         $user = User::factory()->create();
         $rooms = Room::factory(3)->create();
 
-        // Create bookings for all rooms by same user
-        foreach ($rooms as $room) {
-            Booking::factory(2)->create([
-                'room_id' => $room->id,
-                'user_id' => $user->id,
-            ]);
+        // Create bookings for all rooms by same user (non-overlapping dates)
+        foreach ($rooms as $roomIndex => $room) {
+            for ($i = 0; $i < 2; $i++) {
+                $offset = ($roomIndex * 2 + $i) * 10;
+                Booking::factory()->create([
+                    'room_id' => $room->id,
+                    'user_id' => $user->id,
+                    'check_in' => now()->addDays(100 + $offset)->startOfDay(),
+                    'check_out' => now()->addDays(103 + $offset)->startOfDay(),
+                ]);
+            }
         }
 
         // Act as authenticated user
@@ -51,9 +56,16 @@ class NPlusOneQueriesTest extends TestCase
         // Create test data
         $rooms = Room::factory(5)->create();
 
-        // Create bookings for all rooms
-        foreach ($rooms as $room) {
-            Booking::factory(3)->create(['room_id' => $room->id]);
+        // Create bookings for all rooms (non-overlapping dates)
+        foreach ($rooms as $roomIndex => $room) {
+            for ($i = 0; $i < 3; $i++) {
+                $offset = ($roomIndex * 3 + $i) * 10;
+                Booking::factory()->create([
+                    'room_id' => $room->id,
+                    'check_in' => now()->addDays(100 + $offset)->startOfDay(),
+                    'check_out' => now()->addDays(103 + $offset)->startOfDay(),
+                ]);
+            }
         }
 
         $this->assertQueryCount(function () {
@@ -67,7 +79,14 @@ class NPlusOneQueriesTest extends TestCase
     public function test_room_show_no_nplusone_queries(): void
     {
         $room = Room::factory()->create();
-        Booking::factory(5)->create(['room_id' => $room->id]);
+        for ($i = 0; $i < 5; $i++) {
+            $offset = $i * 10;
+            Booking::factory()->create([
+                'room_id' => $room->id,
+                'check_in' => now()->addDays(100 + $offset)->startOfDay(),
+                'check_out' => now()->addDays(103 + $offset)->startOfDay(),
+            ]);
+        }
 
         $roomId = $room->id;
         $this->assertQueryCount(function () use ($roomId) {

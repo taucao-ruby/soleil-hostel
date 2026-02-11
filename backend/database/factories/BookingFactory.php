@@ -13,10 +13,19 @@ class BookingFactory extends Factory
 {
     protected $model = Booking::class;
 
+    /**
+     * Monotonic slot counter used to generate non-overlapping default dates.
+     * This keeps random factory usage compatible with the DB exclusion constraint.
+     */
+    private static int $dateSlot = 0;
+
     public function definition(): array
     {
-        $checkIn = Carbon::now()->addDays($this->faker->numberBetween(1, 30))->startOfDay();
-        $checkOut = $checkIn->clone()->addDays($this->faker->numberBetween(1, 7));
+        // Keep a deterministic gap between generated ranges to avoid accidental overlaps
+        // when tests create multiple bookings for the same room without explicit dates.
+        $slot = self::$dateSlot++;
+        $checkIn = Carbon::now()->addDays(1 + ($slot * 4))->startOfDay();
+        $checkOut = $checkIn->clone()->addDays(2);
 
         return [
             'room_id' => Room::factory(),

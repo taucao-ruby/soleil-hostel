@@ -32,6 +32,8 @@ build/
 Thumbs.db
 .AppleDouble
 .LSOverride
+NUL
+nul
 
 # Sensitive files
 *.key

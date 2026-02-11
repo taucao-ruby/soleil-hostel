@@ -18,7 +18,8 @@ vi.mock('@/shared/utils/csrf', () => ({
   clearCsrfToken: vi.fn(),
 }))
 
-const mockApi = vi.mocked(api)
+const mockGet = vi.mocked(api.get)
+const mockPost = vi.mocked(api.post)
 
 // Test component that exposes auth context
 function TestConsumer() {
@@ -68,7 +69,7 @@ describe('AuthContext', () => {
 
   it('validates token on mount when csrf_token exists in sessionStorage', async () => {
     sessionStorage.setItem('csrf_token', 'test-csrf')
-    mockApi.get.mockResolvedValue({
+    mockGet.mockResolvedValue({
       data: {
         user: { id: 1, name: 'Test User', email: 'test@example.com', role: 'guest' },
       },
@@ -85,12 +86,12 @@ describe('AuthContext', () => {
     })
 
     expect(screen.getByTestId('authenticated').textContent).toBe('true')
-    expect(mockApi.get).toHaveBeenCalledWith('/auth/me-httponly')
+    expect(mockGet).toHaveBeenCalledWith('/auth/me-httponly')
   })
 
   it('clears user on failed token validation', async () => {
     sessionStorage.setItem('csrf_token', 'expired-csrf')
-    mockApi.get.mockRejectedValue({ response: { status: 401 } })
+    mockGet.mockRejectedValue({ response: { status: 401 } })
 
     render(
       <AuthProvider>
@@ -107,7 +108,7 @@ describe('AuthContext', () => {
   })
 
   it('logs in successfully and sets user', async () => {
-    mockApi.post.mockResolvedValue({
+    mockPost.mockResolvedValue({
       data: {
         user: { id: 1, name: 'Logged In', email: 'test@example.com', role: 'guest' },
         csrf_token: 'new-csrf',
@@ -131,7 +132,7 @@ describe('AuthContext', () => {
       expect(screen.getByTestId('user').textContent).toBe('Logged In')
     })
 
-    expect(mockApi.post).toHaveBeenCalledWith('/auth/login-httponly', {
+    expect(mockPost).toHaveBeenCalledWith('/auth/login-httponly', {
       email: 'test@example.com',
       password: 'password123',
       remember_me: false,
@@ -139,7 +140,7 @@ describe('AuthContext', () => {
   })
 
   it('sets error on login failure', async () => {
-    mockApi.post.mockRejectedValue({
+    mockPost.mockRejectedValue({
       response: { data: { message: 'Invalid credentials' } },
     })
 
@@ -162,7 +163,7 @@ describe('AuthContext', () => {
   })
 
   it('logs out and clears user state', async () => {
-    mockApi.post.mockResolvedValueOnce({
+    mockPost.mockResolvedValueOnce({
       data: {
         user: { id: 1, name: 'Logged In', email: 'test@example.com', role: 'guest' },
         csrf_token: 'csrf',
@@ -186,7 +187,7 @@ describe('AuthContext', () => {
       expect(screen.getByTestId('authenticated').textContent).toBe('true')
     })
 
-    mockApi.post.mockResolvedValueOnce({})
+    mockPost.mockResolvedValueOnce({})
     await user.click(screen.getByTestId('logout'))
 
     await waitFor(() => {
@@ -196,7 +197,7 @@ describe('AuthContext', () => {
   })
 
   it('clears error when clearError is called', async () => {
-    mockApi.post.mockRejectedValue({
+    mockPost.mockRejectedValue({
       response: { data: { message: 'Some error' } },
     })
 

@@ -11,12 +11,6 @@ vi.mock('react-router-dom', () => ({
 }))
 
 // Mock room API
-const mockRooms = [
-  { id: 1, name: 'Deluxe Room', price: 150, status: 'available', description: 'Nice room', image_url: null, created_at: '', updated_at: '' },
-  { id: 2, name: 'Suite Room', price: 250, status: 'available', description: 'Luxury', image_url: null, created_at: '', updated_at: '' },
-  { id: 3, name: 'Maintenance Room', price: 100, status: 'maintenance', description: '', image_url: null, created_at: '', updated_at: '' },
-]
-
 vi.mock('../rooms/room.api', () => ({
   getRooms: vi.fn().mockResolvedValue([
     { id: 1, name: 'Deluxe Room', price: 150, status: 'available', description: 'Nice room', image_url: null, created_at: '', updated_at: '' },

@@ -23,7 +23,10 @@ class ContactMessage extends Model
      *
      * HTML Purifier whitelist to prevent XSS in contact form submissions.
      */
-    protected $purifiable = ['name', 'subject', 'message'];
+    public function getPurifiableFields(): array
+    {
+        return ['name', 'subject', 'message'];
+    }
 
     protected $casts = [
         'read_at' => 'datetime',

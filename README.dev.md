@@ -5,7 +5,7 @@ This file documents how to run the project locally (Windows-optimized) and with 
 ## Summary
 
 - Frontend: `frontend/` — React + TypeScript + Vite
-- Backend: `backend/` — Laravel (PHP 8.x)
+- Backend: `backend/` — Laravel 11 (PHP 8.3)
 - DB: PostgreSQL (optional when using Docker)
 
 Two main approaches:

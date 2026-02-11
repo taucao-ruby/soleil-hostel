@@ -16,7 +16,7 @@
 | **RAM**       | 16 GB                              |
 | **Storage**   | NVMe SSD                           |
 | **PHP**       | 8.3 (built-in dev server)          |
-| **Database**  | PostgreSQL 15.1                    |
+| **Database**  | PostgreSQL 16                      |
 | **Cache**     | Redis 7.0                          |
 | **Test Data** | 50 rooms, 500+ bookings (seeded)   |
 | **Tool**      | k6 v0.48+                          |

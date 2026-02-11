@@ -270,7 +270,7 @@ php artisan tinker
 
 ### Test Environment
 
-- Database: PostgreSQL 15
+- Database: PostgreSQL 16
 - Cache: Redis 7.0
 - Rooms: 50
 - Users: 1,000

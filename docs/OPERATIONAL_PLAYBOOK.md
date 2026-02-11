@@ -59,11 +59,13 @@ This playbook provides step-by-step procedures for handling operational events. 
 1. **Check application status**
 
    ```bash
-   # Check if PHP-FPM is running
-   systemctl status php-fpm
+   # Check if the Laravel dev server is running
+   # Local:
+   php artisan serve --host=127.0.0.1 --port=8000
 
-   # Check if Nginx is running
-   systemctl status nginx
+   # Docker:
+   docker compose ps
+   docker compose logs backend
 
    # Check Laravel logs
    tail -100 storage/logs/laravel.log
@@ -72,10 +74,13 @@ This playbook provides step-by-step procedures for handling operational events. 
 2. **Restart application**
 
    ```bash
-   # Restart PHP-FPM
-   sudo systemctl restart php-fpm
+   # Local: restart the dev server
+   php artisan serve --host=127.0.0.1 --port=8000
 
-   # If using Octane
+   # Docker: restart the backend container
+   docker compose restart backend
+
+   # If using Octane (production)
    php artisan octane:reload
    ```
 
@@ -152,7 +157,7 @@ If not resolved in 30 minutes, escalate to senior developer/DevOps.
 3. **Check database logs**
 
    ```bash
-   sudo tail -100 /var/log/postgresql/postgresql-15-main.log
+   sudo tail -100 /var/log/postgresql/postgresql-16-main.log
    ```
 
 4. **Check connection pool**
@@ -339,12 +344,10 @@ Monitor error rate in Sentry/Grafana for 15 minutes after fix.
 3. **If attack - block IP**
 
    ```bash
-   # Nginx
-   sudo echo "deny 1.2.3.4;" >> /etc/nginx/conf.d/blocked.conf
-   sudo nginx -t && sudo systemctl reload nginx
-
-   # Or via iptables
+   # Via iptables / firewall
    sudo iptables -A INPUT -s 1.2.3.4 -j DROP
+
+   # Or if behind a reverse proxy, block at that level
    ```
 
 4. **If legitimate - adjust limits**
@@ -639,9 +642,8 @@ DB::cursor()->each(function ($row) {
    php artisan tinker
    >>> User::find($id)->tokens()->delete();
 
-   # Block suspicious IP
-   sudo echo "deny 1.2.3.4;" >> /etc/nginx/conf.d/blocked.conf
-   sudo nginx -t && sudo systemctl reload nginx
+   # Block suspicious IP via firewall
+   sudo iptables -A INPUT -s 1.2.3.4 -j DROP
    ```
 
 3. **Preserve evidence**
@@ -878,11 +880,11 @@ php artisan queue:failed | wc -l
 
 ## Contact Information
 
-| Role             | Name     | Contact                   |
-| ---------------- | -------- | ------------------------- |
-| On-Call Engineer | Rotation | oncall@soleilhostel.com   |
-| DevOps Lead      | TBD      | devops@soleilhostel.com   |
-| Security         | TBD      | security@soleilhostel.com |
+| Role             | Name             | Contact                   |
+| ---------------- | ---------------- | ------------------------- |
+| On-Call Engineer | Rotation         | oncall@soleilhostel.com   |
+| DevOps Lead      | [To be assigned] | devops@soleilhostel.com   |
+| Security         | [To be assigned] | security@soleilhostel.com |
 
 ---
 

@@ -4,6 +4,11 @@ services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
     environment:
       POSTGRES_USER: ${DB_USERNAME:-soleil}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
@@ -24,6 +29,11 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
     ports:
       - "127.0.0.1:6379:6379"
     volumes:
@@ -53,10 +63,15 @@ services:
     volumes:
       - ./backend:/var/www
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     depends_on:
       - db
       - redis
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
     environment:
       APP_ENV: ${APP_ENV:-local}
       APP_DEBUG: ${APP_DEBUG:-false}
@@ -75,7 +90,7 @@ services:
       QUEUE_CONNECTION: redis
       SANCTUM_STATEFUL_DOMAINS: ${SANCTUM_STATEFUL_DOMAINS:-localhost:5173,127.0.0.1:5173}
       SESSION_DOMAIN: ${SESSION_DOMAIN:-localhost}
-    command: bash -lc "set -e; composer install --no-interaction --prefer-dist; (grep -q \"^APP_KEY=base64:\" .env || php artisan key:generate --force); php artisan migrate --force; php artisan serve --host=0.0.0.0 --port=8000"
+    command: bash -lc "set -e; composer install --no-interaction --prefer-dist; (grep -q \"^APP_KEY=base64:\" .env || php artisan key:generate --force); echo \"Run: docker compose exec backend php artisan migrate\"; php artisan serve --host=0.0.0.0 --port=8000"
 
   frontend:
     build:
@@ -84,8 +99,14 @@ services:
     working_dir: /app
     volumes:
       - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
     ports:
-      - "5173:5173"
+      - "127.0.0.1:5173:5173"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
     environment:
       VITE_API_URL: ${API_URL:-http://localhost:8000/api}
     command: bash -lc "set -e; npm install; npm run dev -- --host 0.0.0.0"
@@ -95,3 +116,4 @@ volumes:
     driver: local
   redisdata:
     driver: local
+  frontend_node_modules:

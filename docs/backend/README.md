@@ -76,7 +76,7 @@
 | --------- | --------------- |
 | Framework | Laravel 11      |
 | Language  | PHP 8.3         |
-| Database  | PostgreSQL 15   |
+| Database  | PostgreSQL 16   |
 | Cache     | Redis 7         |
 | Auth      | Laravel Sanctum |
 | Server    | Laravel Octane  |

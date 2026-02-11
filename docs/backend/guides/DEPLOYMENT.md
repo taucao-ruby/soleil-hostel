@@ -8,7 +8,7 @@
 | -------- | -------------- | ---- | --------------------- |
 | backend  | Laravel 11     | 8000 | API server            |
 | frontend | Vite + React   | 5173 | Web application       |
-| db       | PostgreSQL 15  | 5432 | Primary database      |
+| db       | PostgreSQL 16  | 5432 | Primary database      |
 | redis    | Redis 7 Alpine | 6379 | Cache, queue, session |
 
 ---

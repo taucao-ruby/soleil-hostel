@@ -2,13 +2,13 @@
 
 **Last Updated:** February 11, 2026  
 **Working Branch:** `dev`  
-**Branch Alignment:** `main` and `dev` both point to `712478e`
+**Branch Alignment:** `dev` at `096adfa` (8 commits ahead of `main` at `712478e`)
 
 ## Verified Current State (February 11, 2026)
 
 | Area | Verification Command | Result |
 | --- | --- | --- |
-| Branch alignment | `git branch -vv` | PASS - `main` and `dev` are aligned at `712478e` |
+| Branch alignment | `git branch -vv` | `dev` at `096adfa`, `main` at `712478e` (dev 8 ahead) |
 | Working tree | `git status --short --branch` | PASS - clean working tree |
 | Compose syntax | `docker compose config` | PASS - compose renders successfully |
 | Compose YAML fix reference | `git show --no-patch --oneline 6bed5d8` | PASS - `6bed5d8` (`fix(docker): quote backend command to fix YAML parsing error`) |
@@ -19,19 +19,35 @@
 ## AUDIT v1 (February 9, 2026)
 
 ### Scope and Outcome
+
 - Identified: 61 issues.
-- Fixed: 54 issues (89%).
-- Remaining: 7 deferred v1 issues.
-- Execution model: 16 v1 prompt batches.
+- Fixed in initial v1 batches (Feb 9): 54 issues (89%).
+- Deferred: 7 issues — **all 7 subsequently resolved** in targeted follow-up commits.
+- Final v1 status: **61/61 resolved (100%)**.
+- Execution model: 16 v1 prompt batches + 7 targeted follow-up commits.
+
+### v1 Deferred Items — All Resolved
+
+| ID | Description | Resolution Commit |
+| --- | --- | --- |
+| `BE-019` | Duplicate availability services | `092165c` — unified into RoomAvailabilityService |
+| `BE-021` | BookingService missing payment/refund select fields | `59dd57e` — added BOOKING_PAYMENT_REFUND_COLUMNS |
+| `BE-028` | X-CSP-Nonce header nonce leak | `3adb2f3` — removed nonce from response header |
+| `BE-031` | Duplicate health controllers | `3cda2fe` — deduplicated route/controller |
+| `BE-037` | Migration chronology issue | `096adfa` — corrective migration added |
+| `DV-013` | Overlapping push-to-main CI workflows | `eab5753` — removed redundant workflow |
+| `TST-004` | Foreign keys not enabled in test env | `2181f4f` — enabled FK integrity in tests |
 
 ### v1 Tracking Rules
-- v1 issues are tracked only in `AUDIT_FIX_PROMPTS_V1.md`.
+
+- v1 issues are tracked only in `AUDIT_FIX_PROMTS_V1.md`.
 - v1 issue IDs and v2 issue IDs must remain separated.
 - v1 batch commits should use the same batch style as existing history: `fix(<scope>): batch <n> - <summary> [<issue IDs>]`.
 
 ## AUDIT v2 (February 10-11, 2026)
 
-### Scope and Outcome
+### v2 Scope and Outcome
+
 - Identified: 98 issues (deep code-level review).
 - Resolution status in repository history: 98/98 resolved using batch 1 through batch 10 plus targeted follow-up fixes.
 - Compose reliability fix is explicitly recorded in commit `6bed5d8`.
@@ -60,6 +76,6 @@
 
 - `AUDIT_REPORT.md` - Current verified audit state and evidence.
 - `PROJECT_STATUS.md` - Executive status aligned to this report.
-- `AUDIT_FIX_PROMPTS_V1.md` - v1-only remediation playbook.
-- `AUDIT_FIX_PROMPTS_V2.md` - v2-only remediation playbook.
-- `AUDIT_FIX_PROMPTS.md` - Index file linking both playbooks.
+- `AUDIT_FIX_PROMTS_V1.md` - v1-only remediation playbook (all batches completed).
+- `AUDIT_FIX_PROMTS_V2.md` - v2-only remediation playbook (all batches completed).
+- `AUDIT_FIX_PROMTS.md` - Remaining v1 improvement items.

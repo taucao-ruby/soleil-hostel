@@ -1,4 +1,4 @@
-# AUDIT_FIX_PROMPTS_V2.md
+# AUDIT_FIX_PROMTS_V2.md
 
 **Scope:** AUDIT v2 issues only (`*-NEW-*`)  
 **Last Updated:** February 11, 2026  

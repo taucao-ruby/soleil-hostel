@@ -1,8 +1,22 @@
-# AUDIT_FIX_PROMPTS_V1.md
+# AUDIT_FIX_PROMTS_V1.md
 
 **Scope:** AUDIT v1 issues only  
 **Last Updated:** February 11, 2026  
 **v1 Baseline:** 61 issues identified, 54 fixed, 7 deferred
+
+## Deferred v1 Backlog (Historical Closeout: 7)
+
+The historical v1 closeout states 7 deferred items. The surviving v1 docs explicitly preserve 6 IDs plus one carry-over slot.
+
+| Deferred Item | Status in v1 Closeout | Current Playbook Mapping |
+| --- | --- | --- |
+| `BE-019` (partial) | Deferred (partial completion) | Batch 8 |
+| `DV-013` | Deferred | Batch 15 |
+| `BE-028` | Deferred | Batch 15 |
+| `BE-031` | Deferred | Batch 15 |
+| `TST-004` | Deferred | Batch 15 |
+| `BE-037` | Deferred | Batch 16 |
+| `V1-DEFERRED-UNMAPPED-01` | Deferred carry-over item referenced in historical totals; exact ID not preserved in surviving v1 summaries | Track during replay and map to appropriate batch once source ID is recovered |
 
 ## Purpose
 
@@ -46,7 +60,7 @@ Use this format for every v1 batch:
 | 12 | API response standardization | `fix(api): batch 12 - standardize API response envelope [BE-015]` |
 | 13 | Frontend duplicate/type cleanup | `fix(frontend): batch 13 - remove duplicates and consolidate types [FE-009,FE-010,FE-017,FE-018,FE-019]` |
 | 14 | Frontend test baseline | `test(frontend): batch 14 - add core unit test baseline [TST-001,TST-002]` |
-| 15 | Docker multi-stage + CI consolidation | `fix(ci): batch 15 - Docker multi-stage and CI consolidation [DV-006,DV-013,DV-014,DV-015]` |
+| 15 | Docker/CI consolidation + deferred medium backlog | `fix(ci): batch 15 - Docker multi-stage, CI consolidation, and deferred medium items [DV-006,DV-013,DV-014,DV-015,BE-028,BE-031,TST-004]` |
 | 16 | Low-priority cleanup sweep | `fix(cleanup): batch 16 - low-priority cleanup sweep [BE-037,BE-040,DV-008,DV-020,FE-003,FE-004,FE-014,FE-015,FE-022,FE-023,SEC-006,SEC-007,SEC-009,SEC-010]` |
 
 ## Domain Grouping
@@ -491,15 +505,18 @@ Commit: test(frontend): batch 14 - add core unit test baseline [TST-001,TST-002]
 Do not push.
 ```
 
-## Batch 15 - Docker multi-stage + CI consolidation
+## Batch 15 - Docker/CI consolidation + deferred medium backlog
 
 **Goal / DoD**
-- Improve build/runtime separation and reduce CI duplication.
+- Improve build/runtime separation, reduce CI duplication, and resolve deferred medium v1 items tied to middleware/health/test integrity.
 
 **Inspect**
 - Backend/Frontend Dockerfiles
 - `.dockerignore` files
 - CI workflow overlap
+- `backend/app/Http/Middleware/SecurityHeaders.php`
+- health route/controller overlap points
+- `backend/phpunit.xml` foreign-key config path
 
 **Verify**
 - `docker compose config`
@@ -518,8 +535,11 @@ Tasks:
 1) Apply multi-stage Docker improvements.
 2) Add/clean .dockerignore files.
 3) Consolidate redundant CI workflow steps/jobs safely.
-Verify: docker compose config and CI YAML validation
-Commit: fix(ci): batch 15 - Docker multi-stage and CI consolidation [DV-006,DV-013,DV-014,DV-015]
+4) Remove CSP nonce response-header exposure path while preserving nonce usage server-side.
+5) Consolidate duplicate health controller/route pathing.
+6) Enable foreign-key integrity in test strategy (or equivalent production-parity test enforcement).
+Verify: docker compose config, CI YAML validation, and cd backend && php artisan test
+Commit: fix(ci): batch 15 - Docker multi-stage, CI consolidation, and deferred medium items [DV-006,DV-013,DV-014,DV-015,BE-028,BE-031,TST-004]
 Do not push.
 ```
 

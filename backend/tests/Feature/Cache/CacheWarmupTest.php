@@ -43,8 +43,8 @@ class CacheWarmupTest extends TestCase
     protected function createTestData(): void
     {
         // Create rooms
-        Room::factory()->count(5)->create(['status' => 'active']);
-        Room::factory()->count(2)->create(['status' => 'inactive']);
+        Room::factory()->count(5)->create(['status' => 'available']);
+        Room::factory()->count(2)->create(['status' => 'maintenance']);
 
         // Create users with different roles
         User::factory()->create(['role' => 'admin', 'email' => 'admin@test.com']);

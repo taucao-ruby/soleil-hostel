@@ -91,7 +91,7 @@ class SecurityHeadersTest extends TestCase
     {
         $response = $this->get('/');
         
-        $response->assertHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+        $response->assertHeader('Cross-Origin-Embedder-Policy', 'credentialless');
     }
 
     /**

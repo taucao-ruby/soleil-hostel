@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
@@ -13,6 +14,12 @@ use Illuminate\Support\Facades\Redis;
 class MonitoringLoggingTest extends TestCase
 {
     use RefreshDatabase;
+
+    private function actingAsAdmin(): static
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        return $this->actingAs($admin, 'sanctum');
+    }
 
     /**
      * Test liveness health check endpoint.
@@ -59,7 +66,7 @@ class MonitoringLoggingTest extends TestCase
      */
     public function test_detailed_health_endpoint_returns_correct_structure(): void
     {
-        $response = $this->getJson('/api/health/full');
+        $response = $this->actingAsAdmin()->getJson('/api/health/full');
 
         // Accept both 200 (all healthy) and 503 (some unhealthy)
         $this->assertContains($response->status(), [200, 503]);

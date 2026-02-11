@@ -41,6 +41,7 @@ require base_path('routes/api/legacy.php');
 // ========== HEALTH CHECK (Consolidated into HealthController) ==========
 // Public health endpoints (for load balancers and monitoring)
 Route::get('/health', [HealthController::class, 'check']);
+Route::get('/ping', fn () => response()->json(['ok' => true, 'message' => 'API is working!']));
 
 // ========== KUBERNETES/DOCKER HEALTH PROBES (Public) ==========
 // Failure Semantics: DB=CRITICAL (503), Cache/Queue=DEGRADED (200 with warning)

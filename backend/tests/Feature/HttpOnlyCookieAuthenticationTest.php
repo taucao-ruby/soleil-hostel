@@ -45,7 +45,7 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
      */
     public function test_login_sets_httponly_cookie_without_plaintext_token(): void
     {
-        $response = $this->postJson('/api/auth/login-httponly', [
+        $response = $this->withSession([])->postJson('/api/auth/login-httponly', [
             'email' => 'test@example.com',
             'password' => 'password123',
         ]);
@@ -301,7 +301,7 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
      */
     public function test_csrf_token_endpoint_accessible_publicly(): void
     {
-        $response = $this->getJson('/api/auth/csrf-token');
+        $response = $this->withSession([])->getJson('/api/auth/csrf-token');
 
         $response->assertStatus(200);
         $response->assertJsonStructure(['csrf_token']);

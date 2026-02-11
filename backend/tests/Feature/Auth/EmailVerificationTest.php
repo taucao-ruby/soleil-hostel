@@ -217,7 +217,6 @@ class EmailVerificationTest extends TestCase
     {
         // Arrange
         $user = User::factory()->unverified()->create();
-        $token = $user->createToken('test-token')->plainTextToken;
 
         // Generate URL that expires in 60 minutes
         $verificationUrl = URL::temporarySignedRoute(
@@ -229,15 +228,15 @@ class EmailVerificationTest extends TestCase
         $path = parse_url($verificationUrl, PHP_URL_PATH);
         $query = parse_url($verificationUrl, PHP_URL_QUERY);
 
-        // Travel 2 days into the future
+        // Travel 2 days into the future (past the 60-minute signed URL expiry)
         $this->travel(2)->days();
 
-        // Act
-        $response = $this->withHeaders([
-            'Authorization' => "Bearer {$token}",
-        ])->getJson("{$path}?{$query}");
+        // Act — use actingAs to bypass Sanctum token expiration;
+        // we are testing the signed URL expiration, not the auth token
+        $response = $this->actingAs($user, 'sanctum')
+            ->getJson("{$path}?{$query}");
 
-        // Assert: Should be forbidden (expired)
+        // Assert: Should be forbidden (expired signed URL)
         $response->assertStatus(403);
     }
 

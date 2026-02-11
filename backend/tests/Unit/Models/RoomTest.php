@@ -182,7 +182,7 @@ class RoomTest extends TestCase
 
         $activeRooms = Room::active()->get();
 
-        $this->assertTrue($activeRooms->every(fn($r) => $r->status === 'active'));
+        $this->assertTrue($activeRooms->every(fn($r) => $r->status === 'available'));
     }
 
     // ========== STATUS VALUE TESTS ==========

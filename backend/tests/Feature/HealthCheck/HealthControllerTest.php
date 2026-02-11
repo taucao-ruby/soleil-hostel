@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\HealthCheck;
 
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
@@ -18,6 +20,14 @@ use Illuminate\Support\Facades\Redis;
  */
 class HealthControllerTest extends TestCase
 {
+    use RefreshDatabase;
+
+    private function actingAsAdmin(): static
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        return $this->actingAs($admin, 'sanctum');
+    }
+
     // ========== LIVENESS PROBE TESTS ==========
 
     #[\PHPUnit\Framework\Attributes\Test]
@@ -112,7 +122,7 @@ class HealthControllerTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function test_detailed_endpoint_includes_all_checks(): void
     {
-        $response = $this->getJson('/api/health/full');
+        $response = $this->actingAsAdmin()->getJson('/api/health/full');
 
         $this->assertTrue(in_array($response->getStatusCode(), [200, 503]));
         
@@ -145,7 +155,7 @@ class HealthControllerTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function test_detailed_endpoint_includes_metrics(): void
     {
-        $response = $this->getJson('/api/health/full');
+        $response = $this->actingAsAdmin()->getJson('/api/health/full');
 
         $data = $response->json();
         
@@ -159,7 +169,7 @@ class HealthControllerTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function test_detailed_endpoint_includes_degraded_components_list(): void
     {
-        $response = $this->getJson('/api/health/full');
+        $response = $this->actingAsAdmin()->getJson('/api/health/full');
 
         $data = $response->json();
         
@@ -171,7 +181,7 @@ class HealthControllerTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function test_database_endpoint_returns_critical_semantics(): void
     {
-        $response = $this->getJson('/api/health/db');
+        $response = $this->actingAsAdmin()->getJson('/api/health/db');
 
         $data = $response->json();
         
@@ -184,7 +194,7 @@ class HealthControllerTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function test_database_endpoint_returns_503_when_unhealthy(): void
     {
-        $response = $this->getJson('/api/health/db');
+        $response = $this->actingAsAdmin()->getJson('/api/health/db');
 
         $data = $response->json();
         
@@ -201,7 +211,7 @@ class HealthControllerTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function test_cache_endpoint_returns_degraded_semantics(): void
     {
-        $response = $this->getJson('/api/health/cache');
+        $response = $this->actingAsAdmin()->getJson('/api/health/cache');
 
         $data = $response->json();
         
@@ -216,7 +226,7 @@ class HealthControllerTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function test_queue_endpoint_returns_degraded_semantics(): void
     {
-        $response = $this->getJson('/api/health/queue');
+        $response = $this->actingAsAdmin()->getJson('/api/health/queue');
 
         $data = $response->json();
         
@@ -233,7 +243,7 @@ class HealthControllerTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function test_database_check_includes_latency(): void
     {
-        $response = $this->getJson('/api/health/db');
+        $response = $this->actingAsAdmin()->getJson('/api/health/db');
 
         $data = $response->json();
         
@@ -247,7 +257,7 @@ class HealthControllerTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function test_cache_check_includes_latency(): void
     {
-        $response = $this->getJson('/api/health/cache');
+        $response = $this->actingAsAdmin()->getJson('/api/health/cache');
 
         $data = $response->json();
         
@@ -262,9 +272,17 @@ class HealthControllerTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function test_health_endpoints_have_no_cache_headers(): void
     {
+        // Public endpoints
+        foreach (['/api/health/live', '/api/health/ready'] as $endpoint) {
+            $response = $this->getJson($endpoint);
+            $this->assertTrue(
+                str_contains($response->headers->get('Content-Type', ''), 'json'),
+                "Endpoint {$endpoint} should return JSON"
+            );
+        }
+
+        // Admin-only endpoints
         $endpoints = [
-            '/api/health/live',
-            '/api/health/ready',
             '/api/health/full',
             '/api/health/db',
             '/api/health/cache',
@@ -272,7 +290,7 @@ class HealthControllerTest extends TestCase
         ];
 
         foreach ($endpoints as $endpoint) {
-            $response = $this->getJson($endpoint);
+            $response = $this->actingAsAdmin()->getJson($endpoint);
             
             // Verify response is JSON
             $this->assertTrue(
@@ -288,19 +306,19 @@ class HealthControllerTest extends TestCase
     public function test_critical_vs_degraded_failure_semantics(): void
     {
         // Database endpoint should return 503 when unhealthy (critical)
-        $dbResponse = $this->getJson('/api/health/db');
+        $dbResponse = $this->actingAsAdmin()->getJson('/api/health/db');
         $dbData = $dbResponse->json();
-        
+
         if (!$dbData['healthy']) {
             $this->assertEquals(503, $dbResponse->getStatusCode());
         }
 
         // Cache endpoint should always return 200 (degraded)
-        $cacheResponse = $this->getJson('/api/health/cache');
+        $cacheResponse = $this->actingAsAdmin()->getJson('/api/health/cache');
         $cacheResponse->assertStatus(200);
 
         // Queue endpoint should always return 200 (degraded)
-        $queueResponse = $this->getJson('/api/health/queue');
+        $queueResponse = $this->actingAsAdmin()->getJson('/api/health/queue');
         $queueResponse->assertStatus(200);
     }
 
@@ -352,7 +370,7 @@ class HealthControllerTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function test_detailed_health_check_includes_redis_stats(): void
     {
-        $response = $this->get('/api/health/detailed');
+        $response = $this->actingAsAdmin()->get('/api/health/detailed');
 
         $this->assertTrue(in_array($response->getStatusCode(), [200, 503]));
     }

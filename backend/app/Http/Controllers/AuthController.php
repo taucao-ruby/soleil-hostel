@@ -16,6 +16,10 @@ use Illuminate\Validation\ValidationException;
  * @deprecated Use Auth\AuthController (Bearer token) or HttpOnlyTokenController (httpOnly cookies) instead.
  *             This controller is maintained for backward compatibility with legacy endpoints only.
  *             Sunset date: July 2026 (see routes/api.php deprecation middleware)
+ *
+ * @see \App\Http\Controllers\Auth\AuthController         Bearer token auth (v2)
+ * @see \App\Http\Controllers\Auth\HttpOnlyTokenController HttpOnly cookie auth
+ * @see \App\Http\Controllers\Auth\UnifiedAuthController   Mode-agnostic (auto-detect)
  */
 class AuthController extends Controller
 {

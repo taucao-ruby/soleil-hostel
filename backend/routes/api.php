@@ -69,10 +69,12 @@ Route::prefix('health')->middleware(['auth:sanctum', 'role:admin'])->group(funct
 // TODO: Add ReviewController route when ReviewController is implemented
 // Route::apiResource('reviews', ReviewController::class);
 
-// Auth routes (public - with rate limiting)
-// ========== LEGACY ENDPOINTS (Deprecated - Sunset July 2026) ==========
-// These endpoints are maintained for backward compatibility.
-// New clients SHOULD use -v2 or -httponly variants.
+// ========== LEGACY AUTH ENDPOINTS (Deprecated — Sunset July 2026) ==========
+// These endpoints are maintained for backward compatibility only.
+// New clients SHOULD use -v2, -httponly, or /auth/unified/ variants.
+// /auth/register and /auth/login still use legacy AuthController (different response format).
+// /auth/logout, /auth/refresh → consolidated to TokenAuthController (v2).
+// /auth/me → legacy AuthController (simpler response format, no token metadata).
 Route::post('/auth/register', [AuthController::class, 'register'])
     ->middleware(['throttle:5,1', 'deprecated:2026-07-01,/api/v2/auth/register']);
 Route::post('/auth/login', [AuthController::class, 'login'])
@@ -137,10 +139,12 @@ Route::middleware(['check_httponly_token'])->group(function () {
 });
 
 Route::middleware(['check_token_valid'])->group(function () {
-    // ========== LEGACY AUTH ENDPOINTS (Deprecated - Sunset July 2026) ==========
-    Route::post('/auth/logout', [AuthController::class, 'logout'])
+    // ========== LEGACY AUTH ENDPOINTS (Deprecated — Sunset July 2026) ==========
+    // /auth/logout and /auth/refresh now delegate to TokenAuthController (v2).
+    // /auth/me stays on legacy AuthController (simpler response, no token metadata).
+    Route::post('/auth/logout', [TokenAuthController::class, 'logout'])
         ->middleware('deprecated:2026-07-01,/api/auth/logout-v2');
-    Route::post('/auth/refresh', [AuthController::class, 'refresh'])
+    Route::post('/auth/refresh', [TokenAuthController::class, 'refresh'])
         ->middleware('deprecated:2026-07-01,/api/auth/refresh-v2');
     Route::get('/auth/me', [AuthController::class, 'me'])
         ->middleware('deprecated:2026-07-01,/api/auth/me-v2');

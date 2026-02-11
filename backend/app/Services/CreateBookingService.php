@@ -391,7 +391,8 @@ class CreateBookingService
             );
         }
 
-        if ($checkIn->isPast()) {
+        // Only enforce future check-in for new bookings, not updates to existing ones
+        if (!$isUpdate && $checkIn->isPast()) {
             throw new RuntimeException(
                 'Ngày check-in phải là ngày trong tương lai'
             );

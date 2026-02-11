@@ -146,7 +146,7 @@ class UnifiedAuthController extends Controller
      * SECURITY NOTE [SEC-NEW-05]: This method performs token validation directly,
      * bypassing the standard middleware checks. It's acceptable here because:
      * - This controller is behind auth:sanctum + check_token_valid middleware
-     * - We re-validate token validity via isValid() before returning mode
+     * - We re-validate token validity via isValid() + refresh_count before returning mode
      * - Used only for mode detection, not as sole authentication mechanism
      */
     private function detectAuthMode(Request $request): ?string
@@ -171,7 +171,7 @@ class UnifiedAuthController extends Controller
             // Verify cookie token exists in database
             $tokenHash = hash('sha256', $cookieToken);
             $token = PersonalAccessToken::where('token_hash', $tokenHash)->first();
-            if ($token && $token->isValid()) {
+            if ($token && $token->isValid() && $token->refresh_count <= config('sanctum.max_refresh_count', 50)) {
                 // Store token in request attributes for downstream use
                 $request->attributes->set('token', $token);
                 $request->attributes->set('user', $token->tokenable);
@@ -184,7 +184,7 @@ class UnifiedAuthController extends Controller
         if ($bearerToken) {
             $tokenHash = hash('sha256', $bearerToken);
             $token = PersonalAccessToken::where('token', $tokenHash)->first();
-            if ($token && $token->isValid()) {
+            if ($token && $token->isValid() && $token->refresh_count <= config('sanctum.max_refresh_count', 50)) {
                 return 'bearer';
             }
         }

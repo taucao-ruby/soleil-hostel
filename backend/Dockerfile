@@ -13,19 +13,17 @@ COPY . .
 RUN composer dump-autoload --optimize
 
 # Stage 2: Production image
-FROM php:8.3-cli
+FROM php:8.3-fpm
 WORKDIR /var/www
 RUN apt-get update && apt-get install -y \
-    libpq-dev libzip-dev \
+    libpq-dev libzip-dev nginx \
     && pecl install redis && docker-php-ext-enable redis \
     && docker-php-ext-install pdo pdo_pgsql zip opcache \
     && rm -rf /var/lib/apt/lists/*
-RUN groupadd -r soleil && useradd -r -g soleil -d /var/www soleil
-COPY --from=builder --chown=soleil:soleil /var/www /var/www
-USER soleil
-EXPOSE 8000
+COPY docker/nginx.conf /etc/nginx/sites-available/default
+COPY --from=builder /var/www /var/www
+RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
+EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD php -r "exit(file_get_contents('http://localhost:8000/api/health') === false ? 1 : 0);"
-# ⚠️ WARNING: php artisan serve is DEVELOPMENT ONLY.
-# For production, use PHP-FPM + Nginx or Laravel Octane (FrankenPHP/Swoole).
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+  CMD php -r "exit(file_get_contents('http://localhost:80/api/health') === false ? 1 : 0);"
+CMD ["sh", "-c", "php-fpm -D && nginx -g 'daemon off;'"]

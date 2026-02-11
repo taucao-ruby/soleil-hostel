@@ -6,7 +6,11 @@ on:
   pull_request:
     branches: [main, develop]
   push:
-    branches: [develop]
+    branches: [main, develop]
+
+concurrency:
+  group: ci-tests-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   PHP_VERSION: "8.3"

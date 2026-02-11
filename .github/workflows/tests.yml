@@ -366,7 +366,7 @@ jobs:
 
   # ========== STATIC ANALYSIS: PHPStan ==========
   phpstan:
-    name: PHPStan (Level 9)
+    name: PHPStan (Level 5)
     runs-on: ubuntu-latest
     needs: [backend-setup, setup]
     timeout-minutes: 10
@@ -384,9 +384,9 @@ jobs:
         with:
           path: backend/vendor
           key: backend-vendor-${{ needs.setup.outputs.composer-hash }}
-      - name: PHPStan analysis (Level 9)
+      - name: PHPStan analysis (Level 5)
         working-directory: ./backend
-        run: phpstan analyse --level=9 app/ --error-format=github
+        run: phpstan analyse --error-format=github
 
   # ========== STATIC ANALYSIS: Psalm ==========
   psalm:

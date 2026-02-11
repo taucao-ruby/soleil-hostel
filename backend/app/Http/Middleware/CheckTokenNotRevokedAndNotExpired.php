@@ -41,12 +41,9 @@ class CheckTokenNotRevokedAndNotExpired
         }
 
         // Tìm token ở database
-        // Sanctum hashes token, nên phải search theo hash
-        $tokenHash = hash('sha256', $bearerToken);
-        $token = PersonalAccessToken::where(
-            'token',
-            $tokenHash
-        )->first();
+        // Sanctum tokens use "{id}|{unhashed_token}" format from createToken()
+        // findToken() handles splitting the ID prefix and hashing correctly
+        $token = PersonalAccessToken::findToken($bearerToken);
 
         if (! $token) {
             // Token không tồn tại → 401

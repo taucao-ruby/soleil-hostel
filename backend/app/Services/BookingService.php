@@ -37,18 +37,27 @@ class BookingService
         'status',
         'guest_name',
         'guest_email',
-        'amount',
-        'payment_intent_id',
-        'refund_id',
-        'refund_status',
-        'refund_amount',
-        'refund_error',
         'cancelled_by',
         'cancelled_at',
         'cancellation_reason',
         'created_at',
         'updated_at',
     ];
+
+    // Payment/refund projection required by booking serializers and cancellation flow
+    private const BOOKING_PAYMENT_REFUND_COLUMNS = [
+        'amount',
+        'payment_intent_id',
+        'refund_id',
+        'refund_status',
+        'refund_amount',
+        'refund_error',
+    ];
+
+    private static function bookingSelectColumns(): array
+    {
+        return [...self::BOOKING_COLUMNS, ...self::BOOKING_PAYMENT_REFUND_COLUMNS];
+    }
 
     /**
      * Confirm a pending booking and trigger confirmation email notification.
@@ -150,7 +159,7 @@ class BookingService
                     ->with(['room' => function ($q) {
                         $q->select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'created_at', 'updated_at']);
                     }])
-                    ->select(self::BOOKING_COLUMNS)
+                    ->select(self::bookingSelectColumns())
                     ->orderBy('check_in', 'desc')
                     ->get()
             );
@@ -164,7 +173,7 @@ class BookingService
                     ->with(['room' => function ($q) {
                         $q->select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'created_at', 'updated_at']);
                     }])
-                    ->select(self::BOOKING_COLUMNS)
+                    ->select(self::bookingSelectColumns())
                     ->orderBy('check_in', 'desc')
                     ->get()
             );
@@ -188,7 +197,7 @@ class BookingService
                 $cacheKey,
                 self::CACHE_TTL_BOOKING,
                 fn() => Booking::with(['room', 'user'])
-                    ->select(self::BOOKING_COLUMNS)
+                    ->select(self::bookingSelectColumns())
                     ->find($bookingId)
             );
         }
@@ -198,7 +207,7 @@ class BookingService
                 $cacheKey,
                 self::CACHE_TTL_BOOKING,
                 fn() => Booking::with(['room', 'user'])
-                    ->select(self::BOOKING_COLUMNS)
+                    ->select(self::bookingSelectColumns())
                     ->find($bookingId)
             );
     }

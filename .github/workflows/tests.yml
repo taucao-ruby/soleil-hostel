@@ -480,10 +480,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Check for exposed credentials
         uses: gitleaks/gitleaks-action@v2
-        with:
-          source: .
 
   # ========== FRONTEND TESTS (Vitest) ==========
   frontend-unit-tests:

@@ -10,8 +10,6 @@ use App\Http\Resources\RoomResource;
 use App\Services\RoomService;
 use Illuminate\Http\JsonResponse;
 
-// Note: Room import retained for authorize() policy checks (Room::class)
-
 /**
  * RoomController - Thin controller following clean architecture.
  *
@@ -63,22 +61,15 @@ class RoomController extends Controller
     /**
      * Show a single room.
      *
-     * GET /api/rooms/{id}
+     * GET /api/rooms/{room}
      *
      * Response includes lock_version for optimistic locking.
      * Clients should store this version and send it back when updating.
      */
-    public function show($id): JsonResponse
+    public function show(Room $room): JsonResponse
     {
-        $room = $this->roomService->getRoomById($id);
-        
-        if (!$room) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Room not found',
-            ], 404);
-        }
-        
+        $room = $this->roomService->getRoomById($room->id);
+
         return response()->json([
             'success' => true,
             'message' => 'Room fetched successfully',
@@ -129,16 +120,8 @@ class RoomController extends Controller
      * On success, response includes new lock_version.
      * On conflict, client should refresh and retry.
      */
-    public function update(RoomRequest $request, $id): JsonResponse
+    public function update(RoomRequest $request, Room $room): JsonResponse
     {
-        $room = $this->roomService->findById($id);
-        if (!$room) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Room not found',
-            ], 404);
-        }
-
         // Use policy to check authorization
         $this->authorize('update', $room);
         
@@ -170,16 +153,8 @@ class RoomController extends Controller
      *
      * Optionally accepts lock_version in request body for consistency check.
      */
-    public function destroy(Request $request, $id): JsonResponse
+    public function destroy(Request $request, Room $room): JsonResponse
     {
-        $room = $this->roomService->findById($id);
-        if (!$room) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Room not found',
-            ], 404);
-        }
-
         // Use policy to check authorization
         $this->authorize('delete', $room);
         

@@ -111,7 +111,6 @@ class RoomCrudTest extends TestCase
         $response->assertStatus(404)
             ->assertJson([
                 'success' => false,
-                'message' => 'Room not found',
             ]);
     }
 

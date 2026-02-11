@@ -380,30 +380,6 @@ class Booking extends Model
     }
 
     /**
-     * Scope: Include only soft deleted bookings (for admin trash view).
-     */
-    public function scopeOnlyTrashed(Builder $query): Builder
-    {
-        return $query->onlyTrashed();
-    }
-
-    /**
-     * Scope: Include both active and soft deleted bookings.
-     */
-    public function scopeWithTrashed(Builder $query): Builder
-    {
-        return $query->withTrashed();
-    }
-
-    /**
-     * Check if this booking is soft deleted.
-     */
-    public function isTrashed(): bool
-    {
-        return $this->trashed();
-    }
-
-    /**
      * Scope: Filter overlapping bookings including soft deleted ones.
      * Use this for historical reports where deleted bookings matter.
      */

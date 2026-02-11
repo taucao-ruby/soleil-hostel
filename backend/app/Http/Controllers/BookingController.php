@@ -6,10 +6,10 @@ use App\Enums\BookingStatus;
 use App\Exceptions\BookingCancellationException;
 use App\Exceptions\RefundFailedException;
 use App\Models\Booking;
-use App\Models\Room;
 use App\Http\Requests\StoreBookingRequest;
 use App\Http\Requests\UpdateBookingRequest;
 use App\Http\Resources\BookingResource;
+use App\Events\BookingCreated;
 use App\Events\BookingUpdated;
 use App\Events\BookingDeleted;
 use App\Services\CreateBookingService;
@@ -18,6 +18,7 @@ use App\Services\CancellationService;
 use App\Services\RoomService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class BookingController extends Controller
@@ -71,7 +72,7 @@ class BookingController extends Controller
             );
 
             // Dispatch event for cache invalidation
-            event(new \App\Events\BookingCreated($booking));
+            event(new BookingCreated($booking));
 
             return response()->json([
                 'success' => true,
@@ -86,7 +87,7 @@ class BookingController extends Controller
             ], 422);
         } catch (\Throwable $e) {
             // Log error nếu cần
-            \Log::error('Booking creation failed: ' . $e->getMessage(), [
+            Log::error('Booking creation failed: ' . $e->getMessage(), [
                 'user_id' => auth()->id(),
                 'room_id' 
                 => $validated['room_id'] ?? null,
@@ -158,7 +159,7 @@ class BookingController extends Controller
                 'message' => $e->getMessage(),
             ], 422);
         } catch (\Throwable $e) {
-            \Log::error('Booking update failed: ' . $e->getMessage(), [
+            Log::error('Booking update failed: ' . $e->getMessage(), [
                 'booking_id' => $booking->id,
                 'exception' => class_basename($e),
             ]);

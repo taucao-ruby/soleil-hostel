@@ -32,18 +32,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
-      mysql:
-        image: mysql:8.0
+      postgres:
+        image: postgres:16-alpine
         env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: soleil_test
+          POSTGRES_USER: testing
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: testing
         options: >-
-          --health-cmd="mysqladmin ping"
+          --health-cmd="pg_isready -U testing"
           --health-interval=10s
           --health-timeout=5s
-          --health-retries=3
+          --health-retries=5
         ports:
-          - 3306:3306
+          - 5432:5432
       redis:
         image: redis:7-alpine
         options: >-
@@ -59,7 +60,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ env.PHP_VERSION }}
-          extensions: redis,pdo_mysql
+          extensions: redis,pdo_pgsql
           tools: composer
           coverage: xdebug
       - name: Cache Composer packages
@@ -77,24 +78,16 @@ jobs:
           cp .env.example .env.testing
           php artisan key:generate --env=testing
           php artisan migrate --env=testing --force
-      - name: Health Check - Redis
-        working-directory: ./backend
-        run: |
-          echo "Testing Redis connectivity..."
-          php artisan tinker --execute "echo \Illuminate\Support\Facades\Redis::connection('cache')->ping();"
-      - name: Health Check - Database
-        working-directory: ./backend
-        run: |
-          php artisan tinker --execute "echo \Illuminate\Support\Facades\DB::connection()->getPdo() ? 'OK' : 'FAILED';"
       - name: Run Tests
         working-directory: ./backend
         env:
           APP_ENV: testing
-          DB_CONNECTION: mysql
+          DB_CONNECTION: pgsql
           DB_HOST: 127.0.0.1
-          DB_DATABASE: soleil_test
-          DB_USERNAME: root
-          DB_PASSWORD: root
+          DB_PORT: 5432
+          DB_DATABASE: testing
+          DB_USERNAME: testing
+          DB_PASSWORD: password
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: 6379
         run: |
@@ -142,18 +135,19 @@ jobs:
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     timeout-minutes: 15
     services:
-      mysql:
-        image: mysql:8.0
+      postgres:
+        image: postgres:16-alpine
         env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: soleil_test
+          POSTGRES_USER: testing
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: testing
         options: >-
-          --health-cmd="mysqladmin ping"
+          --health-cmd="pg_isready -U testing"
           --health-interval=10s
           --health-timeout=5s
-          --health-retries=3
+          --health-retries=5
         ports:
-          - 3306:3306
+          - 5432:5432
       redis:
         image: redis:7-alpine
         options: >-
@@ -169,7 +163,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ env.PHP_VERSION }}
-          extensions: redis,pdo_mysql
+          extensions: redis,pdo_pgsql
       - name: Install backend dependencies
         working-directory: ./backend
         run: composer install --prefer-dist --no-progress
@@ -239,22 +233,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
       - name: Login to GHCR
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Login to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         continue-on-error: true
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Extract metadata
         id: meta
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: |
             ${{ env.REGISTRY }}/${{ github.repository }}
@@ -270,7 +264,7 @@ jobs:
           name: frontend-dist
           path: frontend/dist
       - name: Build and push Backend
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           context: ./backend
           push: true
@@ -280,7 +274,7 @@ jobs:
           build-args: |
             BUILDKIT_INLINE_CACHE=1
       - name: Build and push Frontend
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           context: ./frontend
           push: true
@@ -318,6 +312,9 @@ jobs:
     needs: [docker-build, backend-tests, e2e-tests]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     timeout-minutes: 15
+    concurrency:
+      group: deploy-${{ github.ref }}
+      cancel-in-progress: false
     environment:
       name: production
       url: https://soleilhotel.com

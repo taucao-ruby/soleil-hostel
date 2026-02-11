@@ -69,14 +69,15 @@ export function validateBookingForm(data: {
 
     if (checkOutDate <= checkInDate) {
       errors.check_out = 'Check-out must be after check-in'
-    }
+    } else {
+      // Maximum stay validation (e.g., 30 days)
+      const diffDays = Math.ceil(
+        (checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24)
+      )
 
-    // Maximum stay validation (e.g., 30 days)
-    const diffTime = Math.abs(checkOutDate.getTime() - checkInDate.getTime())
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-
-    if (diffDays > 30) {
-      errors.check_out = 'Maximum stay is 30 days'
+      if (diffDays > 30) {
+        errors.check_out = 'Maximum stay is 30 days'
+      }
     }
   }
 
@@ -91,12 +92,14 @@ export function validateBookingForm(data: {
 }
 
 /**
- * Calculate number of nights between two dates
+ * Calculate number of nights between two dates.
+ * Returns 0 if check-out is not after check-in.
  */
 export function calculateNights(checkIn: string, checkOut: string): number {
   const checkInDate = new Date(checkIn)
   const checkOutDate = new Date(checkOut)
-  const diffTime = Math.abs(checkOutDate.getTime() - checkInDate.getTime())
+  if (checkOutDate <= checkInDate) return 0
+  const diffTime = checkOutDate.getTime() - checkInDate.getTime()
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 }
 

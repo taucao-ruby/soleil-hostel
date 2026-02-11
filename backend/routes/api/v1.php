@@ -26,14 +26,14 @@ Route::get('/locations/{slug}/availability', [LocationController::class, 'availa
 // ========== ROOM ENDPOINTS (v1) ==========
 // Public read-only (now supports ?location_id= filter)
 Route::get('/rooms', [RoomController::class, 'index']);
-Route::get('/rooms/{id}', [RoomController::class, 'show']);
+Route::get('/rooms/{room}', [RoomController::class, 'show']);
 
 // Protected room management (Admin only)
 Route::middleware(['check_token_valid'])->group(function () {
     Route::post('/rooms', [RoomController::class, 'store']);
-    Route::put('/rooms/{id}', [RoomController::class, 'update']);
-    Route::patch('/rooms/{id}', [RoomController::class, 'update']);
-    Route::delete('/rooms/{id}', [RoomController::class, 'destroy']);
+    Route::put('/rooms/{room}', [RoomController::class, 'update']);
+    Route::patch('/rooms/{room}', [RoomController::class, 'update']);
+    Route::delete('/rooms/{room}', [RoomController::class, 'destroy']);
 });
 
 // ========== BOOKING ENDPOINTS (v1) ==========

@@ -6,7 +6,6 @@
 # Usage:
 # - Set environment variables: FORGE_API_TOKEN, FORGE_SERVER_ID, FORGE_SITE_ID
 # - Run: bash deploy-forge.sh
-# - Or: curl https://raw.githubusercontent.com/.../deploy-forge.sh | bash
 #
 # Features:
 # - Zero-downtime: Queue separate workers during deploy

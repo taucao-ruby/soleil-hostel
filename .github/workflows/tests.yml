@@ -161,7 +161,7 @@ jobs:
             --coverage-text \
             --min-coverage-percentage=95
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           files: ./backend/coverage.xml
           flags: backend
@@ -319,7 +319,7 @@ jobs:
           QUERY_DETECTOR_ENABLED: true
           QUERY_DETECTOR_THRESHOLD: 50
       - name: Report Results
-        if: always()
+        if: success()
         run: |
           echo "## N+1 Query Detection Results" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Query count within acceptable range" >> $GITHUB_STEP_SUMMARY
@@ -506,7 +506,7 @@ jobs:
         working-directory: ./frontend
         run: pnpm test:unit --coverage
       - name: Upload coverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           files: ./frontend/coverage/coverage-final.json
           flags: frontend

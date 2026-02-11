@@ -14,6 +14,9 @@ import { appNavigate } from '@/shared/lib/navigation'
 
 // Read API base URL from Vite environment variable
 // Default to localhost for development
+if (import.meta.env.PROD && !import.meta.env.VITE_API_URL) {
+  throw new Error('VITE_API_URL environment variable is required in production')
+}
 const BASE_URL = (import.meta.env.VITE_API_URL as string) || 'http://localhost:8000/api'
 
 // Refresh mutex - prevents multiple concurrent refresh requests

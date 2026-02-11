@@ -29,6 +29,7 @@ This document captures important architectural decisions made during the develop
 | [ADR-010](#adr-010-redis-with-database-fallback)                | Redis with Database Cache Fallback            | Accepted | Dec 2025 |
 | [ADR-011](#adr-011-form-request-validation)                     | Form Request Validation Classes               | Accepted | Jan 2026 |
 | [ADR-012](#adr-012-api-versioning-strategy)                     | API Versioning Strategy                       | Accepted | Dec 2025 |
+| [ADR-013](#adr-013-multi-location-architecture)                 | Multi-Location Architecture                   | Accepted | Feb 2026 |
 
 ---
 
@@ -695,10 +696,74 @@ Why was this decision made? Include alternatives considered.
 
 ---
 
+## ADR-013: Multi-Location Architecture
+
+**Status**: Accepted
+**Date**: February 2026
+**Deciders**: Development Team
+
+### Context
+
+Soleil Hostel expanded from a single property to multiple locations across Hue City. The system needed to support:
+
+- Multiple physical locations with independent room inventories
+- Location-specific booking management and availability
+- Cross-location analytics and reporting
+- Location-aware API endpoints
+
+### Decision
+
+Introduce a **Location model** as a first-class entity with a one-to-many relationship to Rooms, and a denormalized `location_id` on Bookings for analytics.
+
+```text
+Location (1) ──→ (N) Room (1) ──→ (N) Booking
+Location (1) ──→ (N) Booking  (denormalized for analytics)
+```
+
+API endpoints:
+
+```text
+GET  /api/v1/locations              → List all active locations
+GET  /api/v1/locations/{slug}       → Location detail + rooms
+GET  /api/v1/locations/{slug}/availability → Room availability
+GET  /api/v1/rooms?location_id=X    → Filter rooms by location
+```
+
+### Rationale
+
+| Approach                    | Pros                          | Cons                         |
+| --------------------------- | ----------------------------- | ---------------------------- |
+| Denormalized (chosen)       | Fast analytics, simple joins  | Data duplication on location |
+| Fully normalized            | No duplication                | Complex joins for reports    |
+| Separate databases per site | Full isolation                | Operational complexity       |
+
+### Consequences
+
+**Positive:**
+
+- Location-based filtering with no extra joins
+- Slug-based URLs for SEO (`/locations/soleil-hue-center`)
+- Room counts computed efficiently via `withCount`
+- Analytics queries stay simple with denormalized `location_id` on bookings
+
+**Negative:**
+
+- `location_id` on bookings must stay in sync with `room.location_id`
+- Migration required when adding new locations
+- Location deletion requires cascade consideration
+
+### Related
+
+- [Location Model](../backend/app/Models/Location.php)
+- [LocationController](../backend/app/Http/Controllers/LocationController.php)
+
+---
+
 ## Decision Log History
 
 | Date     | ADR     | Action | Notes                        |
 | -------- | ------- | ------ | ---------------------------- |
+| Feb 2026 | ADR-013 | Added  | Multi-location architecture  |
 | Jan 2026 | ADR-008 | Added  | Markdown email templates     |
 | Jan 2026 | ADR-011 | Added  | Form request validation      |
 | Jan 2026 | ADR-002 | Added  | Repository pattern           |

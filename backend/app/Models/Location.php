@@ -65,7 +65,6 @@ class Location extends Model
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
         'total_rooms' => 'integer',
-        'lock_version' => 'integer',
     ];
 
     // ===== RELATIONSHIPS =====
@@ -128,9 +127,6 @@ class Location extends Model
             'locations.city',
             'locations.district',
             'locations.ward',
-            'locations.postal_code',
-            'locations.latitude',
-            'locations.longitude',
             'locations.phone',
             'locations.email',
             'locations.description',
@@ -138,7 +134,6 @@ class Location extends Model
             'locations.images',
             'locations.is_active',
             'locations.total_rooms',
-            'locations.lock_version',
             'locations.created_at',
             'locations.updated_at',
         ]);
@@ -174,11 +169,4 @@ class Location extends Model
         );
     }
 
-    /**
-     * Get lock_version with fallback for safety.
-     */
-    public function getLockVersionAttribute(?int $value): int
-    {
-        return $value ?? 1;
-    }
 }

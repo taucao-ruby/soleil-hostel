@@ -18,6 +18,8 @@ return [
     |
     */
 
+    // NOTE: 'database' driver required for Sanctum stateful SPA auth (CSRF cookie flow).
+    // Docker override uses 'redis' for performance. Do NOT switch to 'array'.
     'driver' => env('SESSION_DRIVER', 'database'),
 
     /*

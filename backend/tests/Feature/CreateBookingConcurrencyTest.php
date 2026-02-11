@@ -116,7 +116,7 @@ class CreateBookingConcurrencyTest extends TestCase
 
         $response->assertStatus(422);
         $response->assertJsonPath('success', false);
-        $response->assertJsonPath('message', 'Phòng đã được đặt cho ngày chỉ định. Vui lòng chọn ngày khác.');
+        $response->assertJsonPath('message', 'Room is already booked for the specified dates. Please choose different dates.');
 
         // Verify booking không được tạo
         $this->assertEquals(1, Booking::where('room_id', $this->room->id)->count());

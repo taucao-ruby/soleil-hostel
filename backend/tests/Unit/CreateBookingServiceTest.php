@@ -113,7 +113,7 @@ class CreateBookingServiceTest extends TestCase
 
         // Try to create overlapping booking
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Phòng đã được đặt');
+        $this->expectExceptionMessage('Room is already booked for the specified dates');
 
         $this->service->create(
             roomId: $this->room->id,

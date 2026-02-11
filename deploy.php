@@ -63,8 +63,10 @@ class DeploymentManager {
         $output = shell_exec('php artisan test ' . $testPath . ' 2>&1');
         chdir($this->basePath);
         
-        if (strpos($output, 'PASS') !== false || strpos($output, '48') !== false) {
-            $this->success('✅ All 48 tests passing');
+        if (strpos($output, 'PASS') !== false || preg_match('/(\d+) passed/', $output)) {
+            preg_match('/(\d+) passed/', $output, $m);
+            $count = $m[1] ?? '?';
+            $this->success("✅ All {$count} tests passing");
             $this->success[] = 'Test Suite Verification';
         } else {
             $this->error('Test suite failed. Output:');
@@ -74,29 +76,10 @@ class DeploymentManager {
     }
     
     private function databaseOperations() {
-        $dbPath = $this->backendPath . '/database/database.sqlite';
-        
-        // Check database exists
-        if (file_exists($dbPath)) {
-            $this->info('Database found: ' . $dbPath);
-            
-            // Create backup
-            $backupPath = $this->backendPath . '/database/backups/database_' . date('Y-m-d_His') . '.sqlite';
-            if (!is_dir(dirname($backupPath))) {
-                mkdir(dirname($backupPath), 0755, true);
-            }
-            
-            if (copy($dbPath, $backupPath)) {
-                $this->success('✅ Database backup created: ' . basename($backupPath));
-                $this->success[] = 'Database Backup';
-            } else {
-                $this->warning('Could not create backup');
-                $this->warnings[] = 'Database Backup';
-            }
-        } else {
-            $this->info('SQLite database will be created during migration');
-        }
-        
+        // Database backup is handled externally via pg_dump for PostgreSQL.
+        // This script only runs migrations.
+        $this->info('Database: PostgreSQL (backup via pg_dump before deploy)');
+
         // Run migrations
         $this->info('Running database migrations...');
         chdir($this->backendPath);

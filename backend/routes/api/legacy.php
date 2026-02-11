@@ -28,19 +28,19 @@ use App\Http\Controllers\AdminBookingController;
 // Public read-only (with deprecation headers)
 Route::get('/rooms', [RoomController::class, 'index'])
     ->middleware('deprecated:2026-07-01,/api/v1/rooms');
-Route::get('/rooms/{id}', [RoomController::class, 'show'])
-    ->middleware('deprecated:2026-07-01,/api/v1/rooms/{id}');
+Route::get('/rooms/{room}', [RoomController::class, 'show'])
+    ->middleware('deprecated:2026-07-01,/api/v1/rooms/{room}');
 
 // Protected room management (Admin only)
 Route::middleware(['check_token_valid'])->group(function () {
     Route::post('/rooms', [RoomController::class, 'store'])
         ->middleware('deprecated:2026-07-01,/api/v1/rooms');
-    Route::put('/rooms/{id}', [RoomController::class, 'update'])
-        ->middleware('deprecated:2026-07-01,/api/v1/rooms/{id}');
-    Route::patch('/rooms/{id}', [RoomController::class, 'update'])
-        ->middleware('deprecated:2026-07-01,/api/v1/rooms/{id}');
-    Route::delete('/rooms/{id}', [RoomController::class, 'destroy'])
-        ->middleware('deprecated:2026-07-01,/api/v1/rooms/{id}');
+    Route::put('/rooms/{room}', [RoomController::class, 'update'])
+        ->middleware('deprecated:2026-07-01,/api/v1/rooms/{room}');
+    Route::patch('/rooms/{room}', [RoomController::class, 'update'])
+        ->middleware('deprecated:2026-07-01,/api/v1/rooms/{room}');
+    Route::delete('/rooms/{room}', [RoomController::class, 'destroy'])
+        ->middleware('deprecated:2026-07-01,/api/v1/rooms/{room}');
 });
 
 // ========== LEGACY BOOKING ENDPOINTS ==========

@@ -294,7 +294,7 @@ class CreateBookingService
             $room = Room::find($roomId);
             if (!$room) {
                 throw new ModelNotFoundException(
-                    "Phòng với ID {$roomId} không tồn tại"
+                    __('booking.room_not_found', ['id' => $roomId])
                 );
             }
 
@@ -310,7 +310,7 @@ class CreateBookingService
             // Exception sẽ được catch ở ngoài và xử lý
             if ($existingBookings->isNotEmpty()) {
                 throw new RuntimeException(
-                    'Phòng đã được đặt cho ngày chỉ định. Vui lòng chọn ngày khác.'
+                    'Room is already booked for the specified dates. Please choose different dates.'
                 );
             }
 
@@ -355,7 +355,7 @@ class CreateBookingService
 
             if ($conflicts) {
                 throw new RuntimeException(
-                    'Phòng đã được đặt cho ngày chỉ định. Vui lòng chọn ngày khác.'
+                    'Room is already booked for the specified dates. Please choose different dates.'
                 );
             }
 

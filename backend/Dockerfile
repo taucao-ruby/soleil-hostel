@@ -24,6 +24,8 @@ RUN groupadd -r soleil && useradd -r -g soleil -d /var/www soleil
 COPY --from=builder --chown=soleil:soleil /var/www /var/www
 USER soleil
 EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD php -r "exit(file_get_contents('http://localhost:8000/api/health') === false ? 1 : 0);"
 # ⚠️ WARNING: php artisan serve is DEVELOPMENT ONLY.
 # For production, use PHP-FPM + Nginx or Laravel Octane (FrankenPHP/Swoole).
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]

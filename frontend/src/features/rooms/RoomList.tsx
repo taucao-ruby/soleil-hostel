@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getRooms } from './room.api'
 import { Room } from './room.types'
+import SkeletonCard from '@/shared/components/ui/SkeletonCard'
 
 /**
  * RoomList Component
@@ -56,24 +57,6 @@ const RoomList: React.FC = () => {
         return 'bg-gray-100 text-gray-800'
     }
   }
-
-  /**
-   * Skeleton loader component
-   */
-  const SkeletonCard = () => (
-    <div className="overflow-hidden bg-white shadow-md rounded-xl animate-pulse">
-      <div className="h-48 bg-gray-200"></div>
-      <div className="p-6">
-        <div className="h-6 mb-4 bg-gray-200 rounded"></div>
-        <div className="h-4 mb-2 bg-gray-200 rounded"></div>
-        <div className="w-3/4 h-4 mb-4 bg-gray-200 rounded"></div>
-        <div className="flex items-center justify-between">
-          <div className="w-20 h-8 bg-gray-200 rounded"></div>
-          <div className="w-24 h-6 bg-gray-200 rounded"></div>
-        </div>
-      </div>
-    </div>
-  )
 
   return (
     <section className="min-h-screen px-4 py-12 bg-gray-50">

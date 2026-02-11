@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Notifications\BookingConfirmed;
-use App\Notifications\BookingCancelled;
 use App\Traits\HasCacheTagSupport;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -18,10 +17,15 @@ class BookingService
     use HasCacheTagSupport;
 
     private const CACHE_TTL_USER_BOOKINGS = 300;  // 5 minutes
+
     private const CACHE_TTL_BOOKING = 600;        // 10 minutes
+
     private const CACHE_TTL_TRASHED = 180;        // 3 minutes (shorter for admin views)
+
     private const CACHE_TAG_BOOKINGS = 'bookings';
+
     private const CACHE_TAG_USER = 'user-bookings';
+
     private const CACHE_TAG_TRASHED = 'trashed-bookings';
 
     // Rate limiting: max 5 confirmation emails per user per minute
@@ -61,17 +65,18 @@ class BookingService
 
     /**
      * Confirm a pending booking and trigger confirmation email notification.
-     * 
+     *
      * Architecture:
      * - Updates booking status to confirmed within a transaction
      * - Dispatches BookingConfirmed notification (queued, afterCommit)
      * - Rate limits per-user to prevent email abuse
      * - Notification is non-blocking: booking is confirmed even if email fails
-     * 
-     * @param Booking $booking The pending booking to confirm
+     *
+     * @param  Booking  $booking  The pending booking to confirm
      * @return Booking The confirmed booking
+     *
      * @throws \RuntimeException If booking is not in pending status
-     * 
+     *
      * @see docs/backend/BOOKING_CONFIRMATION_NOTIFICATION_ARCHITECTURE.md
      */
     public function confirmBooking(Booking $booking): Booking
@@ -84,13 +89,13 @@ class BookingService
 
         return DB::transaction(function () use ($booking) {
             $booking->update(['status' => BookingStatus::CONFIRMED]);
-            
+
             // Invalidate cache
             $this->invalidateBooking($booking->id, $booking->user_id);
 
             // Rate limit confirmation emails per user
-            $rateLimitKey = 'booking-confirm-email:' . $booking->user_id;
-            
+            $rateLimitKey = 'booking-confirm-email:'.$booking->user_id;
+
             if (RateLimiter::tooManyAttempts($rateLimitKey, self::RATE_LIMIT_CONFIRMATIONS_PER_MINUTE)) {
                 Log::warning('Rate limit hit for booking confirmation email', [
                     'user_id' => $booking->user_id,
@@ -99,10 +104,10 @@ class BookingService
                 // Still confirm booking, just skip notification (business decision: email is non-critical)
             } else {
                 RateLimiter::hit($rateLimitKey, decaySeconds: 60);
-                
+
                 // Dispatch notification to user (afterCommit ensures it waits for transaction)
                 $booking->user->notify(new BookingConfirmed($booking));
-                
+
                 Log::info('Booking confirmed and notification queued', [
                     'booking_id' => $booking->id,
                     'user_id' => $booking->user_id,
@@ -115,13 +120,14 @@ class BookingService
 
     /**
      * Cancel a booking with refund processing.
-     * 
+     *
      * Delegates to CancellationService which handles the complete cancellation flow
      * including refund processing, idempotency, and state machine transitions.
-     * 
-     * @param Booking $booking The booking to cancel
-     * @param int|null $cancelledByUserId User performing the cancellation
+     *
+     * @param  Booking  $booking  The booking to cancel
+     * @param  int|null  $cancelledByUserId  User performing the cancellation
      * @return Booking The cancelled booking
+     *
      * @throws \RuntimeException If booking is already cancelled
      */
     public function cancelBooking(Booking $booking, ?int $cancelledByUserId = null): Booking
@@ -139,7 +145,7 @@ class BookingService
 
     /**
      * Get user's bookings - CACHED
-     * 
+     *
      * Cache Strategy:
      * - Key: bookings:user:{userId}:page-{page}
      * - Tags: ['user-bookings', 'user-bookings-{userId}']
@@ -151,11 +157,11 @@ class BookingService
         $cacheKey = "bookings:user:{$userId}:page-{$page}";
 
         // If cache doesn't support tags (e.g., array driver in tests), skip tagging
-        if (!$this->supportsTags()) {
+        if (! $this->supportsTags()) {
             return Cache::remember(
                 $cacheKey,
                 self::CACHE_TTL_USER_BOOKINGS,
-                fn() => Booking::where('user_id', $userId)
+                fn () => Booking::where('user_id', $userId)
                     ->with(['room' => function ($q) {
                         $q->select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'created_at', 'updated_at']);
                     }])
@@ -169,7 +175,7 @@ class BookingService
             ->remember(
                 $cacheKey,
                 self::CACHE_TTL_USER_BOOKINGS,
-                fn() => Booking::where('user_id', $userId)
+                fn () => Booking::where('user_id', $userId)
                     ->with(['room' => function ($q) {
                         $q->select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'created_at', 'updated_at']);
                     }])
@@ -181,7 +187,7 @@ class BookingService
 
     /**
      * Get single booking - CACHED
-     * 
+     *
      * Cache Strategy:
      * - Key: bookings:id:{bookingId}
      * - Tags: ['bookings', 'booking-{bookingId}']
@@ -192,11 +198,11 @@ class BookingService
         $cacheKey = "bookings:id:{$bookingId}";
 
         // If cache doesn't support tags, skip tagging
-        if (!$this->supportsTags()) {
+        if (! $this->supportsTags()) {
             return Cache::remember(
                 $cacheKey,
                 self::CACHE_TTL_BOOKING,
-                fn() => Booking::with(['room', 'user'])
+                fn () => Booking::with(['room', 'user'])
                     ->select(self::bookingSelectColumns())
                     ->find($bookingId)
             );
@@ -206,7 +212,7 @@ class BookingService
             ->remember(
                 $cacheKey,
                 self::CACHE_TTL_BOOKING,
-                fn() => Booking::with(['room', 'user'])
+                fn () => Booking::with(['room', 'user'])
                     ->select(self::bookingSelectColumns())
                     ->find($bookingId)
             );
@@ -215,7 +221,6 @@ class BookingService
     /**
      * ===== INVALIDATION METHODS =====
      */
-
     public function invalidateUserBookings(int $userId): void
     {
         if ($this->supportsTags()) {
@@ -245,118 +250,118 @@ class BookingService
             // For array cache, just clear all bookings keys
             Cache::flush();
         }
-        Log::info("Cache invalidated for all bookings");
+        Log::info('Cache invalidated for all bookings');
     }
 
     // ===== SOFT DELETE METHODS =====
 
     /**
      * Soft delete a booking with audit trail.
-     * 
+     *
      * Records who deleted the booking for compliance and audit purposes.
      * Does NOT permanently remove the record from database.
-     * 
-     * @param Booking $booking The booking to soft delete
-     * @param int|null $deletedByUserId User ID who is deleting (defaults to auth user)
+     *
+     * @param  Booking  $booking  The booking to soft delete
+     * @param  int|null  $deletedByUserId  User ID who is deleting (defaults to auth user)
      * @return bool Success status
      */
     public function softDelete(Booking $booking, ?int $deletedByUserId = null): bool
     {
         $userId = $booking->user_id;
         $bookingId = $booking->id;
-        
+
         $result = $booking->softDeleteWithAudit($deletedByUserId);
-        
+
         if ($result) {
             $this->invalidateBooking($bookingId, $userId);
             $this->invalidateTrashedBookings();
-            Log::info("Booking {$bookingId} soft deleted by user " . ($deletedByUserId ?? auth()->id()));
+            Log::info("Booking {$bookingId} soft deleted by user ".($deletedByUserId ?? auth()->id()));
         }
-        
+
         return $result;
     }
 
     /**
      * Restore a soft deleted booking.
-     * 
+     *
      * Clears the audit trail (deleted_by, deleted_at) and makes booking active again.
      * Only authorized admins should call this method.
-     * 
-     * @param Booking $booking The trashed booking to restore
+     *
+     * @param  Booking  $booking  The trashed booking to restore
      * @return bool Success status
      */
     public function restore(Booking $booking): bool
     {
-        if (!$booking->trashed()) {
+        if (! $booking->trashed()) {
             return false;
         }
-        
+
         $result = $booking->restoreWithAudit();
-        
+
         if ($result) {
             $this->invalidateBooking($booking->id, $booking->user_id);
             $this->invalidateTrashedBookings();
-            Log::info("Booking {$booking->id} restored by user " . auth()->id());
+            Log::info("Booking {$booking->id} restored by user ".auth()->id());
         }
-        
+
         return $result;
     }
 
     /**
      * Permanently delete a soft deleted booking (force delete).
-     * 
+     *
      * ⚠️ WARNING: This PERMANENTLY removes the record from database.
      * Only use for compliance requirements (e.g., GDPR "right to be forgotten").
      * Should be restricted to super admins only.
-     * 
-     * @param Booking $booking The trashed booking to permanently delete
+     *
+     * @param  Booking  $booking  The trashed booking to permanently delete
      * @return bool Success status
      */
     public function forceDelete(Booking $booking): bool
     {
-        if (!$booking->trashed()) {
+        if (! $booking->trashed()) {
             Log::warning("Attempted to force delete non-trashed booking {$booking->id}");
+
             return false;
         }
-        
+
         $bookingId = $booking->id;
         $userId = $booking->user_id;
-        
+
         $result = $booking->forceDelete();
-        
+
         if ($result) {
             $this->invalidateBooking($bookingId, $userId);
             $this->invalidateTrashedBookings();
-            Log::warning("Booking {$bookingId} PERMANENTLY deleted by user " . auth()->id());
+            Log::warning("Booking {$bookingId} PERMANENTLY deleted by user ".auth()->id());
         }
-        
+
         return $result;
     }
 
     /**
      * Get all trashed bookings for admin view.
-     * 
+     *
      * Cache Strategy:
      * - Key: bookings:trashed:page-{page}
      * - Tags: ['trashed-bookings']
      * - TTL: 3m (shorter because admin actions may change frequently)
-     * 
-     * @param int $page Page number
-     * @return Collection
+     *
+     * @param  int  $page  Page number
      */
     public function getTrashedBookings(int $page = 1): Collection
     {
         $cacheKey = "bookings:trashed:page-{$page}";
 
-        if (!$this->supportsTags()) {
+        if (! $this->supportsTags()) {
             return Cache::remember(
                 $cacheKey,
                 self::CACHE_TTL_TRASHED,
-                fn() => Booking::onlyTrashed()
+                fn () => Booking::onlyTrashed()
                     ->with([
-                        'room' => fn($q) => $q->select(['id', 'name', 'price', 'created_at', 'updated_at']),
-                        'user' => fn($q) => $q->select(['id', 'name', 'email', 'role', 'created_at', 'updated_at']),
-                        'deletedBy' => fn($q) => $q->select(['id', 'name', 'email', 'role', 'created_at', 'updated_at']),
+                        'room' => fn ($q) => $q->select(['id', 'name', 'price', 'created_at', 'updated_at']),
+                        'user' => fn ($q) => $q->select(['id', 'name', 'email', 'role', 'created_at', 'updated_at']),
+                        'deletedBy' => fn ($q) => $q->select(['id', 'name', 'email', 'role', 'created_at', 'updated_at']),
                     ])
                     ->orderBy('deleted_at', 'desc')
                     ->get()
@@ -367,11 +372,11 @@ class BookingService
             ->remember(
                 $cacheKey,
                 self::CACHE_TTL_TRASHED,
-                fn() => Booking::onlyTrashed()
+                fn () => Booking::onlyTrashed()
                     ->with([
-                        'room' => fn($q) => $q->select(['id', 'name', 'price', 'created_at', 'updated_at']),
-                        'user' => fn($q) => $q->select(['id', 'name', 'email', 'role', 'created_at', 'updated_at']),
-                        'deletedBy' => fn($q) => $q->select(['id', 'name', 'email', 'role', 'created_at', 'updated_at']),
+                        'room' => fn ($q) => $q->select(['id', 'name', 'price', 'created_at', 'updated_at']),
+                        'user' => fn ($q) => $q->select(['id', 'name', 'email', 'role', 'created_at', 'updated_at']),
+                        'deletedBy' => fn ($q) => $q->select(['id', 'name', 'email', 'role', 'created_at', 'updated_at']),
                     ])
                     ->orderBy('deleted_at', 'desc')
                     ->get()
@@ -380,9 +385,6 @@ class BookingService
 
     /**
      * Get a single trashed booking by ID (for admin restore/purge).
-     * 
-     * @param int $bookingId
-     * @return Booking|null
      */
     public function getTrashedBookingById(int $bookingId): ?Booking
     {
@@ -399,8 +401,8 @@ class BookingService
         if ($this->supportsTags()) {
             Cache::tags([self::CACHE_TAG_TRASHED])->flush();
         } else {
-            Cache::forget("bookings:trashed:page-1");
+            Cache::forget('bookings:trashed:page-1');
         }
-        Log::info("Cache invalidated for trashed bookings");
+        Log::info('Cache invalidated for trashed bookings');
     }
 }

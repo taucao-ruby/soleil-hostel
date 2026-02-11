@@ -23,10 +23,6 @@ class AddCorrelationId
 
     /**
      * Handle an incoming request.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure  $next
-     * @return \Symfony\Component\HttpFoundation\Response
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -56,8 +52,6 @@ class AddCorrelationId
      *
      * Format: sol-{timestamp}-{random}
      * Example: sol-1704153600-a1b2c3d4
-     *
-     * @return string
      */
     protected function generateCorrelationId(): string
     {
@@ -70,8 +64,6 @@ class AddCorrelationId
 
     /**
      * Generate a unique request ID.
-     *
-     * @return string
      */
     protected function generateRequestId(): string
     {

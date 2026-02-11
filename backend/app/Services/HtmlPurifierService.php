@@ -9,12 +9,12 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * HTML Purifier Service - Singleton
- * 
+ *
  * Sanitize HTML content từ user input một cách an toàn:
  * - Sử dụng whitelist thay vì blacklist (regex KHÔNG dùng)
  * - Cache config để performance <1ms
  * - Auto-detect dev vs prod environment
- * 
+ *
  * Usage:
  * HtmlPurifierService::purify($htmlContent)
  * HtmlPurifierService::purify($content, ['allowed_elements' => ['b', 'i']])
@@ -22,7 +22,9 @@ use Illuminate\Support\Facades\Log;
 class HtmlPurifierService
 {
     private static ?self $instance = null;
+
     private ?HTMLPurifier $purifier = null;
+
     private ?HTMLPurifier_Config $config = null;
 
     /**
@@ -31,16 +33,17 @@ class HtmlPurifierService
     public static function getInstance(): self
     {
         if (self::$instance === null) {
-            self::$instance = new self();
+            self::$instance = new self;
         }
+
         return self::$instance;
     }
 
     /**
      * Purify HTML content
      *
-     * @param string $html Raw HTML input từ user
-     * @param array $options Override config (optional)
+     * @param  string  $html  Raw HTML input từ user
+     * @param  array  $options  Override config (optional)
      * @return string Clean HTML safe để render
      */
     public static function purify(string $html, array $options = []): string
@@ -51,7 +54,7 @@ class HtmlPurifierService
     /**
      * Purify + return plain text (strip all HTML)
      *
-     * @param string $html Raw HTML input
+     * @param  string  $html  Raw HTML input
      * @return string Plain text, safe để dùng
      */
     public static function plaintext(string $html): string
@@ -78,14 +81,14 @@ class HtmlPurifierService
 
         // Load config từ config/purifier.php
         try {
-            $baseConfig = config('purifier.' . (app()->isLocal() ? 'dev' : 'prod'), []);
+            $baseConfig = config('purifier.'.(app()->isLocal() ? 'dev' : 'prod'), []);
         } catch (\Throwable $e) {
             // Nếu app() chưa boot, use default dev config
             $baseConfig = config('purifier.dev', []);
         }
 
         // Override với options nếu có
-        if (!empty($options)) {
+        if (! empty($options)) {
             $baseConfig = array_merge($baseConfig, $options);
         }
 
@@ -142,10 +145,10 @@ class HtmlPurifierService
         try {
             $cacheDir = storage_path('framework/cache/purifier');
         } catch (\Throwable $e) {
-            $cacheDir = sys_get_temp_dir() . '/purifier';
+            $cacheDir = sys_get_temp_dir().'/purifier';
         }
 
-        if (!is_dir($cacheDir)) {
+        if (! is_dir($cacheDir)) {
             @mkdir($cacheDir, 0755, true);
         }
 

@@ -16,9 +16,9 @@ trait RoomTestAssertions
     /**
      * Assert that an OptimisticLockException was thrown.
      *
-     * @param callable $callback The code that should throw the exception
-     * @param int|null $expectedVersion The expected version (optional)
-     * @param int|null $actualVersion The actual version in DB (optional)
+     * @param  callable  $callback  The code that should throw the exception
+     * @param  int|null  $expectedVersion  The expected version (optional)
+     * @param  int|null  $actualVersion  The actual version in DB (optional)
      */
     protected function assertOptimisticLockFailed(
         callable $callback,
@@ -57,8 +57,6 @@ trait RoomTestAssertions
 
     /**
      * Assert that a response is a 409 Conflict with optimistic lock error.
-     *
-     * @param TestResponse $response
      */
     protected function assertConflictResponse(TestResponse $response): void
     {
@@ -74,8 +72,6 @@ trait RoomTestAssertions
 
     /**
      * Assert that the room was successfully created with lock_version = 1.
-     *
-     * @param TestResponse $response
      */
     protected function assertRoomCreated(TestResponse $response): void
     {
@@ -89,9 +85,6 @@ trait RoomTestAssertions
 
     /**
      * Assert that the room was successfully updated with incremented lock_version.
-     *
-     * @param TestResponse $response
-     * @param int $expectedNewVersion
      */
     protected function assertRoomUpdated(TestResponse $response, int $expectedNewVersion): void
     {
@@ -105,8 +98,6 @@ trait RoomTestAssertions
 
     /**
      * Assert that the room was successfully deleted.
-     *
-     * @param TestResponse $response
      */
     protected function assertRoomDeleted(TestResponse $response): void
     {
@@ -119,8 +110,6 @@ trait RoomTestAssertions
 
     /**
      * Assert proper room JSON structure in response.
-     *
-     * @param TestResponse $response
      */
     protected function assertRoomJsonStructure(TestResponse $response): void
     {
@@ -141,8 +130,6 @@ trait RoomTestAssertions
 
     /**
      * Assert room list response structure.
-     *
-     * @param TestResponse $response
      */
     protected function assertRoomListStructure(TestResponse $response): void
     {
@@ -166,8 +153,7 @@ trait RoomTestAssertions
     /**
      * Assert validation error response.
      *
-     * @param TestResponse $response
-     * @param array $fields Fields that should have validation errors
+     * @param  array  $fields  Fields that should have validation errors
      */
     protected function assertValidationFailed(TestResponse $response, array $fields): void
     {
@@ -177,8 +163,6 @@ trait RoomTestAssertions
 
     /**
      * Assert unauthorized response (guest access).
-     *
-     * @param TestResponse $response
      */
     protected function assertUnauthorized(TestResponse $response): void
     {
@@ -187,8 +171,6 @@ trait RoomTestAssertions
 
     /**
      * Assert forbidden response (authenticated but not authorized).
-     *
-     * @param TestResponse $response
      */
     protected function assertForbidden(TestResponse $response): void
     {
@@ -197,8 +179,6 @@ trait RoomTestAssertions
 
     /**
      * Assert room not found response.
-     *
-     * @param TestResponse $response
      */
     protected function assertRoomNotFound(TestResponse $response): void
     {

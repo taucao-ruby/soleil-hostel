@@ -2,10 +2,10 @@
 
 /**
  * Email Branding Configuration
- * 
+ *
  * Customize the visual appearance of all notification emails.
  * These values are used by the branded email templates in resources/views/vendor/notifications.
- * 
+ *
  * @see docs/backend/guides/EMAIL_NOTIFICATIONS.md
  */
 
@@ -112,7 +112,7 @@ return [
     */
 
     'footer' => [
-        'copyright' => env('MAIL_FOOTER_COPYRIGHT', '© ' . date('Y') . ' Soleil Hostel. All rights reserved.'),
+        'copyright' => env('MAIL_FOOTER_COPYRIGHT', '© '.date('Y').' Soleil Hostel. All rights reserved.'),
         'unsubscribe_text' => env('MAIL_FOOTER_UNSUBSCRIBE', null), // Optional unsubscribe notice
     ],
 

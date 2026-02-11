@@ -2,14 +2,14 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
 use App\Models\PersonalAccessToken;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
  * HttpOnlyCookieAuthenticationTest - Test httpOnly cookie-based authentication
- * 
+ *
  * CRITICAL SECURITY TESTS:
  * 1. Token stored in httpOnly cookie (not localStorage)
  * 2. Token response does NOT include plaintext token body
@@ -37,7 +37,7 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
 
     /**
      * Test 1: Login returns httpOnly cookie (NOT response body token)
-     * 
+     *
      * Security Check:
      * - Response MUST NOT contain plaintext token in JSON
      * - Response MUST contain CSRF token (for X-XSRF-TOKEN header)
@@ -96,7 +96,7 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
 
     /**
      * Test 2: Token stored in database with UUID identifier + hash
-     * 
+     *
      * Security Check:
      * - token_identifier: UUID (sent in cookie)
      * - token_hash: SHA256(identifier) (used for DB lookup)
@@ -129,7 +129,7 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
 
     /**
      * Test 3: Refresh token rotates (old token revoked)
-     * 
+     *
      * Workaround: Manually send cookie in request header
      */
     public function test_refresh_token_rotates_old_token(): void
@@ -166,7 +166,7 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
 
     /**
      * Test 4: Logout revokes token + clears cookie
-     * 
+     *
      * Security Check:
      * - Token marked as revoked in DB
      * - Cookie set to empty value with past expiry
@@ -202,7 +202,7 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
 
     /**
      * Test 5: Cannot use logout revoke token
-     * 
+     *
      * Security Check:
      * - After logout, token is revoked
      * - Protected endpoint returns 401 with TOKEN_REVOKED code
@@ -233,7 +233,7 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
 
     /**
      * Test 6: Expired token returns TOKEN_EXPIRED
-     * 
+     *
      * Security Check:
      * - Token expires_at in past
      * - Protected endpoint returns 401 with TOKEN_EXPIRED code
@@ -262,7 +262,7 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
 
     /**
      * Test 7: Missing cookie returns 401
-     * 
+     *
      * Security Check:
      * - No cookie sent
      * - Returns 401 Unauthenticated
@@ -276,7 +276,7 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
 
     /**
      * Test 8: Invalid token identifier returns 401
-     * 
+     *
      * Security Check:
      * - Random UUID sent
      * - Token not found in DB
@@ -296,7 +296,7 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
 
     /**
      * Test 9: GET /api/auth/csrf-token returns token without authentication
-     * 
+     *
      * Public endpoint để frontend lấy CSRF token trước login
      */
     public function test_csrf_token_endpoint_accessible_publicly(): void
@@ -310,7 +310,7 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
 
     /**
      * Test 10: Me endpoint returns user + token info
-     * 
+     *
      * Security Check:
      * - User data returned
      * - Token metadata returned (expires_at, type)
@@ -347,7 +347,7 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
 
     /**
      * Test 11: Multiple refreshes > threshold triggers SUSPICIOUS_ACTIVITY
-     * 
+     *
      * Security Check:
      * - Refresh count incremented on each refresh
      * - After max_refresh_count threshold, token revoked
@@ -371,7 +371,7 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
             ->whereNull('revoked_at')
             ->first();
         $tokenIdentifier1 = $token->token_identifier;
-        
+
         $refresh1 = $this->withHeader('Cookie', "{$cookieName}={$tokenIdentifier1}")
             ->postJson('/api/auth/refresh-httponly');
         $refresh1->assertStatus(200);
@@ -381,7 +381,7 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
             ->whereNull('revoked_at')
             ->first();
         $tokenIdentifier2 = $token->token_identifier;
-        
+
         $refresh2 = $this->withHeader('Cookie', "{$cookieName}={$tokenIdentifier2}")
             ->postJson('/api/auth/refresh-httponly');
         $refresh2->assertStatus(200);
@@ -391,7 +391,7 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
             ->whereNull('revoked_at')
             ->first();
         $tokenIdentifier3 = $token->token_identifier;
-        
+
         $refresh3 = $this->withHeader('Cookie', "{$cookieName}={$tokenIdentifier3}")
             ->postJson('/api/auth/refresh-httponly');
         $refresh3->assertStatus(401);

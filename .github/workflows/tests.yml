@@ -140,6 +140,13 @@ jobs:
           key: backend-vendor-${{ needs.setup.outputs.composer-hash }}
       - name: Setup environment
         working-directory: ./backend
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: testing
+          DB_USERNAME: testing
+          DB_PASSWORD: password
         run: |
           cp .env.example .env.testing
           php artisan key:generate --env=testing
@@ -233,6 +240,13 @@ jobs:
           key: backend-vendor-${{ needs.setup.outputs.composer-hash }}
       - name: Setup environment
         working-directory: ./backend
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: testing
+          DB_USERNAME: testing
+          DB_PASSWORD: password
         run: |
           cp .env.example .env.testing
           php artisan key:generate --env=testing
@@ -242,6 +256,12 @@ jobs:
         run: php artisan serve --host=127.0.0.1 --port=8000 &
         env:
           APP_ENV: testing
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: testing
+          DB_USERNAME: testing
+          DB_PASSWORD: password
       - name: Run concurrent booking stress test
         run: |
           sleep 3
@@ -297,9 +317,9 @@ jobs:
       - name: Setup Database
         run: |
           cd backend
-          php artisan migrate --env=testing --database=testing --force
+          php artisan migrate --env=testing --force
         env:
-          DB_CONNECTION: testing
+          DB_CONNECTION: pgsql
           DB_HOST: 127.0.0.1
           DB_PORT: 5432
           DB_DATABASE: testing
@@ -312,7 +332,7 @@ jobs:
           cd backend
           php artisan test tests/Feature/NPlusOneQueriesTest.php --env=testing
         env:
-          DB_CONNECTION: testing
+          DB_CONNECTION: pgsql
           DB_HOST: 127.0.0.1
           DB_PORT: 5432
           DB_DATABASE: testing

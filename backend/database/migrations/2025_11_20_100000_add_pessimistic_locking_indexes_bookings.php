@@ -3,13 +3,12 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * Thêm các index tối ưu cho pessimistic locking (SELECT FOR UPDATE)
      * Các index này được thiết kế để tối ưu query tìm overlap bookings với locking
      */
@@ -19,11 +18,11 @@ return new class extends Migration
             // Index chính: room_id + status (active bookings của phòng)
             // Dùng cho SELECT ... FOR UPDATE khi tìm booking trùng
             $table->index(['room_id', 'status'], 'idx_room_active_bookings');
-            
+
             // Index composite: (room_id, check_in, check_out) cho query overlap
             // Giúp optimizer nhanh chóng tìm các booking có ngày trùng
             $table->index(['room_id', 'check_in', 'check_out'], 'idx_room_dates_overlap');
-            
+
             // Index riêng cho check_in/check_out để support range queries
             $table->index('check_in', 'idx_check_in');
             $table->index('check_out', 'idx_check_out');

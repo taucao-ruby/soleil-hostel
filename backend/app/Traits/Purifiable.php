@@ -7,13 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Purifiable Trait
- * 
+ *
  * Automatically purify HTML fields khi save + retrieve model
- * 
+ *
  * Usage trong Model:
  * use Purifiable;
  * protected $purifiable = ['guest_name', 'message', 'content'];
- * 
+ *
  * Khi save: save() => getAttribute('guest_name') return purified HTML
  * Khi retrieve: get() => automaticaly purified
  */
@@ -21,8 +21,6 @@ trait Purifiable
 {
     /**
      * Fields to auto-purify
-     * 
-     * @var array
      */
     protected array $purifiable = [];
 
@@ -92,6 +90,7 @@ trait Purifiable
                 $this->getPurifiableConfig($key)
             );
         }
+
         return parent::setAttribute($key, $value);
     }
 

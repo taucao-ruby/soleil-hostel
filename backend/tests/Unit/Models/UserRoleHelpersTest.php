@@ -10,14 +10,14 @@ use Tests\TestCase;
 
 /**
  * Unit tests for User model RBAC helper methods.
- * 
+ *
  * Tests: isAdmin(), isModerator(), isUser(), hasRole(), hasAnyRole(), isAtLeast()
  */
 class UserRoleHelpersTest extends TestCase
 {
     // ========== isAdmin() Tests ==========
 
-    public function test_isAdmin_returns_true_only_for_admin(): void
+    public function test_is_admin_returns_true_only_for_admin(): void
     {
         $admin = User::factory()->admin()->make();
         $moderator = User::factory()->moderator()->make();
@@ -30,7 +30,7 @@ class UserRoleHelpersTest extends TestCase
 
     // ========== isModerator() Tests ==========
 
-    public function test_isModerator_returns_true_for_moderator_and_admin(): void
+    public function test_is_moderator_returns_true_for_moderator_and_admin(): void
     {
         $admin = User::factory()->admin()->make();
         $moderator = User::factory()->moderator()->make();
@@ -43,7 +43,7 @@ class UserRoleHelpersTest extends TestCase
 
     // ========== isUser() Tests ==========
 
-    public function test_isUser_returns_true_only_for_user_role(): void
+    public function test_is_user_returns_true_only_for_user_role(): void
     {
         $admin = User::factory()->admin()->make();
         $moderator = User::factory()->moderator()->make();
@@ -56,7 +56,7 @@ class UserRoleHelpersTest extends TestCase
 
     // ========== hasRole() Tests ==========
 
-    public function test_hasRole_exact_match(): void
+    public function test_has_role_exact_match(): void
     {
         $admin = User::factory()->admin()->make();
         $moderator = User::factory()->moderator()->make();
@@ -71,7 +71,7 @@ class UserRoleHelpersTest extends TestCase
 
     // ========== hasAnyRole() Tests ==========
 
-    public function test_hasAnyRole_with_matching_role(): void
+    public function test_has_any_role_with_matching_role(): void
     {
         $moderator = User::factory()->moderator()->make();
 
@@ -79,14 +79,14 @@ class UserRoleHelpersTest extends TestCase
         $this->assertTrue($moderator->hasAnyRole([UserRole::MODERATOR]));
     }
 
-    public function test_hasAnyRole_with_no_matching_role(): void
+    public function test_has_any_role_with_no_matching_role(): void
     {
         $user = User::factory()->user()->make();
 
         $this->assertFalse($user->hasAnyRole([UserRole::ADMIN, UserRole::MODERATOR]));
     }
 
-    public function test_hasAnyRole_with_empty_array(): void
+    public function test_has_any_role_with_empty_array(): void
     {
         $admin = User::factory()->admin()->make();
 
@@ -95,7 +95,7 @@ class UserRoleHelpersTest extends TestCase
 
     // ========== isAtLeast() Tests ==========
 
-    public function test_isAtLeast_user_level(): void
+    public function test_is_at_least_user_level(): void
     {
         $admin = User::factory()->admin()->make();
         $moderator = User::factory()->moderator()->make();
@@ -107,7 +107,7 @@ class UserRoleHelpersTest extends TestCase
         $this->assertTrue($user->isAtLeast(UserRole::USER));
     }
 
-    public function test_isAtLeast_moderator_level(): void
+    public function test_is_at_least_moderator_level(): void
     {
         $admin = User::factory()->admin()->make();
         $moderator = User::factory()->moderator()->make();
@@ -118,7 +118,7 @@ class UserRoleHelpersTest extends TestCase
         $this->assertFalse($user->isAtLeast(UserRole::MODERATOR));
     }
 
-    public function test_isAtLeast_admin_level(): void
+    public function test_is_at_least_admin_level(): void
     {
         $admin = User::factory()->admin()->make();
         $moderator = User::factory()->moderator()->make();

@@ -2,17 +2,18 @@
 
 namespace Tests\Feature\RateLimiting;
 
-use Tests\TestCase;
-use App\Models\User;
 use App\Models\Room;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
 
 class AdvancedRateLimitMiddlewareTest extends TestCase
 {
     use RefreshDatabase;
 
     protected User $user;
+
     protected Room $room;
 
     protected function setUp(): void
@@ -34,10 +35,10 @@ class AdvancedRateLimitMiddlewareTest extends TestCase
     {
         $user1 = User::factory()->create();
         $user2 = User::factory()->create();
-        
+
         $response1 = $this->actingAs($user1)->getJson('/api/health');
         $response2 = $this->actingAs($user2)->getJson('/api/health');
-        
+
         $this->assertNotEquals(429, $response1->status());
         $this->assertNotEquals(429, $response2->status());
     }
@@ -47,7 +48,7 @@ class AdvancedRateLimitMiddlewareTest extends TestCase
     {
         $user = User::factory()->create();
         $response = $this->actingAs($user)->getJson('/api/health');
-        
+
         $this->assertNotEquals(401, $response->status());
     }
 

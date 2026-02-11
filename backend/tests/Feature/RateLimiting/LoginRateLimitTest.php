@@ -2,9 +2,9 @@
 
 namespace Tests\Feature\RateLimiting;
 
-use Tests\TestCase;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
 class LoginRateLimitTest extends TestCase
 {
@@ -66,7 +66,7 @@ class LoginRateLimitTest extends TestCase
         // Per-IP limit is 5 per minute
         // But different emails should have separate limits per email
         // This test is checking that IP-based limit doesn't block different emails
-        
+
         // Make 5 requests with email1 (hits per-IP limit of 5 per minute)
         for ($i = 0; $i < 5; $i++) {
             $this->post('/api/auth/login-httponly', [

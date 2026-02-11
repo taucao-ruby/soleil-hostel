@@ -2,19 +2,19 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
+use App\Directives\PurifyDirective;
+use App\Macros\FormRequestPurifyMacro;
 use App\Models\Booking;
-use App\Models\Room;
 use App\Models\PersonalAccessToken;
+use App\Models\Room;
 use App\Observers\BookingObserver;
 use App\Policies\BookingPolicy;
 use App\Policies\RoomPolicy;
-use App\Directives\PurifyDirective;
-use App\Macros\FormRequestPurifyMacro;
 use App\Repositories\Contracts\BookingRepositoryInterface;
 use App\Repositories\Contracts\RoomRepositoryInterface;
 use App\Repositories\EloquentBookingRepository;
 use App\Repositories\EloquentRoomRepository;
+use Illuminate\Support\ServiceProvider;
 use Laravel\Sanctum\Sanctum;
 
 class AppServiceProvider extends ServiceProvider
@@ -78,4 +78,3 @@ class AppServiceProvider extends ServiceProvider
         FormRequestPurifyMacro::register();
     }
 }
-

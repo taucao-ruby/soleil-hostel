@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Room;
-use Illuminate\Http\Request;
 use App\Http\Requests\ListRoomsRequest;
 use App\Http\Requests\RoomRequest;
 use App\Http\Resources\RoomResource;
+use App\Models\Room;
 use App\Services\RoomService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
  * RoomController - Thin controller following clean architecture.
@@ -42,11 +42,9 @@ class RoomController extends Controller
         $rooms = Room::query()
             ->with('location:id,name,slug')
             ->withCount('activeBookings')
-            ->when($request->filled('location_id'), fn($q) =>
-                $q->where('location_id', $request->integer('location_id'))
+            ->when($request->filled('location_id'), fn ($q) => $q->where('location_id', $request->integer('location_id'))
             )
-            ->when($request->filled(['check_in', 'check_out']), fn($q) =>
-                $q->availableBetween($request->input('check_in'), $request->input('check_out'))
+            ->when($request->filled(['check_in', 'check_out']), fn ($q) => $q->availableBetween($request->input('check_in'), $request->input('check_out'))
             )
             ->orderBy('price')
             ->get();
@@ -54,7 +52,7 @@ class RoomController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Room list fetched successfully',
-            'data' => RoomResource::collection($rooms)
+            'data' => RoomResource::collection($rooms),
         ]);
     }
 
@@ -73,7 +71,7 @@ class RoomController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Room fetched successfully',
-            'data' => new RoomResource($room)
+            'data' => new RoomResource($room),
         ]);
     }
 
@@ -88,13 +86,13 @@ class RoomController extends Controller
     {
         // Use policy to check authorization
         $this->authorize('create', Room::class);
-        
+
         $room = $this->roomService->createRoom($request->validated());
 
         return response()->json([
             'success' => true,
             'message' => 'Room created successfully',
-            'data' => new RoomResource($room)
+            'data' => new RoomResource($room),
         ], 201);
     }
 
@@ -124,7 +122,7 @@ class RoomController extends Controller
     {
         // Use policy to check authorization
         $this->authorize('update', $room);
-        
+
         // Extract lock_version from validated request
         // If not provided, service will handle backward compatibility
         $lockVersion = $request->getLockVersion();
@@ -142,7 +140,7 @@ class RoomController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Room updated successfully',
-            'data' => new RoomResource($updatedRoom)
+            'data' => new RoomResource($updatedRoom),
         ]);
     }
 
@@ -157,10 +155,10 @@ class RoomController extends Controller
     {
         // Use policy to check authorization
         $this->authorize('delete', $room);
-        
+
         // Optional: extract lock_version if provided
-        $lockVersion = $request->input('lock_version') 
-            ? (int) $request->input('lock_version') 
+        $lockVersion = $request->input('lock_version')
+            ? (int) $request->input('lock_version')
             : null;
 
         $this->roomService->deleteWithOptimisticLock($room, $lockVersion);

@@ -9,7 +9,7 @@ use Tests\TestCase;
 
 /**
  * AuthConsolidationTest - Tests for auth endpoint consolidation
- * 
+ *
  * Tests:
  * 1. Deprecation headers on legacy endpoints
  * 2. Unified endpoint mode detection

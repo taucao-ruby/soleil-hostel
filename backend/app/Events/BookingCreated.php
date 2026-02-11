@@ -3,7 +3,6 @@
 namespace App\Events;
 
 use App\Models\Booking;
-use Illuminate\Broadcasting\InteractsWithBroadcasting;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 

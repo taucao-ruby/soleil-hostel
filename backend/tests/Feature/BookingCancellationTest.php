@@ -6,16 +6,11 @@ namespace Tests\Feature;
 
 use App\Enums\BookingStatus;
 use App\Events\BookingCancelled;
-use App\Jobs\ReconcileRefundsJob;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
-use App\Notifications\BookingCancelled as BookingCancelledNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\Queue;
-use Laravel\Cashier\Cashier;
 use Tests\TestCase;
 
 class BookingCancellationTest extends TestCase
@@ -23,7 +18,9 @@ class BookingCancellationTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private User $admin;
+
     private Room $room;
 
     protected function setUp(): void
@@ -188,7 +185,7 @@ class BookingCancellationTest extends TestCase
         // Freeze time to make test deterministic
         // At noon today, check-in tomorrow at midnight = 12 hours < 24 hours (no refund)
         $this->travelTo(now()->startOfDay()->addHours(12)); // Today at noon
-        
+
         $booking = Booking::factory()
             ->for($this->user)
             ->for($this->room)

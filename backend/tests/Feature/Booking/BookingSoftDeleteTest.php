@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Booking;
 
-use App\Enums\UserRole;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
@@ -12,7 +11,7 @@ use Tests\TestCase;
 
 /**
  * BookingSoftDeleteTest - Comprehensive soft delete tests
- * 
+ *
  * ✅ Test Coverage:
  * 1. Soft delete preserves booking data
  * 2. Soft deleted bookings excluded from normal queries
@@ -24,7 +23,7 @@ use Tests\TestCase;
  * 8. Regular users cannot access admin trash endpoints
  * 9. Soft deleted bookings don't block new bookings
  * 10. Bulk restore works correctly
- * 
+ *
  * AUDIT & COMPLIANCE:
  * - Verifies deleted_at and deleted_by are recorded
  * - Ensures data preservation for GDPR/SOX compliance
@@ -35,8 +34,11 @@ class BookingSoftDeleteTest extends TestCase
     use RefreshDatabase;
 
     protected User $user;
+
     protected User $admin;
+
     protected Room $room;
+
     protected Booking $booking;
 
     protected function setUp(): void
@@ -108,7 +110,7 @@ class BookingSoftDeleteTest extends TestCase
             ->getJson('/api/bookings');
 
         $response->assertStatus(200);
-        
+
         $bookingIds = collect($response->json('data'))->pluck('id')->toArray();
         $this->assertNotContains($this->booking->id, $bookingIds);
     }
@@ -124,7 +126,7 @@ class BookingSoftDeleteTest extends TestCase
         $response->assertStatus(200);
 
         $booking = Booking::withTrashed()->find($this->booking->id);
-        
+
         $this->assertNotNull($booking->deleted_at);
         $this->assertEquals($this->user->id, $booking->deleted_by);
     }
@@ -140,7 +142,7 @@ class BookingSoftDeleteTest extends TestCase
         $response->assertStatus(200);
 
         $booking = Booking::withTrashed()->find($this->booking->id);
-        
+
         $this->assertEquals($this->admin->id, $booking->deleted_by);
     }
 

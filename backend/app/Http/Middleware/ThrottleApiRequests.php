@@ -52,7 +52,7 @@ class ThrottleApiRequests
      */
     protected function resolveRequestKey(Request $request, string $limit): string
     {
-        return $limit . '|' . ($request->user()?->id ?: $request->ip());
+        return $limit.'|'.($request->user()?->id ?: $request->ip());
     }
 
     /**
@@ -64,6 +64,7 @@ class ThrottleApiRequests
         if (str_contains($limit, '-')) {
             return (int) explode('-', $limit)[0];
         }
+
         return 60; // Default
     }
 
@@ -77,8 +78,10 @@ class ThrottleApiRequests
         // "30-60" = 30 requests per 60 minutes = 3600 seconds
         if (str_contains($limit, '-')) {
             $parts = explode('-', $limit);
+
             return (int) $parts[1] * 60;
         }
+
         return 60; // Default 1 minute
     }
 
@@ -91,7 +94,7 @@ class ThrottleApiRequests
     {
         $retryAfter = $this->limiter->availableIn($key);
 
-        return new HttpException(429, 'Too many requests. Please try again in ' . $retryAfter . ' seconds.', null, [
+        return new HttpException(429, 'Too many requests. Please try again in '.$retryAfter.' seconds.', null, [
             'Retry-After' => $retryAfter,
             'X-RateLimit-Limit' => $maxAttempts,
             'X-RateLimit-Remaining' => 0,

@@ -2,18 +2,18 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
+use Tests\TestCase;
 
 class NPlusOneQueriesTest extends TestCase
 {
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Clear all caches to ensure fresh database queries are counted
         Cache::flush();
     }

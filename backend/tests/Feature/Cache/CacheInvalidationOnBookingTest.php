@@ -2,23 +2,24 @@
 
 namespace Tests\Feature\Cache;
 
-use Tests\TestCase;
+use App\Events\BookingCreated;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
-use App\Events\BookingCreated;
-use App\Listeners\InvalidateRoomAvailabilityCache;
 use App\Services\Cache\RoomAvailabilityCache;
-use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Event;
+use Tests\TestCase;
 
 class CacheInvalidationOnBookingTest extends TestCase
 {
     use RefreshDatabase;
 
     protected Room $room;
+
     protected User $user;
+
     protected RoomAvailabilityCache $cache;
 
     protected function setUp(): void
@@ -53,7 +54,7 @@ class CacheInvalidationOnBookingTest extends TestCase
     {
         // Use database cache for test consistency
         config(['cache.default' => 'database']);
-        
+
         // Seed cache first
         $checkIn = now()->addDays(1);
         $checkOut = now()->addDays(3);
@@ -62,7 +63,7 @@ class CacheInvalidationOnBookingTest extends TestCase
         $cacheKey = "rooms_availability_{$checkIn->format('Y-m-d')}_{$checkOut->format('Y-m-d')}_2";
         // Check if cache exists using basic cache since array cache doesn't support tags
         $hasCache = Cache::has($cacheKey);
-        $this->assertTrue($hasCache, "Cache should be populated after getAvailableRooms call");
+        $this->assertTrue($hasCache, 'Cache should be populated after getAvailableRooms call');
 
         // Create booking and trigger event
         $booking = Booking::factory()->create([
@@ -75,7 +76,7 @@ class CacheInvalidationOnBookingTest extends TestCase
 
         // Cache should be invalidated
         $stillExists = Cache::has($cacheKey);
-        $this->assertFalse($stillExists, "Cache should be invalidated after booking creation");
+        $this->assertFalse($stillExists, 'Cache should be invalidated after booking creation');
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
@@ -83,7 +84,7 @@ class CacheInvalidationOnBookingTest extends TestCase
     {
         // Simulate a scenario where cache invalidation might fail
         // (in production, cache service could throw exceptions)
-        
+
         $booking = Booking::factory()->create([
             'room_id' => $this->room->id,
         ]);

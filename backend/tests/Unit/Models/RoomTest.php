@@ -29,7 +29,7 @@ class RoomTest extends TestCase
 
     public function test_room_has_correct_fillable_attributes(): void
     {
-        $room = new Room();
+        $room = new Room;
 
         $this->assertEquals(
             ['location_id', 'name', 'room_number', 'description', 'price', 'max_guests', 'status'],
@@ -39,7 +39,7 @@ class RoomTest extends TestCase
 
     public function test_lock_version_not_in_fillable(): void
     {
-        $room = new Room();
+        $room = new Room;
 
         $this->assertNotContains('lock_version', $room->getFillable());
     }
@@ -146,7 +146,7 @@ class RoomTest extends TestCase
 
         // Should not include cancelled
         $this->assertTrue(
-            $activeBookings->every(fn($b) => $b->status !== 'cancelled')
+            $activeBookings->every(fn ($b) => $b->status !== 'cancelled')
         );
     }
 
@@ -182,7 +182,7 @@ class RoomTest extends TestCase
 
         $activeRooms = Room::active()->get();
 
-        $this->assertTrue($activeRooms->every(fn($r) => $r->status === 'available'));
+        $this->assertTrue($activeRooms->every(fn ($r) => $r->status === 'available'));
     }
 
     // ========== STATUS VALUE TESTS ==========

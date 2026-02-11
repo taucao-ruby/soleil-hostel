@@ -2,17 +2,17 @@
 
 namespace Tests\Feature\RateLimiting;
 
-use Tests\TestCase;
-use App\Models\User;
 use App\Models\Room;
-use App\Models\Booking;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
 class BookingRateLimitTest extends TestCase
 {
     use RefreshDatabase;
 
     protected User $user;
+
     protected Room $room;
 
     protected function setUp(): void
@@ -34,8 +34,8 @@ class BookingRateLimitTest extends TestCase
                 'room_id' => $this->room->id,
                 'check_in' => now()->addDays(1 + $i * 5)->format('Y-m-d'),
                 'check_out' => now()->addDays(3 + $i * 5)->format('Y-m-d'),
-                'guest_name' => 'Test Guest ' . $i,
-                'guest_email' => 'guest' . $i . '@example.com',
+                'guest_name' => 'Test Guest '.$i,
+                'guest_email' => 'guest'.$i.'@example.com',
             ]);
 
             // Should not be rate limited yet (within limit of 10)
@@ -67,9 +67,9 @@ class BookingRateLimitTest extends TestCase
                 'room_id' => $this->room->id,
                 'check_in' => now()->addDays($i + 1)->format('Y-m-d'),
                 'check_out' => now()->addDays($i + 3)->format('Y-m-d'),
-                'guest_name' => 'Guest ' . $i,
-                'guest_email' => 'guest' . $i . '@example.com',
-                'guest_phone' => '+8491234567' . $i,
+                'guest_name' => 'Guest '.$i,
+                'guest_email' => 'guest'.$i.'@example.com',
+                'guest_phone' => '+8491234567'.$i,
             ]);
         }
 

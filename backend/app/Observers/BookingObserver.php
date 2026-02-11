@@ -21,7 +21,7 @@ class BookingObserver
      */
     public function creating(Booking $booking): void
     {
-        if (!$booking->location_id && $booking->room_id) {
+        if (! $booking->location_id && $booking->room_id) {
             $booking->location_id = $booking->room?->location_id;
         }
     }

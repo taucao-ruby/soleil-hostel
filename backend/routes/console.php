@@ -21,7 +21,7 @@ Artisan::command('inspire', function () {
 
 // Reconcile orphaned refunds every 5 minutes
 // Fixes bookings stuck in refund_pending or refund_failed states
-Schedule::job(new ReconcileRefundsJob())
+Schedule::job(new ReconcileRefundsJob)
     ->everyFiveMinutes()
     ->withoutOverlapping()
     ->onOneServer() // For multi-server deployments

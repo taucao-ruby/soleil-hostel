@@ -12,15 +12,15 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * BookingUpdated Notification
- * 
+ *
  * Production-grade queued notification for booking modifications.
  * Uses branded Markdown template with change summary.
- * 
+ *
  * Architecture:
  * - Implements ShouldQueue for async delivery via queue workers
  * - Uses afterCommit() to ensure notification only dispatches after DB transaction commits
  * - Exponential backoff retry strategy for transient SMTP failures
- * 
+ *
  * @see docs/backend/guides/EMAIL_NOTIFICATIONS.md
  */
 class BookingUpdated extends Notification implements ShouldQueue
@@ -65,7 +65,7 @@ class BookingUpdated extends Notification implements ShouldQueue
 
     /**
      * Get the mail representation of the notification.
-     * 
+     *
      * Uses branded Markdown template with change summary.
      */
     public function toMail(object $notifiable): ?MailMessage
@@ -75,11 +75,12 @@ class BookingUpdated extends Notification implements ShouldQueue
             Log::info('BookingUpdated notification skipped - booking cancelled', [
                 'booking_id' => $this->booking->id,
             ]);
+
             return null;
         }
 
         return (new MailMessage)
-            ->subject('📝 Booking Updated - ' . config('email-branding.name', 'Soleil Hostel'))
+            ->subject('📝 Booking Updated - '.config('email-branding.name', 'Soleil Hostel'))
             ->markdown('mail.bookings.updated', [
                 'guestName' => e($this->booking->guest_name),
                 'bookingId' => $this->booking->id,
@@ -88,7 +89,7 @@ class BookingUpdated extends Notification implements ShouldQueue
                 'checkOut' => $this->booking->check_out->format('l, F j, Y'),
                 'totalPrice' => $this->booking->amount ?? 0,
                 'changes' => $this->changes,
-                'viewBookingUrl' => url('/bookings/' . $this->booking->id),
+                'viewBookingUrl' => url('/bookings/'.$this->booking->id),
             ]);
     }
 

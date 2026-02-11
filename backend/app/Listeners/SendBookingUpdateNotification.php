@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Notification;
 
 /**
  * SendBookingUpdateNotification Listener
- * 
+ *
  * Sends update notification when booking details are modified.
  * NOTE: Does NOT implement ShouldQueue because BookingUpdated notification
  * already implements ShouldQueue - this avoids double-queuing issues.
@@ -26,13 +26,13 @@ class SendBookingUpdateNotification
 
         // Detect changes - normalize dates to string for comparison
         $changes = [];
-        
+
         $oldCheckIn = $this->normalizeDate($oldBooking->check_in ?? null);
         $newCheckIn = $this->normalizeDate($booking->check_in ?? null);
         if ($oldCheckIn !== null && $oldCheckIn !== $newCheckIn) {
             $changes['check_in'] = $booking->check_in;
         }
-        
+
         $oldCheckOut = $this->normalizeDate($oldBooking->check_out ?? null);
         $newCheckOut = $this->normalizeDate($booking->check_out ?? null);
         if ($oldCheckOut !== null && $oldCheckOut !== $newCheckOut) {
@@ -40,7 +40,7 @@ class SendBookingUpdateNotification
         }
 
         // Only send notification if there are meaningful changes
-        if (!empty($changes)) {
+        if (! empty($changes)) {
             Notification::route('mail', $booking->guest_email)
                 ->notify(new BookingUpdatedNotification($booking, $changes));
 
@@ -60,15 +60,15 @@ class SendBookingUpdateNotification
         if ($date === null) {
             return null;
         }
-        
+
         if ($date instanceof \DateTimeInterface) {
             return $date->format('Y-m-d');
         }
-        
+
         if (is_string($date)) {
             return Carbon::parse($date)->format('Y-m-d');
         }
-        
+
         return (string) $date;
     }
 }

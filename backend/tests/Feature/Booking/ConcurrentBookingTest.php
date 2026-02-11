@@ -13,7 +13,7 @@ use Tests\TestCase;
 
 /**
  * ConcurrentBookingTest - Comprehensive concurrent booking & overlap prevention tests
- * 
+ *
  * ✅ Test Coverage:
  * 1. Single booking success (basic flow)
  * 2. Double-booking prevention (same dates)
@@ -33,6 +33,7 @@ class ConcurrentBookingTest extends TestCase
     use RefreshDatabase;
 
     protected User $user;
+
     protected Room $room;
 
     protected function setUp(): void
@@ -47,9 +48,9 @@ class ConcurrentBookingTest extends TestCase
 
         // Create a Sanctum token for the user
         $token = $this->user->createToken('test-token');
-        
+
         // Authenticate with the token
-        $this->withHeader('Authorization', 'Bearer ' . $token->plainTextToken);
+        $this->withHeader('Authorization', 'Bearer '.$token->plainTextToken);
 
         // Create test room
         $this->room = Room::factory()->create([

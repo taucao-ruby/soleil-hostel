@@ -12,16 +12,16 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * BookingConfirmed Notification
- * 
+ *
  * Production-grade queued notification for booking confirmations.
  * Uses branded Markdown template for professional email presentation.
- * 
+ *
  * Architecture:
  * - Implements ShouldQueue for async delivery via queue workers
  * - Uses afterCommit() to ensure notification only dispatches after DB transaction commits
  * - Includes idempotency guard to prevent duplicate sends on status change
  * - Exponential backoff retry strategy for transient SMTP failures
- * 
+ *
  * Usage:
  * ```php
  * $user->notify(new BookingConfirmed($booking));
@@ -29,7 +29,7 @@ use Illuminate\Support\Facades\Log;
  * Notification::route('mail', $booking->guest_email)
  *     ->notify(new BookingConfirmed($booking));
  * ```
- * 
+ *
  * @see docs/backend/guides/EMAIL_NOTIFICATIONS.md
  */
 class BookingConfirmed extends Notification implements ShouldQueue
@@ -60,7 +60,7 @@ class BookingConfirmed extends Notification implements ShouldQueue
         public readonly Booking $booking
     ) {
         $this->onQueue('notifications');
-        
+
         // Critical: Only dispatch after DB transaction commits
         // Prevents ghost notifications when transaction rolls back
         $this->afterCommit();
@@ -78,7 +78,7 @@ class BookingConfirmed extends Notification implements ShouldQueue
 
     /**
      * Get the mail representation of the notification.
-     * 
+     *
      * Uses branded Markdown template with idempotency guard:
      * returns null if booking status changed between queue dispatch and worker execution.
      */
@@ -90,11 +90,12 @@ class BookingConfirmed extends Notification implements ShouldQueue
                 'booking_id' => $this->booking->id,
                 'current_status' => $this->booking->status->value,
             ]);
+
             return null; // Returning null skips the mail channel silently
         }
 
         return (new MailMessage)
-            ->subject('🎉 Booking Confirmed - ' . config('email-branding.name', 'Soleil Hostel'))
+            ->subject('🎉 Booking Confirmed - '.config('email-branding.name', 'Soleil Hostel'))
             ->markdown('mail.bookings.confirmed', [
                 'guestName' => e($this->booking->guest_name),
                 'bookingId' => $this->booking->id,
@@ -102,7 +103,7 @@ class BookingConfirmed extends Notification implements ShouldQueue
                 'checkIn' => $this->booking->check_in->format('l, F j, Y'),
                 'checkOut' => $this->booking->check_out->format('l, F j, Y'),
                 'totalPrice' => $this->booking->amount ?? 0,
-                'viewBookingUrl' => url('/bookings/' . $this->booking->id),
+                'viewBookingUrl' => url('/bookings/'.$this->booking->id),
             ]);
     }
 
@@ -126,7 +127,7 @@ class BookingConfirmed extends Notification implements ShouldQueue
 
     /**
      * Handle notification failure after all retries exhausted.
-     * 
+     *
      * Called when job moves to failed_jobs table.
      * Log for alerting but do NOT re-queue - that creates infinite loops.
      */

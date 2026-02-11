@@ -6,7 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * UpdateReviewRequest - Example FormRequest with validation + purification
- * 
+ *
  * Best practice: Purify in validated() method to ensure clean data
  */
 class UpdateReviewRequest extends FormRequest
@@ -63,7 +63,7 @@ class UpdateReviewRequest extends FormRequest
 
     /**
      * Get the validated data from the request.
-     * 
+     *
      * ✅ BEST PRACTICE: Purify here, not in controller
      * This ensures all user input is sanitized before controller processes it
      */

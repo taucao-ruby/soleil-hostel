@@ -7,14 +7,14 @@ use Tests\TestCase;
 
 /**
  * HTML Purifier XSS Protection Tests
- * 
+ *
  * 50+ vectors từ:
  * - PayloadsAllTheThings (github.com/swisskyrepo/PayloadsAllTheThings)
  * - OWASP XSS Cheat Sheet 2025
  * - Real-world bypass attempts
- * 
+ *
  * Expected: 0% bypass rate (100% vectors blocked)
- * 
+ *
  * "Chỉ có thằng ngu mới dùng regex để chống XSS năm 2025"
  */
 class HtmlPurifierXssTest extends TestCase
@@ -30,7 +30,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<script>alert("XSS")</script>';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('<script', $clean);
         $this->assertStringNotContainsString('alert', $clean);
     }
@@ -40,7 +40,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<script src="http://evil.com/xss.js"></script>';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('<script', $clean);
         $this->assertStringNotContainsString('evil.com', $clean);
     }
@@ -50,7 +50,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<body onload="alert(\'XSS\')"></body>';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('onload', $clean);
     }
 
@@ -65,7 +65,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<div onclick="alert(\'XSS\')">Click me</div>';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('onclick', $clean);
     }
 
@@ -74,7 +74,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<img src=x onmouseover="alert(\'XSS\')" />';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('onmouseover', $clean);
     }
 
@@ -83,7 +83,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<img src=x onload="alert(\'XSS\')" />';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('onload', $clean);
     }
 
@@ -92,7 +92,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<img src=x onerror="alert(\'XSS\')" />';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('onerror', $clean);
     }
 
@@ -101,7 +101,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<input onchange="alert(\'XSS\')" />';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('onchange', $clean);
     }
 
@@ -110,7 +110,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<form onsubmit="alert(\'XSS\')"><input type="submit" /></form>';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('onsubmit', $clean);
     }
 
@@ -119,7 +119,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<input oninput="alert(\'XSS\')" />';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('oninput', $clean);
     }
 
@@ -134,7 +134,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<a href="javascript:alert(\'XSS\')">Click</a>';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('javascript:', $clean);
     }
 
@@ -143,10 +143,10 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<a href="JaVaScRiPt:alert(\'XSS\')">Click</a>';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         // Should either remove href or make it safe
         $this->assertTrue(
-            !str_contains($clean, 'javascript:') && !str_contains($clean, 'JaVaScRiPt:'),
+            ! str_contains($clean, 'javascript:') && ! str_contains($clean, 'JaVaScRiPt:'),
             'Case-insensitive javascript protocol should be blocked'
         );
     }
@@ -154,13 +154,13 @@ class HtmlPurifierXssTest extends TestCase
     /** @test */
     public function blocks_javascript_with_newlines()
     {
-        $dangerous = '<a href="java' . "\n" . 'script:alert(\'XSS\')">Click</a>';
+        $dangerous = '<a href="java'."\n".'script:alert(\'XSS\')">Click</a>';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         // HTML Purifier encodes the malicious URL as safe: java%20script%3A...
         // The key is javascript: protocol is blocked, encoded or removed
         $this->assertTrue(
-            !str_contains($clean, 'javascript:') && !str_contains($clean, 'script:'),
+            ! str_contains($clean, 'javascript:') && ! str_contains($clean, 'script:'),
             'JavaScript protocol with newlines should be blocked or encoded'
         );
     }
@@ -168,13 +168,13 @@ class HtmlPurifierXssTest extends TestCase
     /** @test */
     public function blocks_javascript_with_tabs()
     {
-        $dangerous = '<a href="java' . "\t" . 'script:alert(\'XSS\')">Click</a>';
+        $dangerous = '<a href="java'."\t".'script:alert(\'XSS\')">Click</a>';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         // HTML Purifier encodes the malicious URL as safe: java%20script%3A...
         // The key is javascript: protocol is blocked, encoded or removed
         $this->assertTrue(
-            !str_contains($clean, 'javascript:') && !str_contains($clean, 'script:'),
+            ! str_contains($clean, 'javascript:') && ! str_contains($clean, 'script:'),
             'JavaScript protocol with tabs should be blocked or encoded'
         );
     }
@@ -182,9 +182,9 @@ class HtmlPurifierXssTest extends TestCase
     /** @test */
     public function blocks_javascript_with_null_byte()
     {
-        $dangerous = '<a href="java' . "\x00" . 'script:alert(\'XSS\')">Click</a>';
+        $dangerous = '<a href="java'."\x00".'script:alert(\'XSS\')">Click</a>';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('alert', $clean);
     }
 
@@ -199,7 +199,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<img src="data:text/html,<script>alert(\'XSS\')</script>" />';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('data:', $clean);
     }
 
@@ -208,7 +208,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<img src="data:text/html;base64,PHNjcmlwdD5hbGVydCgnWFNTJyk8L3NjcmlwdD4=" />';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('data:', $clean);
     }
 
@@ -223,7 +223,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<a href="vbscript:msgbox(\'XSS\')">Click</a>';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('vbscript:', $clean);
     }
 
@@ -238,7 +238,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<svg onload="alert(\'XSS\')"></svg>';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('<svg', $clean);
     }
 
@@ -247,7 +247,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<svg><script>alert("XSS")</script></svg>';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('<script', $clean);
         $this->assertStringNotContainsString('<svg', $clean);
     }
@@ -257,7 +257,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<iframe src="http://evil.com"></iframe>';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('<iframe', $clean);
     }
 
@@ -266,7 +266,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<embed src="http://evil.com/xss.swf" />';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('<embed', $clean);
     }
 
@@ -275,7 +275,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<object data="http://evil.com"></object>';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('<object', $clean);
     }
 
@@ -290,7 +290,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<style>body { background: url("javascript:alert(\'XSS\')"); }</style>';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('<style', $clean);
     }
 
@@ -299,7 +299,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<div style="background:url(javascript:alert(\'XSS\'))">Test</div>';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('javascript:', $clean);
     }
 
@@ -309,7 +309,7 @@ class HtmlPurifierXssTest extends TestCase
         // IE: expression() is deprecated but still a vector
         $dangerous = '<div style="width:expression(alert(\'XSS\'))">Test</div>';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('expression(', $clean);
     }
 
@@ -324,7 +324,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<meta http-equiv="refresh" content="0;url=javascript:alert(\'XSS\')" />';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('<meta', $clean);
     }
 
@@ -333,7 +333,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<meta http-equiv="refresh" content="0;url=http://evil.com" />';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('<meta', $clean);
     }
 
@@ -348,7 +348,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<link rel="stylesheet" href="http://evil.com/xss.css">';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('<link', $clean);
     }
 
@@ -364,7 +364,7 @@ class HtmlPurifierXssTest extends TestCase
         // \\x3cscript\\x3e = <script> in unicode
         $dangerous = '\\x3cscript\\x3ealert("XSS")\\x3c/script\\x3e';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertTrue(strlen($clean) > 0); // Should be safe, not throw
     }
 
@@ -374,7 +374,7 @@ class HtmlPurifierXssTest extends TestCase
         // &lt;script&gt; but still dangerous if decoded incorrectly
         $dangerous = '&lt;script&gt;alert("XSS")&lt;/script&gt;';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('<script', $clean);
     }
 
@@ -383,7 +383,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '&amp;lt;script&amp;gt;alert("XSS")&amp;lt;/script&amp;gt;';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         // Should remain safe
         $this->assertTrue(strlen($clean) > 0);
     }
@@ -399,7 +399,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<img src="x" onerror="alert(\'XSS\')"';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('onerror', $clean);
     }
 
@@ -408,7 +408,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<div><div onclick="alert(\'XSS\')">Nested</div></div>';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('onclick', $clean);
     }
 
@@ -417,7 +417,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $dangerous = '<img src=x onerror=alert(String.fromCharCode(88,83,83)) />';
         $clean = HtmlPurifierService::purify($dangerous);
-        
+
         $this->assertStringNotContainsString('onerror', $clean);
     }
 
@@ -432,7 +432,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $safe = '<b>Bold Text</b>';
         $clean = HtmlPurifierService::purify($safe);
-        
+
         $this->assertStringContainsString('Bold Text', $clean);
     }
 
@@ -441,7 +441,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $safe = '<i>Italic Text</i>';
         $clean = HtmlPurifierService::purify($safe);
-        
+
         $this->assertStringContainsString('Italic Text', $clean);
     }
 
@@ -450,7 +450,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $safe = '<a href="http://example.com">Link</a>';
         $clean = HtmlPurifierService::purify($safe);
-        
+
         $this->assertStringContainsString('Link', $clean);
         $this->assertStringContainsString('http://example.com', $clean);
     }
@@ -460,7 +460,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $safe = '<img src="http://example.com/image.jpg" alt="Image" />';
         $clean = HtmlPurifierService::purify($safe);
-        
+
         $this->assertStringContainsString('image.jpg', $clean);
     }
 
@@ -469,7 +469,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $safe = '<ul><li>Item 1</li><li>Item 2</li></ul>';
         $clean = HtmlPurifierService::purify($safe);
-        
+
         $this->assertStringContainsString('Item 1', $clean);
         $this->assertStringContainsString('Item 2', $clean);
     }
@@ -479,7 +479,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $safe = '<blockquote>Quote</blockquote>';
         $clean = HtmlPurifierService::purify($safe);
-        
+
         $this->assertStringContainsString('Quote', $clean);
     }
 
@@ -494,7 +494,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $mixed = '<p>Safe text <script>alert("XSS")</script> more safe text</p>';
         $clean = HtmlPurifierService::purify($mixed);
-        
+
         $this->assertStringContainsString('Safe text', $clean);
         $this->assertStringContainsString('more safe text', $clean);
         $this->assertStringNotContainsString('<script', $clean);
@@ -505,7 +505,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $nested = '<div><b>Safe <img src=x onerror="alert(\'XSS\')" /> text</b></div>';
         $clean = HtmlPurifierService::purify($nested);
-        
+
         $this->assertStringContainsString('Safe', $clean);
         $this->assertStringContainsString('text', $clean);
         $this->assertStringNotContainsString('onerror', $clean);
@@ -522,7 +522,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $commented = '<!-- <script>alert("XSS")</script> --> <p>Safe</p>';
         $clean = HtmlPurifierService::purify($commented);
-        
+
         // Comments should be stripped
         $this->assertStringNotContainsString('<!--', $clean);
         $this->assertStringContainsString('Safe', $clean);
@@ -533,7 +533,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $empty = '';
         $clean = HtmlPurifierService::purify($empty);
-        
+
         $this->assertEquals('', $clean);
     }
 
@@ -542,7 +542,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $whitespace = '   \n\t  ';
         $clean = HtmlPurifierService::purify($whitespace);
-        
+
         // HTML Purifier may leave whitespace or return empty depending on mode
         // The key is: no dangerous content is present
         $this->assertStringNotContainsString('<', $clean);
@@ -555,7 +555,7 @@ class HtmlPurifierXssTest extends TestCase
     {
         $long = str_repeat('<p>Safe content</p>', 1000);
         $clean = HtmlPurifierService::purify($long);
-        
+
         $this->assertStringContainsString('Safe content', $clean);
         $this->assertTrue(strlen($clean) > 0);
     }
@@ -570,13 +570,13 @@ class HtmlPurifierXssTest extends TestCase
     public function purify_completes_within_acceptable_time()
     {
         $dangerous = '<script>alert("XSS")</script>';
-        
+
         $start = microtime(true);
         for ($i = 0; $i < 100; $i++) {
             HtmlPurifierService::purify($dangerous);
         }
         $duration = microtime(true) - $start;
-        
+
         // 100 iterations should complete in < 500ms (average 5ms/call)
         // With cache: < 1ms per call
         $this->assertTrue($duration < 5, "Purification too slow: {$duration}s for 100 calls");

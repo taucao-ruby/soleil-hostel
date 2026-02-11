@@ -3,14 +3,13 @@
 namespace App\Models;
 
 use App\Enums\BookingStatus;
+use App\Traits\Purifiable;
 use Carbon\Carbon;
-use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Traits\Purifiable;
 
 class Booking extends Model
 {
@@ -98,7 +97,7 @@ class Booking extends Model
 
     /**
      * Get the review for this booking.
-     * 
+     *
      * One-to-one: Each booking can have at most one review.
      * Used by ReviewPolicy for uniqueness check without DB query.
      */
@@ -126,7 +125,7 @@ class Booking extends Model
      */
     public function calculateRefundAmount(): int
     {
-        if (!$this->amount || $this->amount <= 0) {
+        if (! $this->amount || $this->amount <= 0) {
             return 0;
         }
 
@@ -197,17 +196,17 @@ class Booking extends Model
 
     /**
      * Scope: Load common relationships with column selection to prevent N+1
-     * 
+     *
      * This is the PRIMARY scope to use in controllers. Loads room + user with only needed columns.
-     * 
+     *
      * Usage: Booking::withCommonRelations()->get()
      */
     public function scopeWithCommonRelations(Builder $query): Builder
     {
         return $query
             ->with([
-                'room' => fn($q) => $q->selectColumns(),
-                'user' => fn($q) => $q->selectColumns(),
+                'room' => fn ($q) => $q->selectColumns(),
+                'user' => fn ($q) => $q->selectColumns(),
             ]);
     }
 
@@ -241,15 +240,13 @@ class Booking extends Model
 
     /**
      * Scope: Tìm các booking của phòng với ngày trùng lặp
-     * 
+     *
      * Dùng half-open interval [check_in, check_out):
      * - Cho phép book_old.check_out == book_new.check_in (checkout sáng, check-in trưa cùng ngày)
-     * 
-     * @param Builder $query
-     * @param int $roomId ID phòng
-     * @param Carbon|\DateTime $checkIn Ngày check-in mới
-     * @param Carbon|\DateTime $checkOut Ngày check-out mới
-     * @return Builder
+     *
+     * @param  int  $roomId  ID phòng
+     * @param  Carbon|\DateTime  $checkIn  Ngày check-in mới
+     * @param  Carbon|\DateTime  $checkOut  Ngày check-out mới
      */
     public function scopeOverlappingBookings(
         Builder $query,
@@ -264,14 +261,14 @@ class Booking extends Model
 
         // Logic overlap với half-open interval [a1, b1) và [a2, b2):
         // Overlap xảy ra khi: a1 < b2 AND a2 < b1
-        // 
+        //
         // Trong SQL: check_in < check_out_new AND check_out > check_in_new
         return $query
             ->where('room_id', $roomId)
             ->whereIn('status', self::ACTIVE_STATUSES)
             ->where('check_in', '<', $checkOut) // Ngày bắt đầu của booking hiện tại < ngày kết thúc mới
             ->where('check_out', '>', $checkIn) // Ngày kết thúc của booking hiện tại > ngày bắt đầu mới
-            ->when($excludeBookingId, fn(Builder $q) => $q->where('id', '!=', $excludeBookingId));
+            ->when($excludeBookingId, fn (Builder $q) => $q->where('id', '!=', $excludeBookingId));
     }
 
     /**
@@ -334,7 +331,7 @@ class Booking extends Model
 
     /**
      * Scope: Lấy lock FOR UPDATE trên các booking trùng
-     * 
+     *
      * Dùng pessimistic locking để đảm bảo transaction safety
      * DB sẽ lock các row matching query này, ngăn transaction khác sửa
      */
@@ -355,27 +352,24 @@ class Booking extends Model
 
     /**
      * Soft delete with audit trail - records who deleted and when.
-     * 
-     * @param int|null $deletedByUserId User ID who performed deletion
-     * @return bool
+     *
+     * @param  int|null  $deletedByUserId  User ID who performed deletion
      */
     public function softDeleteWithAudit(?int $deletedByUserId = null): bool
     {
         $this->deleted_by = $deletedByUserId ?? auth()->id();
         $this->save();
-        
+
         return $this->delete();
     }
 
     /**
      * Restore a soft deleted booking and clear audit columns.
-     * 
-     * @return bool
      */
     public function restoreWithAudit(): bool
     {
         $this->deleted_by = null;
-        
+
         return $this->restore();
     }
 
@@ -399,6 +393,6 @@ class Booking extends Model
             ->whereIn('status', self::ACTIVE_STATUSES)
             ->where('check_in', '<', $checkOut)
             ->where('check_out', '>', $checkIn)
-            ->when($excludeBookingId, fn(Builder $q) => $q->where('id', '!=', $excludeBookingId));
+            ->when($excludeBookingId, fn (Builder $q) => $q->where('id', '!=', $excludeBookingId));
     }
 }

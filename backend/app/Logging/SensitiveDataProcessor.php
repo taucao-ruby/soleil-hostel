@@ -47,9 +47,6 @@ class SensitiveDataProcessor implements ProcessorInterface
 
     /**
      * Process a log record.
-     *
-     * @param  \Monolog\LogRecord  $record
-     * @return \Monolog\LogRecord
      */
     public function __invoke(LogRecord $record): LogRecord
     {
@@ -60,9 +57,6 @@ class SensitiveDataProcessor implements ProcessorInterface
 
     /**
      * Recursively mask sensitive data in an array.
-     *
-     * @param  array  $data
-     * @return array
      */
     protected function maskSensitiveData(array $data): array
     {
@@ -81,9 +75,6 @@ class SensitiveDataProcessor implements ProcessorInterface
 
     /**
      * Check if a field name is sensitive.
-     *
-     * @param  string|int  $fieldName
-     * @return bool
      */
     protected function isSensitiveField(string|int $fieldName): bool
     {
@@ -104,9 +95,6 @@ class SensitiveDataProcessor implements ProcessorInterface
 
     /**
      * Mask sensitive patterns in string values.
-     *
-     * @param  string  $value
-     * @return string
      */
     protected function maskSensitivePatterns(string $value): string
     {

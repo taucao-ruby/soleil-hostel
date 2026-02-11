@@ -28,9 +28,6 @@ class EloquentRoomRepository implements RoomRepositoryInterface
      * Reproduces: Room::with('bookings')
      *     ->select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'created_at', 'updated_at'])
      *     ->find($roomId)
-     *
-     * @param int $roomId
-     * @return Room|null
      */
     public function findByIdWithBookings(int $roomId): ?Room
     {
@@ -46,15 +43,12 @@ class EloquentRoomRepository implements RoomRepositoryInterface
      *     $q->where('status', 'confirmed')
      *       ->select(['id', 'room_id', 'check_in', 'check_out', 'status']);
      * }])->find($roomId)
-     *
-     * @param int $roomId
-     * @return Room|null
      */
     public function findByIdWithConfirmedBookings(int $roomId): ?Room
     {
         return Room::with(['bookings' => function ($q) {
             $q->where('status', 'confirmed')
-              ->select(['id', 'room_id', 'check_in', 'check_out', 'status']);
+                ->select(['id', 'room_id', 'check_in', 'check_out', 'status']);
         }])->find($roomId);
     }
 
@@ -87,10 +81,8 @@ class EloquentRoomRepository implements RoomRepositoryInterface
      * IMPORTANT: If room does not exist, this will throw an Error (call to member
      * function on null) - this preserves the original behavior exactly.
      *
-     * @param int $roomId
-     * @param string $checkIn
-     * @param string $checkOut
      * @return bool True if overlapping bookings exist
+     *
      * @throws \Error If room does not exist
      */
     public function hasOverlappingConfirmedBookings(int $roomId, string $checkIn, string $checkOut): bool
@@ -111,8 +103,7 @@ class EloquentRoomRepository implements RoomRepositoryInterface
      *
      * Reproduces: Room::create($data)
      *
-     * @param array $data Validated room data (lock_version excluded)
-     * @return Room
+     * @param  array  $data  Validated room data (lock_version excluded)
      */
     public function create(array $data): Room
     {
@@ -130,9 +121,7 @@ class EloquentRoomRepository implements RoomRepositoryInterface
      *         'updated_at' => now(),
      *     ]))
      *
-     * @param int $roomId
-     * @param int $expectedVersion
-     * @param array $data Data to update (lock_version excluded, managed internally)
+     * @param  array  $data  Data to update (lock_version excluded, managed internally)
      * @return int Number of affected rows (0 = version mismatch, 1 = success)
      */
     public function updateWithVersionCheck(int $roomId, int $expectedVersion, array $data): int
@@ -154,8 +143,6 @@ class EloquentRoomRepository implements RoomRepositoryInterface
      *     ->where('lock_version', $currentVersion)
      *     ->delete()
      *
-     * @param int $roomId
-     * @param int $expectedVersion
      * @return int Number of affected rows (0 = version mismatch, 1 = success)
      */
     public function deleteWithVersionCheck(int $roomId, int $expectedVersion): int
@@ -170,13 +157,11 @@ class EloquentRoomRepository implements RoomRepositoryInterface
      * Refresh a room model instance from database.
      *
      * Reproduces: $room->refresh()
-     *
-     * @param Room $room
-     * @return Room
      */
     public function refresh(Room $room): Room
     {
         $room->refresh();
+
         return $room;
     }
 }

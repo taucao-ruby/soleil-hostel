@@ -16,7 +16,7 @@ return new class extends Migration
             // Note: MySQL doesn't support conditional unique indexes well, so we'll use a partial index
             // This constraint ensures no two non-cancelled bookings can have overlapping dates for the same room
             $table->unique(['room_id', 'check_in', 'check_out'], 'unique_room_dates');
-            
+
             // Add index for better query performance on common queries
             $table->index(['status', 'check_in', 'check_out']);
             $table->index('created_at');

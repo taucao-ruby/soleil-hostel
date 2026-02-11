@@ -32,34 +32,33 @@ class RoomAvailabilityService
 
     public function __construct(
         private readonly RoomRepositoryInterface $roomRepository
-    ) {
-    }
+    ) {}
 
     /**
      * Get all active rooms with availability info (cached)
-     * 
+     *
      * Cache key: room-availability:all
      * Cache time: 5 minutes
      * Invalidated by: BookingCreated, BookingUpdated, BookingDeleted events
      */
     public function getAllRoomsWithAvailability(): Collection
     {
-        if (!$this->supportsTags()) {
+        if (! $this->supportsTags()) {
             return Cache::remember(
                 'all-rooms-with-availability',
                 self::CACHE_TTL,
-                fn() => Room::withCommonRelations()
+                fn () => Room::withCommonRelations()
                     ->active()
                     ->orderBy('created_at', 'desc')
                     ->get()
             );
         }
-        
+
         return Cache::tags([self::CACHE_TAG])
             ->remember(
                 'all-rooms-with-availability',
                 self::CACHE_TTL,
-                fn() => Room::withCommonRelations()
+                fn () => Room::withCommonRelations()
                     ->active()
                     ->orderBy('created_at', 'desc')
                     ->get()
@@ -68,27 +67,27 @@ class RoomAvailabilityService
 
     /**
      * Get specific room availability (cached)
-     * 
+     *
      * Cache key: room-availability:room:{id}
      * Cache time: 5 minutes
      * Invalidated by: BookingCreated, BookingUpdated, BookingDeleted events for that room
      */
     public function getRoomAvailability(int $roomId): ?Room
     {
-        if (!$this->supportsTags()) {
+        if (! $this->supportsTags()) {
             return Cache::remember(
                 "room-availability:room:{$roomId}",
                 self::CACHE_TTL,
-                fn() => Room::withCommonRelations()
+                fn () => Room::withCommonRelations()
                     ->find($roomId)
             );
         }
-        
+
         return Cache::tags([self::CACHE_TAG, "room-availability-{$roomId}"])
             ->remember(
                 "room-availability:room:{$roomId}",
                 self::CACHE_TTL,
-                fn() => Room::withCommonRelations()
+                fn () => Room::withCommonRelations()
                     ->find($roomId)
             );
     }
@@ -96,7 +95,7 @@ class RoomAvailabilityService
     /**
      * Get room availability WITH booking list (for frontend)
      * Moved from RoomService for consolidation.
-     * 
+     *
      * Cache Strategy:
      * - Key: room-availability:detail:{roomId}:bookings
      * - Includes active bookings list
@@ -109,18 +108,20 @@ class RoomAvailabilityService
         $fetchData = function () use ($roomId) {
             $room = $this->roomRepository->findByIdWithConfirmedBookings($roomId);
 
-            if (!$room) return null;
+            if (! $room) {
+                return null;
+            }
 
             return [
                 'room' => $room->only(['id', 'name', 'price', 'max_guests']),
-                'bookings' => $room->bookings->map(fn($b) => [
+                'bookings' => $room->bookings->map(fn ($b) => [
                     'check_in' => $b->check_in->format('Y-m-d'),
                     'check_out' => $b->check_out->format('Y-m-d'),
                 ]),
             ];
         };
 
-        if (!$this->supportsTags()) {
+        if (! $this->supportsTags()) {
             return Cache::remember($cacheKey, self::CACHE_TTL, $fetchData);
         }
 
@@ -130,20 +131,21 @@ class RoomAvailabilityService
 
     /**
      * Check if room is available for date range (cached with specific key per room+dates)
-     * 
+     *
      * Cache key: room-availability:available:{roomId}:{checkInDate}:{checkOutDate}
      * Cache time: 5 minutes
      */
     public function isRoomAvailable(int $roomId, string $checkInDate, string $checkOutDate): bool
     {
         $cacheKey = "room-availability:available:{$roomId}:{$checkInDate}:{$checkOutDate}";
-        
+
         $checkAvailability = function () use ($roomId, $checkInDate, $checkOutDate) {
             $room = Room::find($roomId);
-            if (!$room) {
+            if (! $room) {
                 return false;
             }
-            return !$room->activeBookings()
+
+            return ! $room->activeBookings()
                 ->overlappingBookings(
                     roomId: $roomId,
                     checkIn: $checkInDate,
@@ -152,14 +154,14 @@ class RoomAvailabilityService
                 ->exists();
         };
 
-        if (!$this->supportsTags()) {
+        if (! $this->supportsTags()) {
             return Cache::remember(
                 $cacheKey,
                 self::CACHE_TTL,
                 $checkAvailability
             );
         }
-        
+
         return Cache::tags([self::CACHE_TAG, "room-availability-{$roomId}"])
             ->remember(
                 $cacheKey,
@@ -174,7 +176,7 @@ class RoomAvailabilityService
      */
     public function checkOverlappingBookings(int $roomId, string $checkIn, string $checkOut): bool
     {
-        return !$this->roomRepository->hasOverlappingConfirmedBookings($roomId, $checkIn, $checkOut);
+        return ! $this->roomRepository->hasOverlappingConfirmedBookings($roomId, $checkIn, $checkOut);
     }
 
     /**
@@ -209,7 +211,7 @@ class RoomAvailabilityService
             Cache::forget('all-rooms-with-availability');
             Cache::flush();
         }
-        Log::info("All room availability cache invalidated");
+        Log::info('All room availability cache invalidated');
     }
 
     /**

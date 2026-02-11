@@ -6,7 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * Store Review Form Request
- * 
+ *
  * Auto-purifies user input từ guest reviews
  * Dùng HTML Purifier whitelist, không regex blacklist
  * (Regex XSS = 99% bypass. HTML Purifier = 0% bypass)
@@ -45,7 +45,7 @@ class StoreReviewRequest extends FormRequest
 
     /**
      * Automatically purify user input
-     * 
+     *
      * After validation, auto-sanitize title + content
      * Only allow: b, i, strong, em, p, br, ul, ol, li, a[href]
      * Block: <script>, <style>, on*, javascript:, data:

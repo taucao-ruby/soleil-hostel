@@ -11,16 +11,16 @@ use Illuminate\Routing\Controller;
 
 /**
  * UnifiedAuthController - Mode-agnostic auth endpoints
- * 
+ *
  * Provides unified endpoints that detect authentication mode (Bearer vs HttpOnly cookie)
  * and delegate to the appropriate controller. This allows clients to use a single
  * endpoint regardless of their auth mode.
- * 
+ *
  * Endpoints:
  * - GET  /api/auth/me          → Detects mode, returns user info
  * - POST /api/auth/logout      → Detects mode, revokes appropriate token
  * - POST /api/auth/logout-all  → Detects mode, revokes all user tokens
- * 
+ *
  * Mode Detection Priority:
  * 1. HttpOnly cookie present → Cookie mode
  * 2. Bearer token in header → Bearer mode
@@ -29,7 +29,9 @@ use Illuminate\Routing\Controller;
 class UnifiedAuthController extends Controller
 {
     use ApiResponse;
+
     private AuthController $bearerController;
+
     private HttpOnlyTokenController $cookieController;
 
     public function __construct(AuthController $bearerController, HttpOnlyTokenController $cookieController)
@@ -40,7 +42,7 @@ class UnifiedAuthController extends Controller
 
     /**
      * Unified /auth/me - Get current user info
-     * 
+     *
      * Detects authentication mode and delegates to appropriate controller.
      * Response format matches the mode's native format for backward compatibility.
      */
@@ -61,7 +63,7 @@ class UnifiedAuthController extends Controller
 
     /**
      * Unified /auth/logout - Revoke current token/session
-     * 
+     *
      * Detects authentication mode and delegates to appropriate controller.
      */
     public function logout(Request $request): JsonResponse
@@ -81,7 +83,7 @@ class UnifiedAuthController extends Controller
 
     /**
      * Unified /auth/logout-all - Revoke all user tokens/sessions
-     * 
+     *
      * Works for both Bearer and HttpOnly cookie modes.
      * For cookie mode, we need to get the user from the cookie token first.
      */
@@ -96,8 +98,8 @@ class UnifiedAuthController extends Controller
         if ($mode === 'cookie') {
             // For cookie mode, get user from token and revoke all tokens
             $token = $request->attributes->get('token');
-            
-            if (!$token) {
+
+            if (! $token) {
                 throw new AuthenticationException('Token cookie không tồn tại.');
             }
 
@@ -154,14 +156,14 @@ class UnifiedAuthController extends Controller
         // Check for HttpOnly cookie first (preferred for web)
         $cookieName = config('sanctum.cookie_name', 'soleil_token');
         $cookieToken = $request->cookie($cookieName);
-        
+
         // Fallback: parse Cookie header manually for testing
-        if (!$cookieToken && $request->hasHeader('Cookie')) {
+        if (! $cookieToken && $request->hasHeader('Cookie')) {
             $cookieHeader = $request->header('Cookie');
             $cookies = array_map('trim', explode(';', $cookieHeader));
             foreach ($cookies as $cookie) {
-                if (strpos($cookie, $cookieName . '=') === 0) {
-                    $cookieToken = substr($cookie, strlen($cookieName . '='));
+                if (strpos($cookie, $cookieName.'=') === 0) {
+                    $cookieToken = substr($cookie, strlen($cookieName.'='));
                     break;
                 }
             }
@@ -175,6 +177,7 @@ class UnifiedAuthController extends Controller
                 // Store token in request attributes for downstream use
                 $request->attributes->set('token', $token);
                 $request->attributes->set('user', $token->tokenable);
+
                 return 'cookie';
             }
         }

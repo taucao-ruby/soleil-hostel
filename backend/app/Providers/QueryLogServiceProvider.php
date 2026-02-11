@@ -45,8 +45,6 @@ class QueryLogServiceProvider extends ServiceProvider
 
     /**
      * Determine if queries should be logged.
-     *
-     * @return bool
      */
     protected function shouldLogQueries(): bool
     {
@@ -61,9 +59,6 @@ class QueryLogServiceProvider extends ServiceProvider
 
     /**
      * Log a database query.
-     *
-     * @param  \Illuminate\Database\Events\QueryExecuted  $query
-     * @return void
      */
     protected function logQuery(QueryExecuted $query): void
     {
@@ -97,9 +92,6 @@ class QueryLogServiceProvider extends ServiceProvider
 
     /**
      * Mask sensitive values in query bindings.
-     *
-     * @param  array  $bindings
-     * @return array
      */
     protected function maskSensitiveBindings(array $bindings): array
     {

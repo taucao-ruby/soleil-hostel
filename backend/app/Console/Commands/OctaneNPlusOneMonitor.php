@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Cache;
 
 class OctaneNPlusOneMonitor extends Command
 {
@@ -15,7 +14,7 @@ class OctaneNPlusOneMonitor extends Command
     {
         $interval = $this->option('interval');
 
-        $this->info("🚀 Starting N+1 Query Monitor for Octane");
+        $this->info('🚀 Starting N+1 Query Monitor for Octane');
         $this->info("Checking every {$interval} seconds...\n");
 
         while (true) {
@@ -61,9 +60,16 @@ class OctaneNPlusOneMonitor extends Command
 
     private function getStatus(float $avgQueries): string
     {
-        if ($avgQueries < 5) return '✅ Excellent';
-        if ($avgQueries < 10) return '🟢 Good';
-        if ($avgQueries < 20) return '🟡 Fair';
+        if ($avgQueries < 5) {
+            return '✅ Excellent';
+        }
+        if ($avgQueries < 10) {
+            return '🟢 Good';
+        }
+        if ($avgQueries < 20) {
+            return '🟡 Fair';
+        }
+
         return '🔴 Critical';
     }
 }

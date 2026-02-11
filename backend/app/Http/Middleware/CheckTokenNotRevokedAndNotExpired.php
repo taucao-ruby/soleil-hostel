@@ -6,19 +6,18 @@ use App\Models\PersonalAccessToken;
 use Closure;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Laravel\Sanctum\Sanctum;
 
 /**
  * CheckTokenNotRevokedAndNotExpired Middleware
- * 
+ *
  * CRITICAL: Validate mỗi request có token:
  * 1. Không hết hạn (expires_at > now)
  * 2. Không bị revoke (revoked_at IS NULL)
  * 3. Cập nhật last_used_at
- * 
+ *
  * Nếu token không valid → return 401 Unauthorized
- * 
+ *
  * Middleware này được gọi TRƯỚC khi request đến controller
  * Đảm bảo mọi protected endpoint đều check token validity
  */
@@ -33,7 +32,7 @@ class CheckTokenNotRevokedAndNotExpired
         // If no bearer token is present:
         // - Allow if authenticated via 'web' guard (session auth)
         // - Allow if authenticated via 'sanctum' guard (test framework or valid token already authenticated by Sanctum)
-        if (!$bearerToken) {
+        if (! $bearerToken) {
             if ($request->user('web') || $request->user('sanctum')) {
                 return $next($request);
             }
@@ -49,7 +48,7 @@ class CheckTokenNotRevokedAndNotExpired
             $tokenHash
         )->first();
 
-        if (!$token) {
+        if (! $token) {
             // Token không tồn tại → 401
             throw new AuthenticationException('Token không hợp lệ hoặc không tồn tại.');
         }
@@ -81,7 +80,7 @@ class CheckTokenNotRevokedAndNotExpired
         // ========== AUTHENTICATE USER (ONLY AFTER validation checks pass) ==========
         // Now that we've verified token is valid, not expired, and not revoked, authenticate the user
         $user = $token->tokenable;
-        if (!$user) {
+        if (! $user) {
             throw new AuthenticationException('Không tìm được user cho token này.');
         }
 

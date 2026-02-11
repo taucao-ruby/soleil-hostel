@@ -3,7 +3,6 @@
 namespace Tests\Feature\Room;
 
 use App\Enums\UserRole;
-use App\Exceptions\OptimisticLockException;
 use App\Models\Room;
 use App\Models\User;
 use App\Services\RoomService;
@@ -25,6 +24,7 @@ class RoomConcurrencyTest extends TestCase
     use RoomTestAssertions;
 
     private RoomService $roomService;
+
     private User $admin;
 
     protected function setUp(): void
@@ -56,10 +56,10 @@ class RoomConcurrencyTest extends TestCase
                 'status' => $room->status,
                 'lock_version' => $adminAVersion,
             ]);
-        
+
         $responseA->assertStatus(200)
             ->assertJsonPath('data.lock_version', 2);
-        
+
         // Price may be string or numeric depending on serialization
         $this->assertEquals(150.00, (float) $responseA->json('data.price'));
 

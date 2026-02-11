@@ -11,7 +11,7 @@ use Tests\TestCase;
 
 /**
  * BookingPolicyTest - Comprehensive authorization & policy tests
- * 
+ *
  * ✅ Test Coverage:
  * 1. Owner can view own booking
  * 2. Non-owner cannot view other's booking (403)
@@ -32,9 +32,13 @@ class BookingPolicyTest extends TestCase
     use RefreshDatabase;
 
     protected User $owner;
+
     protected User $otherUser;
+
     protected User $admin;
+
     protected Room $room;
+
     protected Booking $booking;
 
     protected function setUp(): void

@@ -2,10 +2,8 @@
 
 namespace Tests\Unit;
 
-use PHPUnit\Framework\TestCase;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Cache\CacheManager;
-use Illuminate\Contracts\Cache\Store;
+use PHPUnit\Framework\TestCase;
 
 class CacheTest extends TestCase
 {

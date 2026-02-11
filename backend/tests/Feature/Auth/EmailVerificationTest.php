@@ -13,7 +13,7 @@ use Tests\TestCase;
 
 /**
  * Email Verification Feature Tests
- * 
+ *
  * Tests the complete email verification flow:
  * 1. Unverified users cannot access protected routes
  * 2. Verification link works correctly
@@ -101,7 +101,7 @@ class EmailVerificationTest extends TestCase
                 'verified' => true,
                 'email' => $user->email,
             ]);
-        
+
         $this->assertNotNull($response->json('email_verified_at'));
     }
 
@@ -336,7 +336,7 @@ class EmailVerificationTest extends TestCase
         // And would be blocked by verified middleware (403)
         $response = $this->actingAs($user, 'sanctum')
             ->getJson('/api/bookings');
-        
+
         $response->assertStatus(403);
     }
 
@@ -434,7 +434,7 @@ class EmailVerificationTest extends TestCase
         // Verification email should be sent
         $user = User::where('email', 'newuser@example.com')->first();
         $this->assertNotNull($user);
-        
+
         Notification::assertSentTo($user, VerifyEmail::class);
     }
 

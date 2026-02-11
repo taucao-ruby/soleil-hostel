@@ -4,10 +4,8 @@ namespace Tests\Feature\HealthCheck;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Redis;
+use Tests\TestCase;
 
 /**
  * Health Check Controller Tests
@@ -25,6 +23,7 @@ class HealthControllerTest extends TestCase
     private function actingAsAdmin(): static
     {
         $admin = User::factory()->create(['role' => 'admin']);
+
         return $this->actingAs($admin, 'sanctum');
     }
 
@@ -52,7 +51,7 @@ class HealthControllerTest extends TestCase
 
         $data = $response->json();
         $timestamp = \Carbon\Carbon::parse($data['timestamp']);
-        
+
         $this->assertInstanceOf(\Carbon\Carbon::class, $timestamp);
         $this->assertTrue($timestamp->diffInSeconds(now()) < 5);
     }
@@ -66,7 +65,7 @@ class HealthControllerTest extends TestCase
 
         // May be 200 (ok/degraded) or 503 (unhealthy) depending on deps
         $this->assertTrue(in_array($response->getStatusCode(), [200, 503]));
-        
+
         $response->assertJsonStructure([
             'status',
             'timestamp',
@@ -88,14 +87,14 @@ class HealthControllerTest extends TestCase
         $response = $this->getJson('/api/health/ready');
 
         $data = $response->json();
-        
+
         // Verify response has expected structure regardless of health state
         $this->assertArrayHasKey('status', $data);
         $this->assertContains($data['status'], ['ok', 'degraded', 'unhealthy']);
-        
+
         // If all checks pass, status should be 'ok'
-        if ($data['checks']['database']['healthy'] && 
-            $data['checks']['cache']['healthy'] && 
+        if ($data['checks']['database']['healthy'] &&
+            $data['checks']['cache']['healthy'] &&
             $data['checks']['redis']['healthy']) {
             $this->assertEquals('ok', $data['status']);
             $response->assertStatus(200);
@@ -111,7 +110,7 @@ class HealthControllerTest extends TestCase
         $response = $this->getJson('/api/health/ready');
 
         $data = $response->json();
-        
+
         $this->assertContains('database', $data['failure_semantics']['critical']);
         $this->assertContains('cache', $data['failure_semantics']['degraded']);
         $this->assertContains('queue', $data['failure_semantics']['degraded']);
@@ -125,7 +124,7 @@ class HealthControllerTest extends TestCase
         $response = $this->actingAsAdmin()->getJson('/api/health/full');
 
         $this->assertTrue(in_array($response->getStatusCode(), [200, 503]));
-        
+
         $response->assertJsonStructure([
             'status',
             'timestamp',
@@ -158,7 +157,7 @@ class HealthControllerTest extends TestCase
         $response = $this->actingAsAdmin()->getJson('/api/health/full');
 
         $data = $response->json();
-        
+
         $this->assertArrayHasKey('memory_usage_mb', $data['metrics']);
         $this->assertArrayHasKey('peak_memory_mb', $data['metrics']);
         $this->assertArrayHasKey('php_version', $data['metrics']);
@@ -172,7 +171,7 @@ class HealthControllerTest extends TestCase
         $response = $this->actingAsAdmin()->getJson('/api/health/full');
 
         $data = $response->json();
-        
+
         $this->assertIsArray($data['summary']['degraded_components']);
     }
 
@@ -184,7 +183,7 @@ class HealthControllerTest extends TestCase
         $response = $this->actingAsAdmin()->getJson('/api/health/db');
 
         $data = $response->json();
-        
+
         $this->assertEquals('database', $data['component']);
         $this->assertEquals('critical', $data['criticality']);
         $this->assertArrayHasKey('healthy', $data);
@@ -197,7 +196,7 @@ class HealthControllerTest extends TestCase
         $response = $this->actingAsAdmin()->getJson('/api/health/db');
 
         $data = $response->json();
-        
+
         // If database is healthy, should be 200
         if ($data['healthy']) {
             $response->assertStatus(200);
@@ -214,11 +213,11 @@ class HealthControllerTest extends TestCase
         $response = $this->actingAsAdmin()->getJson('/api/health/cache');
 
         $data = $response->json();
-        
+
         $this->assertEquals('cache', $data['component']);
         $this->assertEquals('degraded', $data['criticality']);
         $this->assertArrayHasKey('healthy', $data);
-        
+
         // Cache is degraded component - always returns 200
         $response->assertStatus(200);
     }
@@ -229,11 +228,11 @@ class HealthControllerTest extends TestCase
         $response = $this->actingAsAdmin()->getJson('/api/health/queue');
 
         $data = $response->json();
-        
+
         $this->assertEquals('queue', $data['component']);
         $this->assertEquals('degraded', $data['criticality']);
         $this->assertArrayHasKey('healthy', $data);
-        
+
         // Queue is degraded component - always returns 200
         $response->assertStatus(200);
     }
@@ -246,7 +245,7 @@ class HealthControllerTest extends TestCase
         $response = $this->actingAsAdmin()->getJson('/api/health/db');
 
         $data = $response->json();
-        
+
         if ($data['healthy']) {
             $this->assertArrayHasKey('latency_ms', $data);
             $this->assertIsNumeric($data['latency_ms']);
@@ -260,7 +259,7 @@ class HealthControllerTest extends TestCase
         $response = $this->actingAsAdmin()->getJson('/api/health/cache');
 
         $data = $response->json();
-        
+
         if ($data['healthy']) {
             $this->assertArrayHasKey('latency_ms', $data);
             $this->assertIsNumeric($data['latency_ms']);
@@ -291,7 +290,7 @@ class HealthControllerTest extends TestCase
 
         foreach ($endpoints as $endpoint) {
             $response = $this->actingAsAdmin()->getJson($endpoint);
-            
+
             // Verify response is JSON
             $this->assertTrue(
                 str_contains($response->headers->get('Content-Type', ''), 'json'),
@@ -309,7 +308,7 @@ class HealthControllerTest extends TestCase
         $dbResponse = $this->actingAsAdmin()->getJson('/api/health/db');
         $dbData = $dbResponse->json();
 
-        if (!$dbData['healthy']) {
+        if (! $dbData['healthy']) {
             $this->assertEquals(503, $dbResponse->getStatusCode());
         }
 

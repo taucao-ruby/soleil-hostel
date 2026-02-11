@@ -16,7 +16,7 @@ use PHPUnit\Framework\TestCase;
  * Unit tests for EloquentRoomRepository
  *
  * These tests verify the repository's data access layer in complete isolation.
- * 
+ *
  * TESTING STRATEGY:
  * - Instance method tests: Direct Mockery mocks (fast)
  * - Static method tests: @runInSeparateProcess with alias: mocks (isolated)
@@ -41,12 +41,13 @@ class EloquentRoomRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @covers \App\Repositories\EloquentRoomRepository::refresh
      */
     public function refresh_calls_refresh_on_model_and_returns_it(): void
     {
-        $repository = new EloquentRoomRepository();
-        
+        $repository = new EloquentRoomRepository;
+
         $mockRoom = Mockery::mock(Room::class);
         $mockRoom->shouldReceive('refresh')
             ->once()
@@ -59,12 +60,13 @@ class EloquentRoomRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @covers \App\Repositories\EloquentRoomRepository::refresh
      */
     public function refresh_preserves_model_identity(): void
     {
-        $repository = new EloquentRoomRepository();
-        
+        $repository = new EloquentRoomRepository;
+
         $mockRoom = Mockery::mock(Room::class);
         $mockRoom->shouldReceive('refresh')
             ->once()
@@ -80,18 +82,21 @@ class EloquentRoomRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentRoomRepository::findByIdWithBookings
      */
-    public function findByIdWithBookings_returns_room_with_eager_loaded_bookings(): void
+    public function find_by_id_with_bookings_returns_room_with_eager_loaded_bookings(): void
     {
         $roomId = 1;
         $expectedColumns = ['id', 'name', 'description', 'price', 'max_guests', 'status', 'lock_version', 'created_at', 'updated_at'];
 
         // Create a partial alias mock that extends Room
-        $mockModel = Mockery::mock('alias:' . Room::class)->makePartial();
-        
+        $mockModel = Mockery::mock('alias:'.Room::class)->makePartial();
+
         $mockBuilder = Mockery::mock(Builder::class);
         $mockBuilder->shouldReceive('select')
             ->once()
@@ -107,7 +112,7 @@ class EloquentRoomRepositoryTest extends TestCase
             ->with('bookings')
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentRoomRepository();
+        $repository = new EloquentRoomRepository;
         $result = $repository->findByIdWithBookings($roomId);
 
         $this->assertSame($mockModel, $result);
@@ -115,11 +120,14 @@ class EloquentRoomRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentRoomRepository::findByIdWithBookings
      */
-    public function findByIdWithBookings_returns_null_when_room_not_found(): void
+    public function find_by_id_with_bookings_returns_null_when_room_not_found(): void
     {
         $roomId = 999;
         $expectedColumns = ['id', 'name', 'description', 'price', 'max_guests', 'status', 'lock_version', 'created_at', 'updated_at'];
@@ -134,13 +142,13 @@ class EloquentRoomRepositoryTest extends TestCase
             ->with($roomId)
             ->andReturn(null);
 
-        $mockModel = Mockery::mock('alias:' . Room::class);
+        $mockModel = Mockery::mock('alias:'.Room::class);
         $mockModel->shouldReceive('with')
             ->once()
             ->with('bookings')
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentRoomRepository();
+        $repository = new EloquentRoomRepository;
         $result = $repository->findByIdWithBookings($roomId);
 
         $this->assertNull($result);
@@ -148,17 +156,20 @@ class EloquentRoomRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentRoomRepository::findByIdWithConfirmedBookings
      */
-    public function findByIdWithConfirmedBookings_returns_room_with_filtered_bookings(): void
+    public function find_by_id_with_confirmed_bookings_returns_room_with_filtered_bookings(): void
     {
         $roomId = 1;
 
         // Create a partial alias mock that extends Room
-        $mockModel = Mockery::mock('alias:' . Room::class)->makePartial();
-        
+        $mockModel = Mockery::mock('alias:'.Room::class)->makePartial();
+
         $mockBuilder = Mockery::mock(Builder::class);
         $mockBuilder->shouldReceive('find')
             ->once()
@@ -172,7 +183,7 @@ class EloquentRoomRepositoryTest extends TestCase
             })
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentRoomRepository();
+        $repository = new EloquentRoomRepository;
         $result = $repository->findByIdWithConfirmedBookings($roomId);
 
         $this->assertSame($mockModel, $result);
@@ -180,11 +191,14 @@ class EloquentRoomRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentRoomRepository::findByIdWithConfirmedBookings
      */
-    public function findByIdWithConfirmedBookings_returns_null_when_room_not_found(): void
+    public function find_by_id_with_confirmed_bookings_returns_null_when_room_not_found(): void
     {
         $roomId = 999;
 
@@ -194,12 +208,12 @@ class EloquentRoomRepositoryTest extends TestCase
             ->with($roomId)
             ->andReturn(null);
 
-        $mockModel = Mockery::mock('alias:' . Room::class);
+        $mockModel = Mockery::mock('alias:'.Room::class);
         $mockModel->shouldReceive('with')
             ->once()
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentRoomRepository();
+        $repository = new EloquentRoomRepository;
         $result = $repository->findByIdWithConfirmedBookings($roomId);
 
         $this->assertNull($result);
@@ -207,13 +221,16 @@ class EloquentRoomRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentRoomRepository::getAllOrderedByName
      */
-    public function getAllOrderedByName_returns_collection_sorted_by_name(): void
+    public function get_all_ordered_by_name_returns_collection_sorted_by_name(): void
     {
-        $expectedCollection = new Collection();
+        $expectedCollection = new Collection;
         $expectedColumns = ['id', 'name', 'description', 'price', 'max_guests', 'status', 'lock_version', 'created_at', 'updated_at'];
 
         $mockBuilder = Mockery::mock(Builder::class);
@@ -225,13 +242,13 @@ class EloquentRoomRepositoryTest extends TestCase
             ->once()
             ->andReturn($expectedCollection);
 
-        $mockModel = Mockery::mock('alias:' . Room::class);
+        $mockModel = Mockery::mock('alias:'.Room::class);
         $mockModel->shouldReceive('select')
             ->once()
             ->with($expectedColumns)
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentRoomRepository();
+        $repository = new EloquentRoomRepository;
         $result = $repository->getAllOrderedByName();
 
         $this->assertSame($expectedCollection, $result);
@@ -239,13 +256,16 @@ class EloquentRoomRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentRoomRepository::getAllOrderedByName
      */
-    public function getAllOrderedByName_returns_empty_collection_when_no_rooms(): void
+    public function get_all_ordered_by_name_returns_empty_collection_when_no_rooms(): void
     {
-        $expectedCollection = new Collection();
+        $expectedCollection = new Collection;
         $expectedColumns = ['id', 'name', 'description', 'price', 'max_guests', 'status', 'lock_version', 'created_at', 'updated_at'];
 
         $mockBuilder = Mockery::mock(Builder::class);
@@ -257,13 +277,13 @@ class EloquentRoomRepositoryTest extends TestCase
             ->once()
             ->andReturn($expectedCollection);
 
-        $mockModel = Mockery::mock('alias:' . Room::class);
+        $mockModel = Mockery::mock('alias:'.Room::class);
         $mockModel->shouldReceive('select')
             ->once()
             ->with($expectedColumns)
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentRoomRepository();
+        $repository = new EloquentRoomRepository;
         $result = $repository->getAllOrderedByName();
 
         $this->assertCount(0, $result);
@@ -271,8 +291,11 @@ class EloquentRoomRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentRoomRepository::hasOverlappingConfirmedBookings
      *
      * COMPLEX MOCK EXAMPLE: This tests the overlap detection chain:
@@ -283,7 +306,7 @@ class EloquentRoomRepositoryTest extends TestCase
      * - check_in < $checkOut (existing booking starts before new checkout)
      * - check_out > $checkIn (existing booking ends after new checkin)
      */
-    public function hasOverlappingConfirmedBookings_returns_true_when_conflicts_exist(): void
+    public function has_overlapping_confirmed_bookings_returns_true_when_conflicts_exist(): void
     {
         $roomId = 1;
         $checkIn = '2026-01-10';
@@ -308,23 +331,28 @@ class EloquentRoomRepositoryTest extends TestCase
             ->andReturn(true);
 
         // Use stdClass with __call to avoid alias conflict
-        $mockRoom = new class($mockRelationBuilder) {
+        $mockRoom = new class($mockRelationBuilder)
+        {
             private $relationBuilder;
-            public function __construct($relationBuilder) {
+
+            public function __construct($relationBuilder)
+            {
                 $this->relationBuilder = $relationBuilder;
             }
-            public function bookings() {
+
+            public function bookings()
+            {
                 return $this->relationBuilder;
             }
         };
 
-        $mockModel = Mockery::mock('alias:' . Room::class);
+        $mockModel = Mockery::mock('alias:'.Room::class);
         $mockModel->shouldReceive('find')
             ->once()
             ->with($roomId)
             ->andReturn($mockRoom);
 
-        $repository = new EloquentRoomRepository();
+        $repository = new EloquentRoomRepository;
         $result = $repository->hasOverlappingConfirmedBookings($roomId, $checkIn, $checkOut);
 
         $this->assertTrue($result);
@@ -332,11 +360,14 @@ class EloquentRoomRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentRoomRepository::hasOverlappingConfirmedBookings
      */
-    public function hasOverlappingConfirmedBookings_returns_false_when_no_conflicts(): void
+    public function has_overlapping_confirmed_bookings_returns_false_when_no_conflicts(): void
     {
         $roomId = 1;
         $checkIn = '2026-01-10';
@@ -360,23 +391,28 @@ class EloquentRoomRepositoryTest extends TestCase
             ->andReturn(false);
 
         // Use anonymous class to avoid alias conflict
-        $mockRoom = new class($mockRelationBuilder) {
+        $mockRoom = new class($mockRelationBuilder)
+        {
             private $relationBuilder;
-            public function __construct($relationBuilder) {
+
+            public function __construct($relationBuilder)
+            {
                 $this->relationBuilder = $relationBuilder;
             }
-            public function bookings() {
+
+            public function bookings()
+            {
                 return $this->relationBuilder;
             }
         };
 
-        $mockModel = Mockery::mock('alias:' . Room::class);
+        $mockModel = Mockery::mock('alias:'.Room::class);
         $mockModel->shouldReceive('find')
             ->once()
             ->with($roomId)
             ->andReturn($mockRoom);
 
-        $repository = new EloquentRoomRepository();
+        $repository = new EloquentRoomRepository;
         $result = $repository->hasOverlappingConfirmedBookings($roomId, $checkIn, $checkOut);
 
         $this->assertFalse($result);
@@ -384,8 +420,11 @@ class EloquentRoomRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentRoomRepository::create
      */
     public function create_returns_new_room_instance(): void
@@ -399,14 +438,14 @@ class EloquentRoomRepositoryTest extends TestCase
         ];
 
         // Create a partial alias mock that extends Room
-        $mockModel = Mockery::mock('alias:' . Room::class)->makePartial();
-        
+        $mockModel = Mockery::mock('alias:'.Room::class)->makePartial();
+
         $mockModel->shouldReceive('create')
             ->once()
             ->with($data)
             ->andReturn($mockModel);
 
-        $repository = new EloquentRoomRepository();
+        $repository = new EloquentRoomRepository;
         $result = $repository->create($data);
 
         $this->assertSame($mockModel, $result);
@@ -414,8 +453,11 @@ class EloquentRoomRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentRoomRepository::create
      */
     public function create_with_minimal_data(): void
@@ -428,14 +470,14 @@ class EloquentRoomRepositoryTest extends TestCase
         ];
 
         // Create a partial alias mock that extends Room
-        $mockModel = Mockery::mock('alias:' . Room::class)->makePartial();
-        
+        $mockModel = Mockery::mock('alias:'.Room::class)->makePartial();
+
         $mockModel->shouldReceive('create')
             ->once()
             ->with($data)
             ->andReturn($mockModel);
 
-        $repository = new EloquentRoomRepository();
+        $repository = new EloquentRoomRepository;
         $result = $repository->create($data);
 
         $this->assertSame($mockModel, $result);
@@ -445,8 +487,11 @@ class EloquentRoomRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentRoomRepository::updateWithVersionCheck
      *
      * Tests the optimistic locking update pattern:
@@ -455,7 +500,7 @@ class EloquentRoomRepositoryTest extends TestCase
      * This is critical for preventing race conditions during concurrent updates.
      * Returns 1 on success (version matched), 0 on failure (version mismatch).
      */
-    public function updateWithVersionCheck_returns_one_on_successful_update(): void
+    public function update_with_version_check_returns_one_on_successful_update(): void
     {
         $roomId = 1;
         $expectedVersion = 5;
@@ -482,7 +527,7 @@ class EloquentRoomRepositoryTest extends TestCase
             })
             ->andReturn(1);
 
-        $mockDb = Mockery::mock('alias:' . DB::class);
+        $mockDb = Mockery::mock('alias:'.DB::class);
         $mockDb->shouldReceive('table')
             ->once()
             ->with('rooms')
@@ -492,7 +537,7 @@ class EloquentRoomRepositoryTest extends TestCase
             ->with('lock_version + 1')
             ->andReturn('lock_version + 1');
 
-        $repository = new EloquentRoomRepository();
+        $repository = new EloquentRoomRepository;
         $result = $repository->updateWithVersionCheck($roomId, $expectedVersion, $data);
 
         $this->assertEquals(1, $result);
@@ -500,11 +545,14 @@ class EloquentRoomRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentRoomRepository::updateWithVersionCheck
      */
-    public function updateWithVersionCheck_returns_zero_on_version_mismatch(): void
+    public function update_with_version_check_returns_zero_on_version_mismatch(): void
     {
         $roomId = 1;
         $staleVersion = 3;
@@ -523,7 +571,7 @@ class EloquentRoomRepositoryTest extends TestCase
             ->once()
             ->andReturn(0);
 
-        $mockDb = Mockery::mock('alias:' . DB::class);
+        $mockDb = Mockery::mock('alias:'.DB::class);
         $mockDb->shouldReceive('table')
             ->once()
             ->with('rooms')
@@ -532,7 +580,7 @@ class EloquentRoomRepositoryTest extends TestCase
             ->once()
             ->andReturn('lock_version + 1');
 
-        $repository = new EloquentRoomRepository();
+        $repository = new EloquentRoomRepository;
         $result = $repository->updateWithVersionCheck($roomId, $staleVersion, $data);
 
         $this->assertEquals(0, $result);
@@ -540,11 +588,14 @@ class EloquentRoomRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentRoomRepository::deleteWithVersionCheck
      */
-    public function deleteWithVersionCheck_returns_one_on_successful_delete(): void
+    public function delete_with_version_check_returns_one_on_successful_delete(): void
     {
         $roomId = 1;
         $expectedVersion = 5;
@@ -562,13 +613,13 @@ class EloquentRoomRepositoryTest extends TestCase
             ->once()
             ->andReturn(1);
 
-        $mockDb = Mockery::mock('alias:' . DB::class);
+        $mockDb = Mockery::mock('alias:'.DB::class);
         $mockDb->shouldReceive('table')
             ->once()
             ->with('rooms')
             ->andReturn($mockQueryBuilder);
 
-        $repository = new EloquentRoomRepository();
+        $repository = new EloquentRoomRepository;
         $result = $repository->deleteWithVersionCheck($roomId, $expectedVersion);
 
         $this->assertEquals(1, $result);
@@ -576,11 +627,14 @@ class EloquentRoomRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentRoomRepository::deleteWithVersionCheck
      */
-    public function deleteWithVersionCheck_returns_zero_on_version_mismatch(): void
+    public function delete_with_version_check_returns_zero_on_version_mismatch(): void
     {
         $roomId = 1;
         $staleVersion = 3;
@@ -598,13 +652,13 @@ class EloquentRoomRepositoryTest extends TestCase
             ->once()
             ->andReturn(0);
 
-        $mockDb = Mockery::mock('alias:' . DB::class);
+        $mockDb = Mockery::mock('alias:'.DB::class);
         $mockDb->shouldReceive('table')
             ->once()
             ->with('rooms')
             ->andReturn($mockQueryBuilder);
 
-        $repository = new EloquentRoomRepository();
+        $repository = new EloquentRoomRepository;
         $result = $repository->deleteWithVersionCheck($roomId, $staleVersion);
 
         $this->assertEquals(0, $result);
@@ -612,11 +666,14 @@ class EloquentRoomRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentRoomRepository::deleteWithVersionCheck
      */
-    public function deleteWithVersionCheck_returns_zero_when_room_not_found(): void
+    public function delete_with_version_check_returns_zero_when_room_not_found(): void
     {
         $nonExistentRoomId = 999;
         $anyVersion = 1;
@@ -634,13 +691,13 @@ class EloquentRoomRepositoryTest extends TestCase
             ->once()
             ->andReturn(0);
 
-        $mockDb = Mockery::mock('alias:' . DB::class);
+        $mockDb = Mockery::mock('alias:'.DB::class);
         $mockDb->shouldReceive('table')
             ->once()
             ->with('rooms')
             ->andReturn($mockQueryBuilder);
 
-        $repository = new EloquentRoomRepository();
+        $repository = new EloquentRoomRepository;
         $result = $repository->deleteWithVersionCheck($nonExistentRoomId, $anyVersion);
 
         $this->assertEquals(0, $result);

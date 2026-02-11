@@ -2,35 +2,35 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     /**
      * Consolidated Index Optimization for Bookings & Rooms
-     * 
+     *
      * CRITICAL PERFORMANCE MIGRATION
-     * 
+     *
      * This migration:
      * 1. Removes duplicate/redundant indexes (13+ → 6)
      * 2. Adds optimized composite indexes with correct column order
      * 3. Adds PostgreSQL exclusion constraint for overlap prevention
      * 4. Reduces write overhead by ~50%
-     * 
+     *
      * Query patterns optimized:
      * - scopeOverlappingBookings() - 90% of reads
      * - User booking history
      * - Admin reporting by status/period
      * - Double-booking prevention (database-level guarantee)
-     * 
+     *
      * @see https://www.postgresql.org/docs/15/btree-gist.html
      */
     public function up(): void
     {
         // ===== STEP 1: DROP REDUNDANT INDEXES ON BOOKINGS =====
         // These are duplicates or covered by new composite indexes
-        
+
         $indexesToDrop = [
             'idx_room_dates_overlap',           // Duplicate of room_id, check_in, check_out
             'idx_check_in',                      // Covered by composite indexes
@@ -50,7 +50,7 @@ return new class extends Migration
             // INDEX 1: Primary availability check (covers scopeOverlappingBookings)
             // Query: WHERE room_id = ? AND status IN (...) AND check_in < ? AND check_out > ?
             // Column order: equality filters first (room_id, status), then range (dates)
-            if (!$this->indexExists('bookings', 'idx_bookings_availability')) {
+            if (! $this->indexExists('bookings', 'idx_bookings_availability')) {
                 $table->index(
                     ['room_id', 'status', 'check_in', 'check_out'],
                     'idx_bookings_availability'
@@ -60,7 +60,7 @@ return new class extends Migration
             // INDEX 2: User booking history with sorting
             // Query: WHERE user_id = ? ORDER BY created_at DESC
             // Enables index-only scan for dashboard queries
-            if (!$this->indexExists('bookings', 'idx_bookings_user_history')) {
+            if (! $this->indexExists('bookings', 'idx_bookings_user_history')) {
                 $table->index(
                     ['user_id', 'created_at'],
                     'idx_bookings_user_history'
@@ -70,7 +70,7 @@ return new class extends Migration
             // INDEX 3: Admin reporting by status + period
             // Query: WHERE status = ? AND check_in BETWEEN ? AND ?
             // Covers revenue reports, occupancy calculations
-            if (!$this->indexExists('bookings', 'idx_bookings_status_period')) {
+            if (! $this->indexExists('bookings', 'idx_bookings_status_period')) {
                 $table->index(
                     ['status', 'check_in'],
                     'idx_bookings_status_period'
@@ -122,7 +122,7 @@ return new class extends Migration
         // ===== STEP 4: ROOMS TABLE INDEX =====
         Schema::table('rooms', function (Blueprint $table) {
             // For filtering active rooms in availability search
-            if (!$this->indexExists('rooms', 'idx_rooms_status')) {
+            if (! $this->indexExists('rooms', 'idx_rooms_status')) {
                 $table->index('status', 'idx_rooms_status');
             }
         });
@@ -170,18 +170,20 @@ return new class extends Migration
         $driver = DB::getDriverName();
 
         if ($driver === 'pgsql') {
-            $result = DB::select("
+            $result = DB::select('
                 SELECT 1 FROM pg_indexes 
                 WHERE tablename = ? AND indexname = ?
-            ", [$table, $indexName]);
-            return !empty($result);
+            ', [$table, $indexName]);
+
+            return ! empty($result);
         }
 
         if ($driver === 'mysql') {
             $result = DB::select("
                 SHOW INDEX FROM {$table} WHERE Key_name = ?
             ", [$indexName]);
-            return !empty($result);
+
+            return ! empty($result);
         }
 
         // SQLite - check sqlite_master
@@ -190,7 +192,8 @@ return new class extends Migration
                 SELECT 1 FROM sqlite_master 
                 WHERE type = 'index' AND name = ?
             ", [$indexName]);
-            return !empty($result);
+
+            return ! empty($result);
         }
 
         return false;
@@ -209,8 +212,8 @@ return new class extends Migration
             } elseif ($driver === 'mysql') {
                 // MySQL requires table name
                 $exists = DB::select("SHOW INDEX FROM {$table} WHERE Key_name = ?", [$indexName]);
-                if (!empty($exists)) {
-                    Schema::table($table, fn(Blueprint $t) => $t->dropIndex($indexName));
+                if (! empty($exists)) {
+                    Schema::table($table, fn (Blueprint $t) => $t->dropIndex($indexName));
                 }
             } elseif ($driver === 'sqlite') {
                 DB::statement("DROP INDEX IF EXISTS {$indexName}");
@@ -219,7 +222,7 @@ return new class extends Migration
             // Index doesn't exist, skip silently
             // Log for debugging in production
             logger()->debug("Index {$indexName} on {$table} not found, skipping drop", [
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }

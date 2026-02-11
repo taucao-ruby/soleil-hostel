@@ -6,13 +6,13 @@ use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * LoginRequest - Validation cho POST /api/auth/login
- * 
+ *
  * Rules:
  * - email: required, valid email format, exists ở users table
  * - password: required, string, min 8 chars
  * - remember_me: optional boolean (default false)
  * - device_name: optional string (identify device)
- * 
+ *
  * Flow:
  * 1. Validate input
  * 2. Check email + password
@@ -76,7 +76,7 @@ class LoginRequest extends FormRequest
 
     /**
      * Prepare input for validation
-     * 
+     *
      * - remember_me: convert string "true"/"false" to boolean
      * - device_name: trim whitespace
      */

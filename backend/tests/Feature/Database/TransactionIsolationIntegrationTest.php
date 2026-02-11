@@ -10,18 +10,17 @@ use App\Models\User;
 use App\Services\CreateBookingService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 /**
  * TransactionIsolationIntegrationTest - Integration tests for transaction isolation
- * 
+ *
  * These tests verify that our transaction isolation strategy prevents:
  * - Double bookings under concurrent load
  * - Lost updates from race conditions
  * - Dirty reads and phantom reads
- * 
+ *
  * Data Invariants Tested:
  * - No overlapping bookings for same room
  * - Booking count matches successful transaction count
@@ -32,7 +31,9 @@ class TransactionIsolationIntegrationTest extends TestCase
     use RefreshDatabase;
 
     protected User $user;
+
     protected Room $room;
+
     protected CreateBookingService $bookingService;
 
     protected function setUp(): void
@@ -51,7 +52,7 @@ class TransactionIsolationIntegrationTest extends TestCase
 
     /**
      * Test that concurrent booking requests for same dates result in exactly one booking.
-     * 
+     *
      * Simulates 10 sequential requests (PHPUnit limitation - true parallelism needs process forking).
      * The first request should succeed, all others should fail with overlap error.
      */
@@ -83,8 +84,8 @@ class TransactionIsolationIntegrationTest extends TestCase
         }
 
         // Assertions
-        $this->assertEquals(1, $successCount, "Exactly 1 booking should succeed");
-        $this->assertEquals(9, $failureCount, "Exactly 9 bookings should fail");
+        $this->assertEquals(1, $successCount, 'Exactly 1 booking should succeed');
+        $this->assertEquals(9, $failureCount, 'Exactly 9 bookings should fail');
 
         // Verify database state
         $bookingCount = Booking::where('room_id', $this->room->id)
@@ -92,12 +93,12 @@ class TransactionIsolationIntegrationTest extends TestCase
             ->where('check_out', $checkOut)
             ->count();
 
-        $this->assertEquals(1, $bookingCount, "Database should have exactly 1 booking");
+        $this->assertEquals(1, $bookingCount, 'Database should have exactly 1 booking');
     }
 
     /**
      * Test that overlapping date ranges are properly rejected.
-     * 
+     *
      * Scenario: Booking exists for days 10-15 (future dates to avoid past date validation)
      * Test various overlap patterns:
      * - Same dates (10-15) - should fail
@@ -116,8 +117,8 @@ class TransactionIsolationIntegrationTest extends TestCase
             roomId: $this->room->id,
             checkIn: $baseCheckIn,
             checkOut: $baseCheckOut,
-            guestName: "Original Guest",
-            guestEmail: "original@example.com",
+            guestName: 'Original Guest',
+            guestEmail: 'original@example.com',
             userId: $this->user->id
         );
 
@@ -167,7 +168,7 @@ class TransactionIsolationIntegrationTest extends TestCase
                     checkIn: $case['checkIn'],
                     checkOut: $case['checkOut'],
                     guestName: "Test {$case['name']}",
-                    guestEmail: "test-" . md5($case['name']) . "@example.com",
+                    guestEmail: 'test-'.md5($case['name']).'@example.com',
                     userId: $this->user->id
                 );
 
@@ -200,8 +201,8 @@ class TransactionIsolationIntegrationTest extends TestCase
             roomId: $this->room->id,
             checkIn: $checkIn1,
             checkOut: $checkOut1,
-            guestName: "Guest 1",
-            guestEmail: "guest1@example.com",
+            guestName: 'Guest 1',
+            guestEmail: 'guest1@example.com',
             userId: $this->user->id
         );
 
@@ -209,8 +210,8 @@ class TransactionIsolationIntegrationTest extends TestCase
             roomId: $this->room->id,
             checkIn: $checkIn2,
             checkOut: $checkOut2,
-            guestName: "Guest 2",
-            guestEmail: "guest2@example.com",
+            guestName: 'Guest 2',
+            guestEmail: 'guest2@example.com',
             userId: $this->user->id
         );
 
@@ -246,7 +247,7 @@ class TransactionIsolationIntegrationTest extends TestCase
 
             return $booking->id;
         }, TransactionIsolation::READ_COMMITTED, [
-            'operationName' => 'test_booking_creation'
+            'operationName' => 'test_booking_creation',
         ]);
 
         // Verify booking was created
@@ -318,8 +319,8 @@ class TransactionIsolationIntegrationTest extends TestCase
             roomId: $this->room->id,
             checkIn: $checkIn,
             checkOut: $checkOut,
-            guestName: "Metrics Test",
-            guestEmail: "metrics@example.com",
+            guestName: 'Metrics Test',
+            guestEmail: 'metrics@example.com',
             userId: $this->user->id
         );
 

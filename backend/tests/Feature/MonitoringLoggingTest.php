@@ -3,10 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
+use Tests\TestCase;
 
 /**
  * Tests for Monitoring & Logging Infrastructure.
@@ -18,6 +17,7 @@ class MonitoringLoggingTest extends TestCase
     private function actingAsAdmin(): static
     {
         $admin = User::factory()->create(['role' => 'admin']);
+
         return $this->actingAs($admin, 'sanctum');
     }
 
@@ -167,7 +167,7 @@ class MonitoringLoggingTest extends TestCase
         $response = $this->getJson('/api/health/live');
 
         $response->assertStatus(200);
-        
+
         // Verify correlation ID header exists
         $this->assertTrue($response->headers->has('X-Correlation-ID'));
     }

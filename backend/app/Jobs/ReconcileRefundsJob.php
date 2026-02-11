@@ -99,6 +99,7 @@ final class ReconcileRefundsJob implements ShouldQueue
                             'booking_id' => $booking->id,
                             'retry_count' => $retryCount,
                         ]);
+
                         continue;
                     }
 
@@ -116,6 +117,7 @@ final class ReconcileRefundsJob implements ShouldQueue
             // Check if refund_id exists (refund was initiated)
             if ($booking->refund_id) {
                 $this->verifyExistingRefund($booking);
+
                 return;
             }
 
@@ -183,11 +185,12 @@ final class ReconcileRefundsJob implements ShouldQueue
         );
 
         $charge = $paymentIntent->latest_charge;
-        if (!$charge || !$charge->refunds->data) {
+        if (! $charge || ! $charge->refunds->data) {
             // No refunds found - may need manual intervention
             Log::info('No refunds found for stale pending booking', [
                 'booking_id' => $booking->id,
             ]);
+
             return;
         }
 
@@ -235,6 +238,7 @@ final class ReconcileRefundsJob implements ShouldQueue
                     'refund_error' => null,
                 ]);
                 event(new BookingCancelled($booking));
+
                 return;
             }
 
@@ -263,7 +267,7 @@ final class ReconcileRefundsJob implements ShouldQueue
         } catch (\Throwable $e) {
             $booking->update([
                 'status' => BookingStatus::REFUND_FAILED,
-                'refund_error' => "[Attempt {$attemptNumber}] " . $e->getMessage(),
+                'refund_error' => "[Attempt {$attemptNumber}] ".$e->getMessage(),
             ]);
 
             Log::warning('Retry refund failed', [
@@ -279,7 +283,7 @@ final class ReconcileRefundsJob implements ShouldQueue
      */
     private function extractRetryCount(?string $errorMessage): int
     {
-        if (!$errorMessage) {
+        if (! $errorMessage) {
             return 0;
         }
 

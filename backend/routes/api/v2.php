@@ -14,45 +14,45 @@ use Illuminate\Support\Facades\Route;
 
 // ========== V2 SKELETON - NOT IMPLEMENTED ==========
 
-Route::any('/rooms', fn() => response()->json([
+Route::any('/rooms', fn () => response()->json([
     'error' => 'NOT_IMPLEMENTED',
     'message' => 'API v2 under development',
-    'useInstead' => '/api/v1/rooms'
+    'useInstead' => '/api/v1/rooms',
 ], 501));
 
-Route::any('/rooms/{id}', fn() => response()->json([
+Route::any('/rooms/{id}', fn () => response()->json([
     'error' => 'NOT_IMPLEMENTED',
     'message' => 'API v2 under development',
-    'useInstead' => '/api/v1/rooms/{id}'
+    'useInstead' => '/api/v1/rooms/{id}',
 ], 501));
 
-Route::any('/bookings', fn() => response()->json([
+Route::any('/bookings', fn () => response()->json([
     'error' => 'NOT_IMPLEMENTED',
     'message' => 'API v2 under development',
-    'useInstead' => '/api/v1/bookings'
+    'useInstead' => '/api/v1/bookings',
 ], 501));
 
-Route::any('/bookings/{id}', fn() => response()->json([
+Route::any('/bookings/{id}', fn () => response()->json([
     'error' => 'NOT_IMPLEMENTED',
     'message' => 'API v2 under development',
-    'useInstead' => '/api/v1/bookings/{id}'
+    'useInstead' => '/api/v1/bookings/{id}',
 ], 501));
 
-Route::any('/admin/bookings', fn() => response()->json([
+Route::any('/admin/bookings', fn () => response()->json([
     'error' => 'NOT_IMPLEMENTED',
     'message' => 'API v2 under development',
-    'useInstead' => '/api/v1/admin/bookings'
+    'useInstead' => '/api/v1/admin/bookings',
 ], 501));
 
-Route::any('/admin/bookings/{any}', fn() => response()->json([
+Route::any('/admin/bookings/{any}', fn () => response()->json([
     'error' => 'NOT_IMPLEMENTED',
     'message' => 'API v2 under development',
-    'useInstead' => '/api/v1/admin/bookings'
+    'useInstead' => '/api/v1/admin/bookings',
 ], 501))->where('any', '.*');
 
 // Catch-all for any other v2 routes
-Route::fallback(fn() => response()->json([
+Route::fallback(fn () => response()->json([
     'error' => 'NOT_IMPLEMENTED',
     'message' => 'API v2 under development. This endpoint does not exist in v2.',
-    'useInstead' => '/api/v1/'
+    'useInstead' => '/api/v1/',
 ], 501));

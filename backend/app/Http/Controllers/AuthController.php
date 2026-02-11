@@ -7,8 +7,8 @@ use App\Http\Requests\Auth\RegisterRequest;
 use App\Models\User;
 use App\Traits\ApiResponse;
 use Illuminate\Auth\Events\Registered;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -16,7 +16,6 @@ use Illuminate\Validation\ValidationException;
  * @deprecated Use Auth\AuthController (Bearer token) or HttpOnlyTokenController (httpOnly cookies) instead.
  *             This controller is maintained for backward compatibility with legacy endpoints only.
  *             Sunset date: July 2026 (see routes/api.php deprecation middleware)
- *
  * @see \App\Http\Controllers\Auth\AuthController         Bearer token auth (v2)
  * @see \App\Http\Controllers\Auth\HttpOnlyTokenController HttpOnly cookie auth
  * @see \App\Http\Controllers\Auth\UnifiedAuthController   Mode-agnostic (auto-detect)
@@ -24,6 +23,7 @@ use Illuminate\Validation\ValidationException;
 class AuthController extends Controller
 {
     use ApiResponse;
+
     /**
      * Register a new user
      */
@@ -63,14 +63,14 @@ class AuthController extends Controller
 
         $user = User::where('email', $validated['email'])->first();
 
-        if (!$user || !Hash::check($validated['password'], $user->password)) {
+        if (! $user || ! Hash::check($validated['password'], $user->password)) {
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials are invalid.'],
             ]);
         }
 
         // Auto-resend verification email if unverified
-        if (!$user->hasVerifiedEmail()) {
+        if (! $user->hasVerifiedEmail()) {
             $user->sendEmailVerificationNotification();
         }
 
@@ -119,10 +119,10 @@ class AuthController extends Controller
     public function refresh(Request $request): JsonResponse
     {
         $user = $request->user();
-        
+
         // Revoke old token
         $request->user()->currentAccessToken()->delete();
-        
+
         // Create new token
         $token = $user->createToken('auth_token')->plainTextToken;
 

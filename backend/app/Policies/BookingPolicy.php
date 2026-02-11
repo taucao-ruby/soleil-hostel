@@ -103,7 +103,7 @@ class BookingPolicy
         $isOwner = $user->id === $booking->user_id;
         $isAdmin = $user->isAdmin();
 
-        if (!$isOwner && !$isAdmin) {
+        if (! $isOwner && ! $isAdmin) {
             return false;
         }
 
@@ -113,12 +113,12 @@ class BookingPolicy
         }
 
         // Check if booking is in cancellable state
-        if (!$booking->status->isCancellable()) {
+        if (! $booking->status->isCancellable()) {
             return false;
         }
 
         // Regular users cannot cancel after check-in has started
-        if (!$isAdmin && $booking->isStarted()) {
+        if (! $isAdmin && $booking->isStarted()) {
             return config('booking.cancellation.allow_after_checkin', false);
         }
 
@@ -132,6 +132,6 @@ class BookingPolicy
      */
     public function forceCancel(User $user, Booking $booking): bool
     {
-        return $user->isAdmin() && !$booking->status->isTerminal();
+        return $user->isAdmin() && ! $booking->status->isTerminal();
     }
 }

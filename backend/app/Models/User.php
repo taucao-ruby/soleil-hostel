@@ -4,13 +4,13 @@ namespace App\Models;
 
 use App\Enums\UserRole;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Support\Str;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -54,14 +54,14 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     // ===== ROLE HELPER METHODS (RBAC) =====
-    // 
+    //
     // SECURITY: All role checks MUST use these methods.
     // NEVER compare $user->role to strings directly.
     // The role attribute is cast to UserRole enum for type safety.
 
     /**
      * Check if the user has the ADMIN role.
-     * 
+     *
      * Use for: Full administrative access, user management, system config.
      */
     public function isAdmin(): bool
@@ -71,7 +71,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Check if the user has moderator-level access or higher.
-     * 
+     *
      * Returns true for: MODERATOR, ADMIN
      * Use for: Content moderation, viewing all bookings, approving reviews.
      */
@@ -82,7 +82,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Check if the user is a regular user (lowest privilege level).
-     * 
+     *
      * Returns true ONLY for: USER
      * Use for: Checking if user has no elevated privileges.
      */
@@ -93,10 +93,10 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Check if the user has the exact specified role.
-     * 
+     *
      * Type-safe single role check using the UserRole enum.
-     * 
-     * @param UserRole $role The role to check against
+     *
+     * @param  UserRole  $role  The role to check against
      */
     public function hasRole(UserRole $role): bool
     {
@@ -105,12 +105,12 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Check if the user has any of the specified roles.
-     * 
+     *
      * Type-safe multi-role check. Useful for policies that allow
      * multiple roles to perform an action.
-     * 
-     * @param array<UserRole> $roles Array of UserRole enum cases
-     * 
+     *
+     * @param  array<UserRole>  $roles  Array of UserRole enum cases
+     *
      * @example $user->hasAnyRole([UserRole::ADMIN, UserRole::MODERATOR])
      */
     public function hasAnyRole(array $roles): bool
@@ -120,20 +120,20 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Check if the user has at least the given role level.
-     * 
+     *
      * Role Hierarchy (lowest to highest):
      *   USER (1) < MODERATOR (2) < ADMIN (3)
-     * 
+     *
      * This enables "role inheritance" - higher roles inherit lower role permissions.
-     * 
-     * @param UserRole $role The minimum role level required
-     * 
+     *
+     * @param  UserRole  $role  The minimum role level required
+     *
      * @example $user->isAtLeast(UserRole::MODERATOR) // true for MODERATOR and ADMIN
      */
     public function isAtLeast(UserRole $role): bool
     {
         static $levels = null;
-        
+
         // Cache level mapping for performance
         $levels ??= [
             UserRole::USER->value => 1,
@@ -203,13 +203,13 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Change user email and clear verification status.
-     * 
+     *
      * CRITICAL: Email change requires re-verification for security.
      * This centralizes the logic to prevent forgetting to clear email_verified_at.
-     * 
-     * @param string $newEmail The new email address
+     *
+     * @param  string  $newEmail  The new email address
      * @return bool Whether the email was actually changed
-     * 
+     *
      * @example
      * // In controllers/services
      * if ($user->changeEmail($request->input('email'))) {
@@ -223,9 +223,10 @@ class User extends Authenticatable implements MustVerifyEmail
         if ($this->email !== $newEmail) {
             $this->email = $newEmail;
             $this->email_verified_at = null;  // Force re-verification
+
             return true;
         }
-        
+
         return false;
     }
 
@@ -233,7 +234,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Scope: Select only commonly needed columns
-     * 
+     *
      * Usage: User::selectColumns()->get()
      */
     public function scopeSelectColumns(Builder $query): Builder

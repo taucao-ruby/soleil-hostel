@@ -11,14 +11,14 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Middleware to enforce minimum role level for route access.
- * 
+ *
  * Uses the role hierarchy: USER < MODERATOR < ADMIN
  * A user with a higher role can access routes requiring lower roles.
- * 
+ *
  * Usage in routes:
  *   Route::middleware('role:admin')->group(...);
  *   Route::middleware('role:moderator')->group(...);
- * 
+ *
  * @example Route::get('/admin/users', [UserController::class, 'index'])->middleware('role:admin');
  */
 class EnsureUserHasRole
@@ -33,7 +33,7 @@ class EnsureUserHasRole
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'message' => 'Unauthenticated.',
             ], 401);
@@ -44,13 +44,13 @@ class EnsureUserHasRole
         if ($requiredRole === null) {
             // Invalid role parameter - log and deny
             report(new \InvalidArgumentException("Invalid role parameter in middleware: {$role}"));
-            
+
             return response()->json([
                 'message' => 'Server configuration error.',
             ], 500);
         }
 
-        if (!$user->isAtLeast($requiredRole)) {
+        if (! $user->isAtLeast($requiredRole)) {
             return response()->json([
                 'message' => 'Forbidden. Insufficient permissions.',
             ], 403);

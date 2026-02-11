@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Cache;
 
-use App\Console\Commands\CacheWarmupCommand;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
@@ -14,7 +13,7 @@ use Tests\TestCase;
 
 /**
  * Cache Warmup Tests
- * 
+ *
  * Tests for the cache warmup command and service to ensure:
  * - Idempotency: Running multiple times produces same results
  * - Graceful failure: Individual failures don't crash the process
@@ -30,12 +29,12 @@ class CacheWarmupTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Use database cache for consistent testing
         config(['cache.default' => 'database']);
-        
+
         $this->cacheWarmer = app(CacheWarmer::class);
-        
+
         // Create test data
         $this->createTestData();
     }
@@ -377,10 +376,10 @@ class CacheWarmupTest extends TestCase
         // Instead of mocking Log, we verify logging happens by checking
         // that warmAll completes successfully (logs are written during execution)
         $results = $this->cacheWarmer->warmAll();
-        
+
         // If logging failed catastrophically, the warmup would fail
         $this->assertEquals(0, $results['failed']);
-        
+
         // Verify the results contain expected structure (indicating proper execution flow)
         $this->assertArrayHasKey('total_duration_ms', $results);
         $this->assertArrayHasKey('groups', $results);
@@ -393,9 +392,9 @@ class CacheWarmupTest extends TestCase
     public function test_cache_warmup_completes_within_timeout(): void
     {
         $startTime = microtime(true);
-        
+
         $this->cacheWarmer->warmAll();
-        
+
         $duration = (microtime(true) - $startTime) * 1000;
 
         // Should complete in under 5 seconds for test data
@@ -406,15 +405,15 @@ class CacheWarmupTest extends TestCase
     public function test_cache_warmup_memory_usage(): void
     {
         $memoryBefore = memory_get_usage(true);
-        
+
         $results = $this->cacheWarmer->warmAll();
-        
+
         $memoryAfter = memory_get_usage(true);
         $memoryUsed = ($memoryAfter - $memoryBefore) / 1024 / 1024;
 
         // Should use less than 50MB for test data
         $this->assertLessThan(50, $memoryUsed);
-        
+
         // Peak memory should be reported
         $this->assertArrayHasKey('memory_peak_mb', $results);
     }

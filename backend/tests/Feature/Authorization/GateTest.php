@@ -4,15 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Authorization;
 
-use App\Enums\UserRole;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
 use Tests\TestCase;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 
 /**
  * Feature tests for RBAC Gates defined in AuthServiceProvider.
- * 
+ *
  * Tests: admin, moderator, manage-users, moderate-content, view-all-bookings, manage-rooms
  */
 class GateTest extends TestCase

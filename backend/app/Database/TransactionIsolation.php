@@ -12,21 +12,21 @@ use RuntimeException;
 
 /**
  * TransactionIsolation - Database Transaction Isolation Manager
- * 
+ *
  * Provides robust transaction handling with configurable isolation levels,
  * automatic retry logic for transient failures, and comprehensive monitoring.
- * 
+ *
  * Isolation Levels (PostgreSQL):
  * - READ COMMITTED: Default, sees committed changes during transaction
  * - REPEATABLE READ: Consistent snapshot, prevents non-repeatable reads
  * - SERIALIZABLE: Strongest, fully serializable execution
- * 
+ *
  * Error Codes (PostgreSQL):
  * - 40001: serialization_failure - Retry with backoff
  * - 40P01: deadlock_detected - Immediate retry
  * - 23505: unique_violation - Business logic error, no retry
  * - 23503: foreign_key_violation - Business logic error, no retry
- * 
+ *
  * @see https://www.postgresql.org/docs/current/transaction-iso.html
  */
 final class TransactionIsolation
@@ -35,34 +35,41 @@ final class TransactionIsolation
      * Isolation level constants matching PostgreSQL/MySQL naming.
      */
     public const READ_COMMITTED = 'READ COMMITTED';
+
     public const REPEATABLE_READ = 'REPEATABLE READ';
+
     public const SERIALIZABLE = 'SERIALIZABLE';
 
     /**
      * PostgreSQL SQLSTATE codes for transient failures.
      */
     private const SQLSTATE_SERIALIZATION_FAILURE = '40001';
+
     private const SQLSTATE_DEADLOCK_DETECTED = '40P01';
 
     /**
      * MySQL error codes for transient failures.
      */
     private const MYSQL_DEADLOCK_CODE = 1213;
+
     private const MYSQL_LOCK_WAIT_TIMEOUT = 1205;
 
     /**
      * Default retry configuration.
      */
     private const DEFAULT_MAX_RETRIES = 3;
+
     private const DEFAULT_BASE_DELAY_MS = 100;
+
     private const DEFAULT_TIMEOUT_SECONDS = 30;
 
     /**
      * Execute a callback within a transaction with specified isolation level.
-     * 
+     *
      * @template T
-     * @param Closure(): T $callback The operation to execute
-     * @param string $isolationLevel One of: READ COMMITTED, REPEATABLE READ, SERIALIZABLE
+     *
+     * @param  Closure(): T  $callback  The operation to execute
+     * @param  string  $isolationLevel  One of: READ COMMITTED, REPEATABLE READ, SERIALIZABLE
      * @param array{
      *   maxRetries?: int,
      *   baseDelayMs?: int,
@@ -70,6 +77,7 @@ final class TransactionIsolation
      *   operationName?: string
      * } $options Additional options
      * @return T The callback result
+     *
      * @throws RuntimeException When all retries exhausted
      * @throws PDOException For non-transient database errors
      */
@@ -109,7 +117,7 @@ final class TransactionIsolation
                 ]);
 
                 // Determine if we should retry
-                if (!$errorInfo['retryable'] || $attempt >= $maxRetries) {
+                if (! $errorInfo['retryable'] || $attempt >= $maxRetries) {
                     break;
                 }
 
@@ -139,7 +147,7 @@ final class TransactionIsolation
         TransactionMetrics::recordFailure($operationName, $isolationLevel, $attempt, $totalDuration);
 
         throw new RuntimeException(
-            "Transaction failed after {$attempt} attempts: " . ($lastException?->getMessage() ?? 'Unknown error'),
+            "Transaction failed after {$attempt} attempts: ".($lastException?->getMessage() ?? 'Unknown error'),
             0,
             $lastException
         );
@@ -147,11 +155,10 @@ final class TransactionIsolation
 
     /**
      * Execute callback with explicit isolation level.
-     * 
+     *
      * @template T
-     * @param Closure(): T $callback
-     * @param string $isolationLevel
-     * @param int $timeout
+     *
+     * @param  Closure(): T  $callback
      * @return T
      */
     private static function executeWithIsolation(
@@ -168,7 +175,7 @@ final class TransactionIsolation
         $inTransaction = $pdo->inTransaction();
 
         // Set isolation level BEFORE beginning transaction (only if not already in one)
-        if (!$inTransaction && $isolationLevel !== self::READ_COMMITTED) {
+        if (! $inTransaction && $isolationLevel !== self::READ_COMMITTED) {
             match ($driver) {
                 'pgsql' => $connection->statement(
                     "SET TRANSACTION ISOLATION LEVEL {$isolationLevel}"
@@ -180,7 +187,7 @@ final class TransactionIsolation
             };
         } elseif ($inTransaction && $isolationLevel !== self::READ_COMMITTED) {
             // Log that we're skipping isolation level change due to active transaction
-            Log::debug("Skipping isolation level change (already in transaction)", [
+            Log::debug('Skipping isolation level change (already in transaction)', [
                 'requested_level' => $isolationLevel,
                 'driver' => $driver,
             ]);
@@ -197,8 +204,7 @@ final class TransactionIsolation
 
     /**
      * Parse PDOException to determine error type and retryability.
-     * 
-     * @param PDOException $e
+     *
      * @return array{type: string, sqlstate: string, retryable: bool}
      */
     private static function parseErrorInfo(PDOException $e): array
@@ -262,15 +268,15 @@ final class TransactionIsolation
 
     /**
      * Calculate delay with exponential backoff and jitter.
-     * 
+     *
      * Strategy:
      * - Deadlocks: Immediate retry with small random delay (0-50ms)
      * - Serialization: Exponential backoff with jitter
      * - Lock timeout: Longer delays to allow lock release
-     * 
-     * @param int $attempt Current attempt number (1-based)
-     * @param int $baseDelayMs Base delay in milliseconds
-     * @param string $errorType Type of error for strategy selection
+     *
+     * @param  int  $attempt  Current attempt number (1-based)
+     * @param  int  $baseDelayMs  Base delay in milliseconds
+     * @param  string  $errorType  Type of error for strategy selection
      * @return int Delay in milliseconds
      */
     private static function calculateDelay(int $attempt, int $baseDelayMs, string $errorType): int
@@ -278,20 +284,20 @@ final class TransactionIsolation
         return match ($errorType) {
             // Deadlocks: Quick retry with small jitter
             'deadlock' => random_int(10, 50),
-            
+
             // Serialization: Exponential backoff with jitter
             'serialization_failure' => (int) (
                 $baseDelayMs * pow(2, $attempt - 1) + random_int(0, $baseDelayMs)
             ),
-            
+
             // Lock timeout: Longer delays
             'lock_timeout' => (int) (
                 $baseDelayMs * pow(2, $attempt) + random_int(0, $baseDelayMs * 2)
             ),
-            
+
             // SQLite: Short delays
             'sqlite_busy' => random_int(50, 150),
-            
+
             // Default: Standard exponential backoff
             default => (int) ($baseDelayMs * pow(2, $attempt - 1)),
         };
@@ -299,15 +305,16 @@ final class TransactionIsolation
 
     /**
      * Convenience method for SERIALIZABLE isolation.
-     * 
+     *
      * Use for:
      * - Booking the last available slot
      * - Financial calculations requiring exact correctness
      * - Any operation with zero tolerance for anomalies
-     * 
+     *
      * @template T
-     * @param Closure(): T $callback
-     * @param string $operationName For logging/metrics
+     *
+     * @param  Closure(): T  $callback
+     * @param  string  $operationName  For logging/metrics
      * @return T
      */
     public static function serializable(Closure $callback, string $operationName = 'serializable_op'): mixed
@@ -321,15 +328,16 @@ final class TransactionIsolation
 
     /**
      * Convenience method for REPEATABLE READ isolation.
-     * 
+     *
      * Use for:
      * - Financial reports
      * - Consistent reads across multiple queries
      * - Payment processing
-     * 
+     *
      * @template T
-     * @param Closure(): T $callback
-     * @param string $operationName For logging/metrics
+     *
+     * @param  Closure(): T  $callback
+     * @param  string  $operationName  For logging/metrics
      * @return T
      */
     public static function repeatableRead(Closure $callback, string $operationName = 'repeatable_read_op'): mixed
@@ -341,15 +349,16 @@ final class TransactionIsolation
 
     /**
      * Execute with pessimistic locking (SELECT FOR UPDATE).
-     * 
+     *
      * This is the recommended approach for most booking operations:
      * 1. Uses READ COMMITTED (default, good performance)
      * 2. Relies on FOR UPDATE locks for consistency
      * 3. Automatic retry on deadlocks
-     * 
+     *
      * @template T
-     * @param Closure(): T $callback
-     * @param string $operationName For logging/metrics
+     *
+     * @param  Closure(): T  $callback
+     * @param  string  $operationName  For logging/metrics
      * @return T
      */
     public static function withPessimisticLock(Closure $callback, string $operationName = 'pessimistic_lock_op'): mixed

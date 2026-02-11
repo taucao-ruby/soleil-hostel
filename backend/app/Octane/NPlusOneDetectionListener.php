@@ -3,11 +3,10 @@
 namespace App\Octane;
 
 use Laravel\Octane\Events\RequestReceived;
-use Illuminate\Database\Connection;
 
 /**
  * N+1 Query Prevention Listener for Octane
- * 
+ *
  * Attaches query listeners to each request to track N+1 patterns
  * and provide real-time metrics to performance monitoring tools.
  */

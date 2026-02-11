@@ -15,17 +15,17 @@ class RoomService
     use HasCacheTagSupport;
 
     private const CACHE_TTL_ROOMS = 60;          // 1 minute
+
     private const CACHE_TAG_ROOMS = 'rooms';
 
     public function __construct(
         private readonly RoomRepositoryInterface $roomRepository,
         private readonly RoomAvailabilityService $roomAvailabilityService
-    ) {
-    }
+    ) {}
 
     /**
      * Get room by ID with availability info - CACHED
-     * 
+     *
      * Cache Strategy:
      * - Key: rooms:id:{id}
      * - Tags: ['rooms', 'room-{id}']
@@ -43,9 +43,6 @@ class RoomService
      *
      * Used by controller for update/delete operations where
      * we need the fresh model instance for authorization and mutation.
-     *
-     * @param int $roomId
-     * @return Room|null
      */
     public function findById(int $roomId): ?Room
     {
@@ -55,7 +52,6 @@ class RoomService
     /**
      * ===== INVALIDATION METHODS =====
      */
-
     public function invalidateRoom(int $roomId): void
     {
         if ($this->supportsTags()) {
@@ -77,13 +73,12 @@ class RoomService
             Cache::flush();
         }
         $this->roomAvailabilityService->invalidateAllCache();
-        Log::info("Cache invalidated for all rooms");
+        Log::info('Cache invalidated for all rooms');
     }
 
     /**
      * ===== INTERNAL DB METHODS =====
      */
-
     private function fetchRoomsFromDB(): Collection
     {
         return $this->roomRepository->getAllOrderedByName();
@@ -106,11 +101,10 @@ class RoomService
      * - Single query = no window for concurrent modification
      * - No pessimistic locks needed
      *
-     * @param Room     $room            The Room model to update
-     * @param array    $data            The data to update (validated from request)
-     * @param int|null $currentVersion  The lock_version the client expects (from their last read)
-     *                                  If null, backward compatible mode: use current DB version
-     *
+     * @param  Room  $room  The Room model to update
+     * @param  array  $data  The data to update (validated from request)
+     * @param  int|null  $currentVersion  The lock_version the client expects (from their last read)
+     *                                    If null, backward compatible mode: use current DB version
      * @return Room The updated Room model with new lock_version
      *
      * @throws OptimisticLockException If version mismatch detected (concurrent modification)
@@ -183,7 +177,7 @@ class RoomService
      *
      * New rooms automatically get lock_version = 1 (from DB default).
      *
-     * @param array $data Validated room data
+     * @param  array  $data  Validated room data
      * @return Room The newly created room
      */
     public function createRoom(array $data): Room
@@ -211,9 +205,8 @@ class RoomService
      * to prevent deleting a room that was modified after the user
      * decided to delete it.
      *
-     * @param Room     $room            The room to delete
-     * @param int|null $currentVersion  Expected version (optional for backward compatibility)
-     *
+     * @param  Room  $room  The room to delete
+     * @param  int|null  $currentVersion  Expected version (optional for backward compatibility)
      * @return bool True if deleted successfully
      *
      * @throws OptimisticLockException If version mismatch detected
@@ -232,7 +225,7 @@ class RoomService
 
         if ($rowsAffected === 0) {
             $this->roomRepository->refresh($room);
-            
+
             throw OptimisticLockException::forRoom(
                 $room,
                 $currentVersion,

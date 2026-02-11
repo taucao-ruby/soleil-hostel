@@ -9,13 +9,13 @@ use Illuminate\Http\Request;
 
 /**
  * CheckHttpOnlyTokenValid - Validate httpOnly cookie token
- * 
+ *
  * CRITICAL SECURITY:
  * - Token luôn trong httpOnly cookie, KHÔNG Authorization header
  * - XSS cannot access, CSRF mitigated by SameSite=Strict
  * - Validates: Existence, expiration, revocation, suspicious activity
  * - Sets $request->auth() để dùng trong controllers
- * 
+ *
  * Middleware Pipeline:
  * 1. Extract token_identifier từ httpOnly cookie
  * 2. Hash & lookup token_hash trong DB
@@ -33,19 +33,19 @@ class CheckHttpOnlyTokenValid
         $tokenIdentifier = $request->cookie($cookieName);
 
         // Fallback: Try to extract from Cookie header for testing compatibility
-        if (!$tokenIdentifier && $request->hasHeader('Cookie')) {
+        if (! $tokenIdentifier && $request->hasHeader('Cookie')) {
             $cookieHeader = $request->header('Cookie');
             // Parse cookie header: "name=value; other=value"
             $cookies = array_map('trim', explode(';', $cookieHeader));
             foreach ($cookies as $cookie) {
-                if (strpos($cookie, $cookieName . '=') === 0) {
-                    $tokenIdentifier = substr($cookie, strlen($cookieName . '='));
+                if (strpos($cookie, $cookieName.'=') === 0) {
+                    $tokenIdentifier = substr($cookie, strlen($cookieName.'='));
                     break;
                 }
             }
         }
 
-        if (!$tokenIdentifier) {
+        if (! $tokenIdentifier) {
             throw new AuthenticationException('Unauthenticated. Please log in.');
         }
 
@@ -55,7 +55,7 @@ class CheckHttpOnlyTokenValid
 
         $token = PersonalAccessToken::where('token_hash', $tokenHash)->first();
 
-        if (!$token) {
+        if (! $token) {
             throw new AuthenticationException('Unauthenticated. Please log in.');
         }
 
@@ -111,7 +111,7 @@ class CheckHttpOnlyTokenValid
         $request->attributes->set('token', $token);
 
         // Throttle last_used_at updates to 1-minute intervals to reduce DB writes
-        if (!$token->last_used_at || $token->last_used_at->diffInMinutes(now()) >= 1) {
+        if (! $token->last_used_at || $token->last_used_at->diffInMinutes(now()) >= 1) {
             $token->update(['last_used_at' => now()]);
         }
 
@@ -124,7 +124,7 @@ class CheckHttpOnlyTokenValid
      */
     private function generateDeviceFingerprint(Request $request): ?string
     {
-        if (!config('sanctum.verify_device_fingerprint')) {
+        if (! config('sanctum.verify_device_fingerprint')) {
             return null;
         }
 

@@ -5,12 +5,11 @@ namespace Tests\Feature\Auth;
 use App\Models\PersonalAccessToken;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 /**
  * AuthenticationTest - Comprehensive authentication tests
- * 
+ *
  * ✅ Test Coverage:
  * 1. Login success with valid credentials
  * 2. Login failure with invalid credentials
@@ -361,7 +360,7 @@ class AuthenticationTest extends TestCase
             ->where('tokenable_type', 'App\\Models\\User')
             ->first();
         $this->assertNotNull($token);
-        
+
         $expiresInDays = abs($token->expires_at->diffInDays(now()));
         $this->assertGreaterThanOrEqual(29, $expiresInDays);
         $this->assertLessThanOrEqual(31, $expiresInDays);

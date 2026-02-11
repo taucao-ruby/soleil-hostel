@@ -11,17 +11,16 @@ use App\Models\Review;
 use App\Models\User;
 use App\Policies\ReviewPolicy;
 use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Collection;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
  * Unit tests for ReviewPolicy.
- * 
+ *
  * These tests verify policy logic in isolation.
  * Uses fake model instances with pre-set properties and relations.
  * Extends Laravel TestCase to enable Eloquent relation methods.
- * 
+ *
  * @see docs/backend/REVIEW_POLICY_AUTHORIZATION.md
  */
 class ReviewPolicyTest extends TestCase
@@ -31,7 +30,7 @@ class ReviewPolicyTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->policy = new ReviewPolicy();
+        $this->policy = new ReviewPolicy;
     }
 
     // ===== CREATE TESTS =====
@@ -130,7 +129,7 @@ class ReviewPolicyTest extends TestCase
             checkOut: Carbon::yesterday()
         );
         // Simulate existing review via pre-loaded relation
-        $existingReview = new Review();
+        $existingReview = new Review;
         $existingReview->id = 99;
         $booking->setRelation('review', $existingReview);
 
@@ -262,7 +261,7 @@ class ReviewPolicyTest extends TestCase
     }
 
     #[Test]
-    public function viewAny_allowed_for_anyone(): void
+    public function view_any_allowed_for_anyone(): void
     {
         $user = $this->makeUser(1, UserRole::USER);
         $this->assertTrue($this->policy->viewAny($user));
@@ -276,9 +275,10 @@ class ReviewPolicyTest extends TestCase
      */
     private function makeUser(int $id, UserRole $role): User
     {
-        $user = new User();
+        $user = new User;
         $user->id = $id;
         $user->role = $role;
+
         return $user;
     }
 
@@ -287,10 +287,11 @@ class ReviewPolicyTest extends TestCase
      */
     private function makeBooking(int $userId, BookingStatus $status, Carbon $checkOut): Booking
     {
-        $booking = new Booking();
+        $booking = new Booking;
         $booking->user_id = $userId;
         $booking->status = $status;
         $booking->check_out = $checkOut;
+
         return $booking;
     }
 
@@ -299,9 +300,10 @@ class ReviewPolicyTest extends TestCase
      */
     private function makeReview(int $userId): Review
     {
-        $review = new Review();
+        $review = new Review;
         $review->id = 1;
         $review->user_id = $userId;
+
         return $review;
     }
 }

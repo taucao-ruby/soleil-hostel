@@ -29,7 +29,7 @@ class RoomResource extends JsonResource
             'price' => (float) $this->price,
             'max_guests' => $this->max_guests,
             'status' => $this->status,
-            
+
             // ===== LOCATION INFO =====
             'location' => $this->when($this->relationLoaded('location') && $this->location, [
                 'id' => $this->location?->id,
@@ -37,18 +37,18 @@ class RoomResource extends JsonResource
                 'slug' => $this->location?->slug,
             ]),
             'location_id' => $this->location_id,
-            
+
             // ===== OPTIMISTIC LOCKING =====
             // Clients MUST include this value when sending update requests
             // If the version doesn't match, the update will be rejected with 409 Conflict
             'lock_version' => $this->lock_version,
-            
+
             // ===== CONDITIONAL RELATIONSHIPS =====
             // Booking count - always loaded via withCount('activeBookings')
             'active_bookings_count' => $this->active_bookings_count ?? 0,
-            
-            'created_at' => $this->when($this->created_at !== null, fn() => $this->created_at->toIso8601String()),
-            'updated_at' => $this->when($this->updated_at !== null, fn() => $this->updated_at->toIso8601String()),
+
+            'created_at' => $this->when($this->created_at !== null, fn () => $this->created_at->toIso8601String()),
+            'updated_at' => $this->when($this->updated_at !== null, fn () => $this->updated_at->toIso8601String()),
         ];
     }
 }

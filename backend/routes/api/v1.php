@@ -1,11 +1,11 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\RoomController;
-use App\Http\Controllers\BookingController;
 use App\Http\Controllers\AdminBookingController;
+use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\LocationController;
+use App\Http\Controllers\RoomController;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -45,7 +45,7 @@ Route::middleware(['check_token_valid', 'verified'])->group(function () {
     Route::put('/bookings/{booking}', [BookingController::class, 'update'])->middleware('throttle:10,1');
     Route::patch('/bookings/{booking}', [BookingController::class, 'update'])->middleware('throttle:10,1');
     Route::delete('/bookings/{booking}', [BookingController::class, 'destroy'])->middleware('throttle:10,1');
-    
+
     // Booking status change endpoints
     Route::post('/bookings/{booking}/confirm', [BookingController::class, 'confirm'])
         ->middleware(['role:admin', 'throttle:10,1']);

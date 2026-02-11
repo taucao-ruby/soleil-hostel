@@ -4,10 +4,10 @@ namespace App\Listeners;
 
 use App\Events\BookingCancelled;
 use App\Events\BookingCreated;
-use App\Events\BookingUpdated;
 use App\Events\BookingDeleted;
-use App\Services\RoomAvailabilityService;
+use App\Events\BookingUpdated;
 use App\Services\BookingService;
+use App\Services\RoomAvailabilityService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
@@ -49,10 +49,10 @@ class InvalidateCacheOnBookingChange implements ShouldQueue
         if ($booking->room_id !== $oldBooking->room_id) {
             $this->roomAvailabilityService->invalidateAvailability($oldBooking->room_id);
         }
-        
+
         // Invalidate new room availability
         $this->roomAvailabilityService->invalidateAvailability($booking->room_id);
-        
+
         // Invalidate this booking's cache
         $this->bookingService->invalidateBooking($booking->id, $booking->user_id);
     }

@@ -6,16 +6,16 @@ use App\Services\HtmlPurifierService;
 
 /**
  * FormRequest Macro - Purify validated data
- * 
+ *
  * Usage:
  * $request->validate([
  *     'name' => 'required|string',
  *     'message' => 'required|string',
  * ]);
- * 
+ *
  * $request->purify(['message']);  // Purify 'message' field only
  * $request->purifyAll();           // Purify all validated data
- * 
+ *
  * Hoặc trong FormRequest class:
  * public function prepareForValidation()
  * {
@@ -28,7 +28,7 @@ class FormRequestPurifyMacro
 {
     /**
      * Register macro into FormRequest
-     * 
+     *
      * Called in AppServiceProvider::boot()
      */
     public static function register(): void

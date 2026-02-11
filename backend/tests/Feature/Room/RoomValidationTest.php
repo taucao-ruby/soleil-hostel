@@ -19,6 +19,7 @@ class RoomValidationTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private Location $location;
 
     protected function setUp(): void
@@ -346,7 +347,7 @@ class RoomValidationTest extends TestCase
             ]);
 
         $response->assertStatus(201);
-        
+
         // Price may be returned as string or float depending on serialization
         $price = $response->json('data.price');
         $this->assertEquals(99.99, (float) $price);

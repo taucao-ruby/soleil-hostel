@@ -12,6 +12,7 @@ class InvalidateCacheOnBookingDeleted implements ShouldQueue
     use InteractsWithQueue;
 
     public int $timeout = 15;
+
     public int $delay = 0;
 
     public function __construct(private RoomAvailabilityService $availabilityService)
@@ -34,6 +35,6 @@ class InvalidateCacheOnBookingDeleted implements ShouldQueue
 
     public function failed(BookingDeleted $event, \Throwable $exception): void
     {
-        \Log::error('Cache invalidation failed on booking delete: ' . $exception->getMessage());
+        \Log::error('Cache invalidation failed on booking delete: '.$exception->getMessage());
     }
 }

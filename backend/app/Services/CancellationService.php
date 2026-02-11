@@ -30,12 +30,12 @@ use Illuminate\Support\Facades\Log;
  * - Two-phase commit: DB lock → Stripe → DB update
  * - Stripe call outside transaction to avoid holding locks during I/O
  * - Intermediate states for crash recovery (refund_pending, refund_failed)
- * 
+ *
  * Transaction Isolation:
  * - Uses pessimistic locking (FOR UPDATE) for cancellation
  * - READ COMMITTED isolation is sufficient with explicit locks
  * - Idempotency guard prevents double refunds
- * 
+ *
  * Data Invariants:
  * - Each refund processed exactly once per booking
  * - Status transitions follow state machine rules
@@ -46,8 +46,8 @@ final class CancellationService
     /**
      * Cancel a booking with optional refund.
      *
-     * @param Booking $booking The booking to cancel
-     * @param User $actor The user initiating the cancellation
+     * @param  Booking  $booking  The booking to cancel
+     * @param  User  $actor  The user initiating the cancellation
      * @return Booking The updated booking
      *
      * @throws BookingCancellationException If booking cannot be cancelled
@@ -93,12 +93,12 @@ final class CancellationService
      */
     private function validateCancellation(Booking $booking, User $actor): void
     {
-        if (!$booking->status->isCancellable()) {
+        if (! $booking->status->isCancellable()) {
             throw BookingCancellationException::notCancellable($booking);
         }
 
         // Check if booking has already started (unless config allows or actor is admin)
-        if ($booking->isStarted() && !config('booking.cancellation.allow_after_checkin') && !$actor->isAdmin()) {
+        if ($booking->isStarted() && ! config('booking.cancellation.allow_after_checkin') && ! $actor->isAdmin()) {
             throw BookingCancellationException::alreadyStarted($booking);
         }
     }
@@ -123,7 +123,7 @@ final class CancellationService
                 return $locked;
             }
 
-            if (!$locked->status->isCancellable()) {
+            if (! $locked->status->isCancellable()) {
                 throw BookingCancellationException::notCancellable($locked);
             }
 
@@ -139,7 +139,7 @@ final class CancellationService
             ]);
 
             // If not refundable, we can dispatch the event now
-            if (!$isRefundable) {
+            if (! $isRefundable) {
                 event(new BookingCancelled($locked));
             }
 
@@ -164,7 +164,7 @@ final class CancellationService
      * 1. Stripe calls are network I/O - holding locks during I/O is bad practice
      * 2. If process crashes after Stripe success but before DB update,
      *    ReconcileRefundsJob will recover the state
-     * 
+     *
      * Idempotency:
      * - Uses IdempotencyGuard to ensure refund is processed exactly once
      * - Key format: "refund:booking:{booking_id}:{payment_intent_id}"
@@ -194,7 +194,7 @@ final class CancellationService
                 'booking_id' => $booking->id,
                 'idempotency_key' => $idempotencyKey,
             ]);
-            
+
             return $booking->fresh();
         }
 
@@ -231,9 +231,9 @@ final class CancellationService
                 $result['result']['refund_amount']
             );
 
-        // TODO: Add Cashier exception handling when payment integration is implemented
-        // } catch (\Laravel\Cashier\Exceptions\IncompletePayment $e) {
-        //     return $this->handleRefundFailure($booking, $e);
+            // TODO: Add Cashier exception handling when payment integration is implemented
+            // } catch (\Laravel\Cashier\Exceptions\IncompletePayment $e) {
+            //     return $this->handleRefundFailure($booking, $e);
         } catch (\Stripe\Exception\ApiErrorException $e) {
             return $this->handleRefundFailure($booking, $e);
         }

@@ -2,18 +2,18 @@
 
 namespace Tests\Feature\Cache;
 
-use Tests\TestCase;
 use App\Models\Room;
 use App\Services\Cache\RoomAvailabilityCache;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
+use Tests\TestCase;
 
 class RoomAvailabilityCacheTest extends TestCase
 {
     use RefreshDatabase;
 
     protected RoomAvailabilityCache $cache;
+
     protected Room $room;
 
     protected function setUp(): void
@@ -28,7 +28,7 @@ class RoomAvailabilityCacheTest extends TestCase
     {
         // Use database cache for test consistency
         config(['cache.default' => 'database']);
-        
+
         $checkIn = now()->addDays(1);
         $checkOut = now()->addDays(3);
 
@@ -54,7 +54,7 @@ class RoomAvailabilityCacheTest extends TestCase
     {
         // Use database cache for test consistency
         config(['cache.default' => 'database']);
-        
+
         $checkIn = now()->addDays(1);
         $checkOut = now()->addDays(3);
 
@@ -91,7 +91,7 @@ class RoomAvailabilityCacheTest extends TestCase
     {
         // Use database cache for test consistency
         config(['cache.default' => 'database']);
-        
+
         $checkIn = now()->addDays(1);
         $checkOut = now()->addDays(3);
 

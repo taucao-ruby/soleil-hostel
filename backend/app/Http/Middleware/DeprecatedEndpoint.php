@@ -9,19 +9,19 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * DeprecatedEndpoint Middleware
- * 
+ *
  * Adds RFC 8594 deprecation headers to responses for deprecated endpoints.
  * Non-blocking: request proceeds normally, headers signal deprecation.
- * 
+ *
  * Usage in routes:
  *   Route::post('/auth/login', ...)->middleware('deprecated:2026-07-01,/api/auth/login-v2');
- * 
+ *
  * Headers set:
  *   - Deprecation: RFC 7231 date when deprecation started
  *   - Sunset: RFC 7231 date when endpoint will be removed
  *   - Link: rel="successor-version" pointing to replacement
  *   - X-Deprecation-Notice: Human-readable message
- * 
+ *
  * @see https://datatracker.ietf.org/doc/html/rfc8594
  */
 class DeprecatedEndpoint
@@ -29,11 +29,8 @@ class DeprecatedEndpoint
     /**
      * Handle an incoming request.
      *
-     * @param Request $request
-     * @param Closure $next
-     * @param string $sunset Date in Y-m-d format when endpoint will be removed
-     * @param string|null $successor Optional replacement endpoint URL
-     * @return Response
+     * @param  string  $sunset  Date in Y-m-d format when endpoint will be removed
+     * @param  string|null  $successor  Optional replacement endpoint URL
      */
     public function handle(Request $request, Closure $next, string $sunset, ?string $successor = null): Response
     {
@@ -48,13 +45,14 @@ class DeprecatedEndpoint
                 'sunset' => $sunset,
                 'endpoint' => $request->path(),
             ]);
+
             return $response;
         }
 
         // Set RFC 8594 deprecation headers
         $response->headers->set('Deprecation', now()->toRfc7231String());
         $response->headers->set('Sunset', $sunsetDate->toRfc7231String());
-        
+
         $notice = "This endpoint is deprecated and will be removed on {$sunsetDate->format('Y-m-d')}.";
         if ($successor) {
             $notice .= " Use {$successor} instead.";

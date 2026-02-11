@@ -11,35 +11,36 @@ use Illuminate\Http\Request;
 
 /**
  * AdminBookingController - Admin-only booking management
- * 
+ *
  * Handles soft delete recovery and audit operations:
  * - View trashed (soft deleted) bookings
  * - Restore accidentally deleted bookings
  * - Permanently delete for GDPR "right to be forgotten"
- * 
+ *
  * All endpoints require ADMIN role via middleware.
  */
 class AdminBookingController extends Controller
 {
     use ApiResponse;
+
     public function __construct(
         private BookingService $bookingService
     ) {}
 
     /**
      * Display all bookings including soft deleted (admin view).
-     * 
+     *
      * GET /api/admin/bookings
-     * 
+     *
      * Returns all bookings with their deletion status for admin overview.
      */
     public function index(): JsonResponse
     {
         $bookings = Booking::withTrashed()
             ->with([
-                'room' => fn($q) => $q->select(['id', 'name', 'price', 'created_at', 'updated_at']),
-                'user' => fn($q) => $q->select(['id', 'name', 'email', 'role', 'created_at', 'updated_at']),
-                'deletedBy' => fn($q) => $q->select(['id', 'name', 'email', 'role', 'created_at', 'updated_at']),
+                'room' => fn ($q) => $q->select(['id', 'name', 'price', 'created_at', 'updated_at']),
+                'user' => fn ($q) => $q->select(['id', 'name', 'email', 'role', 'created_at', 'updated_at']),
+                'deletedBy' => fn ($q) => $q->select(['id', 'name', 'email', 'role', 'created_at', 'updated_at']),
             ])
             ->orderBy('created_at', 'desc')
             ->paginate(50);
@@ -57,9 +58,9 @@ class AdminBookingController extends Controller
 
     /**
      * Display only trashed (soft deleted) bookings.
-     * 
+     *
      * GET /api/admin/bookings/trashed
-     * 
+     *
      * For admin "Trash" view to see deleted bookings that can be restored.
      */
     public function trashed(): JsonResponse
@@ -76,14 +77,14 @@ class AdminBookingController extends Controller
 
     /**
      * Show a specific trashed booking.
-     * 
+     *
      * GET /api/admin/bookings/trashed/{id}
      */
     public function showTrashed(int $id): JsonResponse
     {
         $booking = $this->bookingService->getTrashedBookingById($id);
 
-        if (!$booking) {
+        if (! $booking) {
             return $this->error('Trashed booking not found.', 404);
         }
 
@@ -92,9 +93,9 @@ class AdminBookingController extends Controller
 
     /**
      * Restore a soft deleted booking.
-     * 
+     *
      * POST /api/admin/bookings/{id}/restore
-     * 
+     *
      * Restores booking to active state, clears deleted_at and deleted_by.
      * Booking will appear again in normal queries.
      */
@@ -102,7 +103,7 @@ class AdminBookingController extends Controller
     {
         $booking = $this->bookingService->getTrashedBookingById($id);
 
-        if (!$booking) {
+        if (! $booking) {
             return $this->error('Trashed booking not found.', 404);
         }
 
@@ -132,9 +133,9 @@ class AdminBookingController extends Controller
 
     /**
      * Permanently delete a soft deleted booking (force delete).
-     * 
+     *
      * DELETE /api/admin/bookings/{id}/force
-     * 
+     *
      * ⚠️ WARNING: This PERMANENTLY removes the booking from database.
      * Use only for GDPR "right to be forgotten" requests or after retention period.
      * This action is IRREVERSIBLE.
@@ -143,7 +144,7 @@ class AdminBookingController extends Controller
     {
         $booking = $this->bookingService->getTrashedBookingById($id);
 
-        if (!$booking) {
+        if (! $booking) {
             return $this->error('Trashed booking not found. Only soft-deleted bookings can be permanently deleted.', 404);
         }
 
@@ -158,10 +159,10 @@ class AdminBookingController extends Controller
 
     /**
      * Bulk restore multiple trashed bookings.
-     * 
+     *
      * POST /api/admin/bookings/restore-bulk
-     * 
-     * @param array $ids Array of booking IDs to restore
+     *
+     * @param  array  $ids  Array of booking IDs to restore
      */
     public function restoreBulk(Request $request): JsonResponse
     {
@@ -177,9 +178,10 @@ class AdminBookingController extends Controller
 
         foreach ($ids as $id) {
             $booking = $this->bookingService->getTrashedBookingById($id);
-            
-            if (!$booking) {
+
+            if (! $booking) {
                 $failed[] = ['id' => $id, 'reason' => 'Not found'];
+
                 continue;
             }
 
@@ -193,6 +195,7 @@ class AdminBookingController extends Controller
 
             if ($hasOverlap) {
                 $failed[] = ['id' => $id, 'reason' => 'Date conflict'];
+
                 continue;
             }
 

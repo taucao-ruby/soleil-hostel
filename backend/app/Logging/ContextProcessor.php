@@ -15,9 +15,6 @@ class ContextProcessor implements ProcessorInterface
 {
     /**
      * Process a log record.
-     *
-     * @param  \Monolog\LogRecord  $record
-     * @return \Monolog\LogRecord
      */
     public function __invoke(LogRecord $record): LogRecord
     {

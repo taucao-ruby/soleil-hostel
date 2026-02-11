@@ -2,7 +2,6 @@
 
 namespace App\Providers;
 
-use App\Enums\UserRole;
 use App\Models\Booking;
 use App\Models\Review;
 use App\Models\Room;

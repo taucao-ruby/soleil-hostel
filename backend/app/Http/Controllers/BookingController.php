@@ -3,18 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Enums\BookingStatus;
+use App\Events\BookingCreated;
+use App\Events\BookingDeleted;
+use App\Events\BookingUpdated;
 use App\Exceptions\BookingCancellationException;
 use App\Exceptions\RefundFailedException;
-use App\Models\Booking;
 use App\Http\Requests\StoreBookingRequest;
 use App\Http\Requests\UpdateBookingRequest;
 use App\Http\Resources\BookingResource;
-use App\Events\BookingCreated;
-use App\Events\BookingUpdated;
-use App\Events\BookingDeleted;
-use App\Services\CreateBookingService;
+use App\Models\Booking;
 use App\Services\BookingService;
 use App\Services\CancellationService;
+use App\Services\CreateBookingService;
 use App\Services\RoomService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -24,6 +24,7 @@ use RuntimeException;
 class BookingController extends Controller
 {
     use ApiResponse;
+
     public function __construct(
         private CreateBookingService $createBookingService,
         private BookingService $bookingService,
@@ -37,19 +38,19 @@ class BookingController extends Controller
     public function index(): JsonResponse
     {
         $bookings = $this->bookingService->getUserBookings(auth()->id());
-        
+
         return response()->json([
             'success' => true,
-            'data' => BookingResource::collection($bookings)
+            'data' => BookingResource::collection($bookings),
         ]);
     }
 
     /**
      * Store a newly created resource in storage.
-     * 
+     *
      * Dùng CreateBookingService để đảm bảo không double-booking
      * Service sẽ handle transaction + pessimistic locking + retry logic
-     * 
+     *
      * INPUT SANITIZATION:
      * - FormRequest validation sẽ reject invalid input
      * - Booking model trait sẽ auto-purify guest_name (HTML Purifier, không regex)
@@ -87,10 +88,9 @@ class BookingController extends Controller
             ], 422);
         } catch (\Throwable $e) {
             // Log error nếu cần
-            Log::error('Booking creation failed: ' . $e->getMessage(), [
+            Log::error('Booking creation failed: '.$e->getMessage(), [
                 'user_id' => auth()->id(),
-                'room_id' 
-                => $validated['room_id'] ?? null,
+                'room_id' => $validated['room_id'] ?? null,
                 'exception' => class_basename($e),
             ]);
 
@@ -113,13 +113,13 @@ class BookingController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => new BookingResource($cachedBooking)
+            'data' => new BookingResource($cachedBooking),
         ]);
     }
 
     /**
      * Update the specified resource in storage.
-     * 
+     *
      * Dùng CreateBookingService để update, đảm bảo không overlap
      */
     public function update(UpdateBookingRequest $request, Booking $booking): JsonResponse
@@ -159,7 +159,7 @@ class BookingController extends Controller
                 'message' => $e->getMessage(),
             ], 422);
         } catch (\Throwable $e) {
-            Log::error('Booking update failed: ' . $e->getMessage(), [
+            Log::error('Booking update failed: '.$e->getMessage(), [
                 'booking_id' => $booking->id,
                 'exception' => class_basename($e),
             ]);
@@ -173,10 +173,10 @@ class BookingController extends Controller
 
     /**
      * Remove the specified resource from storage (soft delete).
-     * 
+     *
      * Uses soft delete to preserve audit trail - booking data is NOT permanently removed.
      * Records who deleted the booking and when for compliance.
-     * 
+     *
      * Regular users: Can only soft delete their own bookings
      * Admins: Can soft delete any booking
      */
@@ -200,10 +200,10 @@ class BookingController extends Controller
 
     /**
      * Confirm a pending booking.
-     * 
+     *
      * Changes booking status from 'pending' to 'confirmed' and triggers
      * a queued confirmation email notification to the guest.
-     * 
+     *
      * Authorization: Only admins can confirm bookings
      * Rate limiting: Max 5 confirmation emails per user per minute
      */
@@ -290,6 +290,7 @@ class BookingController extends Controller
     {
         if ($booking->refund_amount && $booking->refund_amount > 0) {
             $formattedAmount = number_format($booking->refund_amount / 100, 2);
+
             return "Booking cancelled successfully. A refund of \${$formattedAmount} has been processed.";
         }
 
@@ -300,4 +301,3 @@ class BookingController extends Controller
         return 'Booking cancelled successfully.';
     }
 }
-

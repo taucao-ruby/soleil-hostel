@@ -10,7 +10,7 @@ class CspViolationReportController extends Controller
 {
     /**
      * Handle CSP violation reports from the browser
-     * 
+     *
      * The browser sends CSP violation reports to this endpoint
      * when a resource is blocked by the Content Security Policy.
      */

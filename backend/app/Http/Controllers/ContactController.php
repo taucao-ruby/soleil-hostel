@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\ContactMessage;
-use App\Traits\ApiResponse;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use App\Services\HtmlPurifierService;
+use App\Traits\ApiResponse;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ContactController extends Controller
 {
@@ -14,7 +14,7 @@ class ContactController extends Controller
 
     /**
      * Store a contact message in storage.
-     * 
+     *
      * INPUT SANITIZATION:
      * - email validation ensures valid email format
      * - message is purified using HTML Purifier whitelist

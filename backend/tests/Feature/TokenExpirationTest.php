@@ -9,7 +9,7 @@ use Tests\TestCase;
 
 /**
  * TokenExpirationTest - Test token expiration + refresh + logout
- * 
+ *
  * Test scenarios:
  * 1. Login → Token created với expires_at
  * 2. Token hết hạn → 401
@@ -41,14 +41,14 @@ class TokenExpirationTest extends TestCase
 
     /**
      * Test 1: Login → Token created với expires_at
-     * 
+     *
      * POST /api/auth/login-v2
      * {
      *   "email": "test@example.com",
      *   "password": "password123",
      *   "remember_me": false
      * }
-     * 
+     *
      * Expected:
      * - Status 201
      * - Token returned
@@ -90,11 +90,11 @@ class TokenExpirationTest extends TestCase
 
     /**
      * Test 2: Token hết hạn → 401
-     * 
+     *
      * Setup: Token với expires_at = now - 1 giây (đã hết hạn)
-     * 
+     *
      * GET /api/auth/me-v2 (protected endpoint)
-     * 
+     *
      * Expected:
      * - Status 401
      * - Message: "Token đã hết hạn"
@@ -122,10 +122,10 @@ class TokenExpirationTest extends TestCase
 
     /**
      * Test 3: Refresh token → Token mới được cấp, token cũ revoke
-     * 
+     *
      * POST /api/auth/refresh-v2
      * Headers: Authorization: Bearer <old_token>
-     * 
+     *
      * Expected:
      * - Status 200
      * - New token returned
@@ -182,10 +182,10 @@ class TokenExpirationTest extends TestCase
 
     /**
      * Test 4: Logout → Token bị revoke, không thể dùng tiếp
-     * 
+     *
      * POST /api/auth/logout-v2
      * Headers: Authorization: Bearer <token>
-     * 
+     *
      * Expected:
      * - Status 200
      * - Token revoked_at set
@@ -230,11 +230,11 @@ class TokenExpirationTest extends TestCase
 
     /**
      * Test 5: Refresh with expired token → 401
-     * 
+     *
      * Setup: Token đã hết hạn (expires_at < now)
-     * 
+     *
      * POST /api/auth/refresh-v2 (with expired token)
-     * 
+     *
      * Expected:
      * - Status 401
      * - Cannot refresh expired token
@@ -262,11 +262,11 @@ class TokenExpirationTest extends TestCase
 
     /**
      * Test 6: Logout all devices → Revoke tất cả token
-     * 
+     *
      * Setup: User có 3 token (device 1, 2, 3)
-     * 
+     *
      * POST /api/auth/logout-all-v2 (from device 1)
-     * 
+     *
      * Expected:
      * - Status 200
      * - Tất cả 3 token revoked
@@ -300,13 +300,13 @@ class TokenExpirationTest extends TestCase
 
     /**
      * Test 7: Single device login → Logout device cũ
-     * 
+     *
      * Setup: config('sanctum.single_device_login') = true
      * User đã login trên device 1
-     * 
+     *
      * Login lại trên device 2:
      * POST /api/auth/login-v2 (device 2)
-     * 
+     *
      * Expected:
      * - Device 1 token revoked
      * - Device 2 token created + active
@@ -362,10 +362,10 @@ class TokenExpirationTest extends TestCase
 
     /**
      * Test 8: Token expiration info → GET /api/auth/me-v2
-     * 
+     *
      * GET /api/auth/me-v2
      * Headers: Authorization: Bearer <token>
-     * 
+     *
      * Expected:
      * - User info
      * - Token info:
@@ -416,14 +416,14 @@ class TokenExpirationTest extends TestCase
 
     /**
      * Test 9: Long-lived token (Remember me)
-     * 
+     *
      * POST /api/auth/login-v2
      * {
      *   "email": "test@example.com",
      *   "password": "password123",
      *   "remember_me": true
      * }
-     * 
+     *
      * Expected:
      * - Token created với loại "long_lived"
      * - expires_at = now + 30 ngày
@@ -451,11 +451,11 @@ class TokenExpirationTest extends TestCase
 
     /**
      * Test 10: Suspicious activity → Revoke token khi refresh quá nhiều
-     * 
+     *
      * Setup:
      * - config('sanctum.max_refresh_count_per_hour') = 10
      * - Simulate 11 refresh attempts trong 1 giờ
-     * 
+     *
      * Expected:
      * - 11th refresh → 401 (SUSPICIOUS_ACTIVITY)
      * - Token revoked
@@ -488,4 +488,3 @@ class TokenExpirationTest extends TestCase
         }
     }
 }
-

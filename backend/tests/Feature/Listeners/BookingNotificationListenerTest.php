@@ -5,13 +5,13 @@ namespace Tests\Feature\Listeners;
 use App\Events\BookingCreated;
 use App\Events\BookingDeleted;
 use App\Events\BookingUpdated as BookingUpdatedEvent;
-use App\Listeners\SendBookingConfirmation;
 use App\Listeners\SendBookingCancellation;
+use App\Listeners\SendBookingConfirmation;
 use App\Listeners\SendBookingUpdateNotification;
 use App\Models\Booking;
 use App\Models\Room;
-use App\Notifications\BookingConfirmed;
 use App\Notifications\BookingCancelled;
+use App\Notifications\BookingConfirmed;
 use App\Notifications\BookingUpdated as BookingUpdatedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -37,14 +37,14 @@ class BookingNotificationListenerTest extends TestCase
             'guest_email' => 'guest@example.com',
         ]);
         $event = new BookingCreated($booking);
-        $listener = new SendBookingConfirmation();
+        $listener = new SendBookingConfirmation;
 
         // Act
         $listener->handle($event);
 
         // Assert
         Notification::assertSentTo(
-            new \Illuminate\Notifications\AnonymousNotifiable(),
+            new \Illuminate\Notifications\AnonymousNotifiable,
             BookingConfirmed::class,
             function ($notification, $channels, $notifiable) use ($booking) {
                 return $notifiable->routes['mail'] === $booking->guest_email
@@ -63,14 +63,14 @@ class BookingNotificationListenerTest extends TestCase
             'guest_email' => 'guest@example.com',
         ]);
         $event = new BookingDeleted($booking);
-        $listener = new SendBookingCancellation();
+        $listener = new SendBookingCancellation;
 
         // Act
         $listener->handle($event);
 
         // Assert
         Notification::assertSentTo(
-            new \Illuminate\Notifications\AnonymousNotifiable(),
+            new \Illuminate\Notifications\AnonymousNotifiable,
             BookingCancelled::class,
             function ($notification, $channels, $notifiable) use ($booking) {
                 return $notifiable->routes['mail'] === $booking->guest_email
@@ -96,14 +96,14 @@ class BookingNotificationListenerTest extends TestCase
         ]);
 
         $event = new BookingUpdatedEvent($newBooking, $oldBooking);
-        $listener = new SendBookingUpdateNotification();
+        $listener = new SendBookingUpdateNotification;
 
         // Act
         $listener->handle($event);
 
         // Assert
         Notification::assertSentTo(
-            new \Illuminate\Notifications\AnonymousNotifiable(),
+            new \Illuminate\Notifications\AnonymousNotifiable,
             BookingUpdatedNotification::class,
             function ($notification, $channels, $notifiable) use ($newBooking) {
                 return $notifiable->routes['mail'] === $newBooking->guest_email
@@ -130,7 +130,7 @@ class BookingNotificationListenerTest extends TestCase
         ]);
 
         $event = new BookingUpdatedEvent($newBooking, $oldBooking);
-        $listener = new SendBookingUpdateNotification();
+        $listener = new SendBookingUpdateNotification;
 
         // Act
         $listener->handle($event);
@@ -155,7 +155,7 @@ class BookingNotificationListenerTest extends TestCase
         // Assert - Event listener should have sent the notification
         // Note: In a real scenario, you'd need to process the queue
         Notification::assertSentTo(
-            new \Illuminate\Notifications\AnonymousNotifiable(),
+            new \Illuminate\Notifications\AnonymousNotifiable,
             BookingConfirmed::class
         );
     }

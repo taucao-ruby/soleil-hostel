@@ -23,9 +23,6 @@ interface RoomRepositoryInterface
      * Find a room by ID with bookings relationship eager loaded.
      *
      * Mirrors: Room::with('bookings')->select([...])->find($roomId)
-     *
-     * @param int $roomId
-     * @return Room|null
      */
     public function findByIdWithBookings(int $roomId): ?Room;
 
@@ -33,9 +30,6 @@ interface RoomRepositoryInterface
      * Find a room by ID with confirmed bookings filtered by callback.
      *
      * Mirrors: Room::with(['bookings' => function ($q) { ... }])->find($roomId)
-     *
-     * @param int $roomId
-     * @return Room|null
      */
     public function findByIdWithConfirmedBookings(int $roomId): ?Room;
 
@@ -53,10 +47,8 @@ interface RoomRepositoryInterface
      *
      * Mirrors: Room::find($roomId)->bookings()->where(...)->exists()
      *
-     * @param int $roomId
-     * @param string $checkIn
-     * @param string $checkOut
      * @return bool True if overlapping bookings exist
+     *
      * @throws \Error If room does not exist (mirrors original behavior of calling method on null)
      */
     public function hasOverlappingConfirmedBookings(int $roomId, string $checkIn, string $checkOut): bool;
@@ -66,8 +58,7 @@ interface RoomRepositoryInterface
      *
      * Mirrors: Room::create($data)
      *
-     * @param array $data Validated room data (lock_version excluded)
-     * @return Room
+     * @param  array  $data  Validated room data (lock_version excluded)
      */
     public function create(array $data): Room;
 
@@ -76,9 +67,7 @@ interface RoomRepositoryInterface
      *
      * Mirrors: DB::table('rooms')->where('id', ...)->where('lock_version', ...)->update(...)
      *
-     * @param int $roomId
-     * @param int $expectedVersion
-     * @param array $data Data to update (lock_version excluded, managed internally)
+     * @param  array  $data  Data to update (lock_version excluded, managed internally)
      * @return int Number of affected rows (0 = version mismatch, 1 = success)
      */
     public function updateWithVersionCheck(int $roomId, int $expectedVersion, array $data): int;
@@ -88,8 +77,6 @@ interface RoomRepositoryInterface
      *
      * Mirrors: DB::table('rooms')->where('id', ...)->where('lock_version', ...)->delete()
      *
-     * @param int $roomId
-     * @param int $expectedVersion
      * @return int Number of affected rows (0 = version mismatch, 1 = success)
      */
     public function deleteWithVersionCheck(int $roomId, int $expectedVersion): int;
@@ -98,9 +85,6 @@ interface RoomRepositoryInterface
      * Refresh a room model instance from database.
      *
      * Mirrors: $room->refresh()
-     *
-     * @param Room $room
-     * @return Room
      */
     public function refresh(Room $room): Room;
 }

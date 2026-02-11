@@ -18,7 +18,7 @@ class LocationFactory extends Factory
 
     public function definition(): array
     {
-        $name = $this->faker->unique()->company() . ' Hostel';
+        $name = $this->faker->unique()->company().' Hostel';
 
         return [
             'name' => $name,

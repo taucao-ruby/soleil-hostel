@@ -2,39 +2,35 @@
 
 namespace App\Http\Middleware;
 
+use App\Events\RequestThrottled;
+use App\Services\RateLimitService;
 use Closure;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
-use App\Services\RateLimitService;
-use App\Events\RequestThrottled;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Advanced Rate Limit Middleware
- * 
+ *
  * Applies multi-level rate limiting to requests with support for:
  * - Sliding window limits (time-strict)
  * - Token bucket limits (burst-friendly)
  * - Multiple limits per endpoint
  * - User-tier based quota adjustments
  * - Automatic retry-after header calculation
- * 
+ *
  * Usage in routes:
  *   ->middleware('rate-limit:sliding:5:60,token:20:1')
  *   Where: sliding:limit:window token:capacity:refill_rate
  */
 class AdvancedRateLimitMiddleware
 {
-    public function __construct(private RateLimitService $rateLimiter)
-    {
-    }
+    public function __construct(private RateLimitService $rateLimiter) {}
 
     /**
      * Handle the request
-     * 
-     * @param Request $request
-     * @param Closure $next
-     * @param string ...$limitSpecs Rate limit specifications (e.g., "sliding:5:60" or "token:20:1")
+     *
+     * @param  string  ...$limitSpecs  Rate limit specifications (e.g., "sliding:5:60" or "token:20:1")
      */
     public function handle(Request $request, Closure $next, string ...$limitSpecs): Response
     {
@@ -56,7 +52,7 @@ class AdvancedRateLimitMiddleware
         $result = $this->rateLimiter->check($key, $limits);
 
         // If throttled, return 429 immediately WITHOUT processing request
-        if (!$result['allowed']) {
+        if (! $result['allowed']) {
             Log::warning('Rate limit exceeded', [
                 'user_id' => $request->user()?->id,
                 'ip' => $request->ip(),
@@ -79,10 +75,10 @@ class AdvancedRateLimitMiddleware
                 'message' => 'Too many requests. Please try again later.',
                 'retry_after' => $result['retry_after'],
             ], Response::HTTP_TOO_MANY_REQUESTS)
-            ->header('Retry-After', $result['retry_after'])
-            ->header('X-RateLimit-Limit', $this->getLimitValue($limits[0] ?? []))
-            ->header('X-RateLimit-Remaining', 0)
-            ->header('X-RateLimit-Reset', now()->addSeconds($result['retry_after'])->timestamp);
+                ->header('Retry-After', $result['retry_after'])
+                ->header('X-RateLimit-Limit', $this->getLimitValue($limits[0] ?? []))
+                ->header('X-RateLimit-Remaining', 0)
+                ->header('X-RateLimit-Reset', now()->addSeconds($result['retry_after'])->timestamp);
         }
 
         // Rate limit passed, process request
@@ -90,15 +86,15 @@ class AdvancedRateLimitMiddleware
 
         // Add rate limit headers to successful response
         $response->header('X-RateLimit-Limit', $this->getLimitValue($limits[0] ?? []))
-                 ->header('X-RateLimit-Remaining', $result['remaining'])
-                 ->header('X-RateLimit-Reset', now()->addSeconds($result['reset_after'])->timestamp);
+            ->header('X-RateLimit-Remaining', $result['remaining'])
+            ->header('X-RateLimit-Reset', now()->addSeconds($result['reset_after'])->timestamp);
 
         return $response;
     }
 
     /**
      * Parse rate limit specifications from middleware parameters
-     * 
+     *
      * Format:
      * - Sliding window: "sliding:max:window"  (e.g., "sliding:5:60")
      * - Token bucket: "token:capacity:refill"  (e.g., "token:20:1")
@@ -184,7 +180,7 @@ class AdvancedRateLimitMiddleware
         $route = $request->route();
         if ($route) {
             $routeName = $route->getName();
-            if (!$routeName) {
+            if (! $routeName) {
                 $routeName = md5($route->uri());
             }
             $components[] = "endpoint:{$routeName}";

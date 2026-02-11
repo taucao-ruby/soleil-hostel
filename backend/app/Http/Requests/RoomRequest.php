@@ -52,7 +52,7 @@ class RoomRequest extends FormRequest
     public function getLockVersion(): ?int
     {
         $version = $this->validated('lock_version');
-        
+
         return $version !== null ? (int) $version : null;
     }
 

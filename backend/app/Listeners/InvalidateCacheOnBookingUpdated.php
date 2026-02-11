@@ -12,6 +12,7 @@ class InvalidateCacheOnBookingUpdated implements ShouldQueue
     use InteractsWithQueue;
 
     public int $timeout = 15;
+
     public int $delay = 0;
 
     public function __construct(private RoomAvailabilityService $availabilityService)
@@ -36,7 +37,7 @@ class InvalidateCacheOnBookingUpdated implements ShouldQueue
             $this->availabilityService->invalidateRoomCache($originalBooking->room_id);
         }
 
-        \Log::info("Cache invalidated for bookings update", [
+        \Log::info('Cache invalidated for bookings update', [
             'booking_id' => $booking->id,
             'rooms_affected' => [$booking->room_id, $originalBooking->room_id],
         ]);
@@ -44,6 +45,6 @@ class InvalidateCacheOnBookingUpdated implements ShouldQueue
 
     public function failed(BookingUpdated $event, \Throwable $exception): void
     {
-        \Log::error('Cache invalidation failed on booking update: ' . $exception->getMessage());
+        \Log::error('Cache invalidation failed on booking update: '.$exception->getMessage());
     }
 }

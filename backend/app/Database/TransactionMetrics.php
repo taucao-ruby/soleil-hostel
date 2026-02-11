@@ -8,11 +8,11 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * TransactionMetrics - Transaction Monitoring and Metrics Collection
- * 
+ *
  * Provides centralized metrics collection for transaction health monitoring.
  * Integrates with application logging and can be extended for external
  * metrics systems (Prometheus, StatsD, etc.).
- * 
+ *
  * Metrics tracked:
  * - Transaction success/failure rates
  * - Duration by operation and isolation level
@@ -23,11 +23,11 @@ final class TransactionMetrics
 {
     /**
      * Record a successful transaction.
-     * 
-     * @param string $operation Operation name (e.g., 'create_booking')
-     * @param string $isolationLevel Isolation level used
-     * @param float $durationMs Duration in milliseconds
-     * @param int $retryCount Number of retries before success (0 = first attempt)
+     *
+     * @param  string  $operation  Operation name (e.g., 'create_booking')
+     * @param  string  $isolationLevel  Isolation level used
+     * @param  float  $durationMs  Duration in milliseconds
+     * @param  int  $retryCount  Number of retries before success (0 = first attempt)
      */
     public static function recordSuccess(
         string $operation,
@@ -45,12 +45,12 @@ final class TransactionMetrics
 
         // For production: Send to metrics backend
         // Example: Prometheus, StatsD, CloudWatch
-        // 
+        //
         // Metrics::increment("transaction.success", [
         //     'operation' => $operation,
         //     'isolation_level' => $isolationLevel,
         // ]);
-        // 
+        //
         // Metrics::histogram("transaction.duration_ms", $durationMs, [
         //     'operation' => $operation,
         // ]);
@@ -58,11 +58,11 @@ final class TransactionMetrics
 
     /**
      * Record a failed transaction.
-     * 
-     * @param string $operation Operation name
-     * @param string $isolationLevel Isolation level used
-     * @param int $attemptCount Total attempts made
-     * @param float $totalDurationMs Total duration across all attempts
+     *
+     * @param  string  $operation  Operation name
+     * @param  string  $isolationLevel  Isolation level used
+     * @param  int  $attemptCount  Total attempts made
+     * @param  float  $totalDurationMs  Total duration across all attempts
      */
     public static function recordFailure(
         string $operation,
@@ -79,7 +79,7 @@ final class TransactionMetrics
         ]);
 
         // For production: Send alert
-        // 
+        //
         // Metrics::increment("transaction.failure", [
         //     'operation' => $operation,
         //     'isolation_level' => $isolationLevel,
@@ -88,11 +88,11 @@ final class TransactionMetrics
 
     /**
      * Record a retry attempt.
-     * 
-     * @param string $operation Operation name
-     * @param int $attemptNumber Current attempt number
-     * @param string $errorType Type of error that triggered retry
-     * @param int $delayMs Delay before retry in milliseconds
+     *
+     * @param  string  $operation  Operation name
+     * @param  int  $attemptNumber  Current attempt number
+     * @param  string  $errorType  Type of error that triggered retry
+     * @param  int  $delayMs  Delay before retry in milliseconds
      */
     public static function recordRetry(
         string $operation,
@@ -117,9 +117,9 @@ final class TransactionMetrics
 
     /**
      * Record lock wait time.
-     * 
-     * @param string $operation Operation name
-     * @param float $waitTimeMs Time spent waiting for lock
+     *
+     * @param  string  $operation  Operation name
+     * @param  float  $waitTimeMs  Time spent waiting for lock
      */
     public static function recordLockWait(
         string $operation,
@@ -141,7 +141,7 @@ final class TransactionMetrics
 
     /**
      * Record serialization failure rate for monitoring.
-     * 
+     *
      * High serialization failure rates may indicate:
      * - Need for transaction ordering
      * - Potential for optimistic locking
@@ -163,9 +163,9 @@ final class TransactionMetrics
 
     /**
      * Record deadlock occurrence for analysis.
-     * 
-     * @param string $operation Operation name
-     * @param array<string> $involvedTables Tables involved in deadlock (if known)
+     *
+     * @param  string  $operation  Operation name
+     * @param  array<string>  $involvedTables  Tables involved in deadlock (if known)
      */
     public static function recordDeadlock(
         string $operation,
@@ -183,11 +183,11 @@ final class TransactionMetrics
 
     /**
      * Get summary metrics for monitoring dashboard.
-     * 
+     *
      * In production, this would query the metrics backend.
      * Here we provide a placeholder structure.
-     * 
-     * @param string $timeRange e.g., '1h', '24h', '7d'
+     *
+     * @param  string  $timeRange  e.g., '1h', '24h', '7d'
      * @return array<string, mixed>
      */
     public static function getSummary(string $timeRange = '1h'): array

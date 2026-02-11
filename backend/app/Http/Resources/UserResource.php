@@ -9,10 +9,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * API Resource for User model.
- * 
+ *
  * Controls what user data is exposed in API responses.
  * SECURITY: Never expose raw role value - use boolean flags instead.
- * 
+ *
  * @mixin \App\Models\User
  */
 class UserResource extends JsonResource

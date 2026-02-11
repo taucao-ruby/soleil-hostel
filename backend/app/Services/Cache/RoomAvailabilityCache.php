@@ -2,11 +2,11 @@
 
 namespace App\Services\Cache;
 
-use App\Traits\HasCacheTagSupport;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Collection;
 use App\Models\Room;
+use App\Traits\HasCacheTagSupport;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class RoomAvailabilityCache
 {
@@ -38,12 +38,12 @@ class RoomAvailabilityCache
     ): Collection {
         $cacheKey = $this->buildCacheKey($checkIn, $checkOut, $capacity);
 
-        if (!$this->supportsTags()) {
+        if (! $this->supportsTags()) {
             // Fallback to basic cache (for tests)
             return Cache::remember(
                 $cacheKey,
                 self::TTL_SECONDS,
-                fn() => $this->queryAvailableRooms($checkIn, $checkOut, $capacity)
+                fn () => $this->queryAvailableRooms($checkIn, $checkOut, $capacity)
             );
         }
 
@@ -59,7 +59,7 @@ class RoomAvailabilityCache
         // Store in cache for 60 seconds with tags
         Cache::tags([
             self::TAG_ROOM_AVAILABILITY,
-            self::TAG_ROOM_PREFIX . $capacity,
+            self::TAG_ROOM_PREFIX.$capacity,
         ])->put($cacheKey, $rooms, now()->addSeconds(self::TTL_SECONDS));
 
         return $rooms;
@@ -75,7 +75,7 @@ class RoomAvailabilityCache
     ): array {
         $cacheKey = "room_{$room->id}_{$checkIn->format('Y-m-d')}_{$checkOut->format('Y-m-d')}";
 
-        if (!$this->supportsTags()) {
+        if (! $this->supportsTags()) {
             // Fallback to basic cache
             return Cache::remember(
                 $cacheKey,
@@ -90,7 +90,7 @@ class RoomAvailabilityCache
 
         return Cache::tags([
             self::TAG_ROOM_AVAILABILITY,
-            self::TAG_ROOM_PREFIX . $room->id,
+            self::TAG_ROOM_PREFIX.$room->id,
         ])->remember(
             $cacheKey,
             self::TTL_SECONDS,
@@ -112,7 +112,7 @@ class RoomAvailabilityCache
             if ($this->supportsTags()) {
                 Cache::tags([
                     self::TAG_ROOM_AVAILABILITY,
-                    self::TAG_ROOM_PREFIX . $roomId,
+                    self::TAG_ROOM_PREFIX.$roomId,
                 ])->flush();
             } else {
                 // For non-tag caches, do a full flush (not ideal but necessary)
@@ -122,6 +122,7 @@ class RoomAvailabilityCache
             return true;
         } catch (\Exception $e) {
             \Log::warning("Failed to invalidate room cache: {$e->getMessage()}");
+
             return false;
         }
     }
@@ -138,9 +139,11 @@ class RoomAvailabilityCache
                 // For non-tag caches, do a full flush
                 Cache::flush();
             }
+
             return true;
         } catch (\Exception $e) {
             \Log::warning("Failed to invalidate all room cache: {$e->getMessage()}");
+
             return false;
         }
     }
@@ -164,6 +167,7 @@ class RoomAvailabilityCache
         }
 
         \Log::info("Warmed up {$count} cache entries");
+
         return $count;
     }
 
@@ -208,10 +212,10 @@ class RoomAvailabilityCache
             ->where('status', 'available')
             ->whereDoesntHave('bookings', function ($q) use ($checkIn, $checkOut) {
                 $q->where('status', '!=', 'cancelled')
-                  ->whereBetween('check_out', [$checkIn, $checkOut])
-                  ->orWhere(function ($q) use ($checkIn, $checkOut) {
-                      $q->whereBetween('check_in', [$checkIn, $checkOut->copy()->subDay()]);
-                  });
+                    ->whereBetween('check_out', [$checkIn, $checkOut])
+                    ->orWhere(function ($q) use ($checkIn, $checkOut) {
+                        $q->whereBetween('check_in', [$checkIn, $checkOut->copy()->subDay()]);
+                    });
             });
 
         if ($capacity) {
@@ -226,7 +230,7 @@ class RoomAvailabilityCache
      */
     private function isRoomAvailable(Room $room, Carbon $checkIn, Carbon $checkOut): bool
     {
-        return !$room->bookings()
+        return ! $room->bookings()
             ->where('status', '!=', 'cancelled')
             ->whereBetween('check_out', [$checkIn, $checkOut])
             ->orWhere(function ($q) use ($checkIn, $checkOut) {
@@ -248,4 +252,3 @@ class RoomAvailabilityCache
             ->toArray();
     }
 }
-

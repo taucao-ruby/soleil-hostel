@@ -27,10 +27,6 @@ class LogPerformance
 
     /**
      * Handle an incoming request.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure  $next
-     * @return \Symfony\Component\HttpFoundation\Response
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -46,12 +42,6 @@ class LogPerformance
 
     /**
      * Log performance metrics for the request.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Symfony\Component\HttpFoundation\Response  $response
-     * @param  float  $startTime
-     * @param  int  $startMemory
-     * @return void
      */
     protected function logPerformanceMetrics(
         Request $request,
@@ -99,11 +89,6 @@ class LogPerformance
 
     /**
      * Determine the appropriate log level based on metrics.
-     *
-     * @param  float  $duration
-     * @param  float  $peakMemory
-     * @param  int  $statusCode
-     * @return string
      */
     protected function determineLogLevel(float $duration, float $peakMemory, int $statusCode): string
     {

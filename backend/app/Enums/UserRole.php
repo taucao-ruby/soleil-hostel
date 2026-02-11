@@ -6,7 +6,7 @@ namespace App\Enums;
 
 /**
  * User Role Enum - Single source of truth for RBAC
- * 
+ *
  * Backed enum for Laravel 11 native casting.
  * Values must match PostgreSQL ENUM type 'user_role_enum'.
  */
@@ -18,7 +18,7 @@ enum UserRole: string
 
     /**
      * Get all roles as an array of values (for validation rules & migrations).
-     * 
+     *
      * @return array<string>
      */
     public static function values(): array

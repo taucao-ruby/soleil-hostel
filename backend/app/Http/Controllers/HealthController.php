@@ -28,6 +28,7 @@ class HealthController extends Controller
      * Component criticality levels for failure semantics.
      */
     private const CRITICAL_COMPONENTS = ['database'];
+
     private const DEGRADED_COMPONENTS = ['cache', 'queue', 'redis'];
 
     /**
@@ -35,8 +36,6 @@ class HealthController extends Controller
      *
      * Returns a simple {"status": "ok"} response for basic monitoring.
      * Merged from HealthCheckController for consolidation.
-     *
-     * @return \Illuminate\Http\JsonResponse
      */
     public function check(): JsonResponse
     {
@@ -63,7 +62,7 @@ class HealthController extends Controller
 
         // ========== REDIS CHECK ==========
         try {
-            if (!extension_loaded('redis')) {
+            if (! extension_loaded('redis')) {
                 $health['status'] = 'unhealthy';
                 $health['services']['redis'] = [
                     'status' => 'down',
@@ -104,8 +103,6 @@ class HealthController extends Controller
      * Returns 200 if the application is running.
      * Used by Kubernetes/Docker for liveness checks.
      * This is a "shallow" check - just verifies the app process is alive.
-     *
-     * @return \Illuminate\Http\JsonResponse
      */
     public function liveness(): JsonResponse
     {
@@ -125,8 +122,6 @@ class HealthController extends Controller
      * FAILURE SEMANTICS:
      * - Database down → 503 (system unhealthy, cannot accept requests)
      * - Cache/Queue down → 200 degraded (system operable but impaired)
-     *
-     * @return \Illuminate\Http\JsonResponse
      */
     public function readiness(): JsonResponse
     {
@@ -165,8 +160,7 @@ class HealthController extends Controller
     /**
      * Check if all critical components are healthy.
      *
-     * @param array<string, array> $checks
-     * @return bool
+     * @param  array<string, array>  $checks
      */
     private function areCriticalComponentsHealthy(array $checks): bool
     {
@@ -175,6 +169,7 @@ class HealthController extends Controller
                 return false;
             }
         }
+
         return true;
     }
 
@@ -183,9 +178,6 @@ class HealthController extends Controller
      *
      * Provides comprehensive health information for monitoring dashboards.
      * Includes all component checks, system metrics, and degradation info.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\JsonResponse
      */
     public function detailed(Request $request): JsonResponse
     {
@@ -259,8 +251,6 @@ class HealthController extends Controller
      *
      * CRITICAL component - 503 if unhealthy.
      * The booking system cannot operate without database (optimistic locking, money paths).
-     *
-     * @return \Illuminate\Http\JsonResponse
      */
     public function database(): JsonResponse
     {
@@ -278,8 +268,6 @@ class HealthController extends Controller
      * Individual cache health check endpoint.
      *
      * DEGRADED component - 200 even if unhealthy (system still operable).
-     *
-     * @return \Illuminate\Http\JsonResponse
      */
     public function cache(): JsonResponse
     {
@@ -297,8 +285,6 @@ class HealthController extends Controller
      * Individual queue health check endpoint.
      *
      * DEGRADED component - 200 even if unhealthy (async jobs delayed, OTA sync may lag).
-     *
-     * @return \Illuminate\Http\JsonResponse
      */
     public function queue(): JsonResponse
     {
@@ -314,8 +300,6 @@ class HealthController extends Controller
 
     /**
      * Check database connectivity.
-     *
-     * @return array
      */
     protected function checkDatabase(): array
     {
@@ -340,14 +324,12 @@ class HealthController extends Controller
 
     /**
      * Check cache connectivity.
-     *
-     * @return array
      */
     protected function checkCache(): array
     {
         try {
             $start = microtime(true);
-            $key = 'health_check_' . uniqid();
+            $key = 'health_check_'.uniqid();
             Cache::put($key, 'test', 10);
             $value = Cache::get($key);
             Cache::forget($key);
@@ -368,14 +350,12 @@ class HealthController extends Controller
 
     /**
      * Check Redis connectivity.
-     *
-     * @return array
      */
     protected function checkRedis(): array
     {
         try {
             // Check if Redis extension is loaded
-            if (!extension_loaded('redis')) {
+            if (! extension_loaded('redis')) {
                 return [
                     'healthy' => false,
                     'error' => 'Redis PHP extension not loaded',
@@ -400,13 +380,11 @@ class HealthController extends Controller
 
     /**
      * Check storage writability.
-     *
-     * @return array
      */
     protected function checkStorage(): array
     {
         try {
-            $testFile = storage_path('app/health_check_' . uniqid());
+            $testFile = storage_path('app/health_check_'.uniqid());
             file_put_contents($testFile, 'test');
             $content = file_get_contents($testFile);
             unlink($testFile);
@@ -425,8 +403,6 @@ class HealthController extends Controller
 
     /**
      * Check queue connectivity.
-     *
-     * @return array
      */
     protected function checkQueue(): array
     {
@@ -445,7 +421,7 @@ class HealthController extends Controller
             // For Redis queue, check connection
             if ($driver === 'redis') {
                 // Check if Redis extension is loaded
-                if (!extension_loaded('redis')) {
+                if (! extension_loaded('redis')) {
                     return [
                         'healthy' => false,
                         'driver' => $driver,
@@ -475,8 +451,6 @@ class HealthController extends Controller
 
     /**
      * Get application uptime in seconds.
-     *
-     * @return int
      */
     protected function getUptimeSeconds(): int
     {

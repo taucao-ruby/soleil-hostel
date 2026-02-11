@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
+use App\Enums\BookingStatus;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Casts\Attribute;
-use App\Enums\BookingStatus;
 
 /**
  * Room Model
@@ -17,15 +17,15 @@ use App\Enums\BookingStatus;
  * Implements optimistic locking via lock_version column to prevent
  * race conditions during concurrent updates.
  *
- * @property int         $id
- * @property int         $location_id
- * @property string      $name
+ * @property int $id
+ * @property int $location_id
+ * @property string $name
  * @property string|null $room_number
- * @property string      $description
- * @property string      $price
- * @property int         $max_guests
- * @property string      $status
- * @property int         $lock_version  Optimistic locking version (starts at 1)
+ * @property string $description
+ * @property string $price
+ * @property int $max_guests
+ * @property string $status
+ * @property int $lock_version Optimistic locking version (starts at 1)
  * @property \Carbon\Carbon $created_at
  * @property \Carbon\Carbon $updated_at
  * @property-read Location $location
@@ -111,7 +111,7 @@ class Room extends Model
 
     /**
      * Scope: Load common relationships to prevent N+1
-     * 
+     *
      * Loads bookings count + latest booking for availability display
      * Usage: Room::withCommonRelations()->get()
      */
@@ -124,7 +124,7 @@ class Room extends Model
 
     /**
      * Scope: Select only commonly needed columns
-     * 
+     *
      * Usage: Room::selectColumns()->get()
      */
     public function scopeSelectColumns(Builder $query): Builder
@@ -200,4 +200,3 @@ class Room extends Model
         );
     }
 }
-

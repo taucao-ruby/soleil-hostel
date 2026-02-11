@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Database\TransactionIsolation;
 use App\Database\TransactionMetrics;
 use App\Enums\BookingStatus;
-use App\Exceptions\DoubleBookingException;
 use App\Models\Booking;
 use App\Models\Room;
 use Carbon\Carbon;
@@ -18,48 +17,44 @@ use Throwable;
 
 /**
  * CreateBookingService - Xử lý tạo booking với an toàn double-booking
- * 
+ *
  * Triển khai pessimistic locking (SELECT ... FOR UPDATE) để đảm bảo không bao giờ có overlap
  * kể cả dưới tải cao (100-500 request/giây)
- * 
+ *
  * Transaction Isolation Strategy:
  * - Uses READ COMMITTED isolation (PostgreSQL default) with FOR UPDATE locks
  * - Automatic retry on deadlock (40P01) and serialization failure (40001)
  * - Exponential backoff with jitter to reduce contention
- * 
+ *
  * Data Invariants Protected:
  * - No overlapping bookings for same room (enforced by lock + check)
  * - Booking dates are always valid (check_in < check_out)
  * - Room must exist and be active
- * 
+ *
  * Error Handling:
  * - Deadlock (40P01): Immediate retry with small jitter
- * - Serialization failure (40001): Retry with exponential backoff  
+ * - Serialization failure (40001): Retry with exponential backoff
  * - Constraint violation: Business error, no retry
  */
 class CreateBookingService
 {
     // Số lần retry khi deadlock hoặc serialization failure
     private const MAX_RETRY_ATTEMPTS = 3;
-    
+
     // Thời gian chờ giữa retry (exponential backoff: 100ms, 200ms, 400ms)
     private const BASE_RETRY_DELAY_MS = 100;
 
     // PostgreSQL SQLSTATE codes
     private const SQLSTATE_SERIALIZATION_FAILURE = '40001';
+
     private const SQLSTATE_DEADLOCK_DETECTED = '40P01';
 
     /**
      * Tạo booking mới với đảm bảo không overlap
-     * 
-     * @param int $roomId
-     * @param Carbon|\DateTime|string $checkIn
-     * @param Carbon|\DateTime|string $checkOut
-     * @param string $guestName
-     * @param string $guestEmail
-     * @param int|null $userId
-     * @param array $additionalData
-     * @return Booking
+     *
+     * @param  Carbon|\DateTime|string  $checkIn
+     * @param  Carbon|\DateTime|string  $checkOut
+     *
      * @throws RuntimeException Khi phòng không tồn tại
      * @throws RuntimeException Khi phòng đã được đặt cho ngày chỉ định
      * @throws Throwable Khi database error khác xảy ra
@@ -93,14 +88,14 @@ class CreateBookingService
 
     /**
      * Tạo booking với retry logic cho deadlock và serialization failure
-     * 
+     *
      * Khi 2+ transaction cùng lock các row và cố gắng update chéo nhau,
      * PostgreSQL/MySQL sẽ raise deadlock exception.
-     * 
+     *
      * Error Types:
      * - Deadlock (40P01): Two transactions waiting for each other's locks
      * - Serialization Failure (40001): SERIALIZABLE/REPEATABLE READ conflict
-     * 
+     *
      * Giải pháp: Retry với exponential backoff + jitter
      */
     private function createWithDeadlockRetry(
@@ -152,7 +147,7 @@ class CreateBookingService
                 ]);
 
                 // Check if error is retryable
-                if (!$this->isRetryableException($e)) {
+                if (! $this->isRetryableException($e)) {
                     throw $e;
                 }
 
@@ -166,7 +161,7 @@ class CreateBookingService
                     );
 
                     throw new RuntimeException(
-                        'Không thể tạo booking sau ' . self::MAX_RETRY_ATTEMPTS . ' lần thử do xung đột database. Vui lòng thử lại.',
+                        'Không thể tạo booking sau '.self::MAX_RETRY_ATTEMPTS.' lần thử do xung đột database. Vui lòng thử lại.',
                         0,
                         $e
                     );
@@ -185,8 +180,7 @@ class CreateBookingService
 
     /**
      * Classify database error for proper handling.
-     * 
-     * @param PDOException $e
+     *
      * @return string Error type: 'deadlock', 'serialization', 'lock_timeout', 'other'
      */
     private function classifyDatabaseError(PDOException $e): string
@@ -215,14 +209,14 @@ class CreateBookingService
 
     /**
      * Calculate retry delay based on error type and attempt number.
-     * 
+     *
      * Strategy:
      * - Deadlock: Quick retry with small random jitter (10-50ms)
      * - Serialization: Exponential backoff with jitter
      * - Lock timeout: Longer delay to allow lock release
-     * 
-     * @param int $attempt Attempt number (1-based)
-     * @param string $errorType Error classification
+     *
+     * @param  int  $attempt  Attempt number (1-based)
+     * @param  string  $errorType  Error classification
      * @return int Delay in milliseconds
      */
     private function calculateRetryDelay(int $attempt, string $errorType): int
@@ -238,37 +232,35 @@ class CreateBookingService
 
     /**
      * Check if exception is retryable.
-     * 
+     *
      * Retryable errors (transient):
      * - Deadlock detected (40P01)
      * - Serialization failure (40001)
      * - Lock wait timeout
      * - SQLite busy
-     * 
+     *
      * Non-retryable errors (business logic):
      * - Unique constraint violation
      * - Foreign key violation
      * - Check constraint violation
-     * 
-     * @param PDOException $e
-     * @return bool
      */
     private function isRetryableException(PDOException $e): bool
     {
         $errorType = $this->classifyDatabaseError($e);
+
         return in_array($errorType, ['deadlock', 'serialization', 'lock_timeout', 'sqlite_busy'], true);
     }
 
     /**
      * Tạo booking với pessimistic locking (SELECT ... FOR UPDATE)
-     * 
+     *
      * Flow:
      * 1. Bắt đầu transaction
      * 2. SELECT từ bookings table FOR UPDATE (lock các row matching condition)
      * 3. Kiểm tra xem có booking trùng không
      * 4. Nếu không có, INSERT booking mới
      * 5. Commit transaction (release lock)
-     * 
+     *
      * Điều quan trọng: Lock được giữ cho đến khi transaction commit/rollback,
      * đảm bảo không có transaction khác có thể tạo booking trùng
      */
@@ -292,7 +284,7 @@ class CreateBookingService
         ) {
             // Step 1: Kiểm tra phòng tồn tại
             $room = Room::find($roomId);
-            if (!$room) {
+            if (! $room) {
                 throw new ModelNotFoundException(
                     __('booking.room_not_found', ['id' => $roomId])
                 );
@@ -372,27 +364,24 @@ class CreateBookingService
     /**
      * Validate date range
      *
-     * @param Carbon $checkIn
-     * @param Carbon $checkOut
-     * @param bool $isUpdate Whether this is an update operation
-     * @param \Illuminate\Http\Request|null $request The request object (for updates)
-     * @return void
+     * @param  bool  $isUpdate  Whether this is an update operation
+     * @param  \Illuminate\Http\Request|null  $request  The request object (for updates)
      */
     private function validateDates(Carbon $checkIn, Carbon $checkOut, bool $isUpdate = false, $request = null): void
     {
         // Skip validation for updates where dates aren't being changed
-        if ($isUpdate && $request && !$request->has(['check_in_date', 'check_out_date'])) {
+        if ($isUpdate && $request && ! $request->has(['check_in_date', 'check_out_date'])) {
             return;
         }
 
-        if (!$checkIn->lessThan($checkOut)) {
+        if (! $checkIn->lessThan($checkOut)) {
             throw new RuntimeException(
                 'Ngày check-out phải sau ngày check-in'
             );
         }
 
         // Only enforce future check-in for new bookings, not updates to existing ones
-        if (!$isUpdate && $checkIn->isPast()) {
+        if (! $isUpdate && $checkIn->isPast()) {
             throw new RuntimeException(
                 'Ngày check-in phải là ngày trong tương lai'
             );

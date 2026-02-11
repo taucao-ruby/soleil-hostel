@@ -24,7 +24,9 @@ class RoomCrudTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private User $user;
+
     private Location $location;
 
     protected function setUp(): void
@@ -49,8 +51,8 @@ class RoomCrudTest extends TestCase
                 'success',
                 'message',
                 'data' => [
-                    '*' => ['id', 'name', 'description', 'price', 'max_guests', 'status']
-                ]
+                    '*' => ['id', 'name', 'description', 'price', 'max_guests', 'status'],
+                ],
             ])
             ->assertJson(['success' => true])
             ->assertJsonCount(5, 'data');
@@ -63,7 +65,7 @@ class RoomCrudTest extends TestCase
         $response->assertStatus(200)
             ->assertJson([
                 'success' => true,
-                'data' => []
+                'data' => [],
             ]);
     }
 
@@ -76,8 +78,8 @@ class RoomCrudTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonStructure([
                 'data' => [
-                    '*' => ['lock_version']
-                ]
+                    '*' => ['lock_version'],
+                ],
             ]);
     }
 
@@ -100,7 +102,7 @@ class RoomCrudTest extends TestCase
                     'id' => $room->id,
                     'name' => 'Deluxe Room',
                     'price' => '150.00',
-                ]
+                ],
             ]);
     }
 
@@ -122,7 +124,7 @@ class RoomCrudTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonStructure([
-                'data' => ['lock_version']
+                'data' => ['lock_version'],
             ]);
     }
 
@@ -151,7 +153,7 @@ class RoomCrudTest extends TestCase
                     'price' => '100.00',
                     'max_guests' => 2,
                     'lock_version' => 1,
-                ]
+                ],
             ]);
 
         $this->assertDatabaseHas('rooms', [
@@ -219,7 +221,7 @@ class RoomCrudTest extends TestCase
                 'data' => [
                     'name' => 'Updated Name',
                     'price' => '150.00',
-                ]
+                ],
             ]);
 
         $this->assertDatabaseHas('rooms', [
@@ -330,7 +332,7 @@ class RoomCrudTest extends TestCase
         $response = $this->getJson("/api/rooms/{$room->id}");
 
         $response->assertStatus(200);
-        
+
         // Price may be returned as string or float depending on serialization
         $price = $response->json('data.price');
         $this->assertEquals(99.99, (float) $price);

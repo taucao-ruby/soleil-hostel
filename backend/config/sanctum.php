@@ -44,7 +44,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | CRITICAL: Sanctum default không hỗ trợ token expiration
-    | 
+    |
     | Giải pháp này implement 2 loại token:
     | 1. short_lived: 1-2 giờ cho web SPA (high security)
     | 2. long_lived: 30-90 ngày cho mobile/remember me (user convenience)
@@ -151,7 +151,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Số ngày trước khi xóa token expired/revoked
-    | 
+    |
     | Ví dụ: delete_old_tokens_after_days = 7
     * → xóa token hết hạn > 7 ngày
     |

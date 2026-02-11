@@ -3,18 +3,17 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Models\User;
-use App\Models\PersonalAccessToken;
 use App\Traits\ApiResponse;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Illuminate\Auth\AuthenticationException;
 
 /**
  * HttpOnlyTokenController - Token authentication qua httpOnly cookie
- * 
+ *
  * CRITICAL SECURITY:
  * - Token lưu trong httpOnly cookie, KHÔNG localStorage
  * - XSS attacks không thể lấy được token
@@ -24,17 +23,18 @@ use Illuminate\Auth\AuthenticationException;
 class HttpOnlyTokenController extends Controller
 {
     use ApiResponse;
+
     /**
      * LOGIN - Cấp httpOnly Cookie token
-     * 
+     *
      * POST /api/auth/login-httponly
-     * 
+     *
      * CRITICAL SECURITY FLOW:
      * 1. Authenticate user
      * 2. Create token_identifier (UUID) + token_hash
      * 3. Set httpOnly Cookie (Secure, SameSite=Strict)
      * 4. Return CSRF token để frontend dùng X-XSRF-TOKEN header
-     * 
+     *
      * Result: XSS không access được token
      */
     public function login(Request $request): JsonResponse
@@ -42,19 +42,19 @@ class HttpOnlyTokenController extends Controller
         // Validate credentials
         $user = User::where('email', $request->input('email'))->first();
 
-        if (!$user || !password_verify($request->input('password'), $user->password)) {
+        if (! $user || ! password_verify($request->input('password'), $user->password)) {
             throw new AuthenticationException('Email hoặc mật khẩu không đúng.');
         }
 
         // Auto-resend verification email if unverified
-        if (!$user->hasVerifiedEmail()) {
+        if (! $user->hasVerifiedEmail()) {
             $user->sendEmailVerificationNotification();
         }
 
         // ========== Token Configuration ==========
         $rememberMe = $request->boolean('remember_me', false);
         $tokenType = $rememberMe ? 'long_lived' : 'short_lived';
-        
+
         if ($tokenType === 'long_lived') {
             $expiresInMinutes = config('sanctum.long_lived_token_expiration_days') * 24 * 60;
             $expiresAt = now()->addDays(config('sanctum.long_lived_token_expiration_days'));
@@ -129,16 +129,16 @@ class HttpOnlyTokenController extends Controller
 
     /**
      * REFRESH TOKEN - Rotate token (mitigates token theft)
-     * 
+     *
      * POST /api/auth/refresh-httponly
-     * 
+     *
      * SECURITY FLOW:
      * 1. Validate old token từ cookie
      * 2. Check expiration + refresh count
      * 3. Create new token với fresh refresh_count
      * 4. Revoke old token
      * 5. Set new httpOnly cookie
-     * 
+     *
      * Result: Leaked tokens become useless after rotation
      */
     public function refresh(Request $request): JsonResponse
@@ -146,14 +146,14 @@ class HttpOnlyTokenController extends Controller
         // Middleware already validated token, get it from request attributes
         $oldToken = $request->attributes->get('token');
 
-        if (!$oldToken) {
+        if (! $oldToken) {
             throw new AuthenticationException('Token cookie tidak ditemukan.');
         }
 
         // ========== Validate Token ==========
         // Middleware already validated expiration/revocation/suspicious activity
         // No additional validation needed here
-        
+
         // ========== Check Suspicious Activity ==========
         // Detect token refresh abuse (possible token theft)
         // Check BEFORE incrementing to catch the threshold exactly
@@ -228,9 +228,9 @@ class HttpOnlyTokenController extends Controller
 
     /**
      * LOGOUT - Revoke token + delete cookie
-     * 
+     *
      * POST /api/auth/logout-httponly
-     * 
+     *
      * SECURITY: Removes both token from DB + clears httpOnly cookie
      * Ensures token cannot be used again even if cookie wasn't cleared client-side
      */
@@ -263,7 +263,7 @@ class HttpOnlyTokenController extends Controller
 
     /**
      * ME - Get current user info từ httpOnly cookie token
-     * 
+     *
      * GET /api/auth/me-httponly
      */
     public function me(Request $request): JsonResponse
@@ -271,7 +271,7 @@ class HttpOnlyTokenController extends Controller
         // Middleware already validated token, get it from request attributes
         $token = $request->attributes->get('token');
 
-        if (!$token) {
+        if (! $token) {
             throw new AuthenticationException('Token cookie không ditemukan.');
         }
 
@@ -295,10 +295,10 @@ class HttpOnlyTokenController extends Controller
 
     /**
      * Generate device fingerprint từ request headers
-     * 
+     *
      * Bind token với device (nếu cookie bị leak, hacker tidak thể dùng từ device khác)
      * Trade-off: Legitimate users changing device sẽ bị reject
-     * 
+     *
      * Components:
      * - User-Agent: Browser identification
      * - Accept-Language: Language preference
@@ -306,7 +306,7 @@ class HttpOnlyTokenController extends Controller
      */
     private function generateDeviceFingerprint(Request $request): ?string
     {
-        if (!config('sanctum.verify_device_fingerprint')) {
+        if (! config('sanctum.verify_device_fingerprint')) {
             return null;
         }
 

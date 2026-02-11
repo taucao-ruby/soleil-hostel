@@ -2,20 +2,19 @@
 
 /**
  * HTML Purifier Configuration for Soleil Hostel
- * 
+ *
  * CẢNH BÁO: Chỉ dùng HTML Purifier, tuyệt đối KHÔNG dùng regex/blacklist để chống XSS.
  * Regex chống XSS = Tự bắn vào chân mình (99% bypass rate)
  * HTML Purifier = Whitelist an toàn (0% bypass rate khi config đúng)
- * 
+ *
  * Dev vs Prod:
  * - DEV: Cache disabled, report XSS attempts to error log
  * - PROD: Cache enabled, strict config, report to monitoring service
  */
-
 $appEnv = getenv('APP_ENV') ?: ($_SERVER['APP_ENV'] ?? ($_ENV['APP_ENV'] ?? 'local'));
 $isLocal = in_array(strtolower($appEnv), ['local', 'testing', 'dev'], true);
 
-$cachePath = sys_get_temp_dir() . '/purifier';
+$cachePath = sys_get_temp_dir().'/purifier';
 if (function_exists('storage_path')) {
     try {
         $cachePath = storage_path('framework/cache/purifier');
@@ -26,7 +25,7 @@ if (function_exists('storage_path')) {
 
 return [
     // Kích hoạt caching - cải thiện tốc độ từ ~10ms -> <1ms
-    'enable_cache' => !$isLocal,
+    'enable_cache' => ! $isLocal,
 
     // Đường dẫn cache
     'cache_path' => $cachePath,

@@ -29,8 +29,7 @@ class LocationController extends Controller
         $locations = Location::query()
             ->active()
             ->withRoomCounts()
-            ->when($request->boolean('has_coordinates'), fn ($q) =>
-                $q->whereNotNull('latitude')->whereNotNull('longitude')
+            ->when($request->boolean('has_coordinates'), fn ($q) => $q->whereNotNull('latitude')->whereNotNull('longitude')
             )
             ->orderBy('name')
             ->get();
@@ -112,8 +111,7 @@ class LocationController extends Controller
 
         $availableRooms = $location->rooms()
             ->availableBetween($request->input('check_in'), $request->input('check_out'))
-            ->when($request->filled('guests'), fn ($q) =>
-                $q->where('max_guests', '>=', $request->integer('guests'))
+            ->when($request->filled('guests'), fn ($q) => $q->where('max_guests', '>=', $request->integer('guests'))
             )
             ->orderBy('price')
             ->get();

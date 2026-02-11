@@ -23,8 +23,11 @@ class RoomAuthorizationTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private User $moderator;
+
     private User $user;
+
     private Location $location;
 
     protected function setUp(): void

@@ -9,13 +9,13 @@ use Illuminate\Database\Seeder;
 
 /**
  * ReviewSeeder - Test data for HTML Purifier validation
- * 
+ *
  * This seeder creates reviews with:
  * 1. Safe HTML content (b, i, strong, em, a, lists)
  * 2. XSS attempts that should be stripped
  * 3. Edge cases and encoding bypasses
  * 4. Mixed valid/invalid content
- * 
+ *
  * After seeding, all content is auto-purified by Review::Purifiable trait
  * Check storage/logs/laravel.log for "XSS content detected" warnings
  */
@@ -31,6 +31,7 @@ class ReviewSeeder extends Seeder
 
         if ($rooms->isEmpty() || $users->isEmpty()) {
             $this->command->warn('⚠️  Rooms or Users not found. Run RoomSeeder and create users first.');
+
             return;
         }
 
@@ -230,7 +231,7 @@ class ReviewSeeder extends Seeder
             // ==============================================================
             [
                 'title' => 'Very Long Title With Mixed Content <b>Safe</b> <script>Bad</script>',
-                'content' => str_repeat('<p>This is a long review with repeated content. ', 10) . '<script>alert("xss")</script>',
+                'content' => str_repeat('<p>This is a long review with repeated content. ', 10).'<script>alert("xss")</script>',
                 'rating' => 4,
                 'is_approved' => false,
                 'description' => 'Edge Case: Long content with late-stage script injection',

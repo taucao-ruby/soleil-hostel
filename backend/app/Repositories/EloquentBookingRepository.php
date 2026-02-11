@@ -10,22 +10,22 @@ use Illuminate\Database\Eloquent\Collection;
 
 /**
  * EloquentBookingRepository - Eloquent implementation of BookingRepositoryInterface
- * 
+ *
  * PURPOSE:
  * Provides concrete Eloquent-based data access for the Booking domain.
  * Acts as a thin wrapper around existing Booking model queries.
- * 
+ *
  * DESIGN PRINCIPLES:
  * - Pure data access only (no business logic, no validation)
  * - Returns exact same Eloquent models/collections as direct calls
  * - Preserves all existing behavior (global scopes, soft deletes)
  * - No side effects beyond what Eloquent already does
  * - Throws same exceptions as direct Eloquent calls
- * 
+ *
  * USAGE:
  * Inject BookingRepositoryInterface in services/controllers.
  * Laravel container will resolve to this implementation.
- * 
+ *
  * @see BookingRepositoryInterface
  */
 class EloquentBookingRepository implements BookingRepositoryInterface
@@ -92,7 +92,7 @@ class EloquentBookingRepository implements BookingRepositoryInterface
     ): Collection {
         $query = Booking::where('user_id', $userId);
 
-        if (!empty($relations)) {
+        if (! empty($relations)) {
             $query->with($relations);
         }
 
@@ -113,7 +113,7 @@ class EloquentBookingRepository implements BookingRepositoryInterface
     ): Collection {
         $query = Booking::where('user_id', $userId);
 
-        if (!empty($relations)) {
+        if (! empty($relations)) {
             $query->with($relations);
         }
 
@@ -189,7 +189,7 @@ class EloquentBookingRepository implements BookingRepositoryInterface
     {
         $query = Booking::onlyTrashed();
 
-        if (!empty($relations)) {
+        if (! empty($relations)) {
             $query->with($relations);
         }
 
@@ -203,7 +203,7 @@ class EloquentBookingRepository implements BookingRepositoryInterface
     {
         $query = Booking::onlyTrashed();
 
-        if (!empty($relations)) {
+        if (! empty($relations)) {
             $query->with($relations);
         }
 
@@ -245,7 +245,7 @@ class EloquentBookingRepository implements BookingRepositoryInterface
     {
         $query = Booking::withTrashed();
 
-        if (!empty($relations)) {
+        if (! empty($relations)) {
             $query->with($relations);
         }
 
@@ -254,7 +254,7 @@ class EloquentBookingRepository implements BookingRepositoryInterface
 
     /**
      * {@inheritDoc}
-     * 
+     *
      * NOTE: Relies on existing Booking::withCommonRelations() scope
      * defined in App\Models\Booking (lines 71-82).
      */

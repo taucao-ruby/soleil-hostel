@@ -6,21 +6,21 @@ use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * RefreshTokenRequest - Validation cho POST /api/auth/refresh
- * 
+ *
  * Rules:
  * - token: required, string (current token)
- * 
+ *
  * Flow:
  * 1. Extract token từ Authorization header
  * 2. Validate: token tồn tại, chưa expire, chưa revoke
  * 3. Tạo token mới (cùng loại)
  * 4. Revoke token cũ
  * 5. Return token mới
- * 
+ *
  * IMPORTANT: Không cấp token mới nếu token cũ đã:
  * - Hết hạn (expired)
  * - Bị revoke
- * 
+ *
  * Nếu cập nhập 401 → frontend phải login lại
  */
 class RefreshTokenRequest extends FormRequest

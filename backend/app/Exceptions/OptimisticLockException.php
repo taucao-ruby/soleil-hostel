@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Exceptions;
 
-use RuntimeException;
 use Illuminate\Database\Eloquent\Model;
+use RuntimeException;
 
 /**
  * Exception thrown when an optimistic lock conflict is detected.
@@ -41,10 +41,10 @@ class OptimisticLockException extends RuntimeException
      *
      * Uses PHP 8.3 constructor property promotion for cleaner code.
      *
-     * @param string     $message          The exception message
-     * @param Model|null $model            The model that failed the lock check
-     * @param int|null   $expectedVersion  The version the client expected
-     * @param int|null   $actualVersion    The actual version in the database
+     * @param  string  $message  The exception message
+     * @param  Model|null  $model  The model that failed the lock check
+     * @param  int|null  $expectedVersion  The version the client expected
+     * @param  int|null  $actualVersion  The actual version in the database
      */
     public function __construct(
         string $message = 'The resource has been modified by another user. Please refresh and try again.',
@@ -80,7 +80,7 @@ class OptimisticLockException extends RuntimeException
             $details[] = "Actual version: {$this->actualVersion}";
         }
 
-        return $this->getMessage() . ' | ' . implode(' | ', $details);
+        return $this->getMessage().' | '.implode(' | ', $details);
     }
 
     /**
@@ -88,9 +88,9 @@ class OptimisticLockException extends RuntimeException
      *
      * Factory method for creating room-specific lock exceptions.
      *
-     * @param Model    $room             The Room model instance
-     * @param int|null $expectedVersion  The version the client expected
-     * @param int|null $actualVersion    The actual version in the database
+     * @param  Model  $room  The Room model instance
+     * @param  int|null  $expectedVersion  The version the client expected
+     * @param  int|null  $actualVersion  The actual version in the database
      */
     public static function forRoom(
         Model $room,

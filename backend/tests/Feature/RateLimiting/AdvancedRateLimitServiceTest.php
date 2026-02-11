@@ -2,17 +2,16 @@
 
 namespace Tests\Feature\RateLimiting;
 
-use Tests\TestCase;
-use App\Models\User;
-use App\Models\Room;
 use App\Services\RateLimitService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
 class AdvancedRateLimitServiceTest extends TestCase
 {
     use RefreshDatabase;
 
     private RateLimitService $limiter;
+
     private string $testId;
 
     protected function setUp(): void
@@ -20,7 +19,7 @@ class AdvancedRateLimitServiceTest extends TestCase
         parent::setUp();
         $this->limiter = app(RateLimitService::class);
         // Generate unique test ID to avoid key collisions in parallel runs
-        $this->testId = uniqid('test_' . getmypid() . '_', true);
+        $this->testId = uniqid('test_'.getmypid().'_', true);
     }
 
     /**

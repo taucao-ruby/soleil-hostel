@@ -2,14 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\Purifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Traits\Purifiable;
 
 /**
  * Review Model
- * 
+ *
  * Auto-purify HTML content từ guest reviews
  * Title + content được sanitize tự động qua trait Purifiable
  */
@@ -42,10 +42,10 @@ class Review extends Model
 
     /**
      * Fields to auto-purify when saving
-     * 
+     *
      * Dùng HTML Purifier whitelist, chứ không phải regex blacklist
      * Title + content được strip safe tags, block <script>, on*, javascript:, v.v.
-     * 
+     *
      * @return array<string>
      */
     public function getPurifiableFields(): array
@@ -72,7 +72,7 @@ class Review extends Model
 
     /**
      * Get the booking this review belongs to.
-     * 
+     *
      * Required for ReviewPolicy ownership checks via $review->booking->user_id.
      */
     public function booking(): BelongsTo

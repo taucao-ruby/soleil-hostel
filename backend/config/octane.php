@@ -2,14 +2,14 @@
 
 /**
  * Laravel Octane Configuration for Soleil Hostel
- * 
+ *
  * Octane = Swoole/RoadRunner + persistent app state
  * Performance: 40ms → 5-10ms latency (4-8x faster)
- * 
+ *
  * Installation:
  * composer require laravel/octane
  * php artisan octane:install
- * 
+ *
  * Production deployment:
  * - Use Swoole (better performance) on Linux
  * - Octane watches for file changes (enable in production with care)
@@ -17,11 +17,11 @@
  * - Max connections = 50k (tunable)
  */
 
-use Laravel\Octane\Octane;
-use Laravel\Octane\Events\RequestReceived;
 use Laravel\Octane\Events\RequestHandled;
+use Laravel\Octane\Events\RequestReceived;
 use Laravel\Octane\Events\TaskReceived;
 use Laravel\Octane\Events\TickReceived;
+use Laravel\Octane\Octane;
 
 return [
 

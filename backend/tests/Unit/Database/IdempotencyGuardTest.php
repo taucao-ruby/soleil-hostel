@@ -10,7 +10,7 @@ use Tests\TestCase;
 
 /**
  * IdempotencyGuardTest - Unit tests for idempotency protection
- * 
+ *
  * Tests:
  * 1. First execution runs and stores result
  * 2. Second execution returns cached result
@@ -24,7 +24,7 @@ class IdempotencyGuardTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Clear any cached idempotency keys
         Cache::flush();
     }
@@ -40,6 +40,7 @@ class IdempotencyGuardTest extends TestCase
             'test:operation:1',
             function () use (&$executionCount) {
                 $executionCount++;
+
                 return ['data' => 'result'];
             }
         );
@@ -62,6 +63,7 @@ class IdempotencyGuardTest extends TestCase
             $key,
             function () use (&$executionCount) {
                 $executionCount++;
+
                 return ['value' => 42];
             }
         );
@@ -71,6 +73,7 @@ class IdempotencyGuardTest extends TestCase
             $key,
             function () use (&$executionCount) {
                 $executionCount++;
+
                 return ['value' => 999]; // Different value, but should return cached
             }
         );
@@ -138,7 +141,7 @@ class IdempotencyGuardTest extends TestCase
      */
     public function test_was_completed_false_before_execution(): void
     {
-        $key = 'test:not:executed:' . uniqid();
+        $key = 'test:not:executed:'.uniqid();
 
         $this->assertFalse(IdempotencyGuard::wasCompleted($key));
     }
@@ -148,9 +151,9 @@ class IdempotencyGuardTest extends TestCase
      */
     public function test_was_completed_true_after_execution(): void
     {
-        $key = 'test:executed:' . uniqid();
+        $key = 'test:executed:'.uniqid();
 
-        IdempotencyGuard::execute($key, fn() => 'done');
+        IdempotencyGuard::execute($key, fn () => 'done');
 
         $this->assertTrue(IdempotencyGuard::wasCompleted($key));
     }
@@ -160,7 +163,7 @@ class IdempotencyGuardTest extends TestCase
      */
     public function test_get_result_null_before_execution(): void
     {
-        $key = 'test:no:result:' . uniqid();
+        $key = 'test:no:result:'.uniqid();
 
         $this->assertNull(IdempotencyGuard::getResult($key));
     }
@@ -170,9 +173,9 @@ class IdempotencyGuardTest extends TestCase
      */
     public function test_get_result_after_execution(): void
     {
-        $key = 'test:with:result:' . uniqid();
+        $key = 'test:with:result:'.uniqid();
 
-        IdempotencyGuard::execute($key, fn() => ['data' => 'value']);
+        IdempotencyGuard::execute($key, fn () => ['data' => 'value']);
 
         $result = IdempotencyGuard::getResult($key);
         $this->assertEquals(['data' => 'value'], $result);
@@ -183,10 +186,10 @@ class IdempotencyGuardTest extends TestCase
      */
     public function test_clear_removes_key(): void
     {
-        $key = 'test:to:clear:' . uniqid();
+        $key = 'test:to:clear:'.uniqid();
 
         // Execute first
-        IdempotencyGuard::execute($key, fn() => 'first');
+        IdempotencyGuard::execute($key, fn () => 'first');
         $this->assertTrue(IdempotencyGuard::wasCompleted($key));
 
         // Clear
@@ -194,7 +197,7 @@ class IdempotencyGuardTest extends TestCase
         $this->assertFalse(IdempotencyGuard::wasCompleted($key));
 
         // Execute again - should run
-        $result = IdempotencyGuard::execute($key, fn() => 'second');
+        $result = IdempotencyGuard::execute($key, fn () => 'second');
         $this->assertTrue($result['wasExecuted']);
         $this->assertEquals('second', $result['result']);
     }
@@ -204,7 +207,7 @@ class IdempotencyGuardTest extends TestCase
      */
     public function test_operation_failure_does_not_store_result(): void
     {
-        $key = 'test:failing:operation:' . uniqid();
+        $key = 'test:failing:operation:'.uniqid();
 
         try {
             IdempotencyGuard::execute($key, function () {
@@ -218,9 +221,8 @@ class IdempotencyGuardTest extends TestCase
         $this->assertFalse(IdempotencyGuard::wasCompleted($key));
 
         // Should be able to retry
-        $result = IdempotencyGuard::execute($key, fn() => 'success');
+        $result = IdempotencyGuard::execute($key, fn () => 'success');
         $this->assertTrue($result['wasExecuted']);
         $this->assertEquals('success', $result['result']);
     }
 }
-

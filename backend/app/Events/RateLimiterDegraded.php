@@ -7,7 +7,7 @@ use Illuminate\Queue\SerializesModels;
 
 /**
  * RateLimiterDegraded Event
- * 
+ *
  * Fired when rate limiter falls back from Redis to in-memory storage.
  * Used for alerting and monitoring distributed system health.
  */
@@ -17,6 +17,5 @@ class RateLimiterDegraded
 
     public function __construct(
         public array $data
-    ) {
-    }
+    ) {}
 }

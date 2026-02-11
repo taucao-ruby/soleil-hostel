@@ -14,7 +14,7 @@ use Tests\TestCase;
 
 /**
  * Email Template Rendering Tests
- * 
+ *
  * Verifies that branded email templates render correctly with all required data.
  * These tests ensure templates don't break after updates and contain expected content.
  */
@@ -23,7 +23,9 @@ class EmailTemplateRenderingTest extends TestCase
     use RefreshDatabase;
 
     protected Room $room;
+
     protected Booking $confirmedBooking;
+
     protected Booking $cancelledBooking;
 
     protected function setUp(): void
@@ -61,7 +63,7 @@ class EmailTemplateRenderingTest extends TestCase
 
         $this->assertNotNull($mailMessage);
         $this->assertStringContainsString('Booking Confirmed', $mailMessage->subject);
-        
+
         // Render the markdown template
         $rendered = $mailMessage->render();
 
@@ -231,7 +233,7 @@ class EmailTemplateRenderingTest extends TestCase
             'guest_email' => 'test@example.com',
             'status' => BookingStatus::CONFIRMED,
         ]);
-        
+
         // Manually set a malicious name bypassing the Purifiable trait
         $maliciousBooking->setRawAttributes(array_merge(
             $maliciousBooking->getAttributes(),

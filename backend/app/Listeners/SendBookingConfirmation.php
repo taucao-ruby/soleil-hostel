@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Notification;
 
 /**
  * SendBookingConfirmation Listener
- * 
+ *
  * Automatically sends booking confirmation email using Laravel Notifications.
  * NOTE: Does NOT implement ShouldQueue because BookingConfirmed notification
  * already implements ShouldQueue - this avoids double-queuing issues.

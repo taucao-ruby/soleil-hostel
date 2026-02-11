@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Migration: Convert role column to PostgreSQL ENUM and drop is_admin
- * 
+ *
  * This migration performs a zero-downtime conversion:
  * 1. Creates PostgreSQL ENUM type 'user_role_enum'
  * 2. Adds temporary column with ENUM type
@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Schema;
  * 4. Handles edge cases (nulls, invalid values, 'guest' → 'user')
  * 5. Swaps columns atomically
  * 6. Drops is_admin column
- * 
+ *
  * Rollback: Fully reversible with data preservation
  */
 return new class extends Migration
@@ -53,7 +53,7 @@ return new class extends Migration
     private function migratePostgreSQL(): void
     {
         $enumValues = $this->getEnumValues();
-        $enumValuesSQL = "'" . implode("', '", $enumValues) . "'";
+        $enumValuesSQL = "'".implode("', '", $enumValues)."'";
         $defaultRole = UserRole::default()->value;
 
         // Step 1: Create PostgreSQL ENUM type if not exists
@@ -75,7 +75,7 @@ return new class extends Migration
         // Step 3: Migrate data with priority: is_admin > existing role > default
         // Check if is_admin column exists first
         $hasIsAdmin = Schema::hasColumn('users', 'is_admin');
-        
+
         if ($hasIsAdmin) {
             DB::statement("
                 UPDATE users SET role_new = 
@@ -102,7 +102,7 @@ return new class extends Migration
         DB::statement('ALTER TABLE users RENAME COLUMN role_new TO role');
 
         // Step 5: Add NOT NULL constraint
-        DB::statement("ALTER TABLE users ALTER COLUMN role SET NOT NULL");
+        DB::statement('ALTER TABLE users ALTER COLUMN role SET NOT NULL');
         DB::statement("ALTER TABLE users ALTER COLUMN role SET DEFAULT '{$defaultRole}'::user_role_enum");
 
         // Step 6: Drop is_admin column if exists
@@ -249,7 +249,7 @@ return new class extends Migration
     private function rollbackGeneric(): void
     {
         Schema::table('users', function ($table) {
-            if (!Schema::hasColumn('users', 'is_admin')) {
+            if (! Schema::hasColumn('users', 'is_admin')) {
                 $table->boolean('is_admin')->default(false)->after('email');
             }
         });

@@ -1,18 +1,15 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Auth\AuthController as TokenAuthController;
+use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\HttpOnlyTokenController;
 use App\Http\Controllers\Auth\UnifiedAuthController;
-use App\Http\Controllers\Auth\EmailVerificationController;
-use App\Http\Controllers\RoomController;
-use App\Http\Controllers\BookingController;
-use App\Http\Controllers\AdminBookingController;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ContactController;
-use App\Http\Controllers\HealthController;
 use App\Http\Controllers\CspViolationReportController;
+use App\Http\Controllers\HealthController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -86,7 +83,7 @@ Route::post('/auth/login-v2', [TokenAuthController::class, 'login'])->middleware
 // ========== HTTPONLY COOKIE ENDPOINTS (Current) ==========
 // Token stored in httpOnly Cookie, NOT localStorage - XSS-safe
 Route::post('/auth/login-httponly', [HttpOnlyTokenController::class, 'login'])->middleware('throttle:5,1');
-Route::get('/auth/csrf-token', function(Request $request) {
+Route::get('/auth/csrf-token', function (Request $request) {
     // Return Laravel session CSRF token for form submissions
     return response()->json(['csrf_token' => \Illuminate\Support\Facades\Session::token()]);
 });
@@ -123,7 +120,7 @@ Route::get('/email/verification-status', [EmailVerificationController::class, 's
     ->name('verification.status');
 
 // ========== PROTECTED ROUTES (Require valid token) ==========
-// 
+//
 // Our custom middleware:
 // 1. check_token_valid - Check token exists, not expired + not revoked
 //

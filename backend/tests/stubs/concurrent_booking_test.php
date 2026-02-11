@@ -2,18 +2,17 @@
 
 /**
  * Concurrent Booking Stress Test (50 simultaneous requests)
- * 
+ *
  * Tests that pessimistic locking prevents double-booking
  * Simulates 50 concurrent users trying to book same room
- * 
+ *
  * Usage:
  * php tests/stubs/concurrent_booking_test.php
- * 
+ *
  * Expected result:
  * - 1 booking succeeds
  * - 49 bookings fail with 409 Conflict or 422 Unprocessable Entity
  */
-
 $apiUrl = 'http://localhost:8000/api';
 $roomId = 1; // Test with first room
 $totalRequests = 50;
@@ -26,8 +25,8 @@ echo "📋 Total concurrent requests: $totalRequests\n";
 echo "🏨 Room ID: $roomId\n\n";
 
 // Generate test date range
-$checkIn = (new DateTime())->modify('+5 days')->format('Y-m-d');
-$checkOut = (new DateTime())->modify('+7 days')->format('Y-m-d');
+$checkIn = (new DateTime)->modify('+5 days')->format('Y-m-d');
+$checkOut = (new DateTime)->modify('+7 days')->format('Y-m-d');
 
 echo "📅 Date range: $checkIn to $checkOut\n";
 echo "⏳ Sending requests...\n\n";
@@ -38,8 +37,8 @@ $handles = [];
 
 for ($i = 0; $i < $totalRequests; $i++) {
     $ch = curl_init();
-    
-    $guestEmail = "stress-test-" . uniqid() . "-user$i@example.com";
+
+    $guestEmail = 'stress-test-'.uniqid()."-user$i@example.com";
     $payload = json_encode([
         'room_id' => $roomId,
         'check_in' => $checkIn,
@@ -86,7 +85,7 @@ for ($i = 0; $i < $totalRequests; $i++) {
 
     if ($httpCode === 201) {
         $successCount++;
-        echo "✅ Request " . ($i + 1) . ": SUCCESS (HTTP 201)\n";
+        echo '✅ Request '.($i + 1).": SUCCESS (HTTP 201)\n";
     } else {
         $failureCount++;
         $statusLabel = match ($httpCode) {
@@ -98,7 +97,7 @@ for ($i = 0; $i < $totalRequests; $i++) {
             500 => 'Server Error',
             default => 'Unknown',
         };
-        echo "❌ Request " . ($i + 1) . ": FAILED (HTTP $httpCode - $statusLabel)\n";
+        echo '❌ Request '.($i + 1).": FAILED (HTTP $httpCode - $statusLabel)\n";
     }
 
     curl_multi_remove_handle($mh, $ch);
@@ -113,10 +112,10 @@ echo "========== STRESS TEST RESULTS ==========\n";
 echo "✅ Successful bookings: $successCount\n";
 echo "❌ Failed bookings: $failureCount\n";
 echo "📊 Total requests: $totalRequests\n";
-echo "✓ Success rate: " . round(($successCount / $totalRequests) * 100, 2) . "%\n\n";
+echo '✓ Success rate: '.round(($successCount / $totalRequests) * 100, 2)."%\n\n";
 
 // Analyze results
-$statusCodes = array_count_values(array_map(fn($r) => $r['status'], $results));
+$statusCodes = array_count_values(array_map(fn ($r) => $r['status'], $results));
 echo "Status code distribution:\n";
 foreach ($statusCodes as $code => $count) {
     $statusLabel = match ($code) {

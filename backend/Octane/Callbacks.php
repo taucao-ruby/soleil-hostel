@@ -1,9 +1,9 @@
 <?php
 
-use Laravel\Octane\Octane;
-use Laravel\Octane\Events\RequestReceived;
 use Laravel\Octane\Events\RequestHandled;
+use Laravel\Octane\Events\RequestReceived;
 use Laravel\Octane\Events\TickReceived;
+use Laravel\Octane\Octane;
 
 /*
 |--------------------------------------------------------------------------

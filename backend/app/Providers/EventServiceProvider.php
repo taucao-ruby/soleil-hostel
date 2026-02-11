@@ -2,19 +2,19 @@
 
 namespace App\Providers;
 
-use Illuminate\Auth\Events\Registered;
-use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
-use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
-use Illuminate\Database\Events\QueryExecuted;
-use App\Events\BookingCreated;
-use App\Events\BookingUpdated;
-use App\Events\BookingDeleted;
 use App\Events\BookingCancelled;
+use App\Events\BookingCreated;
+use App\Events\BookingDeleted;
+use App\Events\BookingUpdated;
 use App\Listeners\InvalidateCacheOnBookingChange;
 use App\Listeners\QueryDebuggerListener;
-use App\Listeners\SendBookingConfirmation;
 use App\Listeners\SendBookingCancellation;
+use App\Listeners\SendBookingConfirmation;
 use App\Listeners\SendBookingUpdateNotification;
+use Illuminate\Auth\Events\Registered;
+use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 class EventServiceProvider extends ServiceProvider
 {

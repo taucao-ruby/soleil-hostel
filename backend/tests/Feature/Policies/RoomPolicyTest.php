@@ -20,32 +20,33 @@ class RoomPolicyTest extends TestCase
     use RefreshDatabase;
 
     private RoomPolicy $policy;
+
     private Room $room;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->policy = new RoomPolicy();
+        $this->policy = new RoomPolicy;
         $this->room = Room::factory()->create();
     }
 
     // ========== VIEW ANY (LIST) ==========
 
-    public function test_viewAny_returns_true_for_admin(): void
+    public function test_view_any_returns_true_for_admin(): void
     {
         $admin = User::factory()->create(['role' => UserRole::ADMIN]);
 
         $this->assertTrue($this->policy->viewAny($admin));
     }
 
-    public function test_viewAny_returns_true_for_moderator(): void
+    public function test_view_any_returns_true_for_moderator(): void
     {
         $moderator = User::factory()->create(['role' => UserRole::MODERATOR]);
 
         $this->assertTrue($this->policy->viewAny($moderator));
     }
 
-    public function test_viewAny_returns_true_for_user(): void
+    public function test_view_any_returns_true_for_user(): void
     {
         $user = User::factory()->create(['role' => UserRole::USER]);
 

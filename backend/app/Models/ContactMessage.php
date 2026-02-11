@@ -54,6 +54,7 @@ class ContactMessage extends Model
     public function markAsRead(): self
     {
         $this->update(['read_at' => now()]);
+
         return $this;
     }
 }

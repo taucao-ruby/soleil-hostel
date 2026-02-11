@@ -8,7 +8,7 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * ⚠️ Foreign key constraint + parallel test = tự bắn vào đầu mình 100 lần
      * Thay bằng unsignedBigInteger + index
      */

@@ -6,7 +6,7 @@ use Laravel\Octane\Tables\Table;
 
 /**
  * Query Metrics Table for Octane Workers
- * 
+ *
  * Tracks query statistics across all workers for real-time performance monitoring
  */
 class QueryMetricsTable

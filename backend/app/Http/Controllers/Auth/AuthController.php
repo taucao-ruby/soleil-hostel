@@ -35,9 +35,10 @@ use Illuminate\Support\Str;
 class AuthController extends Controller
 {
     use ApiResponse;
+
     /**
      * Login - Tạo personal access token
-     * 
+     *
      * POST /api/auth/login
      * {
      *   "email": "user@example.com",
@@ -45,7 +46,7 @@ class AuthController extends Controller
      *   "remember_me": false,
      *   "device_name": "iPhone 15"
      * }
-     * 
+     *
      * Response:
      * {
      *   "message": "Login thành công",
@@ -61,19 +62,19 @@ class AuthController extends Controller
         // ========== Validate: Email + Password ==========
         $user = User::where('email', $request->getEmail())->first();
 
-        if (!$user || !password_verify($request->getPassword(), $user->password)) {
+        if (! $user || ! password_verify($request->getPassword(), $user->password)) {
             // Email hoặc password sai → 401
             throw new AuthenticationException('Email hoặc mật khẩu không đúng.');
         }
 
         // Auto-resend verification email if unverified
-        if (!$user->hasVerifiedEmail()) {
+        if (! $user->hasVerifiedEmail()) {
             $user->sendEmailVerificationNotification();
         }
 
         // ========== Determine: Short-lived hoặc Long-lived ==========
         $shouldRemember = $request->shouldRemember();
-        
+
         if ($shouldRemember) {
             // Remember me = true → long_lived token (30 ngày)
             $tokenType = 'long_lived';
@@ -94,7 +95,7 @@ class AuthController extends Controller
                 ->where('tokenable_type', 'App\\Models\\User')
                 ->notExpired()
                 ->notRevoked()
-                ->each(fn($token) => $token->revoke());
+                ->each(fn ($token) => $token->revoke());
         }
 
         // ========== Create Token ==========
@@ -106,7 +107,7 @@ class AuthController extends Controller
 
         // Tạo plain text token
         $plainTextToken = \Illuminate\Support\Str::random(40);
-        
+
         // Hash token (Sanctum stores hashed token in DB)
         $hashedToken = hash('sha256', $plainTextToken);
 
@@ -146,10 +147,10 @@ class AuthController extends Controller
 
     /**
      * Refresh Token - Tạo token mới + revoke token cũ
-     * 
+     *
      * POST /api/auth/refresh
      * Headers: Authorization: Bearer <token>
-     * 
+     *
      * Response:
      * {
      *   "message": "Token refreshed thành công",
@@ -159,14 +160,14 @@ class AuthController extends Controller
      *   "expires_in_minutes": 60,
      *   "old_token_status": "revoked"
      * }
-     * 
+     *
      * IMPORTANT: Token refresh là CRITICAL operation
      * - Phải lấy token cũ từ Authorization header
      * - Validate: token không expired, không revoke
      * - Create token mới (cùng loại: short_lived/long_lived)
      * - Revoke token cũ (tránh duplicate token)
      * - Return token mới
-     * 
+     *
      * Nếu token cũ expired/revoke → return 401 (phải login lại)
      */
     public function refresh(RefreshTokenRequest $request): JsonResponse
@@ -174,19 +175,19 @@ class AuthController extends Controller
         // ========== Lấy token cũ từ Authorization header ==========
         $bearerToken = $request->bearerToken();
 
-        if (!$bearerToken) {
+        if (! $bearerToken) {
             throw new AuthenticationException('Authorization header không tồn tại.');
         }
 
         // ========== Transaction với pessimistic lock (phòng race condition) ==========
-        return DB::transaction(function () use ($bearerToken, $request) {
+        return DB::transaction(function () use ($bearerToken) {
             // Lock token row để prevent concurrent refresh
             $oldToken = PersonalAccessToken::where(
                 'token',
                 hash('sha256', $bearerToken)
             )->lockForUpdate()->first();
 
-            if (!$oldToken) {
+            if (! $oldToken) {
                 throw new AuthenticationException('Token không hợp lệ.');
             }
 
@@ -272,16 +273,16 @@ class AuthController extends Controller
 
     /**
      * Logout - Revoke current token
-     * 
+     *
      * POST /api/auth/logout
      * Headers: Authorization: Bearer <token>
-     * 
+     *
      * Response:
      * {
      *   "message": "Logout thành công",
      *   "revoked_at": "2025-11-20T13:45:00Z"
      * }
-     * 
+     *
      * IMPORTANT: Nếu logout → token không thể dùng tiếp
      * revoked_at được set → middleware sẽ return 401
      */
@@ -290,7 +291,7 @@ class AuthController extends Controller
         // ========== Lấy token ==========
         $bearerToken = $request->bearerToken();
 
-        if (!$bearerToken) {
+        if (! $bearerToken) {
             throw new AuthenticationException('Authorization header không tồn tại.');
         }
 
@@ -299,7 +300,7 @@ class AuthController extends Controller
             hash('sha256', $bearerToken)
         )->first();
 
-        if (!$token) {
+        if (! $token) {
             throw new AuthenticationException('Token không hợp lệ.');
         }
 
@@ -315,12 +316,12 @@ class AuthController extends Controller
 
     /**
      * Logout All Devices (Bonus)
-     * 
+     *
      * POST /api/auth/logout-all
      * Headers: Authorization: Bearer <token>
-     * 
+     *
      * Revoke tất cả token của user (force logout all devices)
-     * 
+     *
      * Dùng khi:
      * - User đổi password → force logout tất cả
      * - User phát hiện hack → force logout + reset password
@@ -330,7 +331,7 @@ class AuthController extends Controller
     {
         $bearerToken = $request->bearerToken();
 
-        if (!$bearerToken) {
+        if (! $bearerToken) {
             throw new AuthenticationException('Authorization header không tồn tại.');
         }
 
@@ -339,7 +340,7 @@ class AuthController extends Controller
             hash('sha256', $bearerToken)
         )->first();
 
-        if (!$token) {
+        if (! $token) {
             throw new AuthenticationException('Token không hợp lệ.');
         }
 
@@ -363,12 +364,12 @@ class AuthController extends Controller
 
     /**
      * Get Current User Info (Bonus)
-     * 
+     *
      * GET /api/auth/me
      * Headers: Authorization: Bearer <token>
-     * 
+     *
      * Return user info + token expiration info
-     * 
+     *
      * Response:
      * {
      *   "user": { ... },
@@ -386,31 +387,31 @@ class AuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         $user = $request->user();
-        
+
         // If $request->user() is null, try to get from the auth guard
-        if (!$user) {
+        if (! $user) {
             $user = auth()->user();
         }
-        
+
         // If still null, try sanctum guard
-        if (!$user) {
+        if (! $user) {
             $user = auth()->guard('sanctum')->user();
         }
-        
+
         // Last resort - check if there's an accessToken on the request/auth context
-        if (!$user) {
+        if (! $user) {
             throw new \Illuminate\Auth\AuthenticationException('User not authenticated');
         }
-        
+
         // Try to get the current access token
         $token = $user->currentAccessToken();
-        
+
         // If currentAccessToken() doesn't work, fall back to the accessToken property we set in the middleware
-        if (!$token && isset($user->accessToken)) {
+        if (! $token && isset($user->accessToken)) {
             $token = $user->accessToken;
         }
 
-        if (!$token) {
+        if (! $token) {
             return $this->error('Token not found', 401);
         }
 

@@ -18,13 +18,13 @@ use Tests\TestCase;
 
 /**
  * Feature tests for booking notification system.
- * 
+ *
  * Tests cover:
  * - Notification dispatch on status changes
  * - Queue integration
  * - Idempotency guards
  * - Rate limiting
- * 
+ *
  * @see docs/backend/BOOKING_CONFIRMATION_NOTIFICATION_ARCHITECTURE.md
  */
 class BookingNotificationTest extends TestCase
@@ -32,22 +32,25 @@ class BookingNotificationTest extends TestCase
     use RefreshDatabase;
 
     private BookingService $bookingService;
+
     private User $admin;
+
     private User $user;
+
     private Room $room;
 
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         $this->bookingService = app(BookingService::class);
-        
+
         $this->admin = User::factory()->admin()->create();
         $this->user = User::factory()->create(['email_verified_at' => now()]);
         $this->room = Room::factory()->create();
-        
+
         // Clear rate limiter before each test
-        RateLimiter::clear('booking-confirm-email:' . $this->user->id);
+        RateLimiter::clear('booking-confirm-email:'.$this->user->id);
     }
 
     // ========== BOOKING CONFIRMED NOTIFICATION TESTS ==========
@@ -82,7 +85,7 @@ class BookingNotificationTest extends TestCase
         ]);
 
         $notification = new BookingConfirmed($booking);
-        
+
         // Verify the notification is configured for the correct queue
         $this->assertEquals('notifications', $notification->queue);
         $this->assertInstanceOf(\Illuminate\Contracts\Queue\ShouldQueue::class, $notification);
@@ -110,7 +113,7 @@ class BookingNotificationTest extends TestCase
 
         // Exhaust rate limit (5 per minute)
         for ($i = 0; $i < 5; $i++) {
-            RateLimiter::hit('booking-confirm-email:' . $this->user->id, 60);
+            RateLimiter::hit('booking-confirm-email:'.$this->user->id, 60);
         }
 
         $booking = Booking::factory()->create([
@@ -160,8 +163,7 @@ class BookingNotificationTest extends TestCase
         // sends notification via on-demand routing to guest_email (not to User model)
         Notification::assertSentOnDemand(
             BookingCancelled::class,
-            fn ($notification, $channels, $notifiable) =>
-                $notification->booking->id === $booking->id
+            fn ($notification, $channels, $notifiable) => $notification->booking->id === $booking->id
                 && $notifiable->routes['mail'] === $booking->guest_email
         );
     }
@@ -224,7 +226,7 @@ class BookingNotificationTest extends TestCase
 
         $changes = ['check_in' => '2026-02-01', 'check_out' => '2026-02-05'];
         $notification = new BookingUpdated($booking, $changes);
-        
+
         $arrayData = $notification->toArray($this->user);
 
         $this->assertEquals($changes, $arrayData['changes']);
@@ -295,8 +297,7 @@ class BookingNotificationTest extends TestCase
         // Notification is sent to guest_email via on-demand notification (Notification::route())
         Notification::assertSentOnDemand(
             BookingCancelled::class,
-            fn ($notification, $channels, $notifiable) => 
-                $notifiable->routes['mail'] === $booking->guest_email
+            fn ($notification, $channels, $notifiable) => $notifiable->routes['mail'] === $booking->guest_email
         );
     }
 
@@ -304,7 +305,7 @@ class BookingNotificationTest extends TestCase
     public function user_cannot_cancel_other_users_booking(): void
     {
         $otherUser = User::factory()->create(['email_verified_at' => now()]);
-        
+
         $booking = Booking::factory()->create([
             'user_id' => $otherUser->id,
             'room_id' => $this->room->id,

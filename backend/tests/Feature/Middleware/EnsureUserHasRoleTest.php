@@ -4,15 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Middleware;
 
-use App\Enums\UserRole;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 
 /**
  * Feature tests for EnsureUserHasRole middleware.
- * 
+ *
  * Tests route protection based on role hierarchy.
  */
 class EnsureUserHasRoleTest extends TestCase

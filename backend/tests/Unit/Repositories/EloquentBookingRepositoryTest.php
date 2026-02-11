@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
  * Unit tests for EloquentBookingRepository
  *
  * These tests verify the repository's data access layer in complete isolation.
- * 
+ *
  * TESTING STRATEGY:
  * - Instance method tests: Direct Mockery mocks (fast)
  * - Static method tests: @runInSeparateProcess with alias: mocks (isolated)
@@ -38,13 +38,14 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @covers \App\Repositories\EloquentBookingRepository::update
      */
     public function update_returns_true_on_success(): void
     {
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $data = ['status' => 'confirmed'];
-        
+
         $mockBooking = Mockery::mock(Booking::class);
         $mockBooking->shouldReceive('update')
             ->once()
@@ -58,13 +59,14 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @covers \App\Repositories\EloquentBookingRepository::update
      */
     public function update_returns_false_on_failure(): void
     {
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $data = ['status' => 'confirmed'];
-        
+
         $mockBooking = Mockery::mock(Booking::class);
         $mockBooking->shouldReceive('update')
             ->once()
@@ -78,12 +80,13 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @covers \App\Repositories\EloquentBookingRepository::delete
      */
     public function delete_returns_true_on_success(): void
     {
-        $repository = new EloquentBookingRepository();
-        
+        $repository = new EloquentBookingRepository;
+
         $mockBooking = Mockery::mock(Booking::class);
         $mockBooking->shouldReceive('delete')
             ->once()
@@ -96,12 +99,13 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @covers \App\Repositories\EloquentBookingRepository::delete
      */
     public function delete_returns_false_on_failure(): void
     {
-        $repository = new EloquentBookingRepository();
-        
+        $repository = new EloquentBookingRepository;
+
         $mockBooking = Mockery::mock(Booking::class);
         $mockBooking->shouldReceive('delete')
             ->once()
@@ -114,12 +118,13 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @covers \App\Repositories\EloquentBookingRepository::restore
      */
     public function restore_returns_true_on_success(): void
     {
-        $repository = new EloquentBookingRepository();
-        
+        $repository = new EloquentBookingRepository;
+
         $mockBooking = Mockery::mock(Booking::class);
         $mockBooking->shouldReceive('restore')
             ->once()
@@ -132,12 +137,13 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @covers \App\Repositories\EloquentBookingRepository::restore
      */
     public function restore_returns_false_on_failure(): void
     {
-        $repository = new EloquentBookingRepository();
-        
+        $repository = new EloquentBookingRepository;
+
         $mockBooking = Mockery::mock(Booking::class);
         $mockBooking->shouldReceive('restore')
             ->once()
@@ -150,12 +156,13 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @covers \App\Repositories\EloquentBookingRepository::forceDelete
      */
-    public function forceDelete_returns_true_on_success(): void
+    public function force_delete_returns_true_on_success(): void
     {
-        $repository = new EloquentBookingRepository();
-        
+        $repository = new EloquentBookingRepository;
+
         $mockBooking = Mockery::mock(Booking::class);
         $mockBooking->shouldReceive('forceDelete')
             ->once()
@@ -168,12 +175,13 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @covers \App\Repositories\EloquentBookingRepository::forceDelete
      */
-    public function forceDelete_returns_false_on_failure(): void
+    public function force_delete_returns_false_on_failure(): void
     {
-        $repository = new EloquentBookingRepository();
-        
+        $repository = new EloquentBookingRepository;
+
         $mockBooking = Mockery::mock(Booking::class);
         $mockBooking->shouldReceive('forceDelete')
             ->once()
@@ -188,20 +196,23 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::findById
      */
-    public function findById_returns_booking_when_found(): void
+    public function find_by_id_returns_booking_when_found(): void
     {
         $bookingId = 42;
-        $mockBooking = Mockery::mock('alias:' . Booking::class);
+        $mockBooking = Mockery::mock('alias:'.Booking::class);
         $mockBooking->shouldReceive('find')
             ->once()
             ->with($bookingId)
             ->andReturn($mockBooking);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->findById($bookingId);
 
         $this->assertSame($mockBooking, $result);
@@ -209,20 +220,23 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::findById
      */
-    public function findById_returns_null_when_not_found(): void
+    public function find_by_id_returns_null_when_not_found(): void
     {
         $bookingId = 999;
-        $mockBooking = Mockery::mock('alias:' . Booking::class);
+        $mockBooking = Mockery::mock('alias:'.Booking::class);
         $mockBooking->shouldReceive('find')
             ->once()
             ->with($bookingId)
             ->andReturn(null);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->findById($bookingId);
 
         $this->assertNull($result);
@@ -230,20 +244,23 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::findByIdOrFail
      */
-    public function findByIdOrFail_returns_booking_when_found(): void
+    public function find_by_id_or_fail_returns_booking_when_found(): void
     {
         $bookingId = 42;
-        $mockBooking = Mockery::mock('alias:' . Booking::class);
+        $mockBooking = Mockery::mock('alias:'.Booking::class);
         $mockBooking->shouldReceive('findOrFail')
             ->once()
             ->with($bookingId)
             ->andReturn($mockBooking);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->findByIdOrFail($bookingId);
 
         $this->assertSame($mockBooking, $result);
@@ -251,18 +268,21 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::findByIdWithRelations
      */
-    public function findByIdWithRelations_returns_booking_with_eager_loaded_relations(): void
+    public function find_by_id_with_relations_returns_booking_with_eager_loaded_relations(): void
     {
         $bookingId = 42;
         $relations = ['room', 'user'];
-        
+
         // Create a partial alias mock that extends Booking
-        $mockModel = Mockery::mock('alias:' . Booking::class)->makePartial();
-        
+        $mockModel = Mockery::mock('alias:'.Booking::class)->makePartial();
+
         $mockBuilder = Mockery::mock(Builder::class);
         $mockBuilder->shouldReceive('find')
             ->once()
@@ -274,7 +294,7 @@ class EloquentBookingRepositoryTest extends TestCase
             ->with($relations)
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->findByIdWithRelations($bookingId, $relations);
 
         $this->assertSame($mockModel, $result);
@@ -282,11 +302,14 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::findByIdWithRelations
      */
-    public function findByIdWithRelations_returns_null_when_not_found(): void
+    public function find_by_id_with_relations_returns_null_when_not_found(): void
     {
         $bookingId = 999;
         $relations = ['room'];
@@ -297,13 +320,13 @@ class EloquentBookingRepositoryTest extends TestCase
             ->with($bookingId)
             ->andReturn(null);
 
-        $mockModel = Mockery::mock('alias:' . Booking::class);
+        $mockModel = Mockery::mock('alias:'.Booking::class);
         $mockModel->shouldReceive('with')
             ->once()
             ->with($relations)
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->findByIdWithRelations($bookingId, $relations);
 
         $this->assertNull($result);
@@ -311,8 +334,11 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::create
      */
     public function create_returns_new_booking_instance(): void
@@ -328,14 +354,14 @@ class EloquentBookingRepositoryTest extends TestCase
         ];
 
         // Create a partial alias mock that extends Booking
-        $mockModel = Mockery::mock('alias:' . Booking::class)->makePartial();
-        
+        $mockModel = Mockery::mock('alias:'.Booking::class)->makePartial();
+
         $mockModel->shouldReceive('create')
             ->once()
             ->with($data)
             ->andReturn($mockModel);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->create($data);
 
         $this->assertSame($mockModel, $result);
@@ -343,27 +369,30 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::getByUserId
      */
-    public function getByUserId_returns_collection_with_default_columns(): void
+    public function get_by_user_id_returns_collection_with_default_columns(): void
     {
         $userId = 5;
-        $expectedCollection = new Collection();
+        $expectedCollection = new Collection;
 
         $mockBuilder = Mockery::mock(Builder::class);
         $mockBuilder->shouldReceive('get')
             ->once()
             ->andReturn($expectedCollection);
 
-        $mockModel = Mockery::mock('alias:' . Booking::class);
+        $mockModel = Mockery::mock('alias:'.Booking::class);
         $mockModel->shouldReceive('where')
             ->once()
             ->with('user_id', $userId)
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->getByUserId($userId);
 
         $this->assertSame($expectedCollection, $result);
@@ -371,16 +400,19 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::getByUserId
      */
-    public function getByUserId_applies_custom_columns_and_relations(): void
+    public function get_by_user_id_applies_custom_columns_and_relations(): void
     {
         $userId = 5;
         $columns = ['id', 'room_id', 'status'];
         $relations = ['room'];
-        $expectedCollection = new Collection();
+        $expectedCollection = new Collection;
 
         $mockBuilder = Mockery::mock(Builder::class);
         $mockBuilder->shouldReceive('with')
@@ -395,13 +427,13 @@ class EloquentBookingRepositoryTest extends TestCase
             ->once()
             ->andReturn($expectedCollection);
 
-        $mockModel = Mockery::mock('alias:' . Booking::class);
+        $mockModel = Mockery::mock('alias:'.Booking::class);
         $mockModel->shouldReceive('where')
             ->once()
             ->with('user_id', $userId)
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->getByUserId($userId, $columns, $relations);
 
         $this->assertSame($expectedCollection, $result);
@@ -409,14 +441,17 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::getByUserIdOrderedByCheckIn
      */
-    public function getByUserIdOrderedByCheckIn_returns_collection_ordered_desc(): void
+    public function get_by_user_id_ordered_by_check_in_returns_collection_ordered_desc(): void
     {
         $userId = 5;
-        $expectedCollection = new Collection();
+        $expectedCollection = new Collection;
 
         $mockBuilder = Mockery::mock(Builder::class);
         $mockBuilder->shouldReceive('orderBy')
@@ -427,13 +462,13 @@ class EloquentBookingRepositoryTest extends TestCase
             ->once()
             ->andReturn($expectedCollection);
 
-        $mockModel = Mockery::mock('alias:' . Booking::class);
+        $mockModel = Mockery::mock('alias:'.Booking::class);
         $mockModel->shouldReceive('where')
             ->once()
             ->with('user_id', $userId)
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->getByUserIdOrderedByCheckIn($userId);
 
         $this->assertSame($expectedCollection, $result);
@@ -441,16 +476,19 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::getByUserIdOrderedByCheckIn
      */
-    public function getByUserIdOrderedByCheckIn_applies_columns_and_relations(): void
+    public function get_by_user_id_ordered_by_check_in_applies_columns_and_relations(): void
     {
         $userId = 5;
         $columns = ['id', 'check_in', 'check_out'];
         $relations = ['room', 'user'];
-        $expectedCollection = new Collection();
+        $expectedCollection = new Collection;
 
         $mockBuilder = Mockery::mock(Builder::class);
         $mockBuilder->shouldReceive('with')
@@ -469,13 +507,13 @@ class EloquentBookingRepositoryTest extends TestCase
             ->once()
             ->andReturn($expectedCollection);
 
-        $mockModel = Mockery::mock('alias:' . Booking::class);
+        $mockModel = Mockery::mock('alias:'.Booking::class);
         $mockModel->shouldReceive('where')
             ->once()
             ->with('user_id', $userId)
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->getByUserIdOrderedByCheckIn($userId, $columns, $relations);
 
         $this->assertSame($expectedCollection, $result);
@@ -485,29 +523,32 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::findOverlappingBookings
      */
-    public function findOverlappingBookings_returns_collection_of_conflicts(): void
+    public function find_overlapping_bookings_returns_collection_of_conflicts(): void
     {
         $roomId = 1;
         $checkIn = Carbon::parse('2026-01-10');
         $checkOut = Carbon::parse('2026-01-15');
-        $expectedCollection = new Collection();
+        $expectedCollection = new Collection;
 
         $mockBuilder = Mockery::mock(Builder::class);
         $mockBuilder->shouldReceive('get')
             ->once()
             ->andReturn($expectedCollection);
 
-        $mockModel = Mockery::mock('alias:' . Booking::class);
+        $mockModel = Mockery::mock('alias:'.Booking::class);
         $mockModel->shouldReceive('overlappingBookings')
             ->once()
             ->with($roomId, $checkIn, $checkOut, null)
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->findOverlappingBookings($roomId, $checkIn, $checkOut);
 
         $this->assertSame($expectedCollection, $result);
@@ -515,30 +556,33 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::findOverlappingBookings
      */
-    public function findOverlappingBookings_excludes_specified_booking_id(): void
+    public function find_overlapping_bookings_excludes_specified_booking_id(): void
     {
         $roomId = 1;
         $checkIn = Carbon::parse('2026-01-10');
         $checkOut = Carbon::parse('2026-01-15');
         $excludeBookingId = 99;
-        $expectedCollection = new Collection();
+        $expectedCollection = new Collection;
 
         $mockBuilder = Mockery::mock(Builder::class);
         $mockBuilder->shouldReceive('get')
             ->once()
             ->andReturn($expectedCollection);
 
-        $mockModel = Mockery::mock('alias:' . Booking::class);
+        $mockModel = Mockery::mock('alias:'.Booking::class);
         $mockModel->shouldReceive('overlappingBookings')
             ->once()
             ->with($roomId, $checkIn, $checkOut, $excludeBookingId)
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->findOverlappingBookings($roomId, $checkIn, $checkOut, $excludeBookingId);
 
         $this->assertSame($expectedCollection, $result);
@@ -546,11 +590,14 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::hasOverlappingBookings
      */
-    public function hasOverlappingBookings_returns_true_when_conflicts_exist(): void
+    public function has_overlapping_bookings_returns_true_when_conflicts_exist(): void
     {
         $roomId = 1;
         $checkIn = Carbon::parse('2026-01-10');
@@ -561,13 +608,13 @@ class EloquentBookingRepositoryTest extends TestCase
             ->once()
             ->andReturn(true);
 
-        $mockModel = Mockery::mock('alias:' . Booking::class);
+        $mockModel = Mockery::mock('alias:'.Booking::class);
         $mockModel->shouldReceive('overlappingBookings')
             ->once()
             ->with($roomId, $checkIn, $checkOut, null)
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->hasOverlappingBookings($roomId, $checkIn, $checkOut);
 
         $this->assertTrue($result);
@@ -575,11 +622,14 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::hasOverlappingBookings
      */
-    public function hasOverlappingBookings_returns_false_when_no_conflicts(): void
+    public function has_overlapping_bookings_returns_false_when_no_conflicts(): void
     {
         $roomId = 1;
         $checkIn = Carbon::parse('2026-01-10');
@@ -590,13 +640,13 @@ class EloquentBookingRepositoryTest extends TestCase
             ->once()
             ->andReturn(false);
 
-        $mockModel = Mockery::mock('alias:' . Booking::class);
+        $mockModel = Mockery::mock('alias:'.Booking::class);
         $mockModel->shouldReceive('overlappingBookings')
             ->once()
             ->with($roomId, $checkIn, $checkOut, null)
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->hasOverlappingBookings($roomId, $checkIn, $checkOut);
 
         $this->assertFalse($result);
@@ -604,8 +654,11 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::findOverlappingBookingsWithLock
      *
      * COMPLEX MOCK EXAMPLE: This tests the pessimistic locking chain:
@@ -614,12 +667,12 @@ class EloquentBookingRepositoryTest extends TestCase
      * The withLock() scope internally calls lockForUpdate() for pessimistic locking.
      * This is critical for preventing race conditions in concurrent booking scenarios.
      */
-    public function findOverlappingBookingsWithLock_applies_pessimistic_lock(): void
+    public function find_overlapping_bookings_with_lock_applies_pessimistic_lock(): void
     {
         $roomId = 1;
         $checkIn = Carbon::parse('2026-01-10');
         $checkOut = Carbon::parse('2026-01-15');
-        $expectedCollection = new Collection();
+        $expectedCollection = new Collection;
 
         // Build mock chain: query() -> overlappingBookings() -> withLock() -> get()
         $mockBuilder = Mockery::mock(Builder::class);
@@ -634,12 +687,12 @@ class EloquentBookingRepositoryTest extends TestCase
             ->once()
             ->andReturn($expectedCollection);
 
-        $mockModel = Mockery::mock('alias:' . Booking::class);
+        $mockModel = Mockery::mock('alias:'.Booking::class);
         $mockModel->shouldReceive('query')
             ->once()
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->findOverlappingBookingsWithLock($roomId, $checkIn, $checkOut);
 
         $this->assertSame($expectedCollection, $result);
@@ -647,17 +700,20 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::findOverlappingBookingsWithLock
      */
-    public function findOverlappingBookingsWithLock_excludes_specified_booking_id(): void
+    public function find_overlapping_bookings_with_lock_excludes_specified_booking_id(): void
     {
         $roomId = 1;
         $checkIn = Carbon::parse('2026-01-10');
         $checkOut = Carbon::parse('2026-01-15');
         $excludeBookingId = 50;
-        $expectedCollection = new Collection();
+        $expectedCollection = new Collection;
 
         $mockBuilder = Mockery::mock(Builder::class);
         $mockBuilder->shouldReceive('overlappingBookings')
@@ -671,12 +727,12 @@ class EloquentBookingRepositoryTest extends TestCase
             ->once()
             ->andReturn($expectedCollection);
 
-        $mockModel = Mockery::mock('alias:' . Booking::class);
+        $mockModel = Mockery::mock('alias:'.Booking::class);
         $mockModel->shouldReceive('query')
             ->once()
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->findOverlappingBookingsWithLock($roomId, $checkIn, $checkOut, $excludeBookingId);
 
         $this->assertSame($expectedCollection, $result);
@@ -684,11 +740,14 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::hasOverlappingBookingsWithLock
      */
-    public function hasOverlappingBookingsWithLock_returns_true_with_lock_applied(): void
+    public function has_overlapping_bookings_with_lock_returns_true_with_lock_applied(): void
     {
         $roomId = 1;
         $checkIn = Carbon::parse('2026-01-10');
@@ -706,12 +765,12 @@ class EloquentBookingRepositoryTest extends TestCase
             ->once()
             ->andReturn(true);
 
-        $mockModel = Mockery::mock('alias:' . Booking::class);
+        $mockModel = Mockery::mock('alias:'.Booking::class);
         $mockModel->shouldReceive('query')
             ->once()
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->hasOverlappingBookingsWithLock($roomId, $checkIn, $checkOut);
 
         $this->assertTrue($result);
@@ -719,11 +778,14 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::hasOverlappingBookingsWithLock
      */
-    public function hasOverlappingBookingsWithLock_returns_false_when_no_conflicts(): void
+    public function has_overlapping_bookings_with_lock_returns_false_when_no_conflicts(): void
     {
         $roomId = 1;
         $checkIn = Carbon::parse('2026-01-10');
@@ -741,12 +803,12 @@ class EloquentBookingRepositoryTest extends TestCase
             ->once()
             ->andReturn(false);
 
-        $mockModel = Mockery::mock('alias:' . Booking::class);
+        $mockModel = Mockery::mock('alias:'.Booking::class);
         $mockModel->shouldReceive('query')
             ->once()
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->hasOverlappingBookingsWithLock($roomId, $checkIn, $checkOut);
 
         $this->assertFalse($result);
@@ -756,25 +818,28 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::getTrashed
      */
-    public function getTrashed_returns_only_soft_deleted_bookings(): void
+    public function get_trashed_returns_only_soft_deleted_bookings(): void
     {
-        $expectedCollection = new Collection();
+        $expectedCollection = new Collection;
 
         $mockBuilder = Mockery::mock(Builder::class);
         $mockBuilder->shouldReceive('get')
             ->once()
             ->andReturn($expectedCollection);
 
-        $mockModel = Mockery::mock('alias:' . Booking::class);
+        $mockModel = Mockery::mock('alias:'.Booking::class);
         $mockModel->shouldReceive('onlyTrashed')
             ->once()
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->getTrashed();
 
         $this->assertSame($expectedCollection, $result);
@@ -782,14 +847,17 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::getTrashed
      */
-    public function getTrashed_applies_relations_when_provided(): void
+    public function get_trashed_applies_relations_when_provided(): void
     {
         $relations = ['room', 'user'];
-        $expectedCollection = new Collection();
+        $expectedCollection = new Collection;
 
         $mockBuilder = Mockery::mock(Builder::class);
         $mockBuilder->shouldReceive('with')
@@ -800,12 +868,12 @@ class EloquentBookingRepositoryTest extends TestCase
             ->once()
             ->andReturn($expectedCollection);
 
-        $mockModel = Mockery::mock('alias:' . Booking::class);
+        $mockModel = Mockery::mock('alias:'.Booking::class);
         $mockModel->shouldReceive('onlyTrashed')
             ->once()
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->getTrashed($relations);
 
         $this->assertSame($expectedCollection, $result);
@@ -813,17 +881,20 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::findTrashedById
      */
-    public function findTrashedById_returns_soft_deleted_booking(): void
+    public function find_trashed_by_id_returns_soft_deleted_booking(): void
     {
         $bookingId = 42;
 
         // Create a partial alias mock that extends Booking
-        $mockModel = Mockery::mock('alias:' . Booking::class)->makePartial();
-        
+        $mockModel = Mockery::mock('alias:'.Booking::class)->makePartial();
+
         $mockBuilder = Mockery::mock(Builder::class);
         $mockBuilder->shouldReceive('find')
             ->once()
@@ -834,7 +905,7 @@ class EloquentBookingRepositoryTest extends TestCase
             ->once()
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->findTrashedById($bookingId);
 
         $this->assertSame($mockModel, $result);
@@ -842,11 +913,14 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::findTrashedById
      */
-    public function findTrashedById_returns_null_when_not_found(): void
+    public function find_trashed_by_id_returns_null_when_not_found(): void
     {
         $bookingId = 999;
 
@@ -856,12 +930,12 @@ class EloquentBookingRepositoryTest extends TestCase
             ->with($bookingId)
             ->andReturn(null);
 
-        $mockModel = Mockery::mock('alias:' . Booking::class);
+        $mockModel = Mockery::mock('alias:'.Booking::class);
         $mockModel->shouldReceive('onlyTrashed')
             ->once()
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->findTrashedById($bookingId);
 
         $this->assertNull($result);
@@ -869,18 +943,21 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::findTrashedById
      */
-    public function findTrashedById_applies_relations_when_provided(): void
+    public function find_trashed_by_id_applies_relations_when_provided(): void
     {
         $bookingId = 42;
         $relations = ['room'];
 
         // Create a partial alias mock that extends Booking
-        $mockModel = Mockery::mock('alias:' . Booking::class)->makePartial();
-        
+        $mockModel = Mockery::mock('alias:'.Booking::class)->makePartial();
+
         $mockBuilder = Mockery::mock(Builder::class);
         $mockBuilder->shouldReceive('with')
             ->once()
@@ -895,7 +972,7 @@ class EloquentBookingRepositoryTest extends TestCase
             ->once()
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->findTrashedById($bookingId, $relations);
 
         $this->assertSame($mockModel, $result);
@@ -903,14 +980,17 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::getTrashedOlderThan
      */
-    public function getTrashedOlderThan_filters_by_cutoff_date(): void
+    public function get_trashed_older_than_filters_by_cutoff_date(): void
     {
         $cutoffDate = Carbon::parse('2025-12-01');
-        $expectedCollection = new Collection();
+        $expectedCollection = new Collection;
 
         $mockBuilder = Mockery::mock(Builder::class);
         $mockBuilder->shouldReceive('where')
@@ -921,12 +1001,12 @@ class EloquentBookingRepositoryTest extends TestCase
             ->once()
             ->andReturn($expectedCollection);
 
-        $mockModel = Mockery::mock('alias:' . Booking::class);
+        $mockModel = Mockery::mock('alias:'.Booking::class);
         $mockModel->shouldReceive('onlyTrashed')
             ->once()
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->getTrashedOlderThan($cutoffDate);
 
         $this->assertSame($expectedCollection, $result);
@@ -936,25 +1016,28 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::getAllWithTrashed
      */
-    public function getAllWithTrashed_includes_soft_deleted_bookings(): void
+    public function get_all_with_trashed_includes_soft_deleted_bookings(): void
     {
-        $expectedCollection = new Collection();
+        $expectedCollection = new Collection;
 
         $mockBuilder = Mockery::mock(Builder::class);
         $mockBuilder->shouldReceive('get')
             ->once()
             ->andReturn($expectedCollection);
 
-        $mockModel = Mockery::mock('alias:' . Booking::class);
+        $mockModel = Mockery::mock('alias:'.Booking::class);
         $mockModel->shouldReceive('withTrashed')
             ->once()
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->getAllWithTrashed();
 
         $this->assertSame($expectedCollection, $result);
@@ -962,14 +1045,17 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::getAllWithTrashed
      */
-    public function getAllWithTrashed_applies_relations_when_provided(): void
+    public function get_all_with_trashed_applies_relations_when_provided(): void
     {
         $relations = ['room', 'user', 'deletedBy'];
-        $expectedCollection = new Collection();
+        $expectedCollection = new Collection;
 
         $mockBuilder = Mockery::mock(Builder::class);
         $mockBuilder->shouldReceive('with')
@@ -980,12 +1066,12 @@ class EloquentBookingRepositoryTest extends TestCase
             ->once()
             ->andReturn($expectedCollection);
 
-        $mockModel = Mockery::mock('alias:' . Booking::class);
+        $mockModel = Mockery::mock('alias:'.Booking::class);
         $mockModel->shouldReceive('withTrashed')
             ->once()
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->getAllWithTrashed($relations);
 
         $this->assertSame($expectedCollection, $result);
@@ -993,25 +1079,28 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::getWithCommonRelations
      */
-    public function getWithCommonRelations_applies_scope_and_returns_collection(): void
+    public function get_with_common_relations_applies_scope_and_returns_collection(): void
     {
-        $expectedCollection = new Collection();
+        $expectedCollection = new Collection;
 
         $mockBuilder = Mockery::mock(Builder::class);
         $mockBuilder->shouldReceive('get')
             ->once()
             ->andReturn($expectedCollection);
 
-        $mockModel = Mockery::mock('alias:' . Booking::class);
+        $mockModel = Mockery::mock('alias:'.Booking::class);
         $mockModel->shouldReceive('withCommonRelations')
             ->once()
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->getWithCommonRelations();
 
         $this->assertSame($expectedCollection, $result);
@@ -1019,20 +1108,23 @@ class EloquentBookingRepositoryTest extends TestCase
 
     /**
      * @test
+     *
      * @runInSeparateProcess
+     *
      * @preserveGlobalState disabled
+     *
      * @covers \App\Repositories\EloquentBookingRepository::query
      */
     public function query_returns_eloquent_builder_instance(): void
     {
         $mockBuilder = Mockery::mock(Builder::class);
 
-        $mockModel = Mockery::mock('alias:' . Booking::class);
+        $mockModel = Mockery::mock('alias:'.Booking::class);
         $mockModel->shouldReceive('query')
             ->once()
             ->andReturn($mockBuilder);
 
-        $repository = new EloquentBookingRepository();
+        $repository = new EloquentBookingRepository;
         $result = $repository->query();
 
         $this->assertSame($mockBuilder, $result);

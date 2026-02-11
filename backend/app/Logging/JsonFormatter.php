@@ -24,8 +24,8 @@ class JsonFormatter extends BaseJsonFormatter
             'level_code' => $record->level->value,
             'message' => $record->message,
             'channel' => $record->channel,
-            'context' => $record->context ?: new \stdClass(),
-            'extra' => $record->extra ?: new \stdClass(),
+            'context' => $record->context ?: new \stdClass,
+            'extra' => $record->extra ?: new \stdClass,
         ];
 
         // Flatten correlation_id to top level for easier querying
@@ -38,6 +38,6 @@ class JsonFormatter extends BaseJsonFormatter
             $data['request_id'] = $record->context['request_id'];
         }
 
-        return $this->toJson($data) . "\n";
+        return $this->toJson($data)."\n";
     }
 }

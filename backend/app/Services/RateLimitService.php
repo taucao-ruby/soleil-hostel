@@ -2,12 +2,10 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Redis;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
 use App\Events\RateLimiterDegraded;
-use App\Exceptions\RateLimitExceededException;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redis;
 use stdClass;
 
 /**
@@ -30,11 +28,15 @@ use stdClass;
 class RateLimitService
 {
     private const REDIS_PREFIX = 'rate:';
+
     private const MEMORY_STORE_LIMIT = 10000;
+
     private const FALLBACK_TIMEOUT = 100;  // milliseconds
-    
+
     private array $memoryStore = [];
+
     private bool $redisHealthy = true;
+
     private array $metrics = [
         'checks_total' => 0,
         'allowed_total' => 0,
@@ -44,15 +46,15 @@ class RateLimitService
 
     /**
      * Check if a request is allowed under rate limits
-     * 
-     * @param string $key Unique identifier (e.g., "user:123:booking")
-     * @param array<string, mixed> $limits Array of limit configurations
+     *
+     * @param  string  $key  Unique identifier (e.g., "user:123:booking")
+     * @param  array<string, mixed>  $limits  Array of limit configurations
      * @return array{allowed: bool, remaining: int, reset_after: int, retry_after: int}
      */
     public function check(string $key, array $limits): array
     {
         $this->metrics['checks_total']++;
-        
+
         try {
             // Try Redis first
             if ($this->redisHealthy && $this->redisAvailable()) {
@@ -63,7 +65,7 @@ class RateLimitService
                 'error' => $e->getMessage(),
                 'key' => $key,
             ]);
-            
+
             $this->redisHealthy = false;
             event(new RateLimiterDegraded(['service' => 'redis', 'reason' => $e->getMessage()]));
             $this->metrics['fallback_count']++;
@@ -94,7 +96,7 @@ class RateLimitService
                 continue;
             }
 
-            if (!$result['allowed']) {
+            if (! $result['allowed']) {
                 $allowed = false;
             }
 
@@ -118,7 +120,7 @@ class RateLimitService
 
     /**
      * Check sliding window limit (strict time-window enforcement)
-     * 
+     *
      * Uses Lua script for atomic operations:
      * 1. Remove entries outside window
      * 2. Count remaining entries
@@ -131,7 +133,7 @@ class RateLimitService
         $maxAttempts = $limit['max'] ?? 5;
         $ttl = $window * 2;  // Expire keys after 2 windows for cleanup
         // Generate unique member ID to avoid collisions when multiple requests happen in same second
-        $uniqueId = uniqid((string)$now . ':', true);
+        $uniqueId = uniqid((string) $now.':', true);
 
         $script = <<<'LUA'
 local key = KEYS[1]
@@ -175,7 +177,7 @@ LUA;
 
     /**
      * Check token bucket limit (burst-friendly rate limiting)
-     * 
+     *
      * Algorithm:
      * 1. Get current tokens + last refill time
      * 2. Calculate tokens to add based on elapsed time
@@ -233,7 +235,7 @@ LUA;
 
     /**
      * Check rate limits using in-memory store (fallback)
-     * 
+     *
      * Used when Redis is unavailable. Less accurate in multi-process
      * environments but provides graceful degradation.
      */
@@ -252,16 +254,16 @@ LUA;
             if ($limit['type'] === 'sliding_window') {
                 $window = $limit['window'] ?? 60;
                 $max = $limit['max'] ?? 5;
-                
+
                 // Initialize or get existing entry
-                if (!isset($this->memoryStore[$storeKey])) {
+                if (! isset($this->memoryStore[$storeKey])) {
                     $this->memoryStore[$storeKey] = [];
                 }
 
                 // Remove old entries
                 $this->memoryStore[$storeKey] = array_filter(
                     $this->memoryStore[$storeKey],
-                    fn($ts) => $ts > $now - $window
+                    fn ($ts) => $ts > $now - $window
                 );
 
                 $count = count($this->memoryStore[$storeKey]);
@@ -280,7 +282,7 @@ LUA;
                 $refillRate = $limit['refill_rate'] ?? 1;
                 $cost = $limit['cost'] ?? 1;
 
-                if (!isset($this->memoryStore[$storeKey])) {
+                if (! isset($this->memoryStore[$storeKey])) {
                     $this->memoryStore[$storeKey] = [
                         'tokens' => $capacity,
                         'last_refill' => $now,
@@ -352,13 +354,13 @@ LUA;
     public function getStatus(string $key, array $limits): stdClass
     {
         $now = time();
-        $status = new stdClass();
+        $status = new stdClass;
         $status->key = $key;
         $status->limits = [];
 
         foreach ($limits as $limit) {
             $limitKey = $this->buildRedisKey($key, $limit);
-            $limitStatus = new stdClass();
+            $limitStatus = new stdClass;
             $limitStatus->type = $limit['type'];
             $limitStatus->max = $limit['max'] ?? $limit['capacity'] ?? 'N/A';
 
@@ -409,7 +411,7 @@ LUA;
             $elapsed = (microtime(true) - $start) * 1000;  // ms
 
             if ($elapsed > self::FALLBACK_TIMEOUT) {
-                Log::warning("Redis response slow for rate limiting", ['latency_ms' => $elapsed]);
+                Log::warning('Redis response slow for rate limiting', ['latency_ms' => $elapsed]);
             }
 
             return true;
@@ -426,6 +428,7 @@ LUA;
         $type = $limit['type'] ?? 'unknown';
         $id = $limit['id'] ?? '';
         $suffix = $id ? ":{$type}:{$id}" : ":{$type}";
-        return self::REDIS_PREFIX . "{$key}{$suffix}";
+
+        return self::REDIS_PREFIX."{$key}{$suffix}";
     }
 }

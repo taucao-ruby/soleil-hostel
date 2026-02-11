@@ -14,7 +14,7 @@ use Tests\TestCase;
 
 /**
  * Unit tests cho CreateBookingService
- * 
+ *
  * Verify logic của service đúng: pessimistic locking, overlap detection, retry
  */
 class CreateBookingServiceTest extends TestCase
@@ -22,7 +22,9 @@ class CreateBookingServiceTest extends TestCase
     use RefreshDatabase;
 
     private CreateBookingService $service;
+
     private Room $room;
+
     private User $user;
 
     protected function setUp(): void
@@ -127,7 +129,7 @@ class CreateBookingServiceTest extends TestCase
 
     /**
      * Test: Service cho phép booking khi checkout = checkin (half-open interval)
-     * 
+     *
      * Database overlap logic dùng half-open interval [a, b):
      * - Booking 1: [2025-12-01, 2025-12-06) - cho phép checkout 2025-12-05, next checkin 2025-12-06
      * - Booking 2: [2025-12-06, 2025-12-10) - bắt đầu đúng khi booking 1 kết thúc

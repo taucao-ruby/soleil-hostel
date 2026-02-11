@@ -4,7 +4,6 @@ namespace App\Jobs;
 
 use App\Models\User;
 use App\Services\CreateBookingService;
-use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -14,10 +13,10 @@ use RuntimeException;
 
 /**
  * CreateBookingJob - Queue job để tạo booking với auto-retry
- * 
+ *
  * Use case: Nếu API request nhận deadlock exception quá nhiều lần,
  * thay vì return 500 ngay, có thể queue job để retry sau.
- * 
+ *
  * Cách dùng:
  * ```
  * CreateBookingJob::dispatch(
@@ -29,7 +28,7 @@ use RuntimeException;
  *     guestEmail: 'john@example.com'
  * );
  * ```
- * 
+ *
  * Hoặc dùng ở controller khi detect tải cao:
  * ```
  * if ($attemptCount > 3) {
@@ -67,7 +66,7 @@ class CreateBookingJob implements ShouldQueue
     {
         // Get user
         $user = User::find($this->userId);
-        if (!$user) {
+        if (! $user) {
             throw new RuntimeException("User not found: {$this->userId}");
         }
 
@@ -94,7 +93,7 @@ class CreateBookingJob implements ShouldQueue
 
     /**
      * Handle job failure.
-     * 
+     *
      * Được gọi khi job fail sau tất cả retry
      */
     public function failed(\Throwable $exception): void

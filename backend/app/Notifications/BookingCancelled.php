@@ -12,16 +12,16 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * BookingCancelled Notification
- * 
+ *
  * Production-grade queued notification for booking cancellations.
  * Uses branded Markdown template with refund information when applicable.
- * 
+ *
  * Architecture:
  * - Implements ShouldQueue for async delivery via queue workers
  * - Uses afterCommit() to ensure notification only dispatches after DB transaction commits
  * - Includes idempotency guard to prevent duplicate sends
  * - Exponential backoff retry strategy for transient SMTP failures
- * 
+ *
  * @see docs/backend/guides/EMAIL_NOTIFICATIONS.md
  */
 class BookingCancelled extends Notification implements ShouldQueue
@@ -65,7 +65,7 @@ class BookingCancelled extends Notification implements ShouldQueue
 
     /**
      * Get the mail representation of the notification.
-     * 
+     *
      * Uses branded Markdown template with idempotency guard:
      * returns null if booking status is not cancelled.
      * Includes refund information when a refund was processed.
@@ -78,11 +78,12 @@ class BookingCancelled extends Notification implements ShouldQueue
                 'booking_id' => $this->booking->id,
                 'current_status' => $this->booking->status->value,
             ]);
+
             return null;
         }
 
         return (new MailMessage)
-            ->subject('Booking Cancelled - ' . config('email-branding.name', 'Soleil Hostel'))
+            ->subject('Booking Cancelled - '.config('email-branding.name', 'Soleil Hostel'))
             ->markdown('mail.bookings.cancelled', [
                 'guestName' => e($this->booking->guest_name),
                 'bookingId' => $this->booking->id,
@@ -90,7 +91,7 @@ class BookingCancelled extends Notification implements ShouldQueue
                 'checkIn' => $this->booking->check_in->format('l, F j, Y'),
                 'checkOut' => $this->booking->check_out->format('l, F j, Y'),
                 'refundAmount' => $this->booking->refund_amount ?? 0,
-                'hasPayment' => !empty($this->booking->payment_intent_id),
+                'hasPayment' => ! empty($this->booking->payment_intent_id),
                 'bookAgainUrl' => url('/rooms'),
             ]);
     }

@@ -1,7 +1,5 @@
 <?php
 
-use Illuminate\Support\Facades\Gate;
-
 return [
 
     'name' => env('APP_NAME', 'Soleil Hostel'),
@@ -30,16 +28,16 @@ return [
         /*
          * Laravel Framework Service Providers...
          */
-    Illuminate\Foundation\Providers\FoundationServiceProvider::class,
-    Illuminate\Auth\AuthServiceProvider::class,
-    Illuminate\Broadcasting\BroadcastServiceProvider::class,
+        Illuminate\Foundation\Providers\FoundationServiceProvider::class,
+        Illuminate\Auth\AuthServiceProvider::class,
+        Illuminate\Broadcasting\BroadcastServiceProvider::class,
         Illuminate\Bus\BusServiceProvider::class,
         Illuminate\Cache\CacheServiceProvider::class,
         Illuminate\Foundation\Providers\ConsoleSupportServiceProvider::class,
         Illuminate\Hashing\HashServiceProvider::class,
         Illuminate\Database\DatabaseServiceProvider::class,
         Illuminate\Encryption\EncryptionServiceProvider::class,
-    Illuminate\Cookie\CookieServiceProvider::class,
+        Illuminate\Cookie\CookieServiceProvider::class,
         Illuminate\Filesystem\FilesystemServiceProvider::class,
         Illuminate\Notifications\NotificationServiceProvider::class,
         Illuminate\Pagination\PaginationServiceProvider::class,

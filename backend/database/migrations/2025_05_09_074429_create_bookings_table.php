@@ -8,13 +8,13 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * ⚠️ CRITICAL: Không dùng foreign key constraints trong test migrations
      * Foreign key + parallel test = SQLSTATE[HY000] 1824 "Failed to open referenced table"
      * Nguyên nhân: Khi chạy --parallel, process A tạo bảng rooms trong transaction,
      *              process B tạo bảng bookings + add constraint FK → bảng rooms chưa commit
      *              → FK constraint không thể tìm thấy bảng rooms → crash
-     * 
+     *
      * Solution: Dùng unsignedBigInteger + index thay vì foreignId()->constrained()
      * Application-level constraints được enforce tại controller via policy/authorization
      */
@@ -41,4 +41,4 @@ return new class extends Migration
     {
         Schema::dropIfExists('bookings');
     }
-}; 
+};

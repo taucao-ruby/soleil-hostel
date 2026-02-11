@@ -14,7 +14,7 @@ class RoomFactory extends Factory
     {
         return [
             'location_id' => Location::factory(),
-            'name' => $this->faker->word . ' Room',
+            'name' => $this->faker->word.' Room',
             'room_number' => (string) $this->faker->unique()->numberBetween(100, 999),
             'description' => $this->faker->sentence(10),
             'price' => $this->faker->randomFloat(2, 20, 200),

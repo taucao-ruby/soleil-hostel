@@ -2,11 +2,11 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 
 /**
  * Location Model
@@ -14,24 +14,24 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
  * Represents a physical Soleil brand property/location.
  * Each location has multiple rooms and tracks bookings for analytics.
  *
- * @property int         $id
- * @property string      $name
- * @property string      $slug
- * @property string      $address
- * @property string      $city
+ * @property int $id
+ * @property string $name
+ * @property string $slug
+ * @property string $address
+ * @property string $city
  * @property string|null $district
  * @property string|null $ward
  * @property string|null $postal_code
- * @property float|null  $latitude
- * @property float|null  $longitude
+ * @property float|null $latitude
+ * @property float|null $longitude
  * @property string|null $phone
  * @property string|null $email
  * @property string|null $description
- * @property array|null  $amenities
- * @property array|null  $images
- * @property bool        $is_active
- * @property int         $total_rooms
- * @property int         $lock_version
+ * @property array|null $amenities
+ * @property array|null $images
+ * @property bool $is_active
+ * @property int $total_rooms
+ * @property int $lock_version
  * @property \Carbon\Carbon $created_at
  * @property \Carbon\Carbon $updated_at
  */
@@ -168,5 +168,4 @@ class Location extends Model
                 : null
         );
     }
-
 }

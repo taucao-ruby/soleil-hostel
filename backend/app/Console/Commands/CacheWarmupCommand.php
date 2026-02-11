@@ -5,13 +5,12 @@ namespace App\Console\Commands;
 use App\Services\Cache\CacheWarmer;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
-use Symfony\Component\Console\Helper\ProgressBar;
 
 /**
  * Cache Warmup Command
- * 
+ *
  * Warms up critical caches after deployment to prevent cold-start latency spikes.
- * 
+ *
  * Usage:
  *   php artisan cache:warmup                    # Warm all cache groups
  *   php artisan cache:warmup --dry-run          # Preview what would be warmed
@@ -19,7 +18,7 @@ use Symfony\Component\Console\Helper\ProgressBar;
  *   php artisan cache:warmup --force            # Override existing cache
  *   php artisan cache:warmup --chunk=50         # Process in smaller chunks
  *   php artisan cache:warmup -v                 # Verbose output
- * 
+ *
  * @see docs/backend/CACHE_WARMUP_STRATEGY.md
  */
 class CacheWarmupCommand extends Command
@@ -46,7 +45,9 @@ class CacheWarmupCommand extends Command
     private const AVAILABLE_GROUPS = ['config', 'rooms', 'users', 'bookings', 'static', 'computed'];
 
     private CacheWarmer $cacheWarmer;
+
     private float $startTime;
+
     private bool $hasErrors = false;
 
     public function __construct(CacheWarmer $cacheWarmer)
@@ -61,7 +62,7 @@ class CacheWarmupCommand extends Command
     public function handle(): int
     {
         $this->startTime = microtime(true);
-        
+
         // Set timeout
         $timeout = (int) $this->option('timeout');
         set_time_limit($timeout);
@@ -70,7 +71,7 @@ class CacheWarmupCommand extends Command
         $this->displayHeader();
 
         // Pre-flight checks
-        if (!$this->runPreflightChecks()) {
+        if (! $this->runPreflightChecks()) {
             return Command::FAILURE;
         }
 
@@ -116,17 +117,20 @@ class CacheWarmupCommand extends Command
         if ($results['failed'] > 0) {
             // Check if any critical group failed
             $criticalFailed = $this->hasCriticalFailure($results['groups']);
-            
+
             if ($criticalFailed) {
                 $this->error('❌ Critical cache group(s) failed to warm up!');
+
                 return Command::FAILURE;
             }
 
             $this->warn('⚠️  Some non-critical cache groups failed.');
+
             return Command::SUCCESS; // Non-critical failures don't block deployment
         }
 
         $this->info('✅ Cache warmup completed successfully!');
+
         return Command::SUCCESS;
     }
 
@@ -151,18 +155,19 @@ class CacheWarmupCommand extends Command
 
         $health = $this->cacheWarmer->healthCheck();
 
-        if (!$health['healthy']) {
+        if (! $health['healthy']) {
             $this->error('Preflight checks failed:');
 
-            if (!$health['cache_connection']) {
-                $this->error('  ❌ Cache connection failed: ' . ($health['cache_error'] ?? 'Unknown error'));
+            if (! $health['cache_connection']) {
+                $this->error('  ❌ Cache connection failed: '.($health['cache_error'] ?? 'Unknown error'));
             }
 
-            if (!$health['database_connection']) {
-                $this->error('  ❌ Database connection failed: ' . ($health['database_error'] ?? 'Unknown error'));
+            if (! $health['database_connection']) {
+                $this->error('  ❌ Database connection failed: '.($health['database_error'] ?? 'Unknown error'));
             }
 
             Log::error('[cache:warmup] Preflight checks failed', $health);
+
             return false;
         }
 
@@ -187,14 +192,15 @@ class CacheWarmupCommand extends Command
 
         // Validate groups
         $invalidGroups = array_diff($groups, self::AVAILABLE_GROUPS);
-        if (!empty($invalidGroups)) {
-            $this->warn('Unknown groups will be skipped: ' . implode(', ', $invalidGroups));
+        if (! empty($invalidGroups)) {
+            $this->warn('Unknown groups will be skipped: '.implode(', ', $invalidGroups));
         }
 
         $validGroups = array_intersect($groups, self::AVAILABLE_GROUPS);
 
         if (empty($validGroups)) {
-            $this->error('No valid groups specified. Available: ' . implode(', ', self::AVAILABLE_GROUPS));
+            $this->error('No valid groups specified. Available: '.implode(', ', self::AVAILABLE_GROUPS));
+
             return [];
         }
 
@@ -211,12 +217,12 @@ class CacheWarmupCommand extends Command
         int $chunkSize
     ): void {
         $this->info('📋 Configuration:');
-        
+
         $targetGroups = $groups ?? self::AVAILABLE_GROUPS;
-        $this->line('  Groups: ' . implode(', ', $targetGroups));
-        $this->line('  Dry Run: ' . ($dryRun ? 'Yes (no changes will be made)' : 'No'));
-        $this->line('  Force: ' . ($force ? 'Yes (override existing cache)' : 'No'));
-        $this->line('  Chunk Size: ' . $chunkSize);
+        $this->line('  Groups: '.implode(', ', $targetGroups));
+        $this->line('  Dry Run: '.($dryRun ? 'Yes (no changes will be made)' : 'No'));
+        $this->line('  Force: '.($force ? 'Yes (override existing cache)' : 'No'));
+        $this->line('  Chunk Size: '.$chunkSize);
         $this->newLine();
 
         if ($dryRun) {
@@ -231,7 +237,7 @@ class CacheWarmupCommand extends Command
     private function executeWarmup(?array $groups): array
     {
         $targetGroups = $groups ?? array_keys(CacheWarmer::CACHE_GROUPS);
-        $showProgress = !$this->option('no-progress') && !$this->option('quiet');
+        $showProgress = ! $this->option('no-progress') && ! $this->option('quiet');
 
         if ($showProgress) {
             return $this->executeWithProgress($targetGroups);
@@ -258,7 +264,7 @@ class CacheWarmupCommand extends Command
         ];
 
         $groupInfo = CacheWarmer::getGroupInfo();
-        
+
         // Sort groups by priority
         usort($groups, function ($a, $b) use ($groupInfo) {
             return ($groupInfo[$a]['priority'] ?? 99) <=> ($groupInfo[$b]['priority'] ?? 99);
@@ -268,16 +274,16 @@ class CacheWarmupCommand extends Command
             $info = $groupInfo[$group] ?? [];
             $critical = $info['critical'] ?? false;
             $criticalBadge = $critical ? ' [CRITICAL]' : '';
-            
+
             $this->line("  ⏳ Warming {$group}{$criticalBadge}...");
-            
+
             $result = $this->cacheWarmer->warmGroup($group);
             $allResults['groups'][$group] = $result;
-            
+
             $status = $result['status'];
             $duration = $result['duration_ms'] ?? 0;
             $warmed = $result['warmed_count'] ?? 0;
-            
+
             $statusIcon = match ($status) {
                 'success' => '✅',
                 'dry_run' => '🧪',
@@ -287,7 +293,7 @@ class CacheWarmupCommand extends Command
             };
 
             $this->line("     {$statusIcon} {$group}: {$status} ({$warmed} items, {$duration}ms)");
-            
+
             if ($this->output->isVerbose() && isset($result['items'])) {
                 foreach ((array) $result['items'] as $item) {
                     $this->line("        - {$item}");
@@ -319,9 +325,9 @@ class CacheWarmupCommand extends Command
         $this->line('═══════════════════════════════════════════════════════════');
         $this->info('📊 Results Summary');
         $this->line('═══════════════════════════════════════════════════════════');
-        
+
         $totalDuration = round((microtime(true) - $this->startTime) * 1000, 2);
-        
+
         $this->table(
             ['Metric', 'Value'],
             [
@@ -339,7 +345,7 @@ class CacheWarmupCommand extends Command
         // Detailed group results
         if ($this->output->isVerbose()) {
             $this->info('📋 Group Details:');
-            
+
             $rows = [];
             foreach ($results['groups'] as $group => $result) {
                 $rows[] = [
@@ -369,6 +375,7 @@ class CacheWarmupCommand extends Command
                 return true;
             }
         }
+
         return false;
     }
 }

@@ -5,9 +5,8 @@ namespace Tests\Unit\Notifications;
 use App\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Models\Room;
-use App\Models\User;
-use App\Notifications\BookingConfirmed;
 use App\Notifications\BookingCancelled;
+use App\Notifications\BookingConfirmed;
 use App\Notifications\BookingUpdated;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -43,7 +42,7 @@ class BookingNotificationTest extends TestCase
 
         // Assert
         Notification::assertSentTo(
-            new \Illuminate\Notifications\AnonymousNotifiable(),
+            new \Illuminate\Notifications\AnonymousNotifiable,
             BookingConfirmed::class,
             function ($notification, $channels, $notifiable) use ($booking) {
                 return $notifiable->routes['mail'] === $booking->guest_email;
@@ -68,7 +67,7 @@ class BookingNotificationTest extends TestCase
 
         // Assert
         Notification::assertSentTo(
-            new \Illuminate\Notifications\AnonymousNotifiable(),
+            new \Illuminate\Notifications\AnonymousNotifiable,
             BookingCancelled::class
         );
     }
@@ -97,7 +96,7 @@ class BookingNotificationTest extends TestCase
 
         // Assert
         Notification::assertSentTo(
-            new \Illuminate\Notifications\AnonymousNotifiable(),
+            new \Illuminate\Notifications\AnonymousNotifiable,
             BookingUpdated::class,
             function ($notification) use ($changes) {
                 return $notification->changes === $changes;
@@ -121,12 +120,12 @@ class BookingNotificationTest extends TestCase
 
         // Act
         $notification = new BookingConfirmed($booking);
-        $mailMessage = $notification->toMail(new \Illuminate\Notifications\AnonymousNotifiable());
+        $mailMessage = $notification->toMail(new \Illuminate\Notifications\AnonymousNotifiable);
 
         // Assert - now using markdown templates, check rendered content
         $this->assertNotNull($mailMessage, 'Mail message should not be null for confirmed booking');
         $rendered = $mailMessage->render();
-        
+
         $this->assertStringContainsString('Jane Smith', $rendered);
         $this->assertStringContainsString('Ocean View Suite', $rendered);
         $this->assertStringContainsString('December', $rendered); // Date format changed with markdown

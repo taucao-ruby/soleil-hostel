@@ -24,9 +24,9 @@ final class ApiResponse
     /**
      * Success response.
      *
-     * @param mixed $data Response payload
-     * @param string|null $message Human-readable message
-     * @param int $status HTTP status code
+     * @param  mixed  $data  Response payload
+     * @param  string|null  $message  Human-readable message
+     * @param  int  $status  HTTP status code
      */
     public static function success(mixed $data = null, ?string $message = null, int $status = 200): JsonResponse
     {
@@ -43,8 +43,8 @@ final class ApiResponse
     /**
      * Created response (201).
      *
-     * @param mixed $data Created resource
-     * @param string|null $message Human-readable message
+     * @param  mixed  $data  Created resource
+     * @param  string|null  $message  Human-readable message
      */
     public static function created(mixed $data = null, ?string $message = null): JsonResponse
     {
@@ -70,9 +70,9 @@ final class ApiResponse
     /**
      * Error response.
      *
-     * @param string $message Error message
-     * @param array|null $errors Detailed errors
-     * @param int $status HTTP status code
+     * @param  string  $message  Error message
+     * @param  array|null  $errors  Detailed errors
+     * @param  int  $status  HTTP status code
      */
     public static function error(string $message, ?array $errors = null, int $status = 400): JsonResponse
     {
@@ -89,8 +89,6 @@ final class ApiResponse
     /**
      * Validation error response (422).
      * Accepts Laravel Validator, MessageBag, or raw errors array.
-     *
-     * @param Validator|MessageBag|array $validatorOrBag
      */
     public static function validationErrors(Validator|MessageBag|array $validatorOrBag): JsonResponse
     {
@@ -116,8 +114,7 @@ final class ApiResponse
      * Paginated response.
      * Extracts pagination metadata without transforming collection items.
      *
-     * @param LengthAwarePaginator $paginator
-     * @param string $dataKey Key name for the items array
+     * @param  string  $dataKey  Key name for the items array
      */
     public static function paginated(LengthAwarePaginator $paginator, string $dataKey = 'items'): JsonResponse
     {
@@ -144,8 +141,6 @@ final class ApiResponse
 
     /**
      * Not found response (404).
-     *
-     * @param string $message
      */
     public static function notFound(string $message = 'Resource not found.'): JsonResponse
     {
@@ -154,8 +149,6 @@ final class ApiResponse
 
     /**
      * Unauthorized response (401).
-     *
-     * @param string $message
      */
     public static function unauthorized(string $message = 'Unauthorized.'): JsonResponse
     {
@@ -164,8 +157,6 @@ final class ApiResponse
 
     /**
      * Forbidden response (403).
-     *
-     * @param string $message
      */
     public static function forbidden(string $message = 'Forbidden.'): JsonResponse
     {
@@ -174,8 +165,6 @@ final class ApiResponse
 
     /**
      * Server error response (500).
-     *
-     * @param string $message
      */
     public static function serverError(string $message = 'Internal server error.'): JsonResponse
     {

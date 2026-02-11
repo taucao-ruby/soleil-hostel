@@ -51,7 +51,7 @@ class InvalidateRoomAvailabilityCache implements ShouldQueue
     public function failed(BookingCreated $event, \Throwable $exception): void
     {
         \Log::error(
-            "Failed to invalidate room cache after booking",
+            'Failed to invalidate room cache after booking',
             [
                 'booking_id' => $event->booking->id,
                 'room_id' => $event->booking->room_id,

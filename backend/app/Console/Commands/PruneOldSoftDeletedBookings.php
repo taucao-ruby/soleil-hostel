@@ -9,22 +9,22 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * PruneOldSoftDeletedBookings - Clean up old soft-deleted bookings
- * 
+ *
  * PURPOSE:
  * Permanently removes soft-deleted bookings older than retention period.
  * This is for compliance (storage management) AFTER the audit retention period.
- * 
+ *
  * COMPLIANCE NOTES:
  * - Default: 7 years retention (SOX, general accounting)
  * - Can be configured via --days option
  * - Always logs what is pruned for audit trail
  * - Runs as scheduled job (e.g., weekly)
- * 
+ *
  * USAGE:
  * php artisan bookings:prune-deleted           # Default 7 years
  * php artisan bookings:prune-deleted --days=365 # 1 year
  * php artisan bookings:prune-deleted --dry-run  # Preview without deleting
- * 
+ *
  * SCHEDULING (in app/Console/Kernel.php):
  * $schedule->command('bookings:prune-deleted')->weekly();
  */
@@ -69,6 +69,7 @@ class PruneOldSoftDeletedBookings extends Command
 
         if ($count === 0) {
             $this->info('No soft-deleted bookings found matching criteria.');
+
             return Command::SUCCESS;
         }
 
@@ -77,10 +78,10 @@ class PruneOldSoftDeletedBookings extends Command
         if ($dryRun) {
             // Show what would be deleted
             $bookings = $query->get(['id', 'room_id', 'guest_name', 'check_in', 'check_out', 'deleted_at']);
-            
+
             $this->table(
                 ['ID', 'Room ID', 'Guest', 'Check-In', 'Check-Out', 'Deleted At'],
-                $bookings->map(fn($b) => [
+                $bookings->map(fn ($b) => [
                     $b->id,
                     $b->room_id,
                     $b->guest_name,
@@ -91,12 +92,14 @@ class PruneOldSoftDeletedBookings extends Command
             );
 
             $this->info('Run without --dry-run to permanently delete these records.');
+
             return Command::SUCCESS;
         }
 
         // Confirm before proceeding
-        if (!$this->confirm("Are you sure you want to permanently delete {$count} booking(s)? This action is IRREVERSIBLE.")) {
+        if (! $this->confirm("Are you sure you want to permanently delete {$count} booking(s)? This action is IRREVERSIBLE.")) {
             $this->info('Operation cancelled.');
+
             return Command::SUCCESS;
         }
 

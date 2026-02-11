@@ -87,10 +87,10 @@ class BookingFactory extends Factory
     /**
      * Create a booking with payment information.
      */
-    public function withPayment(int $amountCents = null): static
+    public function withPayment(?int $amountCents = null): static
     {
         return $this->state(fn (array $attributes) => [
-            'payment_intent_id' => 'pi_test_' . $this->faker->uuid(),
+            'payment_intent_id' => 'pi_test_'.$this->faker->uuid(),
             'amount' => $amountCents ?? $this->faker->numberBetween(5000, 50000), // $50-$500
         ]);
     }
@@ -98,14 +98,14 @@ class BookingFactory extends Factory
     /**
      * Create a cancelled booking with successful refund.
      */
-    public function withRefund(int $refundAmountCents = null): static
+    public function withRefund(?int $refundAmountCents = null): static
     {
         return $this->state(fn (array $attributes) => [
             'status' => BookingStatus::CANCELLED,
             'cancelled_at' => Carbon::now()->subHours($this->faker->numberBetween(1, 24)),
-            'payment_intent_id' => 'pi_test_' . $this->faker->uuid(),
+            'payment_intent_id' => 'pi_test_'.$this->faker->uuid(),
             'amount' => $refundAmountCents ?? $this->faker->numberBetween(5000, 50000),
-            'refund_id' => 're_test_' . $this->faker->uuid(),
+            'refund_id' => 're_test_'.$this->faker->uuid(),
             'refund_status' => 'succeeded',
             'refund_amount' => $refundAmountCents ?? $this->faker->numberBetween(2500, 50000),
         ]);
@@ -117,6 +117,7 @@ class BookingFactory extends Factory
     public function checkInFuture(int $hours = 72): static
     {
         $checkIn = Carbon::now()->addHours($hours)->startOfDay();
+
         return $this->state(fn (array $attributes) => [
             'check_in' => $checkIn,
             'check_out' => $checkIn->clone()->addDays(2),
@@ -160,6 +161,7 @@ class BookingFactory extends Factory
     public function todayCheckIn(): static
     {
         $today = Carbon::now()->startOfDay();
+
         return $this->state(fn (array $attributes) => [
             'check_in' => $today,
             'check_out' => $today->clone()->addDays(1),
@@ -182,8 +184,8 @@ class BookingFactory extends Factory
 
     /**
      * Create a soft deleted booking.
-     * 
-     * @param User|null $deletedBy User who deleted the booking
+     *
+     * @param  User|null  $deletedBy  User who deleted the booking
      */
     public function trashed(?User $deletedBy = null): static
     {

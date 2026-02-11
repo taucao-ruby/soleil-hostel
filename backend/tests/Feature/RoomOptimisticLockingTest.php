@@ -34,7 +34,9 @@ class RoomOptimisticLockingTest extends TestCase
     use RefreshDatabase;
 
     private RoomService $roomService;
+
     private User $admin;
+
     private Location $location;
 
     protected function setUp(): void
@@ -481,10 +483,10 @@ class RoomOptimisticLockingTest extends TestCase
         // This test simulates legacy data that existed before the migration.
         // After migration runs, the column becomes NOT NULL, so we need to
         // test the accessor logic differently.
-        
+
         // Create a room normally
         $room = Room::factory()->create();
-        
+
         // Manually set lock_version to null via raw query to bypass NOT NULL constraint
         // Note: This will only work if the column allows null (pre-migration state)
         // If column is NOT NULL (post-migration), we skip this test
@@ -498,6 +500,7 @@ class RoomOptimisticLockingTest extends TestCase
             // Column is NOT NULL (post-migration), which is expected
             // Test the accessor returns the correct default value for new rooms
             $this->assertEquals(1, $room->lock_version);
+
             return;
         }
 
@@ -616,7 +619,7 @@ class RoomOptimisticLockingTest extends TestCase
 
     public function test_exception_has_correct_message(): void
     {
-        $exception = new OptimisticLockException();
+        $exception = new OptimisticLockException;
 
         $this->assertEquals(
             'The resource has been modified by another user. Please refresh and try again.',

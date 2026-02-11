@@ -5,13 +5,12 @@ namespace Tests\Unit\Database;
 use App\Database\TransactionIsolation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use PDOException;
 use RuntimeException;
 use Tests\TestCase;
 
 /**
  * TransactionIsolationTest - Unit tests for transaction isolation utilities
- * 
+ *
  * Tests:
  * 1. Isolation level configuration
  * 2. Retry logic with exponential backoff
@@ -131,8 +130,8 @@ class TransactionIsolationTest extends TestCase
     public function test_transaction_with_read_committed(): void
     {
         $result = TransactionIsolation::run(
-            function () { 
-                return 'read_committed_result'; 
+            function () {
+                return 'read_committed_result';
             },
             TransactionIsolation::READ_COMMITTED,
             ['operationName' => 'test_operation']
@@ -166,11 +165,10 @@ class TransactionIsolationTest extends TestCase
             $innerResult = TransactionIsolation::run(function () {
                 return 'inner';
             });
-            
+
             return "outer_$innerResult";
         });
 
         $this->assertEquals('outer_inner', $result);
     }
 }
-

@@ -2,28 +2,27 @@
 
 namespace App\Services\Cache;
 
+use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
-use App\Models\Booking;
 use App\Services\BookingService;
 use App\Services\RoomAvailabilityService;
 use App\Traits\HasCacheTagSupport;
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Cache Warmer Service
- * 
+ *
  * Warms up critical caches after deployment to prevent cold-start spikes.
  * Designed to be:
  * - Idempotent: Safe to run multiple times
  * - Graceful: Continues on individual cache failures
  * - Memory-safe: Uses chunking for large datasets
  * - Observable: Logs all operations for debugging
- * 
+ *
  * @see docs/backend/CACHE_WARMUP_STRATEGY.md
  */
 class CacheWarmer
@@ -34,8 +33,11 @@ class CacheWarmer
      * Warmup configuration
      */
     private const DEFAULT_CHUNK_SIZE = 100;
+
     private const DEFAULT_DATE_RANGE_DAYS = 30;
+
     private const MAX_RETRIES = 3;
+
     private const RETRY_DELAY_MS = 100;
 
     /**
@@ -75,13 +77,19 @@ class CacheWarmer
     ];
 
     private RoomAvailabilityCache $roomAvailabilityCache;
+
     private RoomAvailabilityService $roomAvailabilityService;
+
     private BookingService $bookingService;
-    
+
     private int $chunkSize;
+
     private bool $dryRun = false;
+
     private bool $force = false;
+
     private array $results = [];
+
     private float $startTime;
 
     public function __construct(
@@ -109,8 +117,8 @@ class CacheWarmer
 
     /**
      * Warm all cache groups (or specific ones)
-     * 
-     * @param array|null $groups Specific groups to warm, or null for all
+     *
+     * @param  array|null  $groups  Specific groups to warm, or null for all
      * @return array Results with success/failure stats per group
      */
     public function warmAll(?array $groups = null): array
@@ -120,11 +128,12 @@ class CacheWarmer
 
         // Determine which groups to warm
         $targetGroups = $groups ?? array_keys(self::CACHE_GROUPS);
-        
+
         // Sort by priority
         usort($targetGroups, function ($a, $b) {
             $priorityA = self::CACHE_GROUPS[$a]['priority'] ?? 99;
             $priorityB = self::CACHE_GROUPS[$b]['priority'] ?? 99;
+
             return $priorityA <=> $priorityB;
         });
 
@@ -136,12 +145,13 @@ class CacheWarmer
         ]);
 
         foreach ($targetGroups as $group) {
-            if (!isset(self::CACHE_GROUPS[$group])) {
+            if (! isset(self::CACHE_GROUPS[$group])) {
                 $this->results[$group] = [
                     'status' => 'skipped',
                     'reason' => 'Unknown cache group',
                     'duration_ms' => 0,
                 ];
+
                 continue;
             }
 
@@ -173,7 +183,7 @@ class CacheWarmer
         $groupStart = microtime(true);
         $groupConfig = self::CACHE_GROUPS[$group] ?? null;
 
-        if (!$groupConfig) {
+        if (! $groupConfig) {
             return [
                 'status' => 'skipped',
                 'reason' => 'Unknown group',
@@ -193,7 +203,7 @@ class CacheWarmer
 
             $result['duration_ms'] = round((microtime(true) - $groupStart) * 1000, 2);
             $result['critical'] = $groupConfig['critical'];
-            
+
             $this->results[$group] = $result;
 
             Log::info("[CacheWarmer] Group '{$group}' completed", $result);
@@ -216,7 +226,7 @@ class CacheWarmer
             ]);
 
             // Re-throw if critical and not in dry-run mode
-            if ($groupConfig['critical'] && !$this->dryRun) {
+            if ($groupConfig['critical'] && ! $this->dryRun) {
                 // Log but don't throw - we want deployment to continue
                 Log::critical("[CacheWarmer] Critical cache group failed: {$group}");
             }
@@ -252,8 +262,8 @@ class CacheWarmer
 
         foreach ($configKeys as $key => $value) {
             $cacheKey = "config:{$key}";
-            
-            if ($this->force || !Cache::has($cacheKey)) {
+
+            if ($this->force || ! Cache::has($cacheKey)) {
                 Cache::put($cacheKey, $value, now()->addHours(24));
                 $warmed++;
                 $items[] = $key;
@@ -279,6 +289,7 @@ class CacheWarmer
 
         if ($this->dryRun) {
             $roomCount = Room::active()->count();
+
             return [
                 'status' => 'dry_run',
                 'would_warm' => [
@@ -329,6 +340,7 @@ class CacheWarmer
         if ($this->dryRun) {
             $activeUserCount = User::where('updated_at', '>=', now()->subDays(7))->count();
             $adminCount = User::where('role', 'admin')->orWhere('role', 'moderator')->count();
+
             return [
                 'status' => 'dry_run',
                 'would_warm' => [
@@ -357,7 +369,7 @@ class CacheWarmer
             ->chunk($this->chunkSize, function ($users) use (&$warmed) {
                 foreach ($users as $user) {
                     $cacheKey = "user:profile:{$user->id}";
-                    if ($this->force || !Cache::has($cacheKey)) {
+                    if ($this->force || ! Cache::has($cacheKey)) {
                         Cache::put($cacheKey, $user->toArray(), now()->addHours(1));
                         $warmed++;
                     }
@@ -384,6 +396,7 @@ class CacheWarmer
             $todayBookings = Booking::whereDate('check_in', today())
                 ->orWhereDate('check_out', today())
                 ->count();
+
             return [
                 'status' => 'dry_run',
                 'would_warm' => [
@@ -453,7 +466,7 @@ class CacheWarmer
         $locales = ['en', 'vi', 'ja'];
         foreach ($locales as $locale) {
             $cacheKey = "translations:{$locale}";
-            if ($this->force || !Cache::has($cacheKey)) {
+            if ($this->force || ! Cache::has($cacheKey)) {
                 // In real app, load translation files here
                 Cache::put($cacheKey, ['locale' => $locale], now()->addHours(24));
                 $warmed++;
@@ -547,7 +560,7 @@ class CacheWarmer
      */
     private function countByStatus(string $status): int
     {
-        return count(array_filter($this->results, fn($r) => $r['status'] === $status));
+        return count(array_filter($this->results, fn ($r) => $r['status'] === $status));
     }
 
     /**
@@ -567,7 +580,7 @@ class CacheWarmer
 
         // Test cache connection
         try {
-            $testKey = 'cache_warmer_health_check_' . time();
+            $testKey = 'cache_warmer_health_check_'.time();
             Cache::put($testKey, 'ok', 10);
             $value = Cache::get($testKey);
             Cache::forget($testKey);

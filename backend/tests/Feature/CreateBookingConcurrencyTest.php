@@ -11,10 +11,10 @@ use Tests\TestCase;
 
 /**
  * Feature Tests cho double-booking prevention
- * 
+ *
  * Các test này dùng RefreshDatabase để reset DB giữa test,
  * đảm bảo mỗi test là isolated và deterministic
- * 
+ *
  * Các test sẽ verify:
  * 1. Normal booking creation works
  * 2. Booking với overlapping dates bị reject
@@ -27,7 +27,9 @@ class CreateBookingConcurrencyTest extends TestCase
     use RefreshDatabase;
 
     private Room $room;
+
     private User $user1;
+
     private User $user2;
 
     protected function setUp(): void
@@ -46,7 +48,7 @@ class CreateBookingConcurrencyTest extends TestCase
 
         // Create and set token for user1
         $token = $this->user1->createToken('test-token');
-        $this->withHeader('Authorization', 'Bearer ' . $token->plainTextToken);
+        $this->withHeader('Authorization', 'Bearer '.$token->plainTextToken);
     }
 
     /**
@@ -79,7 +81,7 @@ class CreateBookingConcurrencyTest extends TestCase
 
     /**
      * Test 2: Booking với overlap hoàn toàn bị reject
-     * 
+     *
      * Timeline:
      * Booking 1: 2025-12-01 to 2025-12-05
      * Booking 2: 2025-12-02 to 2025-12-04 (nằm hoàn toàn trong booking 1)
@@ -124,12 +126,12 @@ class CreateBookingConcurrencyTest extends TestCase
 
     /**
      * Test 3: Booking bắt đầu khi booking khác kết thúc được allow (half-open interval)
-     * 
+     *
      * Timeline:
      * Booking 1: 2025-12-01 to 2025-12-05 (checkout ngày 5)
      * Booking 2: 2025-12-05 to 2025-12-10 (checkin ngày 5)
      * → Cho phép vì [1, 5) không overlap [5, 10)
-     * 
+     *
      * Lý do: Checkout sáng, check-in trưa cùng ngày, phòng còn có thời gian dọn dẹp
      */
     public function test_same_day_checkin_checkout_boundary_is_allowed(): void
@@ -169,7 +171,7 @@ class CreateBookingConcurrencyTest extends TestCase
 
     /**
      * Test 4: Partial overlap ở đầu bị reject
-     * 
+     *
      * Timeline:
      * Booking 1: 2025-12-02 to 2025-12-05
      * Booking 2: 2025-12-01 to 2025-12-03 (overlap ở 12-02, 12-03)
@@ -209,7 +211,7 @@ class CreateBookingConcurrencyTest extends TestCase
 
     /**
      * Test 5: Partial overlap ở cuối bị reject
-     * 
+     *
      * Timeline:
      * Booking 1: 2025-12-01 to 2025-12-03
      * Booking 2: 2025-12-02 to 2025-12-05 (overlap ở 12-02)
@@ -249,7 +251,7 @@ class CreateBookingConcurrencyTest extends TestCase
 
     /**
      * Test 6: Cancelled booking không block overlap booking mới
-     * 
+     *
      * Timeline:
      * Booking 1: 2025-12-01 to 2025-12-05 (status: cancelled)
      * Booking 2: 2025-12-02 to 2025-12-04 (overlap với booking 1)
@@ -292,7 +294,7 @@ class CreateBookingConcurrencyTest extends TestCase
 
     /**
      * Test 7: Booking update với overlapping dates bị reject
-     * 
+     *
      * Verify that updating a booking to overlap with an existing booking is rejected
      */
     public function test_booking_update_with_overlap_is_rejected(): void
@@ -340,7 +342,7 @@ class CreateBookingConcurrencyTest extends TestCase
 
     /**
      * Test 8: Multiple rooms không ảnh hưởng booking của nhau
-     * 
+     *
      * Verify rằng overlap detection chỉ check room hiện tại,
      * không check across rooms
      */
@@ -382,7 +384,7 @@ class CreateBookingConcurrencyTest extends TestCase
 
     /**
      * Test 9: Valid date validation
-     * 
+     *
      * Check-out phải > check-in
      */
     public function test_invalid_date_range_is_rejected(): void

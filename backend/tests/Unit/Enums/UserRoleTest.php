@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Unit tests for UserRole enum.
- * 
+ *
  * Tests enum values, default role, and static helper methods.
  */
 class UserRoleTest extends TestCase
@@ -57,7 +57,7 @@ class UserRoleTest extends TestCase
     /**
      * Test tryFrom returns correct enum for valid values.
      */
-    public function test_tryFrom_with_valid_values(): void
+    public function test_try_from_with_valid_values(): void
     {
         $this->assertEquals(UserRole::USER, UserRole::tryFrom('user'));
         $this->assertEquals(UserRole::MODERATOR, UserRole::tryFrom('moderator'));
@@ -67,7 +67,7 @@ class UserRoleTest extends TestCase
     /**
      * Test tryFrom returns null for invalid values.
      */
-    public function test_tryFrom_with_invalid_values(): void
+    public function test_try_from_with_invalid_values(): void
     {
         $this->assertNull(UserRole::tryFrom('superadmin'));
         $this->assertNull(UserRole::tryFrom('guest'));

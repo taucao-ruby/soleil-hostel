@@ -12,20 +12,20 @@ use Illuminate\Auth\Access\Response;
 
 /**
  * ReviewPolicy - Authorization for Review CRUD operations.
- * 
+ *
  * Business Rules:
  * - Create: Authenticated user must own a confirmed booking with checkout passed, no existing review.
  * - Update: Owner only.
  * - Delete: Owner OR Admin.
  * - Admin bypass: Can delete any review but CANNOT create fake reviews.
- * 
+ *
  * @see docs/backend/REVIEW_POLICY_AUTHORIZATION.md for full design rationale.
  */
 class ReviewPolicy
 {
     /**
      * Admin bypass for delete only. Admins CANNOT create fake reviews.
-     * 
+     *
      * Return values:
      * - true: Allow (bypass further checks)
      * - false: Deny (explicit rejection)
@@ -33,7 +33,7 @@ class ReviewPolicy
      */
     public function before(User $user, string $ability): ?bool
     {
-        if (!$user->isAdmin()) {
+        if (! $user->isAdmin()) {
             return null; // Non-admin: defer to specific method
         }
 
@@ -53,15 +53,15 @@ class ReviewPolicy
 
     /**
      * Determine if user can create a review for the given booking.
-     * 
+     *
      * Requirements:
      * 1. User must own the booking
      * 2. Booking status must be CONFIRMED
      * 3. Checkout date must have passed
      * 4. No existing review for this booking (via pre-loaded relation)
-     * 
-     * @param User $user Authenticated user
-     * @param Booking $booking Must have 'review' relation pre-loaded
+     *
+     * @param  User  $user  Authenticated user
+     * @param  Booking  $booking  Must have 'review' relation pre-loaded
      */
     public function create(User $user, Booking $booking): Response
     {
@@ -76,7 +76,7 @@ class ReviewPolicy
         }
 
         // Temporal check: checkout must have passed
-        if (!$booking->check_out->isPast()) {
+        if (! $booking->check_out->isPast()) {
             return Response::deny('Cannot review before checkout date.');
         }
 
@@ -91,7 +91,7 @@ class ReviewPolicy
 
     /**
      * Determine if user can update the review.
-     * 
+     *
      * Only the review author can update their review.
      * Admins defer here from before() - they cannot edit others' reviews.
      */
@@ -106,7 +106,7 @@ class ReviewPolicy
 
     /**
      * Determine if user can delete the review.
-     * 
+     *
      * Owner can delete their own review.
      * Admins bypass this via before() hook.
      */
@@ -121,7 +121,7 @@ class ReviewPolicy
 
     /**
      * Determine if user can view the review.
-     * 
+     *
      * Reviews are public - anyone can view.
      */
     public function view(?User $user, Review $review): bool
@@ -131,7 +131,7 @@ class ReviewPolicy
 
     /**
      * Determine if user can view any reviews.
-     * 
+     *
      * Review index is public.
      */
     public function viewAny(?User $user): bool

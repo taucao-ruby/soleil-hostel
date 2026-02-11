@@ -1,9 +1,9 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\RoomController;
-use App\Http\Controllers\BookingController;
 use App\Http\Controllers\AdminBookingController;
+use App\Http\Controllers\BookingController;
+use App\Http\Controllers\RoomController;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -58,7 +58,7 @@ Route::middleware(['check_token_valid', 'verified'])->group(function () {
         ->middleware(['throttle:10,1', 'deprecated:2026-07-01,/api/v1/bookings/{booking}']);
     Route::delete('/bookings/{booking}', [BookingController::class, 'destroy'])
         ->middleware(['throttle:10,1', 'deprecated:2026-07-01,/api/v1/bookings/{booking}']);
-    
+
     // Booking status change endpoints
     Route::post('/bookings/{booking}/confirm', [BookingController::class, 'confirm'])
         ->middleware(['role:admin', 'throttle:10,1', 'deprecated:2026-07-01,/api/v1/bookings/{booking}/confirm']);

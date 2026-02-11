@@ -6,7 +6,7 @@ use Tests\TestCase;
 
 /**
  * SecurityHeadersTest
- * 
+ *
  * Kiểm tra tất cả security headers được set đúng
  * Đảm bảo không có rò rỉ thông tin, MIME sniffing, clickjacking, v.v.
  */
@@ -19,9 +19,9 @@ class SecurityHeadersTest extends TestCase
     public function test_hsts_header_present(): void
     {
         $response = $this->get('/');
-        
+
         $response->assertHeader('Strict-Transport-Security');
-        
+
         // Check format
         $hsts = $response->headers->get('Strict-Transport-Security');
         $this->assertStringContainsString('max-age=', $hsts);
@@ -34,7 +34,7 @@ class SecurityHeadersTest extends TestCase
     public function test_x_frame_options_deny(): void
     {
         $response = $this->get('/');
-        
+
         $response->assertHeader('X-Frame-Options', 'DENY');
     }
 
@@ -44,7 +44,7 @@ class SecurityHeadersTest extends TestCase
     public function test_x_content_type_options_nosniff(): void
     {
         $response = $this->get('/');
-        
+
         $response->assertHeader('X-Content-Type-Options', 'nosniff');
     }
 
@@ -54,7 +54,7 @@ class SecurityHeadersTest extends TestCase
     public function test_referrer_policy_strict_origin(): void
     {
         $response = $this->get('/');
-        
+
         $response->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     }
 
@@ -64,9 +64,9 @@ class SecurityHeadersTest extends TestCase
     public function test_permissions_policy_present(): void
     {
         $response = $this->get('/');
-        
+
         $permissionsPolicy = $response->headers->get('Permissions-Policy');
-        
+
         // Check dangerous APIs are disabled
         $this->assertStringContainsString('camera=()', $permissionsPolicy);
         $this->assertStringContainsString('microphone=()', $permissionsPolicy);
@@ -80,7 +80,7 @@ class SecurityHeadersTest extends TestCase
     public function test_cross_origin_opener_policy(): void
     {
         $response = $this->get('/');
-        
+
         $response->assertHeader('Cross-Origin-Opener-Policy', 'same-origin');
     }
 
@@ -90,7 +90,7 @@ class SecurityHeadersTest extends TestCase
     public function test_cross_origin_embedder_policy(): void
     {
         $response = $this->get('/');
-        
+
         $response->assertHeader('Cross-Origin-Embedder-Policy', 'credentialless');
     }
 
@@ -100,7 +100,7 @@ class SecurityHeadersTest extends TestCase
     public function test_cross_origin_resource_policy(): void
     {
         $response = $this->get('/');
-        
+
         $response->assertHeader('Cross-Origin-Resource-Policy', 'same-origin');
     }
 
@@ -110,10 +110,10 @@ class SecurityHeadersTest extends TestCase
     public function test_content_security_policy_present(): void
     {
         $response = $this->get('/');
-        
+
         $csp = $response->headers->get('Content-Security-Policy');
         $this->assertNotEmpty($csp, 'CSP header should be present');
-        
+
         // Check basic CSP structure
         if (config('app.debug')) {
             // Dev mode: allow unsafe-eval, unsafe-inline
@@ -130,14 +130,14 @@ class SecurityHeadersTest extends TestCase
     public function test_csp_nonce_generated(): void
     {
         $response = $this->get('/');
-        
+
         // Nonce should NOT be exposed via X-CSP-Nonce header (BE-028 security fix)
         $this->assertNull($response->headers->get('X-CSP-Nonce'), 'X-CSP-Nonce header should not be exposed');
 
         // Nonce should be embedded in the CSP header
         $csp = $response->headers->get('Content-Security-Policy');
         $this->assertNotEmpty($csp, 'CSP header should be present');
-        preg_match("/nonce-([A-Za-z0-9]+)/", $csp, $matches);
+        preg_match('/nonce-([A-Za-z0-9]+)/', $csp, $matches);
         $this->assertNotEmpty($matches[1] ?? null, 'CSP nonce should be generated and embedded in CSP header');
         $this->assertGreaterThanOrEqual(32, strlen($matches[1]), 'Nonce should be at least 32 chars');
     }
@@ -148,14 +148,14 @@ class SecurityHeadersTest extends TestCase
     public function test_csp_includes_nonce_in_script_src(): void
     {
         $response = $this->get('/');
-        
+
         $csp = $response->headers->get('Content-Security-Policy');
-        
+
         // Extract nonce from CSP header
-        preg_match("/nonce-([A-Za-z0-9]+)/", $csp, $matches);
+        preg_match('/nonce-([A-Za-z0-9]+)/', $csp, $matches);
         $nonce = $matches[1] ?? null;
         $this->assertNotEmpty($nonce, 'Nonce should be present in CSP header');
-        
+
         // CSP should include nonce in script-src
         $this->assertStringContainsString("nonce-{$nonce}", $csp);
     }
@@ -167,7 +167,7 @@ class SecurityHeadersTest extends TestCase
     public function test_all_critical_headers_present(): void
     {
         $response = $this->get('/');
-        
+
         $criticalHeaders = [
             'Strict-Transport-Security',
             'X-Frame-Options',
@@ -179,7 +179,7 @@ class SecurityHeadersTest extends TestCase
             'Cross-Origin-Resource-Policy',
             'Content-Security-Policy',
         ];
-        
+
         foreach ($criticalHeaders as $header) {
             $response->assertHeader($header);
         }
@@ -201,9 +201,9 @@ class SecurityHeadersTest extends TestCase
                 'document-uri' => 'https://localhost:5173/',
             ],
         ];
-        
+
         $response = $this->postJson('/api/csp-violation-report', $violationData);
-        
+
         // Should return 204 No Content
         $response->assertStatus(204);
     }
@@ -215,7 +215,7 @@ class SecurityHeadersTest extends TestCase
     {
         // Test that csp_nonce() helper function exists and returns a value
         $nonce = csp_nonce();
-        
+
         // In test context, nonce should be available
         $this->assertIsString($nonce);
         // Note: nonce is set by SecurityHeaders middleware, so it exists if request is made

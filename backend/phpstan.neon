@@ -63,7 +63,6 @@ parameters:
     - '#Right side of .+ is always true#'
 
     # ====== Method Override Compatibility ======
-    - '#overrides method .+ but misses parameter#'
     - '#should return array<string, mixed> but returns array<int\|string, mixed>#'
 
     # ====== Type Coercion (config values, header values) ======

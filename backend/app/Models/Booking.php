@@ -268,7 +268,7 @@ class Booking extends Model
             ->whereIn('status', self::ACTIVE_STATUSES)
             ->where('check_in', '<', $checkOut) // Ngày bắt đầu của booking hiện tại < ngày kết thúc mới
             ->where('check_out', '>', $checkIn) // Ngày kết thúc của booking hiện tại > ngày bắt đầu mới
-            ->when($excludeBookingId, fn (Builder $q) => $q->where('id', '!=', $excludeBookingId));
+            ->when($excludeBookingId, fn ($q, $excludeId) => $q->where('id', '!=', $excludeId));
     }
 
     /**
@@ -393,6 +393,7 @@ class Booking extends Model
             ->whereIn('status', self::ACTIVE_STATUSES)
             ->where('check_in', '<', $checkOut)
             ->where('check_out', '>', $checkIn)
-            ->when($excludeBookingId, fn (Builder $q) => $q->where('id', '!=', $excludeBookingId));
+            ->when($excludeBookingId, fn ($q, $excludeId) => $q->where('id', '!=', $excludeId));
     }
 }
+

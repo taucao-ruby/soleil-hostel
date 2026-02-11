@@ -67,10 +67,11 @@ class UpdateReviewRequest extends FormRequest
      * ✅ BEST PRACTICE: Purify here, not in controller
      * This ensures all user input is sanitized before controller processes it
      */
-    public function validated(): array
+    public function validated($key = null, $default = null): mixed
     {
-        // Get validated data first
-        $validated = parent::validated();
+        if ($key !== null) {
+            return parent::validated($key, $default);
+        }
 
         // Purify HTML content fields
         // This strips dangerous tags/attributes while preserving safe formatting

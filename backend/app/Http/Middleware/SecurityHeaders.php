@@ -140,6 +140,10 @@ class SecurityHeaders
         // Some old browsers chỉ nhận X-Content-Type-Options
         $response->headers->set('X-Permitted-Cross-Domain-Policies', 'none', true);
 
+        // Do not leak CSP nonce in response headers.
+        $response->headers->remove('X-CSP-Nonce');
+        $response->headers->remove('X-Nonce');
+
         return $response;
     }
 

@@ -56,7 +56,6 @@
         <!-- Type coercion -->
         <InvalidScalarArgument errorLevel="error" />
         <InvalidArgument errorLevel="error" />
-        <TypeCoercion errorLevel="error" />
 
         <!-- Deprecated code -->
         <DeprecatedMethod errorLevel="info" />

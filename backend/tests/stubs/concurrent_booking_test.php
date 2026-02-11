@@ -25,10 +25,8 @@ $app->make(Kernel::class)->bootstrap();
 $apiUrl = rtrim((string) (getenv('STRESS_API_URL') ?: 'http://127.0.0.1:8000/api'), '/');
 $totalRequests = (int) (getenv('STRESS_TOTAL_REQUESTS') ?: 50);
 
-$room = Room::query()->first();
-if (! $room) {
-    $room = Room::factory()->available()->create();
-}
+// Always create a fresh room to avoid conflicts with seeded/existing bookings
+$room = Room::factory()->available()->create();
 
 $authTokens = [];
 for ($i = 0; $i < $totalRequests; $i++) {
@@ -47,8 +45,8 @@ echo "Starting concurrent booking stress test...\n";
 echo "Total concurrent requests: {$totalRequests}\n";
 echo "Room ID: {$roomId}\n\n";
 
-$checkIn = (new DateTimeImmutable())->modify('+5 days')->format('Y-m-d');
-$checkOut = (new DateTimeImmutable())->modify('+7 days')->format('Y-m-d');
+$checkIn = (new DateTimeImmutable)->modify('+5 days')->format('Y-m-d');
+$checkOut = (new DateTimeImmutable)->modify('+7 days')->format('Y-m-d');
 
 echo "Date range: {$checkIn} to {$checkOut}\n";
 echo "Sending requests...\n\n";

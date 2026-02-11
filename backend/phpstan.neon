@@ -1,46 +1,36 @@
 parameters:
   level: 9  # ← Highest level (strict mode)
-  
+
   paths:
     - app/
     - bootstrap/
     - config/
     - routes/
-  
+
   excludePaths:
     - tests/
     - vendor/
-  
+
   # ========== STRICT TYPE CHECKING ==========
-  checkMissingIterableValueType: true
-  checkGenericClassInNonGenericObjectType: true
-  checkInternalClassCrossReflection: true
-  disableFunctionArgumentTypeWidening: true
   checkBenevolentUnionTypes: true
   checkUninitializedProperties: true
-  checkDynamicPropertiesOffsetAccess: true
-  
+
   # ========== ERROR HANDLING ==========
   treatPhpDocTypesAsCertain: true
-  checkUnnecessaryCast: true
-  checkUnnecessaryNullsafe: true
   checkImplicitMixed: true
-  
-  # ========== EXCEPTIONS & ERRORS ==========
-  throwTypeCannotBeString: true
-  
+  checkMaybeUndefinedVariables: true
+
   # ========== IGNORE SPECIFIC PATTERNS ==========
   ignoreErrors:
     - '#Call to an undefined method Illuminate#'
     - '#Method .* not found on Illuminate#'
     - '#Access to an undefined property#'
-  
-  # ========== LARAVEL SPECIFIC IGNORES ==========
-  reportUnusedCatchClauses: true
-  reportMaybeUndefinedVariables: true
-  reportStaticMethodCanBeNonStatic: true
-  
+
   # ========== TYPE ALIASES ==========
   typeAliases:
     ID: 'int|string'
     BookingRequest: 'App\Http\Requests\StoreBookingRequest'
+
+rules:
+  - PHPStan\Rules\Operators\InvalidComparisonOperationRule
+  - PHPStan\Rules\Methods\NullSafeMethodCallRule

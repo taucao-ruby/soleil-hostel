@@ -50,17 +50,19 @@ class CacheWarmupTest extends TestCase
         User::factory()->create(['role' => 'moderator', 'email' => 'mod@test.com']);
         User::factory()->count(10)->create(['role' => 'user']);
 
-        // Create bookings
+        // Create bookings (non-overlapping dates to satisfy exclusion constraint)
         $room = Room::first();
         $user = User::where('role', 'user')->first();
 
-        Booking::factory()->count(5)->create([
-            'room_id' => $room->id,
-            'user_id' => $user->id,
-            'status' => 'confirmed',
-            'check_in' => today(),
-            'check_out' => today()->addDays(3),
-        ]);
+        for ($i = 0; $i < 5; $i++) {
+            Booking::factory()->create([
+                'room_id' => $room->id,
+                'user_id' => $user->id,
+                'status' => 'confirmed',
+                'check_in' => today()->addDays($i * 4),
+                'check_out' => today()->addDays($i * 4 + 3),
+            ]);
+        }
     }
 
     // ========== COMMAND TESTS ==========

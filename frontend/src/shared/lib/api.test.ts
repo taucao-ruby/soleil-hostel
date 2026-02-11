@@ -11,6 +11,16 @@ vi.mock('@/shared/utils/csrf', () => ({
 import { getCsrfToken } from '@/shared/utils/csrf'
 import api from './api'
 
+interface RequestConfig {
+  method: string
+  headers: axios.AxiosHeaders
+  url: string
+}
+
+interface InterceptorHandler {
+  fulfilled?: (config: RequestConfig) => Promise<RequestConfig> | RequestConfig
+}
+
 describe('API Client', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -32,15 +42,12 @@ describe('API Client', () => {
     it('adds X-XSRF-TOKEN header on POST requests when token exists', async () => {
       vi.mocked(getCsrfToken).mockReturnValue('test-csrf-token')
 
-      // Use interceptor to transform the config
-      const config = {
+      const config: RequestConfig = {
         method: 'post',
         headers: new axios.AxiosHeaders(),
         url: '/test',
       }
 
-      // Run through the request interceptors
-      type InterceptorHandler = { fulfilled?: (config: typeof config) => Promise<typeof config> | typeof config }
       const interceptor = api.interceptors.request as unknown as { handlers: InterceptorHandler[] }
       const handlers = interceptor.handlers
       let result = config
@@ -56,13 +63,12 @@ describe('API Client', () => {
     it('does not add X-XSRF-TOKEN on GET requests', async () => {
       vi.mocked(getCsrfToken).mockReturnValue('test-csrf-token')
 
-      const config = {
+      const config: RequestConfig = {
         method: 'get',
         headers: new axios.AxiosHeaders(),
         url: '/test',
       }
 
-      type InterceptorHandler = { fulfilled?: (config: typeof config) => Promise<typeof config> | typeof config }
       const interceptor = api.interceptors.request as unknown as { handlers: InterceptorHandler[] }
       const handlers = interceptor.handlers
       let result = config
@@ -78,13 +84,12 @@ describe('API Client', () => {
     it('does not add X-XSRF-TOKEN when no token exists', async () => {
       vi.mocked(getCsrfToken).mockReturnValue(null)
 
-      const config = {
+      const config: RequestConfig = {
         method: 'post',
         headers: new axios.AxiosHeaders(),
         url: '/test',
       }
 
-      type InterceptorHandler = { fulfilled?: (config: typeof config) => Promise<typeof config> | typeof config }
       const interceptor = api.interceptors.request as unknown as { handlers: InterceptorHandler[] }
       const handlers = interceptor.handlers
       let result = config

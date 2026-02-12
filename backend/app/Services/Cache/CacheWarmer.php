@@ -617,10 +617,11 @@ class CacheWarmer
     private function getMemoryLimitBytes(): int
     {
         $memoryLimit = ini_get('memory_limit');
-        if ($memoryLimit === false || $memoryLimit === '-1') {
+        if ($memoryLimit === '-1') {
             return PHP_INT_MAX;
         }
 
+        /** @psalm-suppress PossiblyFalseArgument -- ini_get for memory_limit always returns string */
         $unit = strtolower(substr($memoryLimit, -1));
         $value = (int) $memoryLimit;
 

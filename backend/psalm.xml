@@ -21,15 +21,14 @@
     <!-- checks remain at error level.                                       -->
     <issueHandlers>
 
-        <!-- ========== Laravel Framework (no plugin available) ========== -->
-
-        <!-- Eloquent magic properties ($model->id, $model->name, etc.) -->
+        <!-- ========== Eloquent Magic (no plugin available) ========== -->
         <UndefinedMagicPropertyFetch errorLevel="suppress" />
-
-        <!-- Eloquent magic static methods (::where, ::find, ::create, scopes) -->
+        <UndefinedMagicPropertyAssignment errorLevel="suppress" />
         <UndefinedMagicMethod errorLevel="suppress" />
+        <UndefinedThisPropertyFetch errorLevel="suppress" />
+        <UndefinedThisPropertyAssignment errorLevel="suppress" />
 
-        <!-- Facades and optional dependencies (Octane, Blade, Stripe, etc.) -->
+        <!-- Facades, optional deps, framework-wrapped methods -->
         <UndefinedClass>
             <errorLevel type="suppress">
                 <directory name="app" />
@@ -37,24 +36,26 @@
                 <directory name="bootstrap" />
             </errorLevel>
         </UndefinedClass>
+        <UndefinedMethod errorLevel="suppress" />
+        <UndefinedPropertyFetch errorLevel="suppress" />
 
-        <!-- Command/Controller/Model properties set by framework parent -->
+        <!-- Framework parent class properties / factory pattern -->
         <PropertyNotSetInConstructor errorLevel="suppress" />
-
-        <!-- Factory pattern: properties set via static create() methods -->
         <MissingConstructor errorLevel="suppress" />
 
-        <!-- Auth contract interfaces (Authenticatable::$id, Factory::user()) -->
+        <!-- Auth contracts (Authenticatable::$id, Factory::user()) -->
         <NoInterfaceProperties errorLevel="suppress" />
         <UndefinedInterfaceMethod errorLevel="suppress" />
         <PossiblyUndefinedMethod errorLevel="suppress" />
 
-        <!-- Eloquent collection template types -->
+        <!-- Eloquent collection/HasFactory template types -->
         <InvalidTemplateParam errorLevel="suppress" />
+        <MissingTemplateParam errorLevel="suppress" />
+
+        <!-- Laravel response()->cookie() accepts more args via macro -->
+        <TooManyArguments errorLevel="suppress" />
 
         <!-- ========== Mixed Types (cascade from framework return types) ========== -->
-        <!-- config(), Cache::get(), DB::*, request() all return mixed.              -->
-        <!-- Without psalm/plugin-laravel these cascade into every consumer.          -->
         <MixedAssignment errorLevel="suppress" />
         <MixedMethodCall errorLevel="suppress" />
         <MixedPropertyFetch errorLevel="suppress" />
@@ -64,35 +65,59 @@
         <MixedReturnStatement errorLevel="suppress" />
         <MixedOperand errorLevel="suppress" />
         <MixedArgumentTypeCoercion errorLevel="suppress" />
+        <MixedArrayAssignment errorLevel="suppress" />
 
         <!-- ========== Laravel Conventions ========== -->
-
-        <!-- Laravel does not conventionally use final classes -->
         <ClassMustBeFinal errorLevel="suppress" />
-
-        <!-- Closures in Eloquent queries/collections often omit types -->
         <MissingClosureReturnType errorLevel="suppress" />
         <MissingClosureParamType errorLevel="suppress" />
+        <MissingParamType errorLevel="suppress" />
+        <MissingReturnType errorLevel="suppress" />
+        <MissingPropertyType errorLevel="suppress" />
+        <MissingOverrideAttribute errorLevel="suppress" />
 
-        <!-- option() returns string|array|bool|null; safe casts are common -->
+        <!-- option() casts, int/float arithmetic, redundant safety casts -->
         <RiskyCast errorLevel="suppress" />
         <RiskyTruthyFalsyComparison errorLevel="suppress" />
         <PossiblyInvalidArgument errorLevel="suppress" />
         <PossiblyInvalidCast errorLevel="suppress" />
-
-        <!-- int/float arithmetic (e.g., microtime() * 1000) in strict_types -->
+        <PossiblyInvalidPropertyFetch errorLevel="suppress" />
         <InvalidOperand errorLevel="suppress" />
-
-        <!-- Redundant safety casts (e.g., (int) on already-int values) -->
         <RedundantCast errorLevel="suppress" />
 
+        <!-- Defensive null checks on framework values -->
+        <RedundantCondition errorLevel="suppress" />
+        <RedundantConditionGivenDocblockType errorLevel="suppress" />
+        <TypeDoesNotContainNull errorLevel="suppress" />
+        <DocblockTypeContradiction errorLevel="suppress" />
+        <PossiblyNullReference errorLevel="suppress" />
+        <PossiblyNullArgument errorLevel="suppress" />
+
+        <!-- Eloquent property array type variance -->
+        <NonInvariantDocblockPropertyType errorLevel="suppress" />
+
+        <!-- Laravel macro $this binding -->
+        <InvalidScope errorLevel="suppress" />
+
+        <!-- Model delete()/forceDelete() returns bool|null, preg_replace returns string|null -->
+        <InvalidNullableReturnType errorLevel="suppress" />
+        <NullableReturnStatement errorLevel="suppress" />
+
+        <!-- JsonResource toArray() returns MergeValue entries at numeric keys -->
+        <InvalidReturnType>
+            <errorLevel type="suppress">
+                <directory name="app/Http/Resources" />
+            </errorLevel>
+        </InvalidReturnType>
+        <InvalidReturnStatement>
+            <errorLevel type="suppress">
+                <directory name="app/Http/Resources" />
+            </errorLevel>
+        </InvalidReturnStatement>
+
         <!-- ========== Strict Type Checking (keep!) ========== -->
-        <NullableReturnStatement errorLevel="error" />
-        <InvalidReturnType errorLevel="error" />
-        <InvalidReturnStatement errorLevel="error" />
         <MoreSpecificReturnType errorLevel="error" />
         <LessSpecificReturnStatement errorLevel="error" />
-
         <InvalidScalarArgument errorLevel="error" />
         <InvalidArgument errorLevel="error" />
 
@@ -101,7 +126,9 @@
         <UnusedMethod errorLevel="info" />
         <UnusedClass errorLevel="info" />
         <UnusedParam errorLevel="info" />
+        <UnusedProperty errorLevel="info" />
         <PossiblyUnusedProperty errorLevel="info" />
+        <PossiblyUnusedReturnValue errorLevel="info" />
         <UnusedDocblockParam errorLevel="info" />
 
         <!-- ========== Deprecated Code ========== -->

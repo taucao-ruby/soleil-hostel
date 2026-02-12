@@ -75,19 +75,19 @@ class AdvancedRateLimitMiddleware
                 'message' => 'Too many requests. Please try again later.',
                 'retry_after' => $result['retry_after'],
             ], Response::HTTP_TOO_MANY_REQUESTS)
-                ->header('Retry-After', $result['retry_after'])
-                ->header('X-RateLimit-Limit', $this->getLimitValue($limits[0] ?? []))
-                ->header('X-RateLimit-Remaining', 0)
-                ->header('X-RateLimit-Reset', now()->addSeconds($result['retry_after'])->timestamp);
+                ->header('Retry-After', (string) $result['retry_after'])
+                ->header('X-RateLimit-Limit', (string) $this->getLimitValue($limits[0] ?? []))
+                ->header('X-RateLimit-Remaining', '0')
+                ->header('X-RateLimit-Reset', (string) now()->addSeconds($result['retry_after'])->timestamp);
         }
 
         // Rate limit passed, process request
         $response = $next($request);
 
         // Add rate limit headers to successful response
-        $response->header('X-RateLimit-Limit', $this->getLimitValue($limits[0] ?? []))
-            ->header('X-RateLimit-Remaining', $result['remaining'])
-            ->header('X-RateLimit-Reset', now()->addSeconds($result['reset_after'])->timestamp);
+        $response->header('X-RateLimit-Limit', (string) $this->getLimitValue($limits[0] ?? []))
+            ->header('X-RateLimit-Remaining', (string) $result['remaining'])
+            ->header('X-RateLimit-Reset', (string) now()->addSeconds($result['reset_after'])->timestamp);
 
         return $response;
     }

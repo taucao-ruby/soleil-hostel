@@ -57,6 +57,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Register custom PersonalAccessToken model for Sanctum
         // CRITICAL: This ensures our expiration logic is used
+        /** @psalm-suppress InvalidArgument -- PersonalAccessToken extends Sanctum's model */
         Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
 
         // ========== Register @nonce Blade directive ==========

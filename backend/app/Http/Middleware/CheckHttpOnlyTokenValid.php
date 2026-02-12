@@ -129,11 +129,11 @@ class CheckHttpOnlyTokenValid
         }
 
         $components = [
-            $request->header('User-Agent', ''),
-            $request->header('Accept-Language', ''),
-            $request->header('Accept-Encoding', ''),
+            $request->header('User-Agent') ?? '',
+            $request->header('Accept-Language') ?? '',
+            $request->header('Accept-Encoding') ?? '',
         ];
 
-        return hash('sha256', implode('|', $components));
+        return hash('sha256', implode('|', array_map('strval', $components)));
     }
 }

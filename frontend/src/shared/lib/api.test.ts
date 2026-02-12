@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import axios, { AxiosHeaders } from 'axios'
+import { AxiosHeaders } from 'axios'
 
 // Mock csrf utilities before importing api
 vi.mock('@/shared/utils/csrf', () => ({

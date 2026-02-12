@@ -118,6 +118,10 @@ final class CancellationService
                 ->lockForUpdate()
                 ->first();
 
+            if ($locked === null) {
+                throw BookingCancellationException::notCancellable($booking);
+            }
+
             // Re-check status after acquiring lock (another request may have completed)
             if ($locked->status === BookingStatus::CANCELLED) {
                 return $locked;
@@ -235,6 +239,7 @@ final class CancellationService
             // } catch (\Laravel\Cashier\Exceptions\IncompletePayment $e) {
             //     return $this->handleRefundFailure($booking, $e);
         } catch (\Stripe\Exception\ApiErrorException $e) {
+            /** @var \Throwable $e */
             return $this->handleRefundFailure($booking, $e);
         }
     }
@@ -312,6 +317,10 @@ final class CancellationService
                 ->where('id', $booking->id)
                 ->lockForUpdate()
                 ->first();
+
+            if ($locked === null) {
+                return $booking;
+            }
 
             if ($locked->status === BookingStatus::CANCELLED) {
                 return $locked;

@@ -107,6 +107,8 @@ class RoomAvailabilityService
      *     room: array<string, mixed>,
      *     bookings: list<array{check_in: string, check_out: string}>
      * }|null
+     *
+     * @psalm-suppress MixedReturnTypeCoercion
      */
     public function getRoomDetailWithBookings(int $roomId): ?array
     {

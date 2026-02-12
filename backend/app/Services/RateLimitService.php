@@ -50,6 +50,8 @@ class RateLimitService
      * @param  string  $key  Unique identifier (e.g., "user:123:booking")
      * @param  array<string, mixed>  $limits  Array of limit configurations
      * @return array{allowed: bool, remaining: int, reset_after: int, retry_after: int}
+     *
+     * @psalm-suppress MixedReturnTypeCoercion
      */
     public function check(string $key, array $limits): array
     {
@@ -273,7 +275,9 @@ LUA;
                     $remaining = $max - $count - 1;
                 } else {
                     $allowed = false;
-                    $oldest = min($this->memoryStore[$storeKey]);
+                    /** @var non-empty-array<int> $storeEntries */
+                    $storeEntries = $this->memoryStore[$storeKey];
+                    $oldest = min($storeEntries);
                     $resetAfterMin = max($resetAfterMin, $oldest + $window - $now);
                     $remaining = 0;
                 }
@@ -289,6 +293,7 @@ LUA;
                     ];
                 }
 
+                /** @psalm-suppress UnsupportedPropertyReferenceUsage */
                 $state = &$this->memoryStore[$storeKey];
                 $elapsed = $now - $state['last_refill'];
                 $state['tokens'] = min($state['tokens'] + ($elapsed * $refillRate), $capacity);

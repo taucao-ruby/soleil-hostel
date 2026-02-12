@@ -213,7 +213,7 @@ class RoomAvailabilityCache
             ->whereDoesntHave('bookings', function ($q) use ($checkIn, $checkOut) {
                 $q->where('status', '!=', 'cancelled')
                     ->whereBetween('check_out', [$checkIn, $checkOut])
-                    ->orWhere(function ($q) use ($checkIn, $checkOut) {
+                    ->orWhere(function (\Illuminate\Database\Eloquent\Builder $q) use ($checkIn, $checkOut) {
                         $q->whereBetween('check_in', [$checkIn, $checkOut->copy()->subDay()]);
                     });
             });
@@ -233,7 +233,7 @@ class RoomAvailabilityCache
         return ! $room->bookings()
             ->where('status', '!=', 'cancelled')
             ->whereBetween('check_out', [$checkIn, $checkOut])
-            ->orWhere(function ($q) use ($checkIn, $checkOut) {
+            ->orWhere(function (\Illuminate\Database\Eloquent\Builder $q) use ($checkIn, $checkOut) {
                 $q->whereBetween('check_in', [$checkIn, $checkOut->copy()->subDay()]);
             })
             ->exists();

@@ -43,6 +43,9 @@ parameters:
     - '#Template type .+ is not referenced in a parameter#'
     - '#contains unresolvable type#'
 
+    # ====== Defensive is_array() checks on already-typed arrays ======
+    - '#Call to function is_array\(\) with .* will always evaluate to true#'
+
     # ====== Defensive Coding (null-safe, null-coalesce, isset) ======
     - '#Using nullsafe .+ on non-nullable type#'
     - '#on left side of \?\? always exists and is not nullable#'

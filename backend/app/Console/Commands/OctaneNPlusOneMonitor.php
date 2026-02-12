@@ -12,7 +12,8 @@ class OctaneNPlusOneMonitor extends Command
 
     public function handle(): int
     {
-        $interval = $this->option('interval');
+        $intervalOption = $this->option('interval');
+        $interval = is_string($intervalOption) ? (int) $intervalOption : 5;
 
         $this->info('🚀 Starting N+1 Query Monitor for Octane');
         $this->info("Checking every {$interval} seconds...\n");

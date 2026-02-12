@@ -25,21 +25,6 @@
             </errorLevel>
         </UndefinedClass>
 
-        <!-- Laravel-specific exceptions -->
-        <InvalidStringClass>
-            <errorLevel type="suppress">
-                <directory name="config" />
-                <directory name="routes" />
-            </errorLevel>
-        </InvalidStringClass>
-
-        <!-- Undefined methods on facades -->
-        <UndefinedMethod>
-            <errorLevel type="suppress">
-                <directory name="config" />
-            </errorLevel>
-        </UndefinedMethod>
-
         <!-- Report unused code -->
         <UnusedVariable errorLevel="info" />
         <UnusedMethod errorLevel="info" />

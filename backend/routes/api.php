@@ -101,23 +101,23 @@ Route::post('/contact', [ContactController::class, 'store'])->middleware('thrott
 
 // Verification notice (required by Laravel - named route)
 Route::get('/email/verify', [EmailVerificationController::class, 'notice'])
-    ->middleware(['check_token_valid'])
-    ->name('verification.notice');
+    ->name('verification.notice')
+    ->middleware(['check_token_valid']);
 
 // Verify email (signed URL from verification email)
 Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
-    ->middleware(['check_token_valid', 'signed'])
-    ->name('verification.verify');
+    ->name('verification.verify')
+    ->middleware(['check_token_valid', 'signed']);
 
 // Resend verification email
 Route::post('/email/verification-notification', [EmailVerificationController::class, 'resend'])
-    ->middleware(['check_token_valid', 'throttle:email-verification'])
-    ->name('verification.send');
+    ->name('verification.send')
+    ->middleware(['check_token_valid', 'throttle:email-verification']);
 
 // Check verification status
 Route::get('/email/verification-status', [EmailVerificationController::class, 'status'])
-    ->middleware(['check_token_valid'])
-    ->name('verification.status');
+    ->name('verification.status')
+    ->middleware(['check_token_valid']);
 
 // ========== PROTECTED ROUTES (Require valid token) ==========
 //

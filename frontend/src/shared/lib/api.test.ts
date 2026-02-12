@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import axios from 'axios'
+import axios, { AxiosHeaders } from 'axios'
 
 // Mock csrf utilities before importing api
 vi.mock('@/shared/utils/csrf', () => ({
@@ -13,7 +13,7 @@ import api from './api'
 
 interface RequestConfig {
   method: string
-  headers: axios.AxiosHeaders
+  headers: AxiosHeaders
   url: string
 }
 
@@ -44,7 +44,7 @@ describe('API Client', () => {
 
       const config: RequestConfig = {
         method: 'post',
-        headers: new axios.AxiosHeaders(),
+        headers: new AxiosHeaders(),
         url: '/test',
       }
 
@@ -65,7 +65,7 @@ describe('API Client', () => {
 
       const config: RequestConfig = {
         method: 'get',
-        headers: new axios.AxiosHeaders(),
+        headers: new AxiosHeaders(),
         url: '/test',
       }
 
@@ -86,7 +86,7 @@ describe('API Client', () => {
 
       const config: RequestConfig = {
         method: 'post',
-        headers: new axios.AxiosHeaders(),
+        headers: new AxiosHeaders(),
         url: '/test',
       }
 

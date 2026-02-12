@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', static function (): void {
-    echo Inspiring::quote() . PHP_EOL;
+    echo Inspiring::quote().PHP_EOL;
 })->purpose('Display an inspiring quote');
 
 /*

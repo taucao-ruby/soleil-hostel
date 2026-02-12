@@ -11,7 +11,10 @@
  * - DEV: Cache disabled, report XSS attempts to error log
  * - PROD: Cache enabled, strict config, report to monitoring service
  */
-$appEnv = getenv('APP_ENV') ?: ($_SERVER['APP_ENV'] ?? ($_ENV['APP_ENV'] ?? 'local'));
+$rawAppEnv = getenv('APP_ENV');
+$appEnv = $rawAppEnv !== false
+    ? $rawAppEnv
+    : (string) ($_SERVER['APP_ENV'] ?? ($_ENV['APP_ENV'] ?? 'local'));
 $isLocal = in_array(strtolower($appEnv), ['local', 'testing', 'dev'], true);
 
 $cachePath = sys_get_temp_dir().'/purifier';

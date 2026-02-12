@@ -112,7 +112,6 @@ return [
         'task_enable_coroutine' => true,        // Use coroutines in tasks
         'worker_num' => env('OCTANE_WORKERS', -1),  // -1 = auto (CPU cores)
         'max_request' => 500,                   // Recycle workers
-        'max_coroutines' => 30000,
         'enable_coroutine' => true,
         'http_compression' => true,             // Gzip responses
         'http_compression_level' => 6,
@@ -165,7 +164,7 @@ return [
 
     'watch' => explode(
         ',',
-        env('OCTANE_WATCH', 'app,bootstrap,config,database,resources,routes,storage')
+        (string) env('OCTANE_WATCH', 'app,bootstrap,config,database,resources,routes,storage')
     ),
 
     /*

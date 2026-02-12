@@ -55,7 +55,7 @@ class Booking extends Model
      * Dùng HTML Purifier whitelist, chứ không phải regex blacklist
      * (Regex XSS = 99% bypass. HTML Purifier = 0% bypass)
      */
-    public function getPurifiableFields()
+    public function getPurifiableFields(): array
     {
         return ['guest_name'];
     }
@@ -396,4 +396,3 @@ class Booking extends Model
             ->when($excludeBookingId, fn ($q, $excludeId) => $q->where('id', '!=', $excludeId));
     }
 }
-

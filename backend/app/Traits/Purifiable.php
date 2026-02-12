@@ -6,85 +6,105 @@ use App\Services\HtmlPurifierService;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Purifiable Trait
+ * Purifiable trait.
  *
- * Automatically purify HTML fields khi save + retrieve model
- *
- * Usage trong Model:
- * use Purifiable;
- * protected $purifiable = ['guest_name', 'message', 'content'];
- *
- * Khi save: save() => getAttribute('guest_name') return purified HTML
- * Khi retrieve: get() => automaticaly purified
+ * Automatically purifies configured HTML fields when models are persisted.
  */
 trait Purifiable
 {
     /**
-     * Fields to auto-purify
+     * Fields to auto-purify.
+     *
+     * @var list<string>
      */
     protected array $purifiable = [];
 
     /**
-     * Field overrides config (optional)
-     * Ví dụ: protected $purifiable_config = ['field' => ['allowed_elements' => [...]]]
+     * Per-field purifier config overrides.
+     *
+     * @var array<string, array<array-key, mixed>>
      */
     protected array $purifiable_config = [];
 
     /**
-     * Boot Purifiable trait - register callbacks
+     * Register model callbacks.
      */
     public static function bootPurifiable(): void
     {
-        // Saving: purify trước khi save DB
-        static::saving(function (Model $model) {
-            if (method_exists($model, 'getPurifiableFields')) {
-                $fields = $model->getPurifiableFields();
-                foreach ($fields as $field) {
-                    if ($model->isDirty($field) && $model->getAttribute($field) !== null) {
-                        $config = $model->getPurifiableConfig($field);
-                        $clean = HtmlPurifierService::purify(
-                            $model->getAttribute($field),
-                            $config
-                        );
-                        $model->setAttribute($field, $clean);
-                    }
+        static::saving(static function (Model $model): void {
+            if (! method_exists($model, 'getPurifiableFields')) {
+                return;
+            }
+
+            /** @var array<array-key, mixed> $fields */
+            $fields = $model->getPurifiableFields();
+            foreach ($fields as $field) {
+                if (! is_string($field) || ! $model->isDirty($field)) {
+                    continue;
                 }
+
+                $value = $model->getAttribute($field);
+                if (! is_string($value)) {
+                    continue;
+                }
+
+                $config = method_exists($model, 'getPurifiableConfig')
+                    ? $model->getPurifiableConfig($field)
+                    : [];
+
+                if (! is_array($config)) {
+                    $config = [];
+                }
+
+                $model->setAttribute(
+                    $field,
+                    HtmlPurifierService::purify($value, $config)
+                );
             }
         });
 
-        // Retrieved: purify khi get từ DB (optional, vì đã clean khi save)
-        // Bật nếu cần extra safety hoặc nếu có old data chưa purified
-        static::retrieved(function (Model $model) {
+        static::retrieved(static function (Model $model): void {
             if (method_exists($model, 'getPurifiableFields')) {
-                // Optional: auto-purify on retrieve (tốn performance, usually not needed)
-                // Vì DB đã clean rồi, chỉ purify nếu manually set attribute
+                // Keep hook for optional retrieve-time purification.
             }
         });
     }
 
     /**
-     * Get list of fields to purify
+     * @return list<string>
      */
     public function getPurifiableFields(): array
     {
-        return $this->purifiable ?? [];
+        /** @var list<string> $fields */
+        $fields = array_values(array_filter(
+            $this->purifiable,
+            static fn ($field): bool => is_string($field)
+        ));
+
+        return $fields;
     }
 
     /**
-     * Get purify config cho field (optional override)
+     * @return array<array-key, mixed>
      */
     public function getPurifiableConfig(string $field): array
     {
-        return $this->purifiable_config[$field] ?? [];
+        $config = $this->purifiable_config[$field] ?? [];
+
+        return is_array($config) ? $config : [];
     }
 
     /**
-     * Mutator: Auto purify when setting attribute
-     * Gọi $model->setAttribute('field', $value) => auto-purify
+     * @param  mixed  $key
+     * @param  mixed  $value
      */
     public function setAttribute($key, $value): static
     {
-        if (in_array($key, $this->purifiable ?? []) && is_string($value)) {
+        if (! is_string($key)) {
+            return parent::setAttribute((string) $key, $value);
+        }
+
+        if (in_array($key, $this->getPurifiableFields(), true) && is_string($value)) {
             $value = HtmlPurifierService::purify(
                 $value,
                 $this->getPurifiableConfig($key)
@@ -95,20 +115,15 @@ trait Purifiable
     }
 
     /**
-     * Accessor: Return clean HTML (optional, vì đã clean saat save)
-     * Dùng để ensure double-safety nếu cần
+     * @param  mixed  $key
+     * @return mixed
      */
     public function getAttribute($key)
     {
-        $value = parent::getAttribute($key);
+        if (! is_string($key)) {
+            return null;
+        }
 
-        // Không auto-purify on retrieve nếu không cần
-        // (vì đã clean saat save)
-        // Uncomment nếu muốn extra safety:
-        // if (in_array($key, $this->purifiable ?? []) && is_string($value)) {
-        //     $value = HtmlPurifierService::purify($value);
-        // }
-
-        return $value;
+        return parent::getAttribute($key);
     }
 }

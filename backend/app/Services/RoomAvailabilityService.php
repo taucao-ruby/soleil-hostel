@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\Booking;
 use App\Models\Room;
 use App\Repositories\Contracts\RoomRepositoryInterface;
 use App\Traits\HasCacheTagSupport;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -100,33 +102,53 @@ class RoomAvailabilityService
      * - Key: room-availability:detail:{roomId}:bookings
      * - Includes active bookings list
      * - TTL: 300s (5 minutes)
+     *
+     * @return array{
+     *     room: array<string, mixed>,
+     *     bookings: list<array{check_in: string, check_out: string}>
+     * }|null
      */
     public function getRoomDetailWithBookings(int $roomId): ?array
     {
         $cacheKey = "room-availability:detail:{$roomId}:bookings";
 
-        $fetchData = function () use ($roomId) {
+        $fetchData = function () use ($roomId): ?array {
             $room = $this->roomRepository->findByIdWithConfirmedBookings($roomId);
 
-            if (! $room) {
+            if (! $room instanceof Room) {
                 return null;
+            }
+
+            /** @var list<array{check_in: string, check_out: string}> $bookings */
+            $bookings = [];
+
+            foreach ($room->bookings as $booking) {
+                if (! $booking instanceof Booking) {
+                    continue;
+                }
+
+                $bookings[] = [
+                    'check_in' => $this->normalizeDate($booking->check_in),
+                    'check_out' => $this->normalizeDate($booking->check_out),
+                ];
             }
 
             return [
                 'room' => $room->only(['id', 'name', 'price', 'max_guests']),
-                'bookings' => $room->bookings->map(fn ($b) => [
-                    'check_in' => $b->check_in->format('Y-m-d'),
-                    'check_out' => $b->check_out->format('Y-m-d'),
-                ]),
+                'bookings' => $bookings,
             ];
         };
 
         if (! $this->supportsTags()) {
-            return Cache::remember($cacheKey, self::CACHE_TTL, $fetchData);
+            $cached = Cache::remember($cacheKey, self::CACHE_TTL, $fetchData);
+
+            return is_array($cached) ? $cached : null;
         }
 
-        return Cache::tags([self::CACHE_TAG, "room-availability-{$roomId}"])
+        $cached = Cache::tags([self::CACHE_TAG, "room-availability-{$roomId}"])
             ->remember($cacheKey, self::CACHE_TTL, $fetchData);
+
+        return is_array($cached) ? $cached : null;
     }
 
     /**
@@ -139,9 +161,9 @@ class RoomAvailabilityService
     {
         $cacheKey = "room-availability:available:{$roomId}:{$checkInDate}:{$checkOutDate}";
 
-        $checkAvailability = function () use ($roomId, $checkInDate, $checkOutDate) {
-            $room = Room::find($roomId);
-            if (! $room) {
+        $checkAvailability = function () use ($roomId, $checkInDate, $checkOutDate): bool {
+            $room = Room::query()->find($roomId);
+            if (! $room instanceof Room) {
                 return false;
             }
 
@@ -155,19 +177,23 @@ class RoomAvailabilityService
         };
 
         if (! $this->supportsTags()) {
-            return Cache::remember(
+            $cached = Cache::remember(
                 $cacheKey,
                 self::CACHE_TTL,
                 $checkAvailability
             );
+
+            return (bool) $cached;
         }
 
-        return Cache::tags([self::CACHE_TAG, "room-availability-{$roomId}"])
+        $cached = Cache::tags([self::CACHE_TAG, "room-availability-{$roomId}"])
             ->remember(
                 $cacheKey,
                 self::CACHE_TTL,
                 $checkAvailability
             );
+
+        return (bool) $cached;
     }
 
     /**
@@ -221,5 +247,14 @@ class RoomAvailabilityService
     public function invalidateRoomCache(int $roomId): void
     {
         $this->invalidateAvailability($roomId);
+    }
+
+    private function normalizeDate(mixed $value): string
+    {
+        if ($value instanceof DateTimeInterface) {
+            return $value->format('Y-m-d');
+        }
+
+        return \Carbon\Carbon::parse((string) $value)->format('Y-m-d');
     }
 }

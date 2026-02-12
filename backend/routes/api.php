@@ -31,7 +31,7 @@ Route::prefix('v1')->group(base_path('routes/api/v1.php'));
 Route::prefix('v2')->group(base_path('routes/api/v2.php'));
 
 // Legacy routes (no prefix) - proxy to v1 with deprecation headers
-require base_path('routes/api/legacy.php');
+require __DIR__.'/api/legacy.php';
 
 // ========== PUBLIC ROUTES (No authentication) ==========
 

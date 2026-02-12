@@ -10,7 +10,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
-class RoomService
+final class RoomService
 {
     use HasCacheTagSupport;
 
@@ -210,6 +210,8 @@ class RoomService
      * @return bool True if deleted successfully
      *
      * @throws OptimisticLockException If version mismatch detected
+     *
+     * @psalm-suppress PossiblyUnusedReturnValue
      */
     public function deleteWithOptimisticLock(Room $room, ?int $currentVersion = null): bool
     {

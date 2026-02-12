@@ -162,7 +162,7 @@ return [
 
         'options' => [
             'cluster' => env('REDIS_CLUSTER', 'redis'),
-            'prefix' => env('REDIS_PREFIX', Str::slug(env('APP_NAME', 'laravel'), '_').'_'),
+            'prefix' => env('REDIS_PREFIX', Str::slug((string) env('APP_NAME', 'laravel'), '_').'_'),
             'persistent' => env('REDIS_PERSISTENT', false),
             'lazy_connect' => env('REDIS_LAZY_CONNECT', true),
             'read_write_timeout' => 0,  // ← For blocking commands (required)

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -45,14 +46,14 @@ return Application::configure(basePath: dirname(__DIR__))
         // Checks: Accept header OR /api prefix
 
         // Handle validation exceptions (422)
-        $exceptions->render(function (ValidationException $e, $request) {
+        $exceptions->render(function (ValidationException $e, Request $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return ApiResponse::validationErrors($e->errors());
             }
         });
 
         // Handle model not found (404)
-        $exceptions->render(function (ModelNotFoundException $e, $request) {
+        $exceptions->render(function (ModelNotFoundException $e, Request $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 $model = class_basename($e->getModel());
 
@@ -61,7 +62,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         // Handle route not found (404)
-        $exceptions->render(function (NotFoundHttpException $e, $request) {
+        $exceptions->render(function (NotFoundHttpException $e, Request $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return ApiResponse::notFound('Endpoint not found.');
             }
@@ -71,7 +72,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Return 409 Conflict when concurrent modification is detected
         // Client should refresh data and retry the operation
         // NOTE: Maintains legacy format for backward compatibility
-        $exceptions->render(function (OptimisticLockException $e, $request) {
+        $exceptions->render(function (OptimisticLockException $e, Request $request) {
             return response()->json([
                 'error' => 'resource_out_of_date',
                 'message' => 'The room has been modified by another user. Please refresh and try again.',
@@ -79,14 +80,14 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         // Handle authorization exceptions (403)
-        $exceptions->render(function (AuthorizationException $e, $request) {
+        $exceptions->render(function (AuthorizationException $e, Request $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return ApiResponse::forbidden('This action is unauthorized.');
             }
         });
 
         // Handle authentication exceptions (401)
-        $exceptions->render(function (AuthenticationException $e, $request) {
+        $exceptions->render(function (AuthenticationException $e, Request $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return ApiResponse::unauthorized('Unauthenticated. Please log in.');
             }

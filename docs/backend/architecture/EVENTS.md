@@ -64,6 +64,30 @@ class BookingUpdated
 
 ---
 
+### BookingCancelled
+
+Fired when a booking is cancelled (via CancellationService).
+
+```php
+// App\Events\BookingCancelled
+class BookingCancelled
+{
+    use Dispatchable, SerializesModels;
+
+    public function __construct(
+        public Booking $booking
+    ) {}
+}
+```
+
+**Dispatched by:** `CancellationService::cancel()`
+
+**Listeners:**
+
+- `SendBookingCancellation` - Sends cancellation notification to guest
+
+---
+
 ### BookingDeleted
 
 Fired when a booking is soft-deleted.
@@ -246,9 +270,14 @@ Events are registered in `EventServiceProvider`:
 protected $listen = [
     BookingCreated::class => [
         InvalidateCacheOnBookingChange::class,
+        SendBookingConfirmation::class,
     ],
     BookingUpdated::class => [
         InvalidateCacheOnBookingUpdated::class,
+        SendBookingUpdateNotification::class,
+    ],
+    BookingCancelled::class => [
+        SendBookingCancellation::class,
     ],
     BookingDeleted::class => [
         InvalidateCacheOnBookingDeleted::class,

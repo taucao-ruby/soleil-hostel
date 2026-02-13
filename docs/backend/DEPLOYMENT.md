@@ -9,7 +9,7 @@
 ## Assumptions
 
 - Deployment target: Docker containers (backend + queue workers)
-- Database: MySQL or PostgreSQL with Laravel migrations
+- Database: PostgreSQL 16 with Laravel migrations (MySQL not supported)
 - Cache/Queue: Redis
 - CI/CD: GitHub Actions (or manual fallback)
 - Zero-downtime goal via rolling container replacement

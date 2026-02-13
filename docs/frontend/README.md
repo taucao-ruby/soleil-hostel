@@ -6,39 +6,36 @@
 
 | Document                                               | Description                                        |
 | ------------------------------------------------------ | -------------------------------------------------- |
-| [ARCHITECTURE_OVERVIEW.md](./ARCHITECTURE_OVERVIEW.md) | Tổng quan kiến trúc và nguyên tắc thiết kế         |
-| [APP_LAYER.md](./APP_LAYER.md)                         | App Layer - Cấu hình ứng dụng cốt lõi              |
-| [FEATURES_LAYER.md](./FEATURES_LAYER.md)               | Features Layer - Logic nghiệp vụ                   |
-| [SERVICES_LAYER.md](./SERVICES_LAYER.md)               | Services Layer - API và authentication             |
-| [SHARED_LAYER.md](./SHARED_LAYER.md)                   | Shared Layer - Components và utilities tái sử dụng |
-| [TYPES_LAYER.md](./TYPES_LAYER.md)                     | Types Layer - Định nghĩa types và schemas          |
-| [UTILS_LAYER.md](./UTILS_LAYER.md)                     | Utils Layer - Utilities và constants               |
-| [CONFIGURATION.md](./CONFIGURATION.md)                 | Configuration Files - Cấu hình build và dev tools  |
-| [TESTING.md](./TESTING.md)                             | Testing Configuration - E2E testing với Playwright |
-| [PERFORMANCE_SECURITY.md](./PERFORMANCE_SECURITY.md)   | Performance & Security Best Practices              |
+| [ARCHITECTURE.md](./ARCHITECTURE.md)                   | Architecture overview and design principles        |
+| [APP_LAYER.md](./APP_LAYER.md)                         | App shell - routing, layout, error boundary        |
+| [FEATURES_LAYER.md](./FEATURES_LAYER.md)               | Business features - auth, booking, rooms, locations|
+| [SERVICES_LAYER.md](./SERVICES_LAYER.md)               | API client, authentication, CSRF protection        |
+| [SHARED_LAYER.md](./SHARED_LAYER.md)                   | Reusable UI components and utility libraries       |
+| [TYPES_LAYER.md](./TYPES_LAYER.md)                     | TypeScript interfaces and type definitions         |
+| [UTILS_LAYER.md](./UTILS_LAYER.md)                     | Toast notifications and web vitals monitoring      |
+| [CONFIGURATION.md](./CONFIGURATION.md)                 | Build config - Vite, TypeScript, Tailwind, ESLint  |
+| [TESTING.md](./TESTING.md)                             | Testing - Vitest unit + Playwright E2E             |
+| [PERFORMANCE_SECURITY.md](./PERFORMANCE_SECURITY.md)   | Performance & security practices                   |
 | [DEPLOYMENT.md](./DEPLOYMENT.md)                       | Deployment & DevOps - Docker, CI/CD                |
 
 ---
 
 ## Tech Stack
 
-| Component     | Technology       | Version | Purpose                                                  |
-| ------------- | ---------------- | ------- | -------------------------------------------------------- |
-| UI Framework  | React            | 19      | Modern component-based UI with concurrent features       |
-| Language      | TypeScript       | 5.x     | Type-safe development with strict compilation            |
-| Build Tool    | Vite             | 6.x     | Fast HMR, optimized bundling, and modern tooling         |
-| Styling       | TailwindCSS      | 3.x     | Utility-first CSS framework for rapid UI development     |
-| HTTP Client   | Axios            | 1.x     | Robust HTTP client with interceptors and error handling  |
-| Routing       | React Router     | 7.x     | Declarative routing with nested layouts and lazy loading |
-| Forms         | React Hook Form  | -       | Efficient form handling (used in features)               |
-| Validation    | Zod              | 4.x     | Runtime type validation and schema parsing               |
-| Animation     | Framer Motion    | 12.x    | Smooth animations and transitions                        |
-| Date Picker   | React DatePicker | 9.x     | Accessible date selection component                      |
-| Notifications | React Toastify   | 11.x    | User feedback and toast notifications                    |
-| i18n          | react-i18next    | 16.x    | Internationalization support                             |
-| Testing       | Playwright       | Latest  | E2E testing framework                                    |
-| Linting       | ESLint           | 9.x     | Code quality and consistency                             |
-| Formatting    | Prettier         | 3.x     | Code formatting automation                               |
+| Component     | Technology     | Version | Purpose                                                  |
+| ------------- | -------------- | ------- | -------------------------------------------------------- |
+| UI Framework  | React          | 19      | Modern component-based UI with concurrent features       |
+| Language      | TypeScript     | 5.x     | Type-safe development with strict compilation            |
+| Build Tool    | Vite           | 6.x     | Fast HMR, optimized bundling, and modern tooling         |
+| Styling       | TailwindCSS    | 3.x     | Utility-first CSS framework for rapid UI development     |
+| HTTP Client   | Axios          | 1.x     | Robust HTTP client with interceptors and error handling  |
+| Routing       | React Router   | 7.x     | Declarative routing with nested layouts and lazy loading |
+| Notifications | React Toastify | 11.x    | User feedback and toast notifications                    |
+| Metrics       | Web Vitals     | 5.x     | Core Web Vitals performance monitoring                   |
+| Unit Testing  | Vitest         | Latest  | Unit and integration testing framework                   |
+| E2E Testing   | Playwright     | Latest  | End-to-end testing (scaffolded)                          |
+| Linting       | ESLint         | 9.x     | Code quality and consistency                             |
+| Formatting    | Prettier       | 3.x     | Code formatting automation                               |
 
 ---
 
@@ -49,24 +46,22 @@ frontend/
 ├── src/
 │   ├── app/                # Application core & configuration
 │   │   ├── App.tsx         # Root component with error boundaries
-│   │   ├── providers.tsx   # Context providers (Auth, future: Theme, i18n)
-│   │   ├── router.tsx      # React Router v7 configuration with lazy loading
+│   │   ├── router.tsx      # React Router v7 with lazy loading + AuthLayout
 │   │   └── Layout.tsx      # Main layout with header/footer
-│   ├── assets/             # Static assets (images, icons)
 │   ├── features/           # Feature-sliced business logic
 │   │   ├── auth/           # Authentication (login, register, context)
 │   │   ├── booking/        # Booking management (form, validation)
+│   │   ├── locations/      # Location listing and details
 │   │   └── rooms/          # Room listing and details
-│   ├── pages/              # Page components (HomePage)
-│   ├── services/           # API services and HTTP clients
+│   ├── pages/              # Page components (HomePage, NotFoundPage)
 │   ├── shared/             # Shared utilities and components
-│   │   ├── components/     # Reusable UI components
-│   │   ├── lib/            # Utility functions
-│   │   ├── styles/         # Global styles and Tailwind config
-│   │   └── utils/          # Helper functions
+│   │   ├── components/     # Reusable UI components (ui/, layout/, feedback/)
+│   │   ├── lib/            # API client and navigation helper
+│   │   └── utils/          # CSRF and security utilities
 │   ├── types/              # TypeScript type definitions
-│   └── utils/              # Core utilities (web vitals, etc.)
-├── tests/                  # E2E tests (Playwright)
+│   ├── utils/              # Core utilities (toast, web vitals)
+│   └── test/               # Test setup configuration
+├── tests/                  # E2E tests (Playwright, scaffolded)
 ├── public/                 # Public assets served by Vite
 └── package.json
 ```
@@ -134,18 +129,18 @@ npm run format
 
 ### 📅 Booking System
 
-- **Interactive Booking Form**: Date pickers with validation
+- **Interactive Booking Form**: Date inputs with validation
 - **Guest Information**: Comprehensive booking details
-- **Real-time Validation**: Zod schema validation
-- **Booking Status Tracking**: Pending, confirmed, completed
+- **Real-time Validation**: Custom validation functions
+- **Booking Status Tracking**: Pending, confirmed, cancelled
 
 ### 🎨 UI/UX Excellence
 
 - **Professional Design System**: Consistent typography and spacing
 - **Mobile-First Responsive**: Optimized for all devices
 - **Accessibility Compliant**: WCAG 2.1 Level AA standards
-- **Smooth Animations**: Framer Motion transitions
-- **Dark/Light Mode Ready**: Theme provider architecture
+- **Loading States**: Skeleton cards and spinners
+- **Error Boundaries**: Graceful error recovery
 
 ---
 
@@ -162,7 +157,7 @@ npm run format
 - **HttpOnly Cookies**: Server-side token storage
 - **CSRF Tokens**: Laravel Sanctum protection
 - **Secure Headers**: XSS and injection prevention
-- **Input Sanitization**: Zod validation on all inputs
+- **Input Sanitization**: Custom validation on all inputs
 
 ### API Security
 
@@ -224,7 +219,7 @@ VITE_ANALYTICS_ID=your_analytics_id
 | `npm run lint`     | Run ESLint code quality checks      |
 | `npm run lint:fix` | Auto-fix ESLint issues              |
 | `npm run format`   | Format code with Prettier           |
-| `npm run test`     | Run Playwright E2E tests            |
+| `npm run test`     | Run Vitest unit tests               |
 
 ---
 
@@ -256,18 +251,18 @@ npm run dev:docker  # Docker development environment
 
 ## Testing Strategy
 
-### E2E Testing with Playwright
+### Unit & Integration Testing (Vitest + Testing Library)
 
-- **User Journey Tests**: Complete booking flows
-- **Authentication Tests**: Login/logout scenarios
-- **Cross-browser Testing**: Chrome, Firefox, Safari
-- **Mobile Testing**: Responsive design validation
+- **Component Tests**: 11 test files, 142 tests passing
+- **Auth Tests**: Login, register, context lifecycle
+- **Booking Tests**: Form validation, date logic
+- **UI Tests**: Button, Input component behavior
+- **Security Tests**: CSRF, XSS sanitization, API interceptors
 
-### Component Testing (Future)
+### E2E Testing (Playwright - Scaffolded)
 
-- **Unit Tests**: Individual component logic
-- **Integration Tests**: Component interactions
-- **Visual Regression**: UI consistency checks
+- **Booking Flows**: End-to-end booking spec
+- **Status**: Requires running application for execution
 
 ---
 
@@ -357,4 +352,4 @@ npm run build
 | `npm run lint`     | Run ESLint code quality checks      |
 | `npm run lint:fix` | Auto-fix ESLint issues              |
 | `npm run format`   | Format code with Prettier           |
-| `npm run test`     | Run Playwright E2E tests            |
+| `npm run test`     | Run Vitest unit tests               |

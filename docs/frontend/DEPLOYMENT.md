@@ -18,7 +18,7 @@ Deployment strategy bao gồm:
 
 ```dockerfile
 # backend/Dockerfile
-FROM php:8.2-fpm-alpine
+FROM php:8.3-cli AS builder
 
 # Install system dependencies
 RUN apk add --no-cache \
@@ -84,16 +84,16 @@ CMD ["/usr/local/bin/entrypoint.sh"]
 
 ```dockerfile
 # frontend/Dockerfile
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS deps
 
 # Set working directory
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package.json pnpm-lock.yaml ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN corepack enable && pnpm install --frozen-lockfile
 
 # Copy source code
 COPY . .
@@ -131,7 +131,7 @@ version: "3.8"
 services:
   # PostgreSQL Database
   postgres:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     container_name: soleil-postgres
     environment:
       POSTGRES_DB: soleil_hostel
@@ -516,14 +516,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "18"
+          node-version: "20"
           cache: "npm"
           cache-dependency-path: "frontend/package-lock.json"
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.2"
+          php-version: "8.3"
           extensions: pdo, pdo_pgsql, redis
           tools: composer:v2
 

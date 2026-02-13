@@ -1,0 +1,107 @@
+{
+  "allow_bypass_env": "SKIP_HOOKS",
+  "max_file_size_bytes": 2097152,
+  "blocked_paths": [
+    ".env",
+    ".env.*",
+    "**/.env",
+    "**/.env.*",
+    "**/*.pem",
+    "**/*.key",
+    "**/id_rsa*",
+    "backend/storage/**",
+    "backend/bootstrap/cache/**",
+    "frontend/node_modules/**",
+    "backend/vendor/**",
+    ".git/**"
+  ],
+  "blocked_patterns": [
+    {
+      "name": "aws_access_key_id",
+      "source": "\\b(?:AKIA|ASIA)[0-9A-Z]{16}\\b",
+      "flags": "i"
+    },
+    {
+      "name": "aws_secret_access_key",
+      "source": "aws(?:_|\\s)?secret(?:_|\\s)?access(?:_|\\s)?key.{0,20}[=:].{0,5}[A-Za-z0-9/+=]{40}",
+      "flags": "i"
+    },
+    {
+      "name": "stripe_secret_key",
+      "source": "\\bsk_(?:live|test)_[0-9A-Za-z]{16,}\\b",
+      "flags": "i"
+    },
+    {
+      "name": "openai_api_key",
+      "source": "\\bsk-(?:proj-|live-|test-)?[A-Za-z0-9_-]{20,}\\b",
+      "flags": "i"
+    },
+    {
+      "name": "jwt_token",
+      "source": "\\beyJ[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\b",
+      "flags": "i"
+    },
+    {
+      "name": "private_key_block",
+      "source": "-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----",
+      "flags": "i"
+    }
+  ],
+  "verify_targets": {
+    "backend_tests": {
+      "cwd": "backend",
+      "command": "php",
+      "args": [
+        "artisan",
+        "test"
+      ],
+      "timeout_ms": 900000
+    },
+    "frontend_typecheck": {
+      "cwd": "frontend",
+      "command": "npx",
+      "args": [
+        "tsc",
+        "--noEmit"
+      ],
+      "timeout_ms": 600000
+    },
+    "frontend_unit_tests": {
+      "cwd": "frontend",
+      "command": "npx",
+      "args": [
+        "vitest",
+        "run"
+      ],
+      "timeout_ms": 600000
+    },
+    "docker_compose_config": {
+      "cwd": ".",
+      "command": "docker",
+      "args": [
+        "compose",
+        "config"
+      ],
+      "timeout_ms": 180000,
+      "optional": true
+    },
+    "backend_lint": {
+      "cwd": "backend",
+      "command": "php",
+      "args": [
+        "vendor/bin/pint",
+        "--test"
+      ],
+      "timeout_ms": 300000
+    },
+    "frontend_lint": {
+      "cwd": "frontend",
+      "command": "npm",
+      "args": [
+        "run",
+        "lint"
+      ],
+      "timeout_ms": 300000
+    }
+  }
+}

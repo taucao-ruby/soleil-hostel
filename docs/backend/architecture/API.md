@@ -93,6 +93,37 @@ To migrate from legacy to v1 endpoints, simply add `/v1` prefix:
 | POST   | `/auth/logout-httponly`  | Logout        | Cookie |
 | GET    | `/auth/me-httponly`      | Get user      | Cookie |
 
+### Unified Auth Endpoints (Mode-Agnostic)
+
+Auto-detects Bearer token or HttpOnly cookie. Recommended for new clients.
+
+| Method | Endpoint                   | Description        | Auth     |
+| ------ | -------------------------- | ------------------ | -------- |
+| GET    | `/auth/unified/me`         | Get current user   | Required |
+| POST   | `/auth/unified/logout`     | Logout session     | Required |
+| POST   | `/auth/unified/logout-all` | Logout all devices | Required |
+
+### Email Verification
+
+| Method | Endpoint                           | Description            | Auth     |
+| ------ | ---------------------------------- | ---------------------- | -------- |
+| GET    | `/email/verify`                    | Verification notice    | Required |
+| GET    | `/email/verify/{id}/{hash}`        | Verify email (signed)  | Required |
+| POST   | `/email/verification-notification` | Resend verification    | Required |
+| GET    | `/email/verification-status`       | Check status           | Required |
+
+---
+
+## Locations
+
+### Public Endpoints
+
+| Method | Endpoint                            | Description           | Rate Limit |
+| ------ | ----------------------------------- | --------------------- | ---------- |
+| GET    | `/v1/locations`                     | List all locations    | -          |
+| GET    | `/v1/locations/{slug}`              | Get location by slug  | -          |
+| GET    | `/v1/locations/{slug}/availability` | Location availability | -          |
+
 ---
 
 ## Rooms
@@ -153,6 +184,13 @@ To migrate from legacy to v1 endpoints, simply add `/v1` prefix:
 | PUT    | `/v1/bookings/{id}` | Update booking     | 10/min     |
 | DELETE | `/v1/bookings/{id}` | Cancel booking     | 10/min     |
 
+### Booking Status Endpoints
+
+| Method | Endpoint                      | Description     | Rate Limit | Auth  |
+| ------ | ----------------------------- | --------------- | ---------- | ----- |
+| POST   | `/v1/bookings/{id}/confirm`   | Confirm booking | 10/min     | Admin |
+| POST   | `/v1/bookings/{id}/cancel`    | Cancel booking  | 10/min     | User  |
+
 ### Admin Endpoints
 
 | Method | Endpoint                          | Description            | Auth  |
@@ -196,6 +234,8 @@ To migrate from legacy to v1 endpoints, simply add `/v1` prefix:
 
 ## Contact
 
+### Public Endpoint
+
 | Method | Endpoint   | Description         | Rate Limit |
 | ------ | ---------- | ------------------- | ---------- |
 | POST   | `/contact` | Submit contact form | 3/min      |
@@ -205,19 +245,40 @@ To migrate from legacy to v1 endpoints, simply add `/v1` prefix:
 {
   "name": "John Doe",
   "email": "john@example.com",
+  "subject": "Booking Question",
   "message": "I have a question about..."
 }
 ```
+
+### Admin Contact Message Endpoints
+
+| Method | Endpoint                               | Description       | Auth  |
+| ------ | -------------------------------------- | ----------------- | ----- |
+| GET    | `/v1/admin/contact-messages`           | List all messages | Admin |
+| PATCH  | `/v1/admin/contact-messages/{id}/read` | Mark as read      | Admin |
 
 ---
 
 ## Health Check
 
-| Method | Endpoint           | Description             |
-| ------ | ------------------ | ----------------------- |
-| GET    | `/health`          | Basic health check      |
-| GET    | `/health/detailed` | Detailed health + stats |
-| GET    | `/ping`            | Simple ping             |
+### Public Health Endpoints
+
+| Method | Endpoint        | Description                           |
+| ------ | --------------- | ------------------------------------- |
+| GET    | `/health`       | Basic health check                    |
+| GET    | `/health/live`  | Liveness probe (is process alive?)    |
+| GET    | `/health/ready` | Readiness probe (can accept traffic?) |
+| GET    | `/ping`         | Simple ping                           |
+
+### Admin Health Endpoints
+
+| Method | Endpoint           | Description              | Auth  |
+| ------ | ------------------ | ------------------------ | ----- |
+| GET    | `/health/detailed` | Full system health       | Admin |
+| GET    | `/health/full`     | Alias for detailed       | Admin |
+| GET    | `/health/db`       | Database health          | Admin |
+| GET    | `/health/cache`    | Cache (Redis) health     | Admin |
+| GET    | `/health/queue`    | Queue worker health      | Admin |
 
 ### Health Response
 
@@ -323,14 +384,17 @@ api → check_token_valid → role:admin
 
 ## Controllers
 
-| Controller                     | Responsibility                     |
-| ------------------------------ | ---------------------------------- |
-| `AuthController`               | Legacy Bearer token auth           |
-| `TokenAuthController`          | Token expiration auth (v2)         |
-| `HttpOnlyTokenController`      | HttpOnly cookie auth               |
-| `RoomController`               | Room CRUD with optimistic locking  |
-| `BookingController`            | Booking CRUD with pessimistic lock |
-| `AdminBookingController`       | Soft delete management             |
-| `ContactController`            | Contact form with HTML Purifier    |
-| `HealthCheckController`        | System health monitoring           |
-| `CspViolationReportController` | CSP violation logging              |
+| Controller                         | Responsibility                          |
+| ---------------------------------- | --------------------------------------- |
+| `AuthController`                   | Legacy Bearer token auth                |
+| `Auth\AuthController`              | Token expiration auth (v2)              |
+| `Auth\HttpOnlyTokenController`     | HttpOnly cookie auth                    |
+| `Auth\UnifiedAuthController`       | Mode-agnostic auth (Bearer/Cookie)      |
+| `Auth\EmailVerificationController` | Email verification flows                |
+| `LocationController`               | Location listing and availability       |
+| `RoomController`                   | Room CRUD with optimistic locking       |
+| `BookingController`                | Booking CRUD with pessimistic lock      |
+| `AdminBookingController`           | Soft delete management                  |
+| `ContactController`                | Contact form + admin message management |
+| `HealthController`                 | System health monitoring                |
+| `CspViolationReportController`     | CSP violation logging                   |

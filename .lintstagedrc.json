@@ -1,0 +1,8 @@
+{
+  "frontend/**/*.{js,jsx,ts,tsx}": [
+    "npx --prefix frontend eslint --fix --max-warnings=0"
+  ],
+  "frontend/**/*.{js,jsx,ts,tsx,json,css,scss,md}": [
+    "npx --prefix frontend prettier --write"
+  ]
+}

@@ -1,6 +1,6 @@
-# 📚 Soleil Hostel Documentation
+﻿# ðŸ“š Soleil Hostel Documentation
 
-> **Last Updated:** February 11, 2026 | **Tests:** 698+ backend tests (1958 assertions) + 140+ frontend unit tests | **Status:** Post-Audit v2 🔄
+> **Last Updated:** February 12, 2026 | **Tests:** 722 backend tests (2012 assertions) + 142 frontend unit tests | **Status:** Post-Audit v2 ðŸ"„
 
 ## Quick Navigation
 
@@ -16,12 +16,22 @@
 | **Frontend documentation**            | [Frontend Docs](./frontend/README.md)                             |
 | **Set up development environment**    | [Setup Guide](./backend/guides/ENVIRONMENT_SETUP.md)              |
 | **Run tests**                         | [Testing Guide](./backend/guides/TESTING.md)                      |
+| **Set up Git hooks**                  | [Development Hooks](./DEVELOPMENT_HOOKS.md)                       |
 | **Migrate to unified auth endpoints** | [Auth Migration Guide](./backend/guides/AUTH_MIGRATION.md)        |
-| **Migrate from API v1 to v2**         | [API v1→v2 Migration](./backend/guides/API_MIGRATION_V1_TO_V2.md) |
+| **Migrate from API v1 to v2**         | [API v1â†’v2 Migration](./backend/guides/API_MIGRATION_V1_TO_V2.md) |
 | **Browse interactive API docs**       | [API Reference (Redoc)](./api/index.html)                         |
 | **Download OpenAPI spec**             | [openapi.yaml](./api/openapi.yaml)                                |
 | **Review performance baselines**      | [Performance Baseline](./PERFORMANCE_BASELINE.md)                 |
 | **Run load tests**                    | [Performance Tests](../tests/performance/README.md)               |
+
+---
+
+## Project Memory
+
+- [COMPACT](./COMPACT.md)
+- [WORKLOG](./WORKLOG.md)
+- [skills/](../skills/)
+- [AGENTS.md](../AGENTS.md)
 
 ---
 
@@ -59,66 +69,66 @@ cd backend && php artisan test
 
 ## Documentation Structure
 
-```
+```text
 docs/
-├── README.md                         # This file (documentation index)
-├── ADR.md                            # Architecture Decision Records
-├── KNOWN_LIMITATIONS.md              # System constraints & tech debt
-├── OPERATIONAL_PLAYBOOK.md           # Incident runbooks
-├── API_DEPRECATION.md                # API versioning & deprecation
-├── DATABASE.md                       # Database schema & indexes
-├── PERFORMANCE_BASELINE.md           # Performance benchmarks & SLA targets
-├── api/                              # API documentation
-│   ├── index.html                    # Interactive API docs (Redoc)
-│   └── openapi.yaml                  # OpenAPI 3.1 specification
-├── backend/                          # Backend documentation
-│   ├── README.md                     # Backend index
-│   ├── architecture/                 # System design
-│   │   ├── API.md                    # Complete API reference
-│   │   ├── SERVICES.md               # Service layer architecture
-│   │   ├── REPOSITORIES.md           # Repository pattern
-│   │   ├── MIDDLEWARE.md             # Middleware pipeline
-│   │   ├── EVENTS.md                 # Events & listeners
-│   │   ├── POLICIES.md               # Authorization policies
-│   │   ├── JOBS.md                   # Queue jobs
-│   │   └── TRAITS_EXCEPTIONS.md      # Traits & exceptions
-│   ├── features/                     # Feature documentation
-│   │   ├── AUTHENTICATION.md         # Auth (Bearer + HttpOnly)
-│   │   ├── BOOKING.md                # Booking system
-│   │   ├── EMAIL_TEMPLATES.md        # Branded email templates
-│   │   ├── ROOMS.md                  # Room management
-│   │   ├── REVIEWS.md                # Reviews + XSS protection
-│   │   ├── RBAC.md                   # Role-based access
-│   │   ├── CACHING.md                # Redis cache layer
-│   │   └── OPTIMISTIC_LOCKING.md     # Concurrency control
-│   ├── guides/                       # How-to guides
-│   │   ├── ENVIRONMENT_SETUP.md      # Dev environment
-│   │   ├── TESTING.md                # Testing guide
-│   │   ├── PERFORMANCE.md            # Octane & N+1
-│   │   ├── DEPLOYMENT.md             # Docker & deployment
-│   │   ├── COMMANDS.md               # Artisan commands
-│   │   ├── MONITORING_LOGGING.md     # Observability & logging
-│   │   ├── EMAIL_NOTIFICATIONS.md    # Email & verification
-│   │   ├── AUTH_MIGRATION.md         # Auth endpoint migration guide
-│   │   └── API_MIGRATION_V1_TO_V2.md # API v1→v2 migration guide
-│   └── security/                     # Security documentation
-│       ├── HEADERS.md                # Security headers
-│       ├── XSS_PROTECTION.md         # HTML Purifier
-│       ├── RATE_LIMITING.md          # Rate limiting
-│       └── README.md                 # Security overview
-└── frontend/                         # Frontend documentation
-    ├── README.md                     # Frontend overview
-    ├── ARCHITECTURE.md               # Main architecture document
-    ├── APP_LAYER.md                  # App configuration layer
-    ├── FEATURES_LAYER.md             # Feature modules
-    ├── SERVICES_LAYER.md             # API services
-    ├── SHARED_LAYER.md               # Shared components
-    ├── TYPES_LAYER.md                # TypeScript types
-    ├── UTILS_LAYER.md                # Utility functions
-    ├── CONFIGURATION.md              # Build & dev config
-    ├── TESTING.md                    # Frontend testing
-    ├── PERFORMANCE_SECURITY.md       # Performance & security
-    └── DEPLOYMENT.md                 # Frontend deployment
+â”œâ”€â”€ README.md                         # This file (documentation index)
+â”œâ”€â”€ ADR.md                            # Architecture Decision Records
+â”œâ”€â”€ KNOWN_LIMITATIONS.md              # System constraints & tech debt
+â”œâ”€â”€ OPERATIONAL_PLAYBOOK.md           # Incident runbooks
+â”œâ”€â”€ API_DEPRECATION.md                # API versioning & deprecation
+â”œâ”€â”€ DATABASE.md                       # Database schema & indexes
+â”œâ”€â”€ PERFORMANCE_BASELINE.md           # Performance benchmarks & SLA targets
+â”œâ”€â”€ api/                              # API documentation
+â”‚   â”œâ”€â”€ index.html                    # Interactive API docs (Redoc)
+â”‚   â””â”€â”€ openapi.yaml                  # OpenAPI 3.1 specification
+â”œâ”€â”€ backend/                          # Backend documentation
+â”‚   â”œâ”€â”€ README.md                     # Backend index
+â”‚   â”œâ”€â”€ architecture/                 # System design
+â”‚   â”‚   â”œâ”€â”€ API.md                    # Complete API reference
+â”‚   â”‚   â”œâ”€â”€ SERVICES.md               # Service layer architecture
+â”‚   â”‚   â”œâ”€â”€ REPOSITORIES.md           # Repository pattern
+â”‚   â”‚   â”œâ”€â”€ MIDDLEWARE.md             # Middleware pipeline
+â”‚   â”‚   â”œâ”€â”€ EVENTS.md                 # Events & listeners
+â”‚   â”‚   â”œâ”€â”€ POLICIES.md               # Authorization policies
+â”‚   â”‚   â”œâ”€â”€ JOBS.md                   # Queue jobs
+â”‚   â”‚   â””â”€â”€ TRAITS_EXCEPTIONS.md      # Traits & exceptions
+â”‚   â”œâ”€â”€ features/                     # Feature documentation
+â”‚   â”‚   â”œâ”€â”€ AUTHENTICATION.md         # Auth (Bearer + HttpOnly)
+â”‚   â”‚   â”œâ”€â”€ BOOKING.md                # Booking system
+â”‚   â”‚   â”œâ”€â”€ EMAIL_TEMPLATES.md        # Branded email templates
+â”‚   â”‚   â”œâ”€â”€ ROOMS.md                  # Room management
+â”‚   â”‚   â”œâ”€â”€ REVIEWS.md                # Reviews + XSS protection
+â”‚   â”‚   â”œâ”€â”€ RBAC.md                   # Role-based access
+â”‚   â”‚   â”œâ”€â”€ CACHING.md                # Redis cache layer
+â”‚   â”‚   â””â”€â”€ OPTIMISTIC_LOCKING.md     # Concurrency control
+â”‚   â”œâ”€â”€ guides/                       # How-to guides
+â”‚   â”‚   â”œâ”€â”€ ENVIRONMENT_SETUP.md      # Dev environment
+â”‚   â”‚   â”œâ”€â”€ TESTING.md                # Testing guide
+â”‚   â”‚   â”œâ”€â”€ PERFORMANCE.md            # Octane & N+1
+â”‚   â”‚   â”œâ”€â”€ DEPLOYMENT.md             # Docker & deployment
+â”‚   â”‚   â”œâ”€â”€ COMMANDS.md               # Artisan commands
+â”‚   â”‚   â”œâ”€â”€ MONITORING_LOGGING.md     # Observability & logging
+â”‚   â”‚   â”œâ”€â”€ EMAIL_NOTIFICATIONS.md    # Email & verification
+â”‚   â”‚   â”œâ”€â”€ AUTH_MIGRATION.md         # Auth endpoint migration guide
+â”‚   â”‚   â””â”€â”€ API_MIGRATION_V1_TO_V2.md # API v1â†’v2 migration guide
+â”‚   â””â”€â”€ security/                     # Security documentation
+â”‚       â”œâ”€â”€ HEADERS.md                # Security headers
+â”‚       â”œâ”€â”€ XSS_PROTECTION.md         # HTML Purifier
+â”‚       â”œâ”€â”€ RATE_LIMITING.md          # Rate limiting
+â”‚       â””â”€â”€ README.md                 # Security overview
+â””â”€â”€ frontend/                         # Frontend documentation
+    â”œâ”€â”€ README.md                     # Frontend overview
+    â”œâ”€â”€ ARCHITECTURE.md               # Main architecture document
+    â”œâ”€â”€ APP_LAYER.md                  # App configuration layer
+    â”œâ”€â”€ FEATURES_LAYER.md             # Feature modules
+    â”œâ”€â”€ SERVICES_LAYER.md             # API services
+    â”œâ”€â”€ SHARED_LAYER.md               # Shared components
+    â”œâ”€â”€ TYPES_LAYER.md                # TypeScript types
+    â”œâ”€â”€ UTILS_LAYER.md                # Utility functions
+    â”œâ”€â”€ CONFIGURATION.md              # Build & dev config
+    â”œâ”€â”€ TESTING.md                    # Frontend testing
+    â”œâ”€â”€ PERFORMANCE_SECURITY.md       # Performance & security
+    â””â”€â”€ DEPLOYMENT.md                 # Frontend deployment
 ```
 
 ---
@@ -127,21 +137,21 @@ docs/
 
 | Component             | Status               | Tests          |
 | --------------------- | -------------------- | -------------- |
-| Authentication        | ✅ Complete          | 44 tests       |
-| Booking System        | ✅ Complete          | 60 tests       |
-| Booking Notifications | ✅ Complete          | 23 tests       |
-| Email Templates       | ✅ Complete          | 13 tests       |
-| Room Management       | ✅ Complete          | 151 tests      |
-| RBAC                  | ✅ Complete          | 47 tests       |
-| Security Headers      | ✅ Complete          | 14 tests       |
-| XSS Protection        | ✅ Complete          | 48 tests       |
-| Rate Limiting         | ✅ Complete          | 29 tests       |
-| Caching               | ✅ Complete          | 6 tests        |
-| Monitoring & Health   | ✅ Complete          | 30 tests       |
-| Optimistic Locking    | ✅ Complete          | 24 tests       |
-| Repository Layer      | ✅ Complete          | 53 tests       |
-| Email Verification    | ✅ Complete          | 26 tests       |
-| **Total**             | **✅ Post-Audit v2** | **698+ tests** |
+| Authentication        | âœ… Complete          | 44 tests       |
+| Booking System        | âœ… Complete          | 60 tests       |
+| Booking Notifications | âœ… Complete          | 23 tests       |
+| Email Templates       | âœ… Complete          | 13 tests       |
+| Room Management       | âœ… Complete          | 151 tests      |
+| RBAC                  | âœ… Complete          | 47 tests       |
+| Security Headers      | âœ… Complete          | 14 tests       |
+| XSS Protection        | âœ… Complete          | 48 tests       |
+| Rate Limiting         | âœ… Complete          | 29 tests       |
+| Caching               | âœ… Complete          | 6 tests        |
+| Monitoring & Health   | âœ… Complete          | 30 tests       |
+| Optimistic Locking    | âœ… Complete          | 24 tests       |
+| Repository Layer      | âœ… Complete          | 53 tests       |
+| Email Verification    | âœ… Complete          | 26 tests       |
+| **Total**             | **âœ… Post-Audit v2** | **722 tests**  |
 
 ## Tech Stack
 
@@ -151,13 +161,13 @@ docs/
 | Backend  | Laravel 11 + PHP 8.3                       |
 | Database | PostgreSQL 16                              |
 | Cache    | Redis 7                                    |
-| Testing  | PHPUnit + Playwright                       |
+| Testing  | PHPUnit + Vitest + Playwright              |
 
 ---
 
 ## Key Features
 
-### 🔐 Authentication
+### ðŸ” Authentication
 
 - Bearer Token + HttpOnly Cookie dual mode
 - Token expiration & rotation
@@ -166,40 +176,40 @@ docs/
 - **Unified auth endpoints** (mode-agnostic, auto-detect Bearer/Cookie)
 - Legacy endpoints deprecated (sunset July 2026)
 
-### 📅 Booking System
+### ðŸ“… Booking System
 
 - Pessimistic locking (prevents double-booking)
 - Soft deletes with audit trail
 - Admin restore/force-delete
 - Half-open interval logic
 
-  ### 🏨 Room Management
+  ### ðŸ¨ Room Management
 
 - Optimistic locking (prevents lost updates)
 - Real-time availability cache
 - Status management
 
-  ### 👥 RBAC
+  ### ðŸ‘¥ RBAC
 
 - 3 roles: USER, MODERATOR, ADMIN
 - Type-safe enum implementation
 - 6 authorization gates
 
-  ### 🛡️ Security
+  ### ðŸ›¡ï¸ Security
 
 - A+ security headers (CSP, HSTS, etc.)
 - HTML Purifier XSS protection
 - Multi-tier rate limiting
 - CSRF protection
 
-  ### ⚡ Performance
+  ### âš¡ Performance
 
 - Redis caching with event-driven invalidation
 - N+1 query prevention
 - Optimized database indexes
 - Parallel testing
 
-  ### 📊 Monitoring & Logging
+  ### ðŸ“Š Monitoring & Logging
 
 - Correlation ID request tracing (X-Correlation-ID)
 - Performance logging (duration, memory)
@@ -221,7 +231,7 @@ docs/
 - **OpenAPI 3.1 Specification**: Complete API spec covering all endpoints, schemas, and security schemes
   - Interactive docs: [API Reference (Redoc)](./api/index.html)
   - Raw spec: [openapi.yaml](./api/openapi.yaml)
-- **API v1→v2 Migration Guide**: Step-by-step client migration with code examples
+- **API v1â†’v2 Migration Guide**: Step-by-step client migration with code examples
   - See [API_MIGRATION_V1_TO_V2.md](./backend/guides/API_MIGRATION_V1_TO_V2.md)
 - **Updated Postman Collection**: v2 collection with test scripts and E2E flows
   - See `/backend/postman/Soleil_Hostel_v2.postman_collection.json`

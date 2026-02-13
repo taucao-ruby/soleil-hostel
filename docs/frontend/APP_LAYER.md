@@ -1,241 +1,159 @@
 # App Layer (`src/app/`)
 
-> Lớp ứng dụng cốt lõi - cấu hình global, providers, routing và layout
+> Core application layer - routing, layout, and provider wiring
 
-## Tổng quan
+## Overview
 
-App Layer chứa các thành phần cốt lõi của ứng dụng:
+App Layer contains the core application structure:
 
-- `App.tsx` - Component gốc với Error Boundary
-- `providers.tsx` - Context providers
-- `router.tsx` - React Router configuration
-- `Layout.tsx` - Main layout với header/footer
+- `App.tsx` - Root component with ErrorBoundary + ToastContainer
+- `router.tsx` - React Router v7 configuration with AuthLayout
+- `Layout.tsx` - Main layout with Header/Footer
 
-## 1. App.tsx - Component Gốc
+**Note:** There is no separate `providers.tsx` file. The `AuthProvider` is wired inside the router tree via the `AuthLayout` component pattern.
+
+---
+
+## 1. App.tsx - Root Component
 
 ```typescript
 // src/app/App.tsx
-import React from "react";
-import ErrorBoundary from "@/shared/components/ErrorBoundary";
-import Providers from "./providers";
-import Router from "./router";
+import React from 'react'
+import ErrorBoundary from '@/shared/components/ErrorBoundary'
+import { ToastContainer } from '@/utils/toast'
+import Router from './router'
 
 const App: React.FC = () => {
   return (
     <ErrorBoundary>
-      <Providers>
-        <Router />
-      </Providers>
+      <Router />
+      <ToastContainer />
     </ErrorBoundary>
-  );
-};
-
-export default App;
-```
-
-**Trách nhiệm:**
-
-- Cung cấp Error Boundary cho toàn bộ ứng dụng
-- Wrap các Context Providers
-- Khởi tạo React Router
-
-**Error Boundary Pattern:**
-
-```typescript
-// src/shared/components/ErrorBoundary.tsx
-import React from "react";
-
-interface ErrorBoundaryState {
-  hasError: boolean;
-  error?: Error;
+  )
 }
 
-class ErrorBoundary extends React.Component<
-  React.PropsWithChildren<{}>,
-  ErrorBoundaryState
-> {
-  constructor(props: React.PropsWithChildren<{}>) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // Log error to monitoring service
-    console.error("Application Error:", error, errorInfo);
-
-    // Send to error reporting service (e.g., Sentry)
-    // reportError(error, errorInfo)
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">
-              Something went wrong
-            </h1>
-            <p className="text-gray-600 mb-8">
-              We're sorry, but something unexpected happened.
-            </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-            >
-              Reload Page
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
-
-export default ErrorBoundary;
+export default App
 ```
 
-## 2. Providers (`providers.tsx`)
+**Architecture:**
 
-```typescript
-// src/app/providers.tsx
-import React from "react";
-import { AuthProvider } from "@/features/auth/AuthContext";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "react-hot-toast";
+1. `ErrorBoundary` - Catches runtime errors, shows fallback UI
+2. `Router` - React Router v7 with nested layout routes
+3. `ToastContainer` - react-toastify notifications (rendered at root level)
 
-// Create a client
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      retry: 1,
-    },
-  },
-});
+**Key decision:** `AuthProvider` is NOT at the root level. It lives inside the Router tree (via `AuthLayout`) so it can use `useNavigate()` and other router hooks.
 
-const Providers: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        {children}
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: "#363636",
-              color: "#fff",
-            },
-          }}
-        />
-      </AuthProvider>
-    </QueryClientProvider>
-  );
-};
+---
 
-export default Providers;
-```
-
-**Current Providers:**
-
-- `AuthProvider`: Quản lý authentication state
-- `QueryClientProvider`: React Query cho data fetching
-- `Toaster`: Toast notifications
-
-**Future Providers:**
-
-- `ThemeProvider`: Dark/light theme
-- `I18nProvider`: Internationalization
-- `ErrorProvider`: Global error handling
-
-## 3. Router (`router.tsx`)
+## 2. Router (`router.tsx`)
 
 ```typescript
 // src/app/router.tsx
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import { lazy, Suspense } from "react";
-import Layout from "./Layout";
-import LoadingSpinner from "@/shared/components/feedback/LoadingSpinner";
+import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom'
+import { AuthProvider } from '@/features/auth/AuthContext'
+import { setNavigate } from '@/shared/lib/navigation'
+import ProtectedRoute from '@/features/auth/ProtectedRoute'
+import LoadingSpinner from '@/shared/components/feedback/LoadingSpinner'
+import Layout from './Layout'
 
-// Lazy-loaded pages
-const HomePage = lazy(() => import("@/pages/HomePage"));
-const LoginPage = lazy(() => import("@/features/auth/LoginPage"));
-const RegisterPage = lazy(() => import("@/features/auth/RegisterPage"));
-const RoomList = lazy(() => import("@/features/rooms/RoomList"));
-const BookingForm = lazy(() => import("@/features/booking/BookingForm"));
-const Dashboard = lazy(() => import("@/features/dashboard/Dashboard"));
-const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
+// Eager-loaded (critical for initial render)
+import HomePage from '@/pages/HomePage'
 
-// Suspense wrapper for lazy components
-const withSuspense = (Component: React.ComponentType) => (
-  <Suspense fallback={<LoadingSpinner fullScreen />}>
-    <Component />
-  </Suspense>
-);
+// Lazy-loaded (code splitting)
+const LoginPage = lazy(() => import('@/features/auth/LoginPage'))
+const RegisterPage = lazy(() => import('@/features/auth/RegisterPage'))
+const RoomList = lazy(() => import('@/features/rooms/RoomList'))
+const BookingForm = lazy(() => import('@/features/booking/BookingForm'))
+const LocationList = lazy(() => import('@/features/locations/LocationList'))
+const LocationDetail = lazy(() => import('@/features/locations/LocationDetail'))
+```
 
+### AuthLayout Pattern
+
+```typescript
+// Wraps all routes with AuthProvider inside the Router tree
+const AuthLayout: React.FC = () => {
+  return (
+    <AuthProvider>
+      <NavigationSetter />
+      <Outlet />
+    </AuthProvider>
+  )
+}
+```
+
+This pattern ensures `AuthProvider` has access to React Router hooks (`useNavigate`, `useLocation`), which is required for auth-driven redirects.
+
+### NavigationSetter
+
+```typescript
+// Registers React Router's navigate function with the navigation service
+// so it can be used outside the component tree (e.g., API interceptors)
+const NavigationSetter: React.FC = () => {
+  const navigate = useNavigate()
+  useEffect(() => {
+    setNavigate(navigate)
+  }, [navigate])
+  return null
+}
+```
+
+### Route Configuration
+
+```typescript
 export const router = createBrowserRouter([
   {
-    path: "/",
-    element: <Layout />,
-    errorElement: <NotFoundPage />,
+    element: <AuthLayout />,
     children: [
       {
-        index: true,
-        element: withSuspense(HomePage),
-      },
-      {
-        path: "login",
-        element: withSuspense(LoginPage),
-      },
-      {
-        path: "register",
-        element: withSuspense(RegisterPage),
-      },
-      {
-        path: "rooms",
-        element: withSuspense(RoomList),
-      },
-      {
-        path: "booking",
-        element: withSuspense(BookingForm),
-      },
-      {
-        path: "dashboard",
-        element: withSuspense(Dashboard),
+        path: '/',
+        element: <Layout />,
+        children: [
+          { index: true, element: <HomePage /> },
+          { path: 'login', element: withSuspense(LoginPage) },
+          { path: 'register', element: withSuspense(RegisterPage) },
+          { path: 'rooms', element: withSuspense(RoomList) },
+          { path: 'locations', element: withSuspense(LocationList) },
+          { path: 'locations/:slug', element: withSuspense(LocationDetail) },
+          {
+            path: 'booking',
+            element: <ProtectedRoute><BookingForm /></ProtectedRoute>,
+          },
+          {
+            path: 'dashboard',
+            element: <ProtectedRoute><DashboardPage /></ProtectedRoute>,
+          },
+          { path: '*', element: <NotFoundPage /> },
+        ],
       },
     ],
   },
-]);
-
-const Router: React.FC = () => {
-  return <RouterProvider router={router} />;
-};
-
-export default Router;
+])
 ```
 
-**Tính năng Router:**
+### Routes Summary
 
-- React Router v7 với nested routes
-- Code splitting với React.lazy
-- Suspense boundaries cho loading states
-- Protected routes với authentication guards
-- Error boundaries cho route errors
+| Path               | Component      | Auth Required | Loading |
+| ------------------ | -------------- | ------------- | ------- |
+| `/`                | HomePage       | No            | Eager   |
+| `/login`           | LoginPage      | No            | Lazy    |
+| `/register`        | RegisterPage   | No            | Lazy    |
+| `/rooms`           | RoomList       | No            | Lazy    |
+| `/locations`       | LocationList   | No            | Lazy    |
+| `/locations/:slug` | LocationDetail | No            | Lazy    |
+| `/booking`         | BookingForm    | Yes           | Lazy    |
+| `/dashboard`       | DashboardPage  | Yes           | Inline  |
+| `*`                | NotFoundPage   | No            | Eager   |
 
-## 4. Layout (`Layout.tsx`)
+---
+
+## 3. Layout (`Layout.tsx`)
 
 ```typescript
 // src/app/Layout.tsx
-import React from "react";
-import { Outlet } from "react-router-dom";
-import Header from "@/shared/components/layout/Header";
-import Footer from "@/shared/components/layout/Footer";
+import { Outlet } from 'react-router-dom'
+import Header from '@/shared/components/layout/Header'
+import Footer from '@/shared/components/layout/Footer'
 
 const Layout: React.FC = () => {
   return (
@@ -246,43 +164,46 @@ const Layout: React.FC = () => {
       </main>
       <Footer />
     </div>
-  );
-};
-
-export default Layout;
+  )
+}
 ```
 
-**Cấu trúc Layout:**
+**Structure:**
 
-- Sticky header với navigation
-- Main content area với `<Outlet />`
-- Footer với thông tin liên hệ
-- Responsive design với TailwindCSS
-- Background và spacing nhất quán
+- Sticky header with navigation
+- Main content area with `<Outlet />`
+- Footer with links
+- Responsive design with TailwindCSS
 
-## Best Practices
+---
 
-### Error Handling
+## 4. Provider Architecture
 
-- Global Error Boundary ở root level
-- Route-level error boundaries
-- Graceful fallbacks cho failed components
+```text
+ErrorBoundary
+  └── RouterProvider
+        └── AuthLayout
+              ├── NavigationSetter (registers navigate fn)
+              └── AuthProvider
+                    └── Layout
+                          ├── Header (uses useAuth)
+                          ├── Outlet (page content)
+                          └── Footer
+ToastContainer (sibling of RouterProvider)
+```
 
-### Performance
+**Current Providers:**
 
-- Lazy loading cho tất cả route components
-- Suspense boundaries prevent layout shift
-- Minimal re-renders với proper memoization
+- `AuthProvider` - Authentication state management (httpOnly cookies)
 
-### Accessibility
+**Toast Notifications:**
 
-- Semantic HTML structure
-- Proper heading hierarchy
-- Focus management cho navigation
+- `react-toastify` (NOT react-hot-toast)
+- `ToastContainer` from `@/utils/toast`
+- `showToast.success/error/warning/info` helpers
 
-### Testing
+**Not Used:**
 
-- Test error boundaries
-- Test lazy loading behavior
-- Test responsive layout
-- Test keyboard navigation
+- No `QueryClientProvider` (no @tanstack/react-query)
+- No `ThemeProvider`
+- No `I18nProvider`

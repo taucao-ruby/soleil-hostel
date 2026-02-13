@@ -1,6 +1,10 @@
-# 🧪 Testing Guide
+# Backend Testing Guide
 
-> Complete guide to running and writing tests for Soleil Hostel
+> Scope: backend tests in `backend/tests` and suite configuration in `backend/phpunit.xml`.
+>
+> Last Updated: February 12, 2026
+>
+> Runtime test counts/assertions not verified in this update.
 
 ## Quick Commands
 
@@ -10,304 +14,263 @@ cd backend
 # Run all tests
 php artisan test
 
-# Run specific test file
+# Run by PHPUnit suite
+php artisan test --testsuite=Feature
+php artisan test --testsuite=Unit
+
+# Run a specific file
 php artisan test tests/Feature/Auth/AuthenticationTest.php
 
-# Run with coverage
-php artisan test --coverage
-
-# Run specific test method
+# Run by class or method pattern
+php artisan test --filter=AuthenticationTest
 php artisan test --filter=test_login_success_with_valid_credentials
-
-# Run tests in parallel
-php artisan test --parallel
 ```
 
----
+## PHPUnit Suites
+
+Defined in `backend/phpunit.xml`:
+
+| Suite | Directory |
+| --- | --- |
+| Unit | `tests/Unit` |
+| Feature | `tests/Feature` |
+
+Test environment defaults from `phpunit.xml`:
+
+- `APP_ENV=testing`
+- `DB_CONNECTION=sqlite`
+- `DB_DATABASE=:memory:`
+- `CACHE_STORE=array`
+- `QUEUE_CONNECTION=sync`
+- `SESSION_DRIVER=array`
 
 ## Test Summary
 
-| Category                  | Tests   | Assertions |
-| ------------------------- | ------- | ---------- |
-| Authentication            | 26      | 78         |
-| Booking                   | 60      | 180        |
-| Room (Optimistic Locking) | 24      | 58         |
-| RBAC                      | 47      | 141        |
-| Security Headers          | 14      | 42         |
-| XSS Protection            | 48      | 96         |
-| Rate Limiting             | 15      | 45         |
-| Caching                   | 6       | 18         |
-| N+1 Prevention            | 7       | 21         |
-| Health Check              | 7       | 21         |
-| Repository Unit Tests     | 53      | 53         |
-| **Total**                 | **349** | **943**    |
+| Metric | Count | Notes |
+| --- | --- | --- |
+| Files under `backend/tests` | 62 | Includes suites, base classes, traits, and stub script |
+| Files matching `*Test.php` | 58 | Includes `tests/stubs/concurrent_booking_test.php` |
+| Feature test files | 42 | Under `tests/Feature` |
+| Unit test files | 15 | Under `tests/Unit` |
+| Non-`*Test.php` support files | 4 | `TestCase.php`, `UnitTestCase.php`, and 2 traits |
 
----
+Feature breakdown (`tests/Feature`):
+
+| Group | Files |
+| --- | --- |
+| `_root` (directly under `Feature/`) | 10 |
+| `Auth` | 4 |
+| `Authorization` | 1 |
+| `Booking` | 4 |
+| `Cache` | 3 |
+| `Database` | 1 |
+| `HealthCheck` | 1 |
+| `Listeners` | 1 |
+| `Middleware` | 1 |
+| `Notifications` | 1 |
+| `Policies` | 1 |
+| `Queue` | 1 |
+| `RateLimiting` | 4 |
+| `Room` | 4 |
+| `Security` | 3 |
+| `User` | 1 |
+| `Validation` | 1 |
+| **Total** | **42** |
+
+Unit breakdown (`tests/Unit`):
+
+| Group | Files |
+| --- | --- |
+| `_root` (directly under `Unit/`) | 4 |
+| `Database` | 2 |
+| `Enums` | 1 |
+| `Mail` | 1 |
+| `Models` | 2 |
+| `Notifications` | 1 |
+| `Policies` | 1 |
+| `RateLimiting` | 1 |
+| `Repositories` | 2 |
+| **Total** | **15** |
 
 ## Test Structure
 
-```
+```text
 tests/
-├── Unit/                           # Unit tests
-│   ├── CacheTest.php
-│   ├── CreateBookingServiceTest.php
-│   ├── Enums/
-│   │   └── UserRoleTest.php
-│   ├── Models/
-│   │   └── UserRoleHelpersTest.php
-│   ├── RateLimiting/
-│   │   └── AdvancedRateLimitServiceTest.php
-│   └── Repositories/
-│       ├── EloquentBookingRepositoryTest.php
-│       └── EloquentRoomRepositoryTest.php
-│
-├── Feature/                        # Feature/Integration tests
-│   ├── Auth/
-│   │   └── AuthenticationTest.php
-│   ├── Authorization/
-│   │   └── GateTest.php
-│   ├── Booking/
-│   │   ├── BookingPolicyTest.php
-│   │   ├── BookingSoftDeleteTest.php
-│   │   └── ConcurrentBookingTest.php
-│   ├── Cache/
-│   │   ├── CacheInvalidationOnBookingTest.php
-│   │   └── RoomAvailabilityCacheTest.php
-│   ├── HealthCheck/
-│   │   └── HealthCheckControllerTest.php
-│   ├── Middleware/
-│   │   └── EnsureUserHasRoleTest.php
-│   ├── RateLimiting/
-│   │   ├── AdvancedRateLimitMiddlewareTest.php
-│   │   ├── BookingRateLimitTest.php
-│   │   └── LoginRateLimitTest.php
-│   ├── Security/
-│   │   ├── HtmlPurifierXssTest.php
-│   │   └── SecurityHeadersTest.php
-│   ├── RoomOptimisticLockingTest.php
-│   ├── HttpOnlyCookieAuthenticationTest.php
-│   ├── NPlusOneQueriesTest.php
-│   └── TokenExpirationTest.php
+|-- Feature/
+|   |-- Auth/
+|   |   |-- AuthConsolidationTest.php
+|   |   |-- AuthenticationTest.php
+|   |   |-- EmailVerificationTest.php
+|   |   `-- PasswordResetTest.php
+|   |-- Authorization/
+|   |   `-- GateTest.php
+|   |-- Booking/
+|   |   |-- BookingPolicyTest.php
+|   |   |-- BookingServiceSelectFieldsTest.php
+|   |   |-- BookingSoftDeleteTest.php
+|   |   `-- ConcurrentBookingTest.php
+|   |-- Cache/
+|   |   |-- CacheInvalidationOnBookingTest.php
+|   |   |-- CacheWarmupTest.php
+|   |   `-- RoomAvailabilityCacheTest.php
+|   |-- Database/
+|   |   `-- TransactionIsolationIntegrationTest.php
+|   |-- HealthCheck/
+|   |   `-- HealthControllerTest.php
+|   |-- Listeners/
+|   |   `-- BookingNotificationListenerTest.php
+|   |-- Middleware/
+|   |   `-- EnsureUserHasRoleTest.php
+|   |-- Notifications/
+|   |   `-- BookingNotificationTest.php
+|   |-- Policies/
+|   |   `-- RoomPolicyTest.php
+|   |-- Queue/
+|   |   `-- QueueMonitoringAuthorizationTest.php
+|   |-- RateLimiting/
+|   |   |-- AdvancedRateLimitMiddlewareTest.php
+|   |   |-- AdvancedRateLimitServiceTest.php
+|   |   |-- BookingRateLimitTest.php
+|   |   `-- LoginRateLimitTest.php
+|   |-- Room/
+|   |   |-- RoomAuthorizationTest.php
+|   |   |-- RoomConcurrencyTest.php
+|   |   |-- RoomCrudTest.php
+|   |   `-- RoomValidationTest.php
+|   |-- Security/
+|   |   |-- CsrfProtectionTest.php
+|   |   |-- HtmlPurifierXssTest.php
+|   |   `-- SecurityHeadersTest.php
+|   |-- User/
+|   |   `-- ProfileTest.php
+|   |-- Validation/
+|   |   `-- ApiValidationTest.php
+|   |-- BookingCancellationTest.php
+|   |-- CreateBookingConcurrencyTest.php
+|   |-- ExampleTest.php
+|   |-- HttpOnlyCookieAuthenticationTest.php
+|   |-- LocationApiTest.php
+|   |-- LocationTest.php
+|   |-- MonitoringLoggingTest.php
+|   |-- NPlusOneQueriesTest.php
+|   |-- RoomOptimisticLockingTest.php
+|   `-- TokenExpirationTest.php
+|-- stubs/
+|   `-- concurrent_booking_test.php
+|-- Traits/
+|   |-- RefreshDatabaseWithoutPrompts.php
+|   `-- RoomTestAssertions.php
+|-- Unit/
+|   |-- Database/
+|   |   |-- IdempotencyGuardTest.php
+|   |   `-- TransactionIsolationTest.php
+|   |-- Enums/
+|   |   `-- UserRoleTest.php
+|   |-- Mail/
+|   |   `-- EmailTemplateRenderingTest.php
+|   |-- Models/
+|   |   |-- RoomTest.php
+|   |   `-- UserRoleHelpersTest.php
+|   |-- Notifications/
+|   |   `-- BookingNotificationTest.php
+|   |-- Policies/
+|   |   `-- ReviewPolicyTest.php
+|   |-- RateLimiting/
+|   |   `-- AdvancedRateLimitServiceTest.php
+|   |-- Repositories/
+|   |   |-- EloquentBookingRepositoryTest.php
+|   |   `-- EloquentRoomRepositoryTest.php
+|   |-- CacheTest.php
+|   |-- CacheUnitTest.php
+|   |-- CreateBookingServiceTest.php
+|   |-- ExampleTest.php
+|   `-- UnitTestCase.php
+`-- TestCase.php
 ```
 
----
+## Test Base and Helpers
 
-## Running Specific Test Suites
+### `tests/TestCase.php`
 
-### Authentication Tests
+- Extends Laravel `BaseTestCase`.
+- Uses `RefreshDatabase`.
+- Fakes notifications in `setUp()` via `Notification::fake()`.
+- Sets default middleware bypass for `VerifyCsrfToken`.
+- Overrides `actingAs()`:
+  - supports Sanctum flow by creating a token and attaching `Authorization: Bearer ...`
+  - handles `actingAs(null)` by clearing headers/auth state
+- Overrides `artisan()` to enforce `--no-interaction` and `--force` for `migrate:fresh`.
+- Provides `withHttpOnlyCookie()` helper for cookie-auth test flows.
+
+### `tests/Unit/UnitTestCase.php`
+
+- Unit-specific base class.
+- Does not use `RefreshDatabase` (intentional isolation for unit tests).
+
+### `tests/Traits/RefreshDatabaseWithoutPrompts.php`
+
+- Wraps `RefreshDatabase` migration behavior.
+- Forces `migrate:fresh` with `--no-interaction`.
+
+### `tests/Traits/RoomTestAssertions.php`
+
+- Shared room-domain assertions:
+  - optimistic lock exception checks
+  - conflict/validation/authorization response helpers
+  - room JSON structure assertions
+
+### `tests/stubs/concurrent_booking_test.php`
+
+- Standalone stress script for concurrent booking behavior.
+- Boots Laravel manually and sends concurrent HTTP requests.
+- Not part of PHPUnit suites.
+
+## Run Tests by Scope
+
+### All tests
 
 ```bash
+php artisan test
+```
+
+### By suite
+
+```bash
+php artisan test --testsuite=Feature
+php artisan test --testsuite=Unit
+```
+
+### By folder or domain
+
+```bash
+# Auth and token flows
 php artisan test tests/Feature/Auth/
 php artisan test tests/Feature/HttpOnlyCookieAuthenticationTest.php
 php artisan test tests/Feature/TokenExpirationTest.php
-```
 
-### Booking Tests
-
-```bash
+# Booking and room
 php artisan test tests/Feature/Booking/
-php artisan test tests/Feature/CreateBookingConcurrencyTest.php
-```
+php artisan test tests/Feature/Room/
+php artisan test tests/Feature/RoomOptimisticLockingTest.php
 
-### Security Tests
-
-```bash
+# Security and rate limiting
 php artisan test tests/Feature/Security/
+php artisan test tests/Feature/RateLimiting/
+
+# Unit repositories and database helpers
+php artisan test tests/Unit/Repositories/
+php artisan test tests/Unit/Database/
 ```
 
-### Room Optimistic Locking Tests
+### By file and method filter
 
 ```bash
-php artisan test --filter=RoomOptimisticLockingTest
+php artisan test tests/Feature/Booking/ConcurrentBookingTest.php
+php artisan test --filter=ConcurrentBookingTest
+php artisan test --filter=test_it_prevents_double_booking
 ```
 
-### RBAC Tests
+## Notes
 
-```bash
-php artisan test tests/Feature/Authorization/
-php artisan test tests/Feature/Middleware/EnsureUserHasRoleTest.php
-```
-
-### Repository Unit Tests
-
-```bash
-# Run all repository unit tests (no database required)
-php vendor/bin/phpunit tests/Unit/Repositories --testdox --no-coverage
-
-# Run specific repository test
-php vendor/bin/phpunit tests/Unit/Repositories/EloquentBookingRepositoryTest.php
-php vendor/bin/phpunit tests/Unit/Repositories/EloquentRoomRepositoryTest.php
-```
-
-> **Note:** Repository unit tests use Mockery with `@runInSeparateProcess` to mock Eloquent static methods. They run in complete isolation without database connections.
-
----
-
-## Writing Tests
-
-### Test Traits
-
-```php
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
-
-class MyTest extends TestCase
-{
-    use RefreshDatabase; // Reset DB each test
-    use WithFaker;       // Generate fake data
-}
-```
-
-### Test Factories
-
-```php
-// Create user
-$user = User::factory()->create();
-$admin = User::factory()->admin()->create();
-$moderator = User::factory()->moderator()->create();
-
-// Create room
-$room = Room::factory()->create();
-
-// Create booking
-$booking = Booking::factory()->create([
-    'user_id' => $user->id,
-    'room_id' => $room->id,
-]);
-```
-
-### Authentication in Tests
-
-```php
-// Act as authenticated user
-$this->actingAs($user);
-
-// With Sanctum token
-$this->actingAs($user, 'sanctum');
-
-// Make authenticated request
-$response = $this->actingAs($user)
-    ->postJson('/api/bookings', $data);
-```
-
-### Assertions
-
-```php
-// HTTP status
-$response->assertStatus(200);
-$response->assertCreated();     // 201
-$response->assertNoContent();   // 204
-$response->assertNotFound();    // 404
-$response->assertForbidden();   // 403
-$response->assertUnauthorized(); // 401
-
-// JSON structure
-$response->assertJsonStructure([
-    'data' => ['id', 'name', 'price']
-]);
-
-// JSON values
-$response->assertJson([
-    'data' => ['id' => 1]
-]);
-
-// Database
-$this->assertDatabaseHas('bookings', ['guest_name' => 'John']);
-$this->assertDatabaseMissing('bookings', ['id' => 999]);
-$this->assertSoftDeleted('bookings', ['id' => 1]);
-```
-
----
-
-## Test Database
-
-Tests use SQLite in-memory by default:
-
-```xml
-<!-- phpunit.xml -->
-<env name="DB_CONNECTION" value="sqlite"/>
-<env name="DB_DATABASE" value=":memory:"/>
-```
-
-To use PostgreSQL for tests:
-
-```bash
-php artisan test --env=testing
-```
-
----
-
-## Parallel Testing
-
-```bash
-# Run tests in parallel (faster)
-php artisan test --parallel
-
-# With specific number of processes
-php artisan test --parallel --processes=4
-```
-
----
-
-## Coverage Report
-
-```bash
-# HTML coverage report
-php artisan test --coverage-html=coverage
-
-# Text coverage in terminal
-php artisan test --coverage
-```
-
----
-
-## CI/CD Integration
-
-Tests run automatically on GitHub Actions:
-
-```yaml
-# .github/workflows/tests.yml
-- name: Run Tests
-  run: php artisan test --parallel
-```
-
----
-
-## Troubleshooting
-
-### Tests Fail with Database Errors
-
-```bash
-# Clear test cache
-php artisan config:clear
-php artisan cache:clear
-
-# Re-run migrations
-php artisan migrate:fresh --env=testing
-```
-
-### Redis Tests Fail
-
-Tests use database cache by default. If Redis is required:
-
-```bash
-docker-compose up -d redis
-```
-
-### Slow Tests
-
-```bash
-# Run in parallel
-php artisan test --parallel
-
-# Or filter specific tests
-php artisan test --filter=MySpecificTest
-```
-
----
-
-## Next Steps
-
-- [Environment Setup](./ENVIRONMENT_SETUP.md)
-- [API Reference](../architecture/API.md)
-- [Feature Documentation](../features/README.md)
+- `tests/stubs/concurrent_booking_test.php` matches `*Test.php` filename pattern but is not discovered by PHPUnit suites because suites only include `tests/Feature` and `tests/Unit`.
+- If you need assertion-level totals, run the suite in your environment and update the metrics in this document after execution.

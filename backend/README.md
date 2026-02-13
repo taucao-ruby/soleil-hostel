@@ -278,6 +278,7 @@ CREATE INDEX idx_bookings_status_period ON bookings(status, check_in);
 Full documentation available in the `docs/` folder:
 
 - [Architecture Overview](../docs/backend/README.md)
+- [Backend Folder Reference](../docs/backend/architecture/FOLDER_REFERENCE.md)
 - [Authentication Guide](../docs/backend/features/AUTHENTICATION.md)
 - [Booking System](../docs/backend/features/BOOKING.md)
 - [Room Management](../docs/backend/features/ROOMS.md)

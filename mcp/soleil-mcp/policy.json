@@ -1,0 +1,72 @@
+{
+  "allowed_commands": {
+    "backend_tests": {
+      "cwd": "backend",
+      "command": "php",
+      "args": ["artisan", "test"],
+      "timeout_ms": 900000
+    },
+    "frontend_typecheck": {
+      "cwd": "frontend",
+      "command": "npx",
+      "args": ["tsc", "--noEmit"],
+      "timeout_ms": 600000
+    },
+    "frontend_unit_tests": {
+      "cwd": "frontend",
+      "command": "npx",
+      "args": ["vitest", "run"],
+      "timeout_ms": 600000
+    },
+    "docker_compose_config": {
+      "cwd": ".",
+      "command": "docker",
+      "args": ["compose", "config"],
+      "timeout_ms": 180000
+    },
+    "backend_lint": {
+      "cwd": "backend",
+      "command": "php",
+      "args": ["vendor/bin/pint", "--test"],
+      "timeout_ms": 300000
+    },
+    "frontend_lint": {
+      "cwd": "frontend",
+      "command": "npm",
+      "args": ["run", "lint"],
+      "timeout_ms": 300000
+    }
+  },
+  "blocked_paths": [
+    ".git",
+    "node_modules",
+    "vendor",
+    ".idea",
+    ".vscode",
+    "backend/storage",
+    "backend/bootstrap/cache"
+  ],
+  "blocked_file_patterns": [
+    "^\\.env(\\..*)?$",
+    ".*\\.pem$",
+    ".*\\.key$",
+    ".*\\.p12$",
+    ".*\\.pfx$",
+    ".*\\.crt$",
+    ".*\\.cer$",
+    "^id_rsa$",
+    "^id_ed25519$",
+    ".*credentials.*",
+    ".*secret.*"
+  ],
+  "max_file_size": 204800,
+  "search": {
+    "max_results": 50,
+    "snippet_chars": 220,
+    "max_files_scanned": 5000
+  },
+  "timeouts": {
+    "default_ms": 300000,
+    "max_ms": 1200000
+  }
+}

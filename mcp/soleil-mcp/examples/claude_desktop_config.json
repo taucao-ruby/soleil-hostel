@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "soleil-hostel": {
+      "command": "node",
+      "args": [
+        "<ABSOLUTE_PATH_TO_REPO>/mcp/soleil-mcp/dist/index.js"
+      ]
+    }
+  }
+}

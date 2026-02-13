@@ -1,108 +1,69 @@
-# 🔧 Backend Documentation
+# Backend Documentation
 
 > Laravel 11 + PHP 8.3 + PostgreSQL + Redis
 >
-> **Last Updated:** January 19, 2026 | **Tests:** 609 total (609 passing, 1657 assertions)
+> Last Updated: February 12, 2026
 
 ## Quick Navigation
 
-| Section                         | Description                |
-| ------------------------------- | -------------------------- |
-| [Architecture](./architecture/) | System design & API        |
-| [Features](./features/)         | Feature implementations    |
-| [Guides](./guides/)             | Setup, testing, deployment |
-| [Security](./security/)         | Security implementations   |
-
----
+| Section | Description |
+| --- | --- |
+| [Architecture](./architecture/) | System design, backend layers, folder map |
+| [Features](./features/) | Feature-level behavior and flows |
+| [Guides](./guides/) | Setup, operations, and runbooks |
+| [Security](./security/) | Security controls and policies |
 
 ## Documentation Index
 
 ### Architecture
 
-| Document                                                                                                  | Description                 |
-| --------------------------------------------------------------------------------------------------------- | --------------------------- |
-| [API.md](./architecture/API.md)                                                                           | Complete API reference      |
-| [DATABASE.md](../DATABASE.md)                                                                             | Schema, indexes, migrations |
-| [SERVICES.md](./architecture/SERVICES.md)                                                                 | Service layer architecture  |
-| [REPOSITORIES.md](./architecture/REPOSITORIES.md)                                                         | Repository pattern          |
-| [MIDDLEWARE.md](./architecture/MIDDLEWARE.md)                                                             | Middleware pipeline         |
-| [EVENTS.md](./architecture/EVENTS.md)                                                                     | Events & listeners          |
-| [POLICIES.md](./architecture/POLICIES.md)                                                                 | Authorization policies      |
-| [JOBS.md](./architecture/JOBS.md)                                                                         | Queue jobs                  |
-| [TRAITS_EXCEPTIONS.md](./architecture/TRAITS_EXCEPTIONS.md)                                               | Traits, macros, exceptions  |
-| [BOOKING_CANCELLATION_REFUND_ARCHITECTURE.md](./architecture/BOOKING_CANCELLATION_REFUND_ARCHITECTURE.md) | Cancellation & refund flow  |
+| Document | Description |
+| --- | --- |
+| [API.md](./architecture/API.md) | API reference |
+| [DATABASE.md](../DATABASE.md) | Schema, constraints, and indexes |
+| [FOLDER_REFERENCE.md](./architecture/FOLDER_REFERENCE.md) | Current backend folder inventory (`app`, `config`, `database`) |
+| [SERVICES.md](./architecture/SERVICES.md) | Service layer |
+| [REPOSITORIES.md](./architecture/REPOSITORIES.md) | Repository layer |
+| [MIDDLEWARE.md](./architecture/MIDDLEWARE.md) | HTTP middleware pipeline |
+| [EVENTS.md](./architecture/EVENTS.md) | Events and listeners |
+| [POLICIES.md](./architecture/POLICIES.md) | Authorization policies |
+| [JOBS.md](./architecture/JOBS.md) | Queue jobs |
+| [TRAITS_EXCEPTIONS.md](./architecture/TRAITS_EXCEPTIONS.md) | Traits, macros, directives, exceptions |
+| [BOOKING_CANCELLATION_REFUND_ARCHITECTURE.md](./architecture/BOOKING_CANCELLATION_REFUND_ARCHITECTURE.md) | Cancellation/refund architecture |
 
 ### Features
 
-| Document                                                  | Description                   |
-| --------------------------------------------------------- | ----------------------------- |
-| [AUTHENTICATION.md](./features/AUTHENTICATION.md)         | Auth (Bearer + HttpOnly)      |
-| [BOOKING.md](./features/BOOKING.md)                       | Booking system                |
-| [ROOMS.md](./features/ROOMS.md)                           | Room management               |
-| [REVIEWS.md](./features/REVIEWS.md)                       | Reviews + XSS protection      |
-| [RBAC.md](./features/RBAC.md)                             | Role-based access             |
-| [CACHING.md](./features/CACHING.md)                       | Redis cache layer             |
-| [OPTIMISTIC_LOCKING.md](./features/OPTIMISTIC_LOCKING.md) | Concurrency control for rooms |
-| [EMAIL_TEMPLATES.md](./features/EMAIL_TEMPLATES.md)       | Branded email templates       |
-| [HEALTH_CHECK.md](./features/HEALTH_CHECK.md)             | Health check endpoints        |
+| Document | Description |
+| --- | --- |
+| [AUTHENTICATION.md](./features/AUTHENTICATION.md) | Authentication modes and flow |
+| [BOOKING.md](./features/BOOKING.md) | Booking lifecycle |
+| [ROOMS.md](./features/ROOMS.md) | Room management |
+| [REVIEWS.md](./features/REVIEWS.md) | Reviews and moderation |
+| [RBAC.md](./features/RBAC.md) | Role model and permissions |
+| [CACHING.md](./features/CACHING.md) | Caching strategy |
+| [OPTIMISTIC_LOCKING.md](./features/OPTIMISTIC_LOCKING.md) | Concurrency protection |
+| [EMAIL_TEMPLATES.md](./features/EMAIL_TEMPLATES.md) | Notification templates |
+| [HEALTH_CHECK.md](./features/HEALTH_CHECK.md) | Health endpoints |
 
 ### Guides
 
-| Document                                                  | Description             |
-| --------------------------------------------------------- | ----------------------- |
-| [ENVIRONMENT_SETUP.md](./guides/ENVIRONMENT_SETUP.md)     | Dev environment         |
-| [TESTING.md](./guides/TESTING.md)                         | Testing guide           |
-| [PERFORMANCE.md](./guides/PERFORMANCE.md)                 | Octane & N+1            |
-| [DEPLOYMENT.md](./guides/DEPLOYMENT.md)                   | Docker & deployment     |
-| [COMMANDS.md](./guides/COMMANDS.md)                       | Artisan commands        |
-| [MONITORING_LOGGING.md](./guides/MONITORING_LOGGING.md)   | Observability & logging |
-| [EMAIL_NOTIFICATIONS.md](./guides/EMAIL_NOTIFICATIONS.md) | Email & verification    |
-| [AUTH_MIGRATION.md](./guides/AUTH_MIGRATION.md)           | Auth endpoint migration |
+| Document | Description |
+| --- | --- |
+| [ENVIRONMENT_SETUP.md](./guides/ENVIRONMENT_SETUP.md) | Local environment setup |
+| [TESTING.md](./guides/TESTING.md) | Test execution patterns |
+| [PERFORMANCE.md](./guides/PERFORMANCE.md) | Performance and N+1 guidance |
+| [DEPLOYMENT.md](./guides/DEPLOYMENT.md) | Deployment steps |
+| [COMMANDS.md](./guides/COMMANDS.md) | Custom artisan commands |
+| [MONITORING_LOGGING.md](./guides/MONITORING_LOGGING.md) | Monitoring and logging |
+| [EMAIL_NOTIFICATIONS.md](./guides/EMAIL_NOTIFICATIONS.md) | Email/notification behavior |
+| [AUTH_MIGRATION.md](./guides/AUTH_MIGRATION.md) | Auth endpoint migration |
+| [API_MIGRATION_V1_TO_V2.md](./guides/API_MIGRATION_V1_TO_V2.md) | API v1 to v2 migration |
 
 ### Security
 
-| Document                                          | Description       |
-| ------------------------------------------------- | ----------------- |
-| [README.md](./security/README.md)                 | Security overview |
-| [HEADERS.md](./security/HEADERS.md)               | Security headers  |
-| [XSS_PROTECTION.md](./security/XSS_PROTECTION.md) | HTML Purifier     |
-| [RATE_LIMITING.md](./security/RATE_LIMITING.md)   | Rate limiting     |
-
----
-
-## Tech Stack
-
-| Component | Technology      |
-| --------- | --------------- |
-| Framework | Laravel 11      |
-| Language  | PHP 8.3         |
-| Database  | PostgreSQL 16   |
-| Cache     | Redis 7         |
-| Auth      | Laravel Sanctum |
-| Server    | Laravel Octane  |
-| Queue     | Redis Queue     |
-
----
-
-## Quick Start
-
-```bash
-cd backend
-
-# Install dependencies
-composer install
-
-# Environment
-cp .env.example .env
-php artisan key:generate
-
-# Database
-php artisan migrate
-php artisan db:seed
-
-# Run tests
-php artisan test
-
-# Start server
-php artisan serve
-```
+| Document | Description |
+| --- | --- |
+| [README.md](./security/README.md) | Security overview |
+| [HEADERS.md](./security/HEADERS.md) | Security headers |
+| [XSS_PROTECTION.md](./security/XSS_PROTECTION.md) | Sanitization/XSS controls |
+| [RATE_LIMITING.md](./security/RATE_LIMITING.md) | Throttling and abuse controls |

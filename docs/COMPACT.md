@@ -1,12 +1,11 @@
 ﻿# COMPACT — Soleil Hostel (AI Session Memory)
 
 ## 1) Current Snapshot (keep under 12 lines)
-- Date updated: 2026-02-12
-- Current branch: `dev` (local `main` currently resolves to commit `e05ae68`)
-- Branch baseline (2026-02-11): `dev` at `096adfa`, 8 commits ahead of `main` at `712478e` (from `../PROJECT_STATUS.md`)
-- CI status: Last recorded green in `../PROJECT_STATUS.md` on 2026-02-11
-- Latest verified commands: `cd backend && php artisan test` (722 tests, 2012 assertions), `cd frontend && npx tsc --noEmit`, `cd frontend && npx vitest run` (142 tests), `docker compose config` (PASS)
-- Progress summary: Audit v1 `61/61` and audit v2 `98/98` are historically complete; repo health marked green on 2026-02-11
+- Date updated: 2026-02-21
+- Current branch: `dev`
+- Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (145 tests, 13 suites, 0 failures)
+- Backend test baseline: `cd backend && php artisan test` (722 tests, 2012 assertions) — last verified 2026-02-12
+- Progress summary: Homepage Phase 1 complete (8 sections, 7 defects fixed, regression tests added); auth HttpOnly backend fix complete
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
 ## 2) What matters (invariants / guardrails)
@@ -29,12 +28,22 @@
 - Keep branch/test snapshot synced with `../PROJECT_STATUS.md` and latest local verification runs.
 - Keep warning/noise notes current so failures are not masked by known benign output.
 
+### Completed this session (2026-02-21)
+
+- Homepage Phase 1: implemented 8-section mobile-first public homepage per spec
+  - New files: `home.tokens.ts`, `home.types.ts`, `home.mock.ts`, `RoomsSection.tsx`, `SiteFooter.tsx`
+  - Rewritten: `Hero.tsx`, `SearchCard.tsx`, `FilterChips.tsx`, `RoomCard.tsx`, `BottomNav.tsx`, `PromoBanner.tsx`, `ReviewsCarousel.tsx`, `HomePage.tsx`
+  - Fixed 7 defects: C-01 (watermark), C-02 (flat colour), C-03 (no role=search), H-01 (Cuộn xuống), H-02 (duplicate CTA), H-03 (no pill), M-01/M-03 (layout)
+  - Regression tests added in `HomePage.test.tsx` + `FilterChips.test.tsx` (14 + 4 tests)
+  - Router: `PublicLayout` (HeaderMobile + BottomNav) added around `/`
+
 ### Next
+
+- Dashboard Phase 2: `DashboardPage`, `Sidebar`, `KPICards`, `OccupancyStrip`, `RecentBookingsTable`, `BookingCalendar`, `CreateBookingDrawer`, `BookingDetailPanel`, `CancelBookingModal`
+- Wire SearchCard to real availability API when ready
 - Re-run verification command set after backend/frontend behavior changes (why: fast regression detection).
-- Re-check booking overlap and soft-delete semantics when booking migrations change (why: prevent double-booking regressions).
-- Re-check auth revocation/expiry/rotation paths when auth middleware/controllers change (why: token/session safety).
-- Refresh branch and CI snapshot lines after each PR merge or commit batch (why: avoid stale memory).
-- Remove warning entries only after confirmed clean runs (why: preserve signal and avoid false confidence).
+- Re-check booking overlap and soft-delete semantics when booking migrations change.
+- Refresh branch and CI snapshot lines after each PR merge or commit batch.
 
 ## 4) Verification checklist (copy/paste)
 Required baseline:

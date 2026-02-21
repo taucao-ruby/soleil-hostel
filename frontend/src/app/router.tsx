@@ -6,6 +6,8 @@ import ProtectedRoute from '@/features/auth/ProtectedRoute'
 import LoadingSpinner from '@/shared/components/feedback/LoadingSpinner'
 import Layout from './Layout'
 import NotFoundPage from '@/pages/NotFoundPage'
+import HeaderMobile from '@/features/home/components/HeaderMobile'
+import BottomNav from '@/features/home/components/BottomNav'
 
 // Eager-loaded pages (critical for initial render)
 import HomePage from '@/pages/HomePage'
@@ -18,7 +20,7 @@ const BookingForm = lazy(() => import('@/features/booking/BookingForm'))
 const LocationList = lazy(() => import('@/features/locations/LocationList'))
 const LocationDetail = lazy(() => import('@/features/locations/LocationDetail'))
 
-// Placeholder Dashboard
+// Placeholder Dashboard (Phase 2)
 const DashboardPage = () => (
   <div className="min-h-screen p-8 bg-gray-50">
     <div className="max-w-4xl mx-auto">
@@ -61,6 +63,21 @@ const AuthLayout: React.FC = () => {
 }
 
 /**
+ * PublicLayout - Wraps the homepage with mobile-first chrome.
+ * HeaderMobile (sticky top) + page content + BottomNav (sticky bottom).
+ * Does NOT include the existing dark Header.tsx used by other pages.
+ */
+const PublicLayout: React.FC = () => {
+  return (
+    <>
+      <HeaderMobile />
+      <Outlet />
+      <BottomNav />
+    </>
+  )
+}
+
+/**
  * Suspense Wrapper Component
  * Wraps lazy-loaded components with Suspense boundary
  */
@@ -75,32 +92,33 @@ const withSuspense = (Component: React.LazyExoticComponent<React.ComponentType>)
 /**
  * Router Configuration
  *
- * Uses React Router v7 with createBrowserRouter and nested routes.
+ * Uses React Router v7 with createBrowserRouter and nested pathless layout routes.
  *
- * Layout Route (parent):
- * - Provides Header + Outlet + Footer structure
- * - Allows Header to use useNavigate() inside Router context
+ * PublicLayout (pathless):
+ * - / : Mobile-first homepage (HeaderMobile + BottomNav)
  *
- * Child Routes:
- * - / : Public home page
- * - /login : Login page
- * - /register : Register page
- * - /rooms : Room list
- * - /booking : Protected booking form
- * - /dashboard : Protected dashboard
+ * Layout (pathless):
+ * - /login, /register, /rooms, /locations, /booking, /dashboard, *
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export const router = createBrowserRouter([
   {
     element: <AuthLayout />,
     children: [
+      // Public homepage — mobile-first chrome (no existing dark Header)
       {
-        path: '/',
-        element: <Layout />,
+        element: <PublicLayout />,
         children: [
           {
-            index: true,
+            path: '/',
             element: <HomePage />,
           },
+        ],
+      },
+      // All other routes — existing Layout (dark Header + Footer)
+      {
+        element: <Layout />,
+        children: [
           {
             path: 'login',
             element: withSuspense(LoginPage),

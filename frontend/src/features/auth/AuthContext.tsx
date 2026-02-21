@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import axios from 'axios'
 import api from '@/shared/lib/api'
 import { setCsrfToken, clearCsrfToken } from '@/shared/utils/csrf'
 import { User } from '@/types/api'
@@ -162,35 +163,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError(null)
 
       try {
-        const response = await api.post<{ user: User; csrf_token: string }>(
-          '/auth/register-httponly',
-          {
-            name,
-            email,
-            password,
-            password_confirmation: passwordConfirmation,
-          }
-        )
+        // 1. Register via bearer-mode endpoint (the only one that exists)
+        await api.post('/auth/register', {
+          name,
+          email,
+          password,
+          password_confirmation: passwordConfirmation,
+        })
 
-        // Save user to state
-        setUser(response.data.user)
-
-        // Save CSRF token to sessionStorage
-        if (response.data.csrf_token) {
-          setCsrfToken(response.data.csrf_token)
+        // 2. Auto-login via httpOnly cookie endpoint
+        try {
+          await loginHttpOnly(email, password)
+        } catch {
+          setError('Registered successfully but auto-login failed. Please login manually.')
         }
-
-        setError(null)
       } catch (err: unknown) {
-        const error = err as { response?: { data?: { message?: string } } }
-        const errorMessage = error?.response?.data?.message || 'Registration failed'
-        setError(errorMessage)
+        let message = 'Registration failed.'
+        if (axios.isAxiosError(err) && err.response?.data) {
+          const data = err.response.data as {
+            message?: string
+            errors?: Record<string, string[]>
+          }
+          if (typeof data.message === 'string') message = data.message
+          if (data.errors && typeof data.errors === 'object') {
+            const firstKey = Object.keys(data.errors)[0]
+            if (firstKey && Array.isArray(data.errors[firstKey])) {
+              message = data.errors[firstKey][0]
+            }
+          }
+        }
+        setError(message)
         throw err
       } finally {
         setLoading(false)
       }
     },
-    []
+    [loginHttpOnly]
   )
 
   /**
@@ -269,6 +277,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
  * Access auth context in any component.
  * Throws error if used outside AuthProvider.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const context = useContext(AuthContext)
   if (!context) {

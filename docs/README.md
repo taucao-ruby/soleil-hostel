@@ -12,6 +12,7 @@
 | **Know system limitations**           | [Known Limitations](./KNOWN_LIMITATIONS.md)                       |
 | **Deprecate an API**                  | [API Deprecation](./API_DEPRECATION.md)                           |
 | **Database schema**                   | [Database Docs](./DATABASE.md)                                    |
+| **DB invariants & constraints**       | [DB Facts (Invariants & Constraints)](./DB_FACTS.md)              |
 | **Backend documentation**             | [Backend Docs](./backend/README.md)                               |
 | **Frontend documentation**            | [Frontend Docs](./frontend/README.md)                             |
 | **Set up development environment**    | [Setup Guide](./backend/guides/ENVIRONMENT_SETUP.md)              |

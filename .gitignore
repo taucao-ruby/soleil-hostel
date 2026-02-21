@@ -39,3 +39,9 @@ nul
 *.key
 *.pem
 database.sqlite
+
+# Local agent / AI tool state
+.claude/
+
+# Dev/debug scripts that must not be committed
+backend/storage/check_pw.php

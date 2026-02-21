@@ -28,28 +28,40 @@ const Header: React.FC = () => {
     }
   }
 
-  const isActive = (path: string) => location.pathname === path
+  const isActive = (path: string) =>
+    path === '/' ? location.pathname === '/' : location.pathname.startsWith(path)
 
   const navLinks = [
     { path: '/', label: 'Home' },
     { path: '/rooms', label: 'Rooms' },
+    { path: '/locations', label: 'Locations' },
     ...(isAuthenticated ? [{ path: '/booking', label: 'Book Now' }] : []),
     ...(isAuthenticated ? [{ path: '/dashboard', label: 'Dashboard' }] : []),
   ]
 
   return (
-    <header className="sticky top-0 z-50 bg-white shadow-md">
+    <header className="sticky top-0 z-50 bg-black shadow-md">
       <nav className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link
             to="/"
-            className="flex items-center space-x-2 text-2xl font-bold text-blue-600 transition-colors hover:text-blue-700"
+            className="flex items-center space-x-2 text-2xl font-bold text-yellow-600 transition-colors hover:text-blue-700"
           >
-            <svg className="w-8 h-8 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
+            {/* <svg className="w-8 h-8 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5zm0 2.18l8 4v8.82c0 4.52-3.13 8.79-8 10-4.87-1.21-8-5.48-8-10V8.18l8-4z" />
               <circle cx="12" cy="12" r="3" />
-            </svg>
+            </svg> */}
+            <img
+              src="/brand/soleil-logo-64.webp"
+              srcSet="/brand/soleil-logo-64.webp 1x, /brand/soleil-logo-96.webp 2x"
+              width={36}
+              height={36}
+              alt="Soleil Hostel"
+              className="object-contain h-9 w-9"
+              loading="eager"
+              decoding="async"
+            />
             <span className="hidden sm:block">Soleil Hostel</span>
           </Link>
 

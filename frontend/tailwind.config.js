@@ -13,8 +13,25 @@ export default {
         'slide-in-right': 'slide-in-right 0.5s ease-out',
         'slide-in-left': 'slide-in-left 0.5s ease-out',
         'scale-in': 'scale-in 0.4s ease-out',
+        'ken-burns': 'ken-burns 12s ease-in-out infinite alternate',
+      },
+      keyframes: {
+        'ken-burns': {
+          from: { transform: 'scale(1)' },
+          to: { transform: 'scale(1.08)' },
+        },
       },
       colors: {
+        // Soleil brand tokens
+        cream: '#F5EFE0',
+        warmWhite: '#FDFAF3',
+        orangeCTA: '#D4622A',
+        orangeHover: '#E8845A',
+        orangePale: '#FAE5D8',
+        woodDark: '#5C3D1E',
+        brandGold: '#F5A623',
+        navy: '#1A2744',
+        soleilBorder: '#E2D5C3',
         primary: {
           50: '#f0f9ff',
           100: '#e0f2fe',

@@ -4,7 +4,7 @@
 - Date updated: 2026-02-21
 - Current branch: `dev`
 - Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (145 tests, 13 suites, 0 failures)
-- Backend test baseline: `cd backend && php artisan test` (722 tests, 2012 assertions) — last verified 2026-02-12
+- Backend test baseline: `cd backend && php artisan test` (737 tests, 2071 assertions) — verified 2026-02-21
 - Progress summary: Homepage Phase 1 complete (8 sections, 7 defects fixed, regression tests added); auth HttpOnly backend fix complete
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
@@ -77,8 +77,16 @@ cd backend && vendor/bin/psalm
 - [Docs Index](./README.md)
 - [Operational Playbook](./OPERATIONAL_PLAYBOOK.md)
 - [Database Notes](./DATABASE.md)
+- [DB Facts (Invariants)](./DB_FACTS.md)
 - [Agent Instructions](../AGENTS.md)
+- [Agent Framework](./agents/README.md)
+- [AI Governance](./AI_GOVERNANCE.md)
+- [Commands & Gates](./COMMANDS_AND_GATES.md)
+- [MCP Server](./MCP.md)
+- [Hooks](./HOOKS.md)
 - [Skills Folder](../skills/)
+- [Audit 2026-02-21](./AUDIT_2026_02_21.md)
+- [Findings Backlog](./FINDINGS_BACKLOG.md)
 
 ## 7) Update protocol (how to maintain COMPACT)
 - When to update:
@@ -90,3 +98,68 @@ cd backend && vendor/bin/psalm
   - append an entry to WORKLOG (if enabled)
 - Format rules:
   - short lines, no essays, no secrets
+
+## 2026-02-21 — Repo-wide Docs Audit
+
+### What changed
+
+- Created `docs/agents/` directory: `README.md`, `CONTRACT.md`, `ARCHITECTURE_FACTS.md`, `COMMANDS.md`
+- Created `docs/AUDIT_2026_02_21.md` — full audit findings
+- Created `docs/FINDINGS_BACKLOG.md` — 14 code issues logged (not fixed)
+- Created `docs/COMMANDS_AND_GATES.md` — verified commands + CI gate mapping
+- Created `docs/AI_GOVERNANCE.md` — operational checklists for AI agents
+- Created `docs/MCP.md` — MCP server documentation
+- Created `docs/HOOKS.md` — hook enforcement docs
+- Updated `docs/README.md` — added AI agents section, high-risk callouts, all-docs index, fixed Laravel version
+- Updated `skills/README.md` — added "Adding a New Skill" section + governance links
+- Updated `docs/COMPACT.md` — added key pointers + this audit entry
+
+### Confirmed Architecture Truths
+
+- Booking exclusion constraint with `daterange(check_in, check_out, '[)')` + `deleted_at IS NULL` — verified
+- Dual auth mode (Bearer + HttpOnly cookie) — verified
+- Custom token columns across 2 migrations — verified (8 columns total)
+- UserRole enum: `user | moderator | admin` — verified (PG ENUM + PHP backed enum)
+- Optimistic locking: `lock_version` on rooms + locations — verified
+- Pessimistic locking: `lockForUpdate()` in CancellationService + Booking model — verified
+- Brand tokens match: 6 colors confirmed in `tailwind.config.js`
+- BottomNav: 4 tabs confirmed
+- "Cuộn xuống" absent from rendered UI — confirmed (regression test guards it)
+
+### Docs Drift Fixed
+
+- `docs/README.md`: "Laravel 11 + PHP 8.3" corrected to "Laravel 12 + PHP 8.2+"
+- `docs/README.md`: test count updated from 142 to 145 frontend tests
+- `docs/README.md`: date updated from Feb 12 to Feb 21
+
+### Code Issues Found (backlog)
+
+See `docs/FINDINGS_BACKLOG.md` (14 items):
+
+- F-04 (High): CI triggers `develop` branch but repo uses `dev`
+- F-01 (Medium): DATABASE.md claims room_status PG ENUM but it's VARCHAR
+- F-05 (Medium): CI uses pnpm, local docs reference npm
+- F-06/F-07/F-08 (Medium): Missing CHECK constraints
+- Others: Low severity docs drift
+
+### Gates
+
+- MCP run_verify not available in this environment
+- Commands for human to verify locally:
+  - `cd backend && php artisan test`
+  - `cd frontend && npx tsc --noEmit`
+  - `cd frontend && npx vitest run`
+  - `docker compose config`
+
+### Warnings
+
+- Audit complete — all 15 tier-2 searches executed, all tier-3 reads done
+- No code was modified — docs-only changes
+
+### Next steps (prioritized)
+
+1. Fix F-04: Change CI branch trigger from `develop` to `dev`
+2. Fix F-01: Correct room_status documentation in DATABASE.md
+3. Add missing CHECK constraints (F-06, F-07, F-08)
+4. Add FK `reviews.booking_id → bookings.id` (F-09)
+5. Dashboard Phase 2 implementation

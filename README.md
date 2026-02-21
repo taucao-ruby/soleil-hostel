@@ -91,14 +91,14 @@ Dự án được xây dựng như một hệ thống có thể sống lâu dài
 
 ### 🖥️ Backend
 
-- **Laravel 11 – PHP 8.2+**
+- **Laravel 12 – PHP 8.2+**
 - Clean Architecture:
   - Controllers
   - Service Layer
   - Repository Pattern
 - Authentication: **Laravel Sanctum**
 - RESTful API
-- **537 automated tests** (Feature + Unit)
+- **737 automated tests** (Feature + Unit) + **145 frontend tests**
 - Security & performance-focused design
 
 ---
@@ -123,7 +123,7 @@ Dự án được xây dựng như một hệ thống có thể sống lâu dài
 
 ```
 soleil-hostel/
-├── backend/                          # Laravel 11 Backend
+├── backend/                          # Laravel 12 Backend
 │   ├── app/                          # Application Code
 │   │   ├── Console/                  # Artisan Commands
 │   │   ├── Enums/                    # PHP Enums
@@ -143,9 +143,9 @@ soleil-hostel/
 │   ├── resources/                    # Views & Assets
 │   ├── routes/                       # API Routes
 │   ├── storage/                      # File Storage
-│   ├── tests/                        # 537 Automated Tests
-│   │   ├── Feature/                  # Feature Tests (432)
-│   │   └── Unit/                     # Unit Tests (105)
+│   ├── tests/                        # 737 Automated Tests
+│   │   ├── Feature/                  # Feature Tests
+│   │   └── Unit/                     # Unit Tests
 │   ├── composer.json                 # PHP Dependencies
 │   ├── phpunit.xml                   # Test Configuration
 │   └── artisan                       # Laravel CLI
@@ -361,7 +361,7 @@ Sau đó mở Pull Request trên GitHub.
 │                                                                 │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
 │  │   PHPUnit       │  │   PHPStan       │  │    Psalm        │ │
-│  │   296 Tests     │  │   Static Analysis│  │  Code Quality  │ │
+│  │   737 Tests     │  │   Static Analysis│  │  Code Quality  │ │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
                                     │
@@ -408,18 +408,18 @@ Sau đó mở Pull Request trên GitHub.
 
 ## 🧪 Test Suite Summary
 
-Dự án hiện có **296 automated tests**, bao gồm **Unit Tests** và **Feature Tests**, đảm bảo hệ thống ổn định trước khi release.
+Dự án hiện có **737 backend tests** + **145 frontend tests**, bao gồm Feature Tests, Unit Tests, và UI tests.
 
-| Nhóm Test      | Số lượng | Mô tả                           |
-| -------------- | -------- | ------------------------------- |
-| Feature Tests  | 246      | Kiểm thử toàn bộ flow API       |
-| Unit Tests     | 50       | Logic Service, Model, Enum      |
-| Auth Tests     | 26       | Xác thực & token management     |
-| Booking Tests  | 60       | Đặt phòng, overlap, soft delete |
-| Room Tests     | 24       | Optimistic locking              |
-| RBAC Tests     | 47       | Role-based access control       |
-| Security Tests | 77       | Headers, XSS, Rate limiting     |
-| Cache Tests    | 6        | Redis cache layer               |
+| Nhóm Test       | Số lượng | Mô tả                           |
+| --------------- | -------- | ------------------------------- |
+| Backend Tests   | 737      | Feature + Unit (2071 assertions) |
+| Frontend Tests  | 145      | Vitest (13 test files)           |
+| Auth Tests      | 44       | Xác thực & token management     |
+| Booking Tests   | 60       | Đặt phòng, overlap, soft delete |
+| Room Tests      | 151      | CRUD + Optimistic locking       |
+| RBAC Tests      | 47       | Role-based access control       |
+| Security Tests  | 91       | Headers, XSS, Rate limiting     |
+| Cache Tests     | 6        | Redis cache layer               |
 
 ✔️ CI chạy test tự động cho mỗi Pull Request  
 ✔️ Không merge code lỗi vào `main`

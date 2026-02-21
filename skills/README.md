@@ -126,3 +126,31 @@ After non-trivial implementation work, update project status docs if present:
 - `skills/ops/ci-quality-gates-skill.md`
 - `skills/ops/docker-compose-skill.md`
 - `skills/ops/logging-observability-skill.md`
+
+## Adding a New Skill
+
+Naming convention: `skills/[domain]/[name]-skill.md`
+
+Structure:
+
+```markdown
+# [Skill Name]
+
+## Context
+When to use this skill and what domain it covers.
+
+## Rules
+Concrete rules to follow during implementation.
+
+## Examples
+Code patterns and usage examples.
+
+## Anti-patterns
+What NOT to do.
+```
+
+## Related Docs
+
+- [AI Governance](../docs/AI_GOVERNANCE.md) — full agent workflow
+- [Agent Framework](../docs/agents/README.md) — CONTRACT, ARCHITECTURE_FACTS, COMMANDS
+- [COMPACT](../docs/COMPACT.md) — reference skills applied in session updates

@@ -1,6 +1,6 @@
 ﻿# ðŸ“š Soleil Hostel Documentation
 
-> **Last Updated:** February 12, 2026 | **Tests:** 722 backend tests (2012 assertions) + 142 frontend unit tests | **Status:** Post-Audit v2 ðŸ"„
+> **Last Updated:** February 21, 2026 | **Tests:** 722 backend tests (2012 assertions) + 145 frontend unit tests | **Status:** Post-Audit v3
 
 ## Quick Navigation
 
@@ -26,6 +26,26 @@
 | **Run load tests**                    | [Performance Tests](../tests/performance/README.md)               |
 
 ---
+
+## For AI Agents
+
+Start here if you are an AI coding agent:
+
+- [AGENTS.md](../AGENTS.md) — onboarding + conventions
+- [Agent Framework](./agents/README.md) — CONTRACT, ARCHITECTURE_FACTS, COMMANDS
+- [AI Governance](./AI_GOVERNANCE.md) — operational checklists
+- [Skills](../skills/README.md) — task-specific guardrails
+- [COMPACT](./COMPACT.md) — current session state
+- [MCP Server](./MCP.md) — tool server + safety policy
+- [Hooks](./HOOKS.md) — local enforcement
+
+## High-Risk Areas
+
+These domains have critical invariants. Read docs before making changes:
+
+- **Booking overlap constraint** — [DB_FACTS.md](./DB_FACTS.md), [ARCHITECTURE_FACTS](./agents/ARCHITECTURE_FACTS.md)
+- **Auth tokens** — [AUTHENTICATION.md](./backend/features/AUTHENTICATION.md)
+- **Migrations** — [DB_FACTS.md](./DB_FACTS.md) Section 6
 
 ## Project Memory
 
@@ -159,7 +179,7 @@ docs/
 | Layer    | Technology                                 |
 | -------- | ------------------------------------------ |
 | Frontend | React 19 + TypeScript + Vite + TailwindCSS |
-| Backend  | Laravel 11 + PHP 8.3                       |
+| Backend  | Laravel 12 + PHP 8.2+                      |
 | Database | PostgreSQL 16                              |
 | Cache    | Redis 7                                    |
 | Testing  | PHPUnit + Vitest + Playwright              |
@@ -267,6 +287,46 @@ docs/
 2. Run tests before submitting: `php artisan test`
 3. Follow PSR-12 coding standards
 4. Update documentation for new features
+
+---
+
+## All Docs Index
+
+### Root-level
+
+| File                                                         | Purpose                       |
+| ------------------------------------------------------------ | ----------------------------- |
+| [COMPACT.md](./COMPACT.md)                                   | Session memory / current state |
+| [WORKLOG.md](./WORKLOG.md)                                   | Work log                      |
+| [ADR.md](./ADR.md)                                           | Architecture Decision Records |
+| [DATABASE.md](./DATABASE.md)                                 | Database schema & indexes     |
+| [DB_FACTS.md](./DB_FACTS.md)                                 | DB invariants & constraints   |
+| [KNOWN_LIMITATIONS.md](./KNOWN_LIMITATIONS.md)               | System constraints & tech debt |
+| [OPERATIONAL_PLAYBOOK.md](./OPERATIONAL_PLAYBOOK.md)         | Incident runbooks             |
+| [PERFORMANCE_BASELINE.md](./PERFORMANCE_BASELINE.md)         | Performance benchmarks        |
+| [API_DEPRECATION.md](./API_DEPRECATION.md)                   | API versioning & deprecation  |
+| [DEVELOPMENT_HOOKS.md](./DEVELOPMENT_HOOKS.md)               | Detailed hook behavior        |
+| [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md)                   | Migration guide               |
+
+### Agent & Governance
+
+| File                                                         | Purpose                       |
+| ------------------------------------------------------------ | ----------------------------- |
+| [agents/README.md](./agents/README.md)                       | Agent framework index         |
+| [agents/CONTRACT.md](./agents/CONTRACT.md)                   | Definition of Done            |
+| [agents/ARCHITECTURE_FACTS.md](./agents/ARCHITECTURE_FACTS.md) | Domain invariants          |
+| [agents/COMMANDS.md](./agents/COMMANDS.md)                   | Verified commands             |
+| [AI_GOVERNANCE.md](./AI_GOVERNANCE.md)                       | AI agent workflow             |
+| [COMMANDS_AND_GATES.md](./COMMANDS_AND_GATES.md)             | Full commands + CI gates      |
+| [MCP.md](./MCP.md)                                           | MCP server docs               |
+| [HOOKS.md](./HOOKS.md)                                       | Hook enforcement              |
+
+### Audits
+
+| File                                                         | Purpose                       |
+| ------------------------------------------------------------ | ----------------------------- |
+| [AUDIT_2026_02_21.md](./AUDIT_2026_02_21.md)                 | Full repo audit (2026-02-21)  |
+| [FINDINGS_BACKLOG.md](./FINDINGS_BACKLOG.md)                 | Code issues found (not fixed) |
 
 ---
 

@@ -99,10 +99,13 @@ export async function runCommand(
   } = {},
 ) {
   return new Promise((resolve) => {
+    // On Windows, batch-file commands like `npx` require shell:true to resolve
+    // correctly when spawned without an interactive shell (e.g. from a git hook).
+    const useShell = process.platform === "win32";
     const child = spawn(command, args, {
       cwd,
       env,
-      shell: false,
+      shell: useShell,
       windowsHide: true,
       stdio: captureOutput ? ["ignore", "pipe", "pipe"] : "inherit",
     });

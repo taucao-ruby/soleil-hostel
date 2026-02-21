@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
@@ -46,10 +47,24 @@ class HttpOnlyTokenController extends Controller
             throw new AuthenticationException('Email hoặc mật khẩu không đúng.');
         }
 
-        // Auto-resend verification email if unverified
+        // Auto-resend verification email if unverified.
+        // Wrapped in try/catch: SMTP / mail-binding failures must not cause a 500 on login.
         if (! $user->hasVerifiedEmail()) {
-            $user->sendEmailVerificationNotification();
+            try {
+                $user->sendEmailVerificationNotification();
+            } catch (\Exception $e) {
+                Log::warning('Failed to resend verification email on login', [
+                    'user_id' => $user->id,
+                    'email'   => $user->email,
+                    'error'   => $e->getMessage(),
+                ]);
+            }
         }
+
+        // Regenerate session to prevent session-fixation attacks.
+        // The 'web' middleware on this route started a session; regenerate() issues a new
+        // session ID while preserving the existing data (including the CSRF _token).
+        $request->session()->regenerate();
 
         // ========== Token Configuration ==========
         $rememberMe = $request->boolean('remember_me', false);
@@ -101,7 +116,7 @@ class HttpOnlyTokenController extends Controller
             'expires_in_minutes' => $expiresInMinutes,
             'expires_at' => $expiresAt->toIso8601String(),
             'token_type' => $tokenType,
-            'csrf_token' => \Illuminate\Support\Facades\Session::token(),
+            'csrf_token' => $request->session()->token(),
         ], 'Login thành công. Token đã được set trong httpOnly cookie.');
 
         // ========== SET httpOnly COOKIE ==========

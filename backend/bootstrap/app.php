@@ -39,6 +39,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend(\App\Http\Middleware\SecurityHeaders::class);
         // Performance logging runs at the end to capture full request duration
         $middleware->append(\App\Http\Middleware\LogPerformance::class);
+
+        // login-httponly uses 'web' middleware to start a session so it can return a real
+        // CSRF token.  The login request itself cannot carry a CSRF token (it is the first
+        // request), so exclude it from CSRF verification.
+        $middleware->validateCsrfTokens(except: [
+            'api/auth/login-httponly',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // ========== API Response Wrapper ==========

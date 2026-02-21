@@ -82,7 +82,8 @@ Route::post('/auth/login-v2', [TokenAuthController::class, 'login'])->middleware
 
 // ========== HTTPONLY COOKIE ENDPOINTS (Current) ==========
 // Token stored in httpOnly Cookie, NOT localStorage - XSS-safe
-Route::post('/auth/login-httponly', [HttpOnlyTokenController::class, 'login'])->middleware('throttle:5,1');
+Route::post('/auth/login-httponly', [HttpOnlyTokenController::class, 'login'])
+    ->middleware(['web', 'throttle:5,1']);
 Route::get('/auth/csrf-token', function (Request $request) {
     // Return Laravel session CSRF token for form submissions
     return response()->json(['csrf_token' => \Illuminate\Support\Facades\Session::token()]);

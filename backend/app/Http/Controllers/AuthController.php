@@ -10,6 +10,7 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -37,8 +38,17 @@ class AuthController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
 
-        // Fire Registered event to trigger email verification notification
-        event(new Registered($user));
+        // Fire Registered event to trigger email verification notification.
+        // Wrapped in try/catch: SMTP failures must not cause a 500 on registration.
+        try {
+            event(new Registered($user));
+        } catch (\Exception $e) {
+            Log::warning('Failed to dispatch post-registration notification', [
+                'user_id' => $user->id,
+                'email'   => $user->email,
+                'error'   => $e->getMessage(),
+            ]);
+        }
 
         $token = $user->createToken('auth_token')->plainTextToken;
 

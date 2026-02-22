@@ -55,8 +55,8 @@ class HttpOnlyTokenController extends Controller
             } catch (\Exception $e) {
                 Log::warning('Failed to resend verification email on login', [
                     'user_id' => $user->id,
-                    'email'   => $user->email,
-                    'error'   => $e->getMessage(),
+                    'email' => $user->email,
+                    'error' => $e->getMessage(),
                 ]);
             }
         }

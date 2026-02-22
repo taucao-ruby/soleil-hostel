@@ -22,9 +22,9 @@ class RegisterTest extends TestCase
     private const ENDPOINT = '/api/auth/register';
 
     private const VALID_PAYLOAD = [
-        'name'                  => 'Jane Doe',
-        'email'                 => 'jane@example.com',
-        'password'              => 'Password1!',
+        'name' => 'Jane Doe',
+        'email' => 'jane@example.com',
+        'password' => 'Password1!',
         'password_confirmation' => 'Password1!',
     ];
 
@@ -77,8 +77,8 @@ class RegisterTest extends TestCase
     public static function missingFieldProvider(): array
     {
         return [
-            'missing name'     => ['name'],
-            'missing email'    => ['email'],
+            'missing name' => ['name'],
+            'missing email' => ['email'],
             'missing password' => ['password'],
         ];
     }

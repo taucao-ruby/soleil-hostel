@@ -30,8 +30,8 @@ class LoginHttpOnlyTest extends TestCase
         parent::setUp();
 
         $this->user = User::factory()->create([
-            'email'             => 'login-test@example.com',
-            'password'          => Hash::make('secret123'),
+            'email' => 'login-test@example.com',
+            'password' => Hash::make('secret123'),
             'email_verified_at' => now(),
         ]);
     }
@@ -53,7 +53,7 @@ class LoginHttpOnlyTest extends TestCase
     public function test_valid_credentials_return_200_with_csrf_token_and_httponly_cookie(): void
     {
         $response = $this->postJson('/api/auth/login-httponly', [
-            'email'    => 'login-test@example.com',
+            'email' => 'login-test@example.com',
             'password' => 'secret123',
         ]);
 
@@ -86,7 +86,7 @@ class LoginHttpOnlyTest extends TestCase
     public function test_wrong_password_returns_401_not_500(): void
     {
         $response = $this->postJson('/api/auth/login-httponly', [
-            'email'    => 'login-test@example.com',
+            'email' => 'login-test@example.com',
             'password' => 'totally-wrong',
         ]);
 
@@ -100,7 +100,7 @@ class LoginHttpOnlyTest extends TestCase
     public function test_unknown_email_returns_401_not_500(): void
     {
         $response = $this->postJson('/api/auth/login-httponly', [
-            'email'    => 'nobody@example.com',
+            'email' => 'nobody@example.com',
             'password' => 'anything',
         ]);
 
@@ -123,13 +123,13 @@ class LoginHttpOnlyTest extends TestCase
         // Unverified user (email_verified_at = null) — exactly the condition that
         // triggered the production 500 via sendEmailVerificationNotification().
         $unverified = User::factory()->create([
-            'email'             => 'unverified@example.com',
-            'password'          => Hash::make('secret123'),
+            'email' => 'unverified@example.com',
+            'password' => Hash::make('secret123'),
             'email_verified_at' => null,
         ]);
 
         $response = $this->postJson('/api/auth/login-httponly', [
-            'email'    => 'unverified@example.com',
+            'email' => 'unverified@example.com',
             'password' => 'secret123',
         ]);
 

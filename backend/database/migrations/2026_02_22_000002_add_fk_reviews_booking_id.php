@@ -29,9 +29,9 @@ return new class extends Migration
 
         Schema::table('reviews', function (Blueprint $table) {
             $table->foreign('booking_id', 'fk_reviews_booking_id')
-                  ->references('id')
-                  ->on('bookings')
-                  ->restrictOnDelete();
+                ->references('id')
+                ->on('bookings')
+                ->restrictOnDelete();
         });
     }
 

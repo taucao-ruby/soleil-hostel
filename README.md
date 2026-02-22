@@ -274,7 +274,7 @@ Sau đó mở Pull Request trên GitHub.
 - Core booking flow with pessimistic locking
 - Customer management
 - CI/CD with GitHub Actions
-- Full test suite (435 tests, 1295 assertions)
+- Full test suite (737 backend tests, 2071 assertions + 145 frontend tests)
 - Documentation consolidation & cleanup
 - Frontend documentation restructured into 12 modular files (January 2, 2026)
 - Backend documentation fully organized
@@ -346,7 +346,7 @@ Sau đó mở Pull Request trên GitHub.
 │                        🖥️ BACKEND LAYER                         │
 │                                                                 │
 │  ┌─────────────────────────────────────────────────────────────┐ │
-│  │                 Laravel 11 - Clean Architecture              │ │
+│  │                 Laravel 12 - Clean Architecture              │ │
 │  └─────────────────────────────────────────────────────────────┘ │
 │                                                                 │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │

@@ -1,6 +1,6 @@
 # Commands and Quality Gates
 
-Verified against code on 2026-02-21. Source: `composer.json`, `frontend/package.json`, root `package.json`, `.github/workflows/*.yml`, `tools/hooks/`, `mcp/soleil-mcp/policy.json`.
+Verified against code on 2026-02-22. Source: `composer.json`, `frontend/package.json`, root `package.json`, `.github/workflows/*.yml`, `tools/hooks/`, `mcp/soleil-mcp/policy.json`.
 
 ## Backend Commands
 
@@ -146,7 +146,7 @@ npm run hooks:run:prepush  # Dry-run pre-push
 
 ### tests.yml (CI)
 
-Triggers: PR to `main`/`develop`, push to `main`/`develop`.
+Triggers: PR to `main`/`dev`, push to `main`/`dev`.
 
 | Job | Commands | Expected | Blocking |
 |-----|----------|----------|----------|

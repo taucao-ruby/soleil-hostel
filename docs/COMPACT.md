@@ -1,11 +1,12 @@
 ﻿# COMPACT — Soleil Hostel (AI Session Memory)
 
 ## 1) Current Snapshot (keep under 12 lines)
-- Date updated: 2026-02-21
-- Current branch: `dev`
+- Date updated: 2026-02-22
+- Current branch: `main`
 - Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (145 tests, 13 suites, 0 failures)
-- Backend test baseline: `cd backend && php artisan test` (737 tests, 2071 assertions) — verified 2026-02-21
-- Progress summary: Homepage Phase 1 complete (8 sections, 7 defects fixed, regression tests added); auth HttpOnly backend fix complete
+- Backend test baseline: `cd backend && php artisan test` (737 tests, 2071 assertions) — verified 2026-02-22
+- Pint baseline: `cd backend && vendor/bin/pint --test` (250 files, 0 violations) — verified 2026-02-22
+- Progress summary: Homepage Phase 1 complete; auth HttpOnly fix complete; audit v3 remediation complete (12/14 findings fixed)
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
 ## 2) What matters (invariants / guardrails)
@@ -56,8 +57,8 @@ docker compose config
 
 Useful lint/format/static checks:
 ```bash
-cd frontend && npm run lint
-cd frontend && npm run format
+cd frontend && pnpm lint
+cd frontend && pnpm format
 cd backend && vendor/bin/pint --test
 cd backend && vendor/bin/phpstan analyse
 cd backend && vendor/bin/psalm
@@ -156,10 +157,16 @@ See `docs/FINDINGS_BACKLOG.md` (14 items):
 - Audit complete — all 15 tier-2 searches executed, all tier-3 reads done
 - No code was modified — docs-only changes
 
+### Completed (2026-02-22) — Audit v3 Remediation
+
+- PR-1: F-04 (CI `develop`→`dev`) + F-14 (Redis conditional requirepass)
+- PR-2: F-06/F-07/F-08 (CHECK constraints migration)
+- PR-3: F-09 (FK `reviews.booking_id → bookings.id`)
+- PR-4: F-01/F-05/F-10–F-13 (docs sync)
+- Post-fix: Pint style violations + minimatch pnpm override
+
 ### Next steps (prioritized)
 
-1. Fix F-04: Change CI branch trigger from `develop` to `dev`
-2. Fix F-01: Correct room_status documentation in DATABASE.md
-3. Add missing CHECK constraints (F-06, F-07, F-08)
-4. Add FK `reviews.booking_id → bookings.id` (F-09)
-5. Dashboard Phase 2 implementation
+1. Dashboard Phase 2 implementation
+2. Wire SearchCard to real availability API
+3. Fix F-02/F-03 in docs/README.md (low — stale version/count references)

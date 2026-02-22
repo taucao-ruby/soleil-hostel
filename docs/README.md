@@ -1,6 +1,6 @@
 ﻿# ðŸ“š Soleil Hostel Documentation
 
-> **Last Updated:** February 21, 2026 | **Tests:** 722 backend tests (2012 assertions) + 145 frontend unit tests | **Status:** Post-Audit v3
+> **Last Updated:** February 22, 2026 | **Tests:** 737 backend tests (2071 assertions) + 145 frontend unit tests | **Status:** Post-Audit v3 Remediation
 
 ## Quick Navigation
 
@@ -76,10 +76,10 @@ php -S 127.0.0.1:8000 -t public public/index.php
 
 # 3. Frontend Setup (new terminal)
 cd frontend
-npm ci
+pnpm install
 
 # Start frontend dev server (Vite)
-npx vite --port 5173
+pnpm dev
 # Frontend running at: http://localhost:5173
 
 # 4. Run tests
@@ -172,7 +172,7 @@ docs/
 | Optimistic Locking    | âœ… Complete          | 24 tests       |
 | Repository Layer      | âœ… Complete          | 53 tests       |
 | Email Verification    | âœ… Complete          | 26 tests       |
-| **Total**             | **âœ… Post-Audit v2** | **722 tests**  |
+| **Total**             | **âœ… Post-Audit v3** | **737 tests**  |
 
 ## Tech Stack
 

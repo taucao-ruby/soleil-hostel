@@ -1,7 +1,7 @@
 # Audit Report — Soleil Hostel
 
-**Last Updated:** February 21, 2026
-**Branch:** `dev`
+**Last Updated:** February 22, 2026
+**Branch:** `main`
 
 ## Audit History
 
@@ -9,9 +9,9 @@
 | ----- | ---- | ----- | ------------ | ------ |
 | v1 | Feb 9, 2026 | Full codebase | 61 | 61/61 resolved (100%) |
 | v2 | Feb 10–11, 2026 | Deep code-level review | 98 | 98/98 resolved (100%) |
-| v3 | Feb 21, 2026 | Repo-wide docs + governance | 14 | Logged in backlog |
+| v3 | Feb 21–22, 2026 | Repo-wide docs + governance + remediation | 14 | 12/14 resolved (86%) |
 
-## Current Verification (February 21, 2026)
+## Current Verification (February 22, 2026)
 
 All quality gates pass:
 
@@ -29,9 +29,9 @@ docker compose config
 # Valid — PASS
 ```
 
-## Audit v3 — Documentation & Governance (February 21, 2026)
+## Audit v3 — Documentation, Governance & Remediation (February 21–22, 2026)
 
-Full repo-wide documentation audit covering backend (Laravel), frontend (React/TS), all docs, CI/CD, MCP server, and git hooks.
+Full repo-wide documentation audit covering backend (Laravel), frontend (React/TS), all docs, CI/CD, MCP server, and git hooks. Remediation completed February 22.
 
 ### Methodology
 
@@ -42,24 +42,37 @@ Full repo-wide documentation audit covering backend (Laravel), frontend (React/T
 
 ### Findings Summary
 
-| ID | Severity | Issue | File |
-| -- | -------- | ----- | ---- |
-| F-01 | Medium | DATABASE.md claims room_status is PG ENUM — actually VARCHAR | `docs/DATABASE.md` |
-| F-02 | Low | README says "Laravel 11" — actually Laravel 12 | `docs/README.md` (fixed) |
-| F-03 | Low | Frontend test count 142 — actually 145 | `docs/README.md` (fixed) |
-| F-04 | High | CI triggers on `develop` but repo uses `dev` branch | `.github/workflows/tests.yml` |
-| F-05 | Medium | CI uses pnpm, local docs reference npm | Multiple docs |
-| F-06 | Medium | Missing CHECK (check_out > check_in) on bookings | Migrations |
-| F-07 | Medium | Missing CHECK (rating BETWEEN 1 AND 5) on reviews | Migrations |
-| F-08 | Low | Missing CHECK (price >= 0) on rooms | Migrations |
-| F-09 | Medium | Missing FK reviews.booking_id -> bookings.id | Migrations |
-| F-10 | Low | TODO: Integrate with Stripe | `docs/KNOWN_LIMITATIONS.md` |
-| F-11 | Low | TODO: analytics integration | `docs/frontend/PERFORMANCE_SECURITY.md` |
-| F-12 | Low | TODO: analytics service commented out | `docs/frontend/UTILS_LAYER.md` |
-| F-13 | Low | Booking status is VARCHAR, not PG ENUM | Intentional — app-level |
-| F-14 | Medium | Redis default password in docker-compose.yml | `docker-compose.yml` |
+| ID | Severity | Issue | File | Status |
+| -- | -------- | ----- | ---- | ------ |
+| F-01 | Medium | DATABASE.md claims room_status is PG ENUM — actually VARCHAR | `docs/DATABASE.md` | **Fixed** (PR-4) |
+| F-02 | Low | README says "Laravel 11" — actually Laravel 12 | `docs/README.md` | Open |
+| F-03 | Low | Frontend test count 142 — actually 145 | `docs/README.md` | Open |
+| F-04 | High | CI triggers on `develop` but repo uses `dev` branch | `.github/workflows/tests.yml` | **Fixed** (PR-1) |
+| F-05 | Medium | CI uses pnpm, local docs reference npm | Multiple docs | **Fixed** (PR-4) |
+| F-06 | Medium | Missing CHECK (check_out > check_in) on bookings | Migrations | **Fixed** (PR-2) |
+| F-07 | Medium | Missing CHECK (rating BETWEEN 1 AND 5) on reviews | Migrations | **Fixed** (PR-2) |
+| F-08 | Low | Missing CHECK (price >= 0) on rooms | Migrations | **Fixed** (PR-2) |
+| F-09 | Medium | Missing FK reviews.booking_id -> bookings.id | Migrations | **Fixed** (PR-3) |
+| F-10 | Low | TODO: Integrate with Stripe | `docs/KNOWN_LIMITATIONS.md` | **Fixed** (PR-4) |
+| F-11 | Low | TODO: analytics integration | `docs/frontend/PERFORMANCE_SECURITY.md` | **Fixed** (PR-4) |
+| F-12 | Low | TODO: analytics service commented out | `docs/frontend/UTILS_LAYER.md` | **Fixed** (PR-4) |
+| F-13 | Low | Booking status is VARCHAR, not PG ENUM | Intentional — app-level | **Fixed** (PR-4, documented) |
+| F-14 | Medium | Redis default password in docker-compose.yml | `docker-compose.yml` | **Fixed** (PR-1) |
 
 Full details: [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md)
+
+### Remediation PRs (February 22, 2026)
+
+| PR Branch | Findings | Changes |
+| --------- | -------- | ------- |
+| `fix/auditv3-pr1-ci-redis` | F-04, F-14 | CI branch `develop`→`dev`; Redis conditional requirepass (no hardcoded password) |
+| `fix/auditv3-pr2-checks` | F-06, F-07, F-08 | Migration: CHECK constraints on bookings.dates, reviews.rating, rooms.price (pgsql-only, SQLite guard) |
+| `fix/auditv3-pr3-fk-reviews-bookings` | F-09 | Migration: FK `reviews.booking_id → bookings.id` ON DELETE RESTRICT (SQLite guard) |
+| `docs/auditv3-pr4-docs-sync` | F-01, F-05, F-10–F-13 | Docs: room_status VARCHAR, npm→pnpm, TODO→Planned, booking status documented as intentional |
+
+Post-remediation fixes:
+- Pint style violations on new migrations + auth controllers/tests
+- `pnpm.overrides` for minimatch >=10.2.1 (ReDoS vulnerability)
 
 ### Confirmed Architecture Truths
 
@@ -126,10 +139,15 @@ Details: [AUDIT_FIX_PROMTS_V2.md](./AUDIT_FIX_PROMTS_V2.md)
 
 Details: [AUDIT_FIX_PROMTS_V1.md](./AUDIT_FIX_PROMTS_V1.md)
 
-## Next Steps (Prioritized)
+## Remaining Open Findings
 
-1. Fix F-04: Change CI branch trigger from `develop` to `dev`
-2. Fix F-01: Correct room_status documentation in DATABASE.md
-3. Add missing CHECK constraints (F-06, F-07, F-08)
-4. Add FK `reviews.booking_id -> bookings.id` (F-09)
-5. Dashboard Phase 2 implementation
+| ID | Severity | Issue | Notes |
+| -- | -------- | ----- | ----- |
+| F-02 | Low | `docs/README.md` says "Laravel 11" — actually Laravel 12 | Stale reference in docs/README.md Project Status table |
+| F-03 | Low | `docs/README.md` says "142 frontend unit tests" — actually 145 | Stale test count in docs/README.md |
+
+## Next Steps
+
+1. Fix F-02 and F-03 in `docs/README.md`
+2. Dashboard Phase 2 implementation
+3. Wire SearchCard to real availability API

@@ -26,7 +26,7 @@ Other framework tables exist (`sessions`, `cache`, `jobs`, etc.) but are out of 
 - Review integrity:
   - [DB] `reviews.booking_id` is `NOT NULL` (migration `2026_02_10_000002`).
   - [DB] `reviews_booking_id_unique` enforces one review per booking.
-  - [DB] FK `reviews.booking_id -> bookings.id`: Not found in migrations.
+  - [DB] FK `reviews.booking_id -> bookings.id` (`fk_reviews_booking_id`, ON DELETE RESTRICT): Added in migration `2026_02_22_000002` (pgsql-only, SQLite guard).
 - Multi-location truth:
   - [DB] `rooms.location_id` is `NOT NULL` after backfill migration (`2026_02_09_000005`).
   - [DB] `bookings.location_id` is denormalized and nullable (`ON DELETE SET NULL` FK).
@@ -69,9 +69,10 @@ WHERE (status IN ('pending', 'confirmed') AND deleted_at IS NULL);
   - Exclusion constraints and PostgreSQL triggers are not available.
   - Migration `2026_02_09_000000_add_foreign_key_constraints.php` intentionally skips FK adds when default DB is SQLite.
   - Result: overlap/location integrity must also be enforced in application logic and tests.
-- Additional checks:
-  - DB `CHECK (check_out > check_in)` on `bookings`: Not found in migrations.
-  - DB `CHECK (rating between 1 and 5)` on `reviews`: Not found in migrations.
+- Additional CHECK constraints (added in migration `2026_02_22_000001`, pgsql-only, SQLite guard):
+  - DB `CHECK (check_out > check_in)` on `bookings` (`chk_bookings_dates`).
+  - DB `CHECK (rating BETWEEN 1 AND 5)` on `reviews` (`chk_reviews_rating`).
+  - DB `CHECK (price >= 0)` on `rooms` (`chk_rooms_price`).
 
 ## 4) Index Strategy (names that matter)
 Bookings: availability and overlap
@@ -184,7 +185,7 @@ Do:
 Dont:
 - Do not use `UNIQUE(room_id, check_in, check_out)` as overlap protection.
 - Do not rely on SQLite to enforce PostgreSQL-only invariants (exclusion constraints, PG triggers).
-- Do not assume `reviews.booking_id` FK exists at DB-level without adding a migration (not found today).
+- FK `reviews.booking_id → bookings.id` exists (migration `2026_02_22_000002`, ON DELETE RESTRICT, pgsql-only). ON DELETE RESTRICT is intentional — bookings use soft-delete.
 
 ## AI Rules for DB-Related Changes
 - Never use `UNIQUE(room_id, check_in, check_out)` as overlap prevention.

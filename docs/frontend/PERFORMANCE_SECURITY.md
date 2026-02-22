@@ -59,7 +59,7 @@ Tracked via `web-vitals` v5+ in `src/utils/webVitals.ts`:
 | TTFB   | <= 800ms | >= 1.8s  |
 
 - Development: logs to console
-- Production: analytics integration (TODO)
+- Production: analytics integration (Planned, Issue: TBD-ANALYTICS-01)
 
 ---
 

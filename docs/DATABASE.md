@@ -140,16 +140,15 @@ CREATE TYPE user_role AS ENUM ('user', 'moderator', 'admin');
 | description  | TEXT             | NULLABLE                 |
 | price        | DECIMAL(10,2)    | NOT NULL                 |
 | max_guests   | INTEGER          | NOT NULL                 |
-| status       | room_status ENUM | DEFAULT 'available'      |
+| status       | VARCHAR          | DEFAULT 'available'      |
 | lock_version | BIGINT UNSIGNED  | NOT NULL, DEFAULT 1      |
 | created_at   | TIMESTAMP        |                          |
 | updated_at   | TIMESTAMP        |                          |
 
-**ENUM: room_status**
-
-```sql
-CREATE TYPE room_status AS ENUM ('available', 'occupied', 'maintenance');
-```
+**room_status: VARCHAR** (intentional — not a PostgreSQL ENUM).
+Allowed values enforced at application layer (`App\Models\Room`, `App\Enums\RoomStatus` if present):
+`available`, `occupied`, `maintenance`.
+Using VARCHAR instead of a DB ENUM allows adding new statuses without a schema migration.
 
 ### bookings
 
@@ -178,7 +177,9 @@ CREATE TYPE room_status AS ENUM ('available', 'occupied', 'maintenance');
 | created_at          | TIMESTAMP    |                                     |
 | updated_at          | TIMESTAMP    |                                     |
 
-**Booking Status Enum:**
+**booking_status: VARCHAR** (intentional — not a PostgreSQL ENUM).
+VARCHAR chosen over DB ENUM for migration flexibility (adding new statuses requires no schema change).
+Allowed values (from `App\Enums\BookingStatus`):
 
 ```
 pending         → Initial state, awaiting payment/confirmation
@@ -187,6 +188,15 @@ refund_pending  → Cancellation initiated, refund processing
 cancelled       → Terminal state, refund completed or not required
 refund_failed   → Refund failed, awaiting retry or manual intervention
 ```
+
+State transitions (see `App\Enums\BookingStatus::canTransitionTo()`):
+- PENDING → CONFIRMED, REFUND_PENDING, CANCELLED
+- CONFIRMED → REFUND_PENDING, CANCELLED
+- REFUND_PENDING → CANCELLED, REFUND_FAILED
+- CANCELLED → (terminal)
+- REFUND_FAILED → REFUND_PENDING (retry), CANCELLED
+
+Enforcement: application layer only.
 
 ### reviews
 

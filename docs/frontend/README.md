@@ -94,20 +94,20 @@ The application follows **Feature-Sliced Architecture** principles:
 cd frontend
 
 # Install dependencies
-npm install
+pnpm install
 
 # Start development server with HMR
-npm run dev
+pnpm dev
 
 # Build for production
-npm run build
+pnpm build
 
-# Run E2E tests
-npm run test
+# Run tests
+pnpm test
 
 # Lint and format code
-npm run lint
-npm run format
+pnpm lint
+pnpm format
 ```
 
 ---
@@ -213,13 +213,13 @@ VITE_ANALYTICS_ID=your_analytics_id
 
 | Command            | Description                         |
 | ------------------ | ----------------------------------- |
-| `npm run dev`      | Start dev server with HMR           |
-| `npm run build`    | Production build with optimizations |
-| `npm run preview`  | Preview production build locally    |
-| `npm run lint`     | Run ESLint code quality checks      |
-| `npm run lint:fix` | Auto-fix ESLint issues              |
-| `npm run format`   | Format code with Prettier           |
-| `npm run test`     | Run Vitest unit tests               |
+| `pnpm dev`         | Start dev server with HMR           |
+| `pnpm build`       | Production build with optimizations |
+| `pnpm preview`     | Preview production build locally    |
+| `pnpm lint`        | Run ESLint code quality checks      |
+| `pnpm lint:fix`    | Auto-fix ESLint issues              |
+| `pnpm format`      | Format code with Prettier           |
+| `pnpm test`        | Run Vitest unit tests               |
 
 ---
 
@@ -228,7 +228,7 @@ VITE_ANALYTICS_ID=your_analytics_id
 ### Production Build
 
 ```bash
-npm run build
+pnpm build
 ```
 
 - Outputs optimized bundles to `dist/`
@@ -244,7 +244,7 @@ npm run build
 ### Docker Support
 
 ```bash
-npm run dev:docker  # Docker development environment
+pnpm dev:docker  # Docker development environment
 ```
 
 ---
@@ -299,8 +299,8 @@ npm run dev:docker  # Docker development environment
 
 ```bash
 # Clear node_modules and reinstall
-rm -rf node_modules package-lock.json
-npm install
+rm -rf node_modules pnpm-lock.yaml
+pnpm install
 ```
 
 **HMR Not Working**
@@ -319,7 +319,7 @@ npm install
 
 ```bash
 # Regenerate type definitions
-npm run build
+pnpm build
 ```
 
 ---
@@ -346,10 +346,10 @@ npm run build
 
 | Command            | Description                         |
 | ------------------ | ----------------------------------- |
-| `npm run dev`      | Start dev server with HMR           |
-| `npm run build`    | Production build with optimizations |
-| `npm run preview`  | Preview production build locally    |
-| `npm run lint`     | Run ESLint code quality checks      |
-| `npm run lint:fix` | Auto-fix ESLint issues              |
-| `npm run format`   | Format code with Prettier           |
-| `npm run test`     | Run Vitest unit tests               |
+| `pnpm dev`         | Start dev server with HMR           |
+| `pnpm build`       | Production build with optimizations |
+| `pnpm preview`     | Preview production build locally    |
+| `pnpm lint`        | Run ESLint code quality checks      |
+| `pnpm lint:fix`    | Auto-fix ESLint issues              |
+| `pnpm format`      | Format code with Prettier           |
+| `pnpm test`        | Run Vitest unit tests               |

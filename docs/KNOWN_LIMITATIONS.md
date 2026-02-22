@@ -117,7 +117,7 @@ Payment processing is **stubbed**. No actual Stripe/PayPal integration.
 // CancellationService.php
 private function processRefund(Booking $booking): RefundResult
 {
-    // TODO: Integrate with Stripe
+    // Planned (Issue: TBD-STRIPE-01): Integrate with Stripe
     // Currently returns mock success
     return new RefundResult(success: true, amount: $booking->amount);
 }

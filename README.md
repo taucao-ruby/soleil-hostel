@@ -228,8 +228,8 @@ cd soleil-hostel
 
 ```bash
 cd frontend
-npm ci
-npx vite --port 5173
+pnpm install
+pnpm dev
 # Frontend will be available at: http://localhost:5173
 ```
 

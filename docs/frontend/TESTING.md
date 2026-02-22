@@ -31,12 +31,12 @@ import '@testing-library/jest-dom'
 
 Imports Testing Library matchers (toBeInTheDocument, toHaveTextContent, etc.) globally.
 
-### NPM Scripts
+### Scripts
 
 ```bash
-npm run test          # Run all unit tests once
-npm run test:unit     # Alias for test
-npm run test:watch    # Watch mode for development
+pnpm test             # Run all unit tests once
+pnpm test:unit        # Alias for test
+pnpm test:watch       # Watch mode for development
 ```
 
 ---

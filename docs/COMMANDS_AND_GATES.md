@@ -70,15 +70,13 @@ cd backend && composer audit
 
 ```bash
 cd frontend
-npm install          # local dev (npm)
-# or
 pnpm install         # CI uses pnpm with --frozen-lockfile
 ```
 
 ### Dev Server
 
 ```bash
-cd frontend && npm run dev
+cd frontend && pnpm dev
 # Starts Vite on http://localhost:5173
 ```
 
@@ -107,14 +105,14 @@ cd frontend && pnpm test:unit --coverage
 ### Lint
 
 ```bash
-cd frontend && npm run lint                        # ESLint
-cd frontend && npm run format                      # Prettier (write mode)
+cd frontend && pnpm lint                           # ESLint
+cd frontend && pnpm format                         # Prettier (write mode)
 ```
 
 ### Build
 
 ```bash
-cd frontend && npm run build                       # tsc -b && vite build
+cd frontend && pnpm build                          # tsc -b && vite build
 ```
 
 ## Docker

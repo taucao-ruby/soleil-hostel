@@ -96,7 +96,7 @@ export function getPerformanceRating(
 ### Current Behavior
 
 - **Development**: Logs metrics to console
-- **Production**: Analytics service integration (TODO - currently commented out)
+- **Production**: Analytics service integration (Planned, Issue: TBD-ANALYTICS-01 - currently commented out)
 
 ### Thresholds
 

@@ -426,13 +426,16 @@ FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE;
 
 ### Check Constraints
 
+Enforced at DB layer (PostgreSQL). App-layer validation also exists (see `StoreBookingRequest`, `UpdateBookingRequest`, `StoreReviewRequest`, `StoreRoomRequest`).
+Added in migration `2026_02_22_000001_add_check_constraints_bookings_reviews_rooms.php`. Skipped on SQLite (tests).
+
 ```sql
 -- Check-out must be after check-in
 ALTER TABLE bookings
 ADD CONSTRAINT chk_bookings_dates
 CHECK (check_out > check_in);
 
--- Price must be positive
+-- Price must be non-negative
 ALTER TABLE rooms
 ADD CONSTRAINT chk_rooms_price
 CHECK (price >= 0);
@@ -530,6 +533,7 @@ EXCLUDE USING gist (
 | `2026_02_10_add_cancellation_reason_to_bookings`        | cancellation_reason column                     |
 | `2026_02_11_reconcile_legacy_index_ordering`            | Idempotent index reconciliation                |
 | `2026_02_12_fix_overlapping_bookings_constraint`        | Exclusion constraint excludes soft deletes     |
+| `2026_02_22_add_check_constraints_bookings_reviews_rooms` | CHECK constraints: dates, rating, price (PG only) |
 
 ### Commands
 

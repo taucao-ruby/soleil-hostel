@@ -85,7 +85,10 @@ DB_PASSWORD=secret
 
 # Redis
 REDIS_HOST=127.0.0.1
-REDIS_PASSWORD=null
+# Leave empty for local dev (no auth). Set a strong value in staging/prod.
+# Never commit real values. docker-compose uses conditional requirepass:
+# if REDIS_PASSWORD is set, Redis requires auth; if empty, no auth.
+REDIS_PASSWORD=
 REDIS_PORT=6379
 
 # Cache

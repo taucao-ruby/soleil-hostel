@@ -4,9 +4,9 @@ name: "CI: Tests, Lint & Security"
 # Consolidates: tests.yml + nplusone-detection.yml + CI portion of ci-cd.yml
 on:
   pull_request:
-    branches: [main, develop]
+    branches: [main, dev]
   push:
-    branches: [main, develop]
+    branches: [main, dev]
 
 concurrency:
   group: ci-tests-${{ github.ref }}

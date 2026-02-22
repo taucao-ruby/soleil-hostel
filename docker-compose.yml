@@ -37,8 +37,15 @@ services:
     volumes:
       - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
       - redisdata:/data
-    command: redis-server /usr/local/etc/redis/redis.conf --requirepass ${REDIS_PASSWORD:-soleil_redis_secret_2026}
+    command: >
+      sh -c '
+        if [ -n "$$REDIS_PASSWORD" ]; then
+          exec redis-server /usr/local/etc/redis/redis.conf --requirepass "$$REDIS_PASSWORD";
+        else
+          exec redis-server /usr/local/etc/redis/redis.conf;
+        fi'
     environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       REDIS_REPL_DISKLESS_SYNC: "yes"
       REDIS_MAX_CLIENTS: 50000
     ulimits:
@@ -46,7 +53,7 @@ services:
         soft: 262144
         hard: 262144
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD:-soleil_redis_secret_2026} ping || exit 1"]
+      test: ["CMD-SHELL", "if [ -n \"$$REDIS_PASSWORD\" ]; then redis-cli -a \"$$REDIS_PASSWORD\" ping; else redis-cli ping; fi"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -81,7 +88,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-secret}
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-soleil_redis_secret_2026}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       REDIS_CLIENT: phpredis
       CACHE_DRIVER: redis
       SESSION_DRIVER: redis

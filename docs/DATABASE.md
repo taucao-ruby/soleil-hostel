@@ -420,8 +420,10 @@ ADD CONSTRAINT fk_reviews_user
 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL;
 
 ALTER TABLE reviews
-ADD CONSTRAINT fk_reviews_booking
-FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE;
+ADD CONSTRAINT fk_reviews_booking_id
+FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE RESTRICT;
+-- RESTRICT: bookings use soft-delete; CASCADE would destroy reviews.
+-- Added in migration 2026_02_22_000002. Skipped on SQLite (tests).
 ```
 
 ### Check Constraints
@@ -534,6 +536,7 @@ EXCLUDE USING gist (
 | `2026_02_11_reconcile_legacy_index_ordering`            | Idempotent index reconciliation                |
 | `2026_02_12_fix_overlapping_bookings_constraint`        | Exclusion constraint excludes soft deletes     |
 | `2026_02_22_add_check_constraints_bookings_reviews_rooms` | CHECK constraints: dates, rating, price (PG only) |
+| `2026_02_22_add_fk_reviews_booking_id`                  | FK reviews.booking_id → bookings.id (RESTRICT) |
 
 ### Commands
 

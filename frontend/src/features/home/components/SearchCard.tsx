@@ -18,7 +18,6 @@ const SearchCard: React.FC = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     // TODO: wire to availability API
-    console.log('TODO: wire to availability API', { branch, guests, checkIn, checkOut })
   }
 
   return (

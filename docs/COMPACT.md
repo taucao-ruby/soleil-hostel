@@ -6,7 +6,7 @@
 - Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (145 tests, 13 suites, 0 failures)
 - Backend test baseline: `cd backend && php artisan test` (737 tests, 2071 assertions) — verified 2026-02-23
 - Pint baseline: `cd backend && vendor/bin/pint --test` (250 files, 0 violations) — verified 2026-02-23
-- Progress summary: Homepage Phase 1 complete; auth HttpOnly fix complete; audit v3 + v5 remediation complete (20/20 findings fixed)
+- Progress summary: Homepage Phase 1 complete; auth HttpOnly fix complete; audit v3 + v4 remediation complete (20/20 findings fixed)
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
 ## 2) What matters (invariants / guardrails)
@@ -163,7 +163,7 @@ See `docs/FINDINGS_BACKLOG.md` (14 items):
 - PR-4: F-01/F-05/F-10–F-13 (docs sync)
 - Post-fix: Pint style violations + minimatch pnpm override
 
-### Completed (2026-02-23) — Audit v5 Remediation
+### Completed (2026-02-23) — Audit v4 Remediation
 
 - Batch-1: F-16 (CI quality gates non-blocking → Pint + Composer Audit now blocking), F-20 (docker compose validate job added)
 - Batch-2: F-15 (untrack `.env.test`), F-17 (clear committed APP_KEY in `.env.testing`)

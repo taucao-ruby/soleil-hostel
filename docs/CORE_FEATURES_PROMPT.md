@@ -639,6 +639,6 @@ const renderWithRouter = (ui: React.ReactElement) =>
 - [ ] All new components have basic test coverage
 - [ ] `npx tsc --noEmit` passes
 - [ ] `npx vitest run` passes
-- [ ] Existing 142 tests still pass
+- [ ] Existing 145 tests still pass
 - [ ] No console errors in development
 - [ ] Responsive design (mobile-friendly admin panel)

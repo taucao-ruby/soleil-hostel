@@ -28,5 +28,5 @@ Severity guide:
 | F-16 | `.github/workflows/tests.yml:397,421,467,490` | Pint, Psalm, Composer Audit, NPM Audit all have `continue-on-error: true` — quality gates are non-blocking. | Medium | Set `continue-on-error: false` for at minimum Pint and Composer Audit. | **Fixed** (batch-1) |
 | F-17 | `backend/.env.testing:3` | Committed `APP_KEY=base64:...` — test-only but committed encryption keys are a hygiene issue. | Low | Set `APP_KEY=` (empty) and let CI generate it. | **Fixed** (batch-2) |
 | F-18 | `frontend/src` (multiple files) | 8 TODO markers including `console.log` in SearchCard.tsx production code. | Low | Remove console.log; track TODOs in backlog. | **Fixed** (batch-3) |
-| F-19 | `docs/DEVELOPMENT_HOOKS.md:23` | Says "142 tests" for frontend; actual: 145 tests. Residual of F-03. | Low | Update test count. | Open |
+| F-19 | `docs/DEVELOPMENT_HOOKS.md:23` | Says "142 tests" for frontend; actual: 145 tests. Residual of F-03. | Low | Update test count. | **Fixed** (batch-4) |
 | F-20 | CI workflows | No `docker compose config` validation in CI despite being listed as DoD gate in agents/CONTRACT.md. | Low | Add lightweight CI job running `docker compose config`. | **Fixed** (batch-1) |

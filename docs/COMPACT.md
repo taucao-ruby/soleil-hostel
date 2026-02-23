@@ -1,12 +1,12 @@
 ﻿# COMPACT — Soleil Hostel (AI Session Memory)
 
 ## 1) Current Snapshot (keep under 12 lines)
-- Date updated: 2026-02-22
-- Current branch: `main`
+- Date updated: 2026-02-23
+- Current branch: `dev` (synced with `main`)
 - Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (145 tests, 13 suites, 0 failures)
-- Backend test baseline: `cd backend && php artisan test` (737 tests, 2071 assertions) — verified 2026-02-22
-- Pint baseline: `cd backend && vendor/bin/pint --test` (250 files, 0 violations) — verified 2026-02-22
-- Progress summary: Homepage Phase 1 complete; auth HttpOnly fix complete; audit v3 remediation complete (12/14 findings fixed)
+- Backend test baseline: `cd backend && php artisan test` (737 tests, 2071 assertions) — verified 2026-02-23
+- Pint baseline: `cd backend && vendor/bin/pint --test` (250 files, 0 violations) — verified 2026-02-23
+- Progress summary: Homepage Phase 1 complete; auth HttpOnly fix complete; audit v3 + v5 remediation complete (20/20 findings fixed)
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
 ## 2) What matters (invariants / guardrails)
@@ -72,9 +72,7 @@ cd backend && vendor/bin/psalm
 ## 6) Key pointers (docs / important files)
 - [Project Status](../PROJECT_STATUS.md)
 - [Audit Report](../AUDIT_REPORT.md)
-- [Audit Fix Promts v1](../AUDIT_FIX_PROMTS_V1.md)
-- [Audit Fix Promts v2](../AUDIT_FIX_PROMTS_V2.md)
-- [Remaining Audit Promts](../AUDIT_FIX_PROMTS.md)
+- [Remediation Playbook](../PROMPT_AUDIT_FIX.md)
 - [Docs Index](./README.md)
 - [Operational Playbook](./OPERATIONAL_PLAYBOOK.md)
 - [Database Notes](./DATABASE.md)
@@ -165,8 +163,15 @@ See `docs/FINDINGS_BACKLOG.md` (14 items):
 - PR-4: F-01/F-05/F-10–F-13 (docs sync)
 - Post-fix: Pint style violations + minimatch pnpm override
 
+### Completed (2026-02-23) — Audit v5 Remediation
+
+- Batch-1: F-16 (CI quality gates non-blocking → Pint + Composer Audit now blocking), F-20 (docker compose validate job added)
+- Batch-2: F-15 (untrack `.env.test`), F-17 (clear committed APP_KEY in `.env.testing`)
+- Batch-3: F-18 (remove `console.log` from SearchCard.tsx)
+- Batch-4: F-19 (update 142→145 test count across 6 files), F-02/F-03 confirmed fixed
+- All 20 findings (F-01–F-20) now resolved
+
 ### Next steps (prioritized)
 
 1. Dashboard Phase 2 implementation
 2. Wire SearchCard to real availability API
-3. Fix F-02/F-03 in docs/README.md (low — stale version/count references)

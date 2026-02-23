@@ -1,28 +1,28 @@
 # Soleil Hostel - Project Status
 
-**Last Updated:** February 22, 2026
-**Current Branch:** `main`
+**Last Updated:** February 23, 2026
+**Current Branch:** `dev` (synced with `main`)
 
-## Current Status: Audit v3 Remediation Complete, Repo Health Green
+## Current Status: Audit v5 Remediation Complete, Repo Health Green
 
 > Full audit v1 completed February 9, 2026: **61 issues** found, **61/61 resolved (100%)**.
 > Full audit v2 completed February 10–11, 2026: **98 issues** found, **98/98 resolved (100%)**.
 > Full audit v3 completed February 21, 2026: repo-wide docs audit + governance framework. **14 findings** logged.
-> Audit v3 remediation completed February 22, 2026: **12/14 findings fixed**. 2 remaining (F-02, F-03 — low-severity docs drift in `docs/README.md`).
+> Audit v3 remediation completed February 22, 2026: **12/14 findings fixed**.
+> Full audit v5 completed February 23, 2026: **6 new findings** (0 critical, 0 high, 2 medium, 4 low).
+> Audit v5 remediation completed February 23, 2026: **6/6 findings fixed** across 4 batches. All prior open items (F-02, F-03) also resolved. **20/20 total findings fixed (100%)**.
 
-Verified on February 22, 2026:
+Verified on February 23, 2026:
 - Backend tests PASS: **737 tests**, **2071 assertions** (`cd backend && php artisan test`)
 - Frontend typecheck PASS (`cd frontend && npx tsc --noEmit`)
 - Frontend unit tests PASS: **13 files**, **145 tests** (`cd frontend && npx vitest run`)
 - Compose config PASS (`docker compose config`)
 - Pint style PASS: **250 files**, 0 violations (`cd backend && vendor/bin/pint --test`)
 
-Latest audit report: [docs/AUDIT_2026_02_21.md](./docs/AUDIT_2026_02_21.md)
+Latest audit report: [AUDIT_REPORT.md](./AUDIT_REPORT.md)
 Findings backlog: [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md)
-Previous audit report: [AUDIT_REPORT.md](./AUDIT_REPORT.md)
-v1 remediation playbook: [AUDIT_FIX_PROMTS_V1.md](./AUDIT_FIX_PROMTS_V1.md)
-v2 remediation playbook: [AUDIT_FIX_PROMTS_V2.md](./AUDIT_FIX_PROMTS_V2.md)
-Remaining v1 improvements: [AUDIT_FIX_PROMTS.md](./AUDIT_FIX_PROMTS.md)
+Previous audit (v3): [docs/AUDIT_2026_02_21.md](./docs/AUDIT_2026_02_21.md)
+Remediation playbook: [PROMPT_AUDIT_FIX.md](./PROMPT_AUDIT_FIX.md)
 
 ---
 
@@ -34,23 +34,47 @@ Frontend (React)   █████████████████▓░░�
 Testing            █████████████████████░  95%
 Audit v1           █████████████████████░ 100% ✅ 61/61
 Audit v2           █████████████████████░ 100% ✅ 98/98
-Audit v3 (docs)    █████████████████████░ 100% ✅ 14 found, 12/14 fixed
-Documentation      █████████████████████░  99%
+Audit v3 (docs)    █████████████████████░ 100% ✅ 14/14 fixed
+Audit v5           █████████████████████░ 100% ✅ 6/6 fixed
+Documentation      █████████████████████░ 100%
 Deployment         ███████████░░░░░░░░░░░  50%
 ─────────────────────────────────────────────
 Total Progress     █████████████████░░░░░  82%
 ```
 
+### Audit v5 Summary (February 23, 2026)
+
+Full code + infra audit. 6 new findings, all remediated same day across 4 batches.
+
+| Severity | Found | Fixed | Remaining |
+| --- | --- | --- | --- |
+| **Critical** | 0 | 0 | 0 |
+| **High** | 0 | 0 | 0 |
+| **Medium** | 2 | 2 (F-15, F-16) | 0 |
+| **Low** | 4 | 4 (F-17, F-18, F-19, F-20) | 0 |
+| **Total** | **6** | **6** | **0** |
+
+#### Remediation Batches (February 23, 2026)
+
+| Branch | Findings | Changes |
+| --- | --- | --- |
+| `fix/auditv4-batch1-ci-hardening` | F-16, F-20 | Pint + Composer Audit → blocking gates; docker compose validate job |
+| `fix/auditv4-batch2-env-cleanup` | F-15, F-17 | Untrack `.env.test`; clear committed APP_KEY in `.env.testing` |
+| `fix/auditv4-batch3-frontend-cleanup` | F-18 | Remove `console.log` from SearchCard.tsx |
+| `docs/auditv4-batch4-docs-sync` | F-19 | Update test count 142→145 across all docs |
+
+Also resolved prior open items: F-02 (confirmed fixed), F-03 (fully fixed via batch-4).
+
 ### Audit v3 Summary (February 21–22, 2026)
 
-Repo-wide documentation audit covering backend, frontend, all docs, CI/CD, MCP server, and hooks. Remediation completed February 22.
+Repo-wide documentation audit covering backend, frontend, all docs, CI/CD, MCP server, and hooks. 14 findings, all remediated.
 
 | Severity | Found | Fixed | Remaining |
 | --- | --- | --- | --- |
 | **High** | 1 | 1 (F-04: CI branch trigger) | 0 |
 | **Medium** | 7 | 7 (F-01, F-05, F-06, F-07, F-09, F-14) | 0 |
-| **Low** | 6 | 4 (F-08, F-10, F-11, F-12, F-13) | 2 (F-02, F-03) |
-| **Total** | **14** | **12** | **2** |
+| **Low** | 6 | 6 (F-02, F-03, F-08, F-10–F-13) | 0 |
+| **Total** | **14** | **14** | **0** |
 
 #### Remediation PRs (February 22, 2026)
 
@@ -60,26 +84,6 @@ Repo-wide documentation audit covering backend, frontend, all docs, CI/CD, MCP s
 | `fix/auditv3-pr2-checks` | F-06, F-07, F-08 | CHECK constraints migration (pgsql-only) |
 | `fix/auditv3-pr3-fk-reviews-bookings` | F-09 | FK `reviews.booking_id → bookings.id` (ON DELETE RESTRICT) |
 | `docs/auditv3-pr4-docs-sync` | F-01, F-05, F-10–F-13 | Docs sync: room_status, pnpm, TODOs, booking status |
-
-Post-remediation style fixes:
-- Pint `class_attributes_separation` / `class_definition` on new migrations
-- Pint `unary_operator_spaces` / `binary_operator_spaces` on auth controllers + tests
-- `pnpm.overrides` for minimatch ReDoS vulnerability
-
-Documentation created in v3:
-
-| Document | Purpose |
-| --- | --- |
-| `docs/agents/README.md` | AI agent framework index |
-| `docs/agents/CONTRACT.md` | Definition of Done for all task types |
-| `docs/agents/ARCHITECTURE_FACTS.md` | Domain invariants verified against code |
-| `docs/agents/COMMANDS.md` | Verified command reference |
-| `docs/AI_GOVERNANCE.md` | Operational checklists for AI agents |
-| `docs/COMMANDS_AND_GATES.md` | Full commands + CI gate mapping |
-| `docs/MCP.md` | MCP server documentation |
-| `docs/HOOKS.md` | Hook enforcement docs |
-| `docs/AUDIT_2026_02_21.md` | Full audit findings |
-| `docs/FINDINGS_BACKLOG.md` | Code issues backlog (14 items) |
 
 ### Previous Audit History
 
@@ -152,7 +156,7 @@ Playwright remains scaffolded; app runtime required for execution
 | --- | --- |
 | [docs/README.md](./docs/README.md) | Documentation entry point |
 | [docs/AUDIT_2026_02_21.md](./docs/AUDIT_2026_02_21.md) | Latest audit (v3) findings |
-| [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md) | Open code issues (14 items) |
+| [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md) | Code issues backlog (20 items, all fixed) |
 | [docs/COMMANDS_AND_GATES.md](./docs/COMMANDS_AND_GATES.md) | Verified commands + CI gates |
 | [docs/AI_GOVERNANCE.md](./docs/AI_GOVERNANCE.md) | AI agent workflow |
 | [docs/agents/](./docs/agents/) | Agent framework |
@@ -178,7 +182,6 @@ docker compose config
 
 ## Status Note
 
-Audit v1 (61/61), v2 (98/98) are complete in repository history.
-Audit v3 (docs) created governance framework and logged 14 findings; 12/14 remediated on February 22.
-Remaining open: F-02 (Laravel version in docs/README.md), F-03 (test count in docs/README.md).
-Remaining v1 improvement items are tracked in `AUDIT_FIX_PROMTS.md`.
+Audit v1 (61/61), v2 (98/98), v3 (14/14), v5 (6/6) are complete in repository history.
+All 20 findings (F-01 through F-20) have been resolved. No open items remain.
+Findings backlog: [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md)

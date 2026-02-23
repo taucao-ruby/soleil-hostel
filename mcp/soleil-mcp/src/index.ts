@@ -560,7 +560,7 @@ async function getProjectInvariants(): Promise<Record<string, unknown>> {
       verified_commands: [
         "cd backend && php artisan test (722 tests, 2012 assertions)",
         "cd frontend && npx tsc --noEmit",
-        "cd frontend && npx vitest run (142 tests)",
+        "cd frontend && npx vitest run (145 tests)",
         "docker compose config",
       ],
       known_non_blocking_warnings: [

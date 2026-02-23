@@ -20,7 +20,7 @@ Hooks are designed to be:
 - Verified commands:
   - `cd backend && php artisan test` (`722 tests`, `2012 assertions`)
   - `cd frontend && npx tsc --noEmit`
-  - `cd frontend && npx vitest run` (`142 tests`)
+  - `cd frontend && npx vitest run` (`145 tests`)
   - `docker compose config`
 - Known non-blocking warnings:
   - PHPUnit doc-comment metadata deprecation warnings

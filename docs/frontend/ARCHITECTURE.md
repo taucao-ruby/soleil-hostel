@@ -145,7 +145,7 @@ See [CONFIGURATION.md](CONFIGURATION.md).
 
 See [TESTING.md](TESTING.md).
 
-- **Unit**: Vitest + @testing-library/react (11 files, 142 tests)
+- **Unit**: Vitest + @testing-library/react (13 files, 145 tests)
 - **E2E**: Playwright (scaffolded, 1 spec)
 
 ---

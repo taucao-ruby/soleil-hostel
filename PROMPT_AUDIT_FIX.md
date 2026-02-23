@@ -1,0 +1,279 @@
+# Audit Fix Prompts — Soleil Hostel
+
+_Generated: 2026-02-23 | Source: AUDIT_REPORT.md + FINDINGS_BACKLOG.md_
+
+## Summary of Open Issues
+
+| ID | Audit Ref | Issue | Severity | Area |
+|----|-----------|-------|----------|------|
+| F-15 | AUDIT-001 | `backend/.env.test` tracked in git with MySQL config, contradicts PostgreSQL | Medium | Backend |
+| F-16 | AUDIT-002 | CI quality gates non-blocking (`continue-on-error: true`) | Medium | CI |
+| F-17 | AUDIT-003 | `backend/.env.testing` has committed `APP_KEY` | Low | Backend |
+| F-18 | AUDIT-004 | 8 TODO markers + `console.log` in frontend production code | Low | Frontend |
+| F-19 | AUDIT-005 | Stale test count "142" in `DEVELOPMENT_HOOKS.md` (actual: 145) | Low | Docs |
+| F-20 | AUDIT-006 | No `docker compose config` validation job in CI | Low | CI |
+
+---
+
+## Batch 1 — CI Hardening (F-16 + F-20)
+
+**Scope**: `.github/workflows/tests.yml`
+**Branch**: `fix/auditv4-batch1-ci-hardening`
+**PR target**: `dev`
+
+### Prompt
+
+```
+You are a senior DevOps engineer performing audit remediation on a Laravel 12 + React 19 monorepo.
+
+## Context
+
+File: `.github/workflows/tests.yml`
+Branch: `dev` → create `fix/auditv4-batch1-ci-hardening`
+
+The CI pipeline has two issues identified in audit:
+
+### Issue 1 — AUDIT-002 (F-16): Quality gates are non-blocking
+
+Four CI jobs use `continue-on-error: true`, meaning failures don't block PR merges:
+
+- Line 397: `psalm` job → `continue-on-error: true`
+- Line 421: `pint` job → `continue-on-error: true`
+- Line 467: `composer-audit` job → `continue-on-error: true`
+- Line 490: `npm-audit` job → `continue-on-error: true`
+
+Note: PHPStan (line 373) correctly has `continue-on-error: false`.
+
+**Required changes:**
+1. `pint` job (line 421): Change `continue-on-error: true` → `continue-on-error: false`
+   - Code style MUST be enforced — Pint is already passing with 0 violations
+2. `composer-audit` job (line 467): Change `continue-on-error: true` → `continue-on-error: false`
+   - Known CVEs in PHP deps must block merges
+3. `psalm` job (line 397): KEEP `continue-on-error: true` — false-positive rate may be high
+4. `npm-audit` job (line 490): KEEP `continue-on-error: true` — npm ecosystem has frequent low-severity advisories
+
+### Issue 2 — AUDIT-006 (F-20): Missing docker compose config validation
+
+`docs/agents/CONTRACT.md` lists `docker compose config` as a Definition of Done gate, but no CI job validates it.
+
+**Required changes:**
+Add a new lightweight CI job after the existing jobs:
+
+```yaml
+  # ========== INFRA: Docker Compose Validation ==========
+  docker-compose-validate:
+    name: Docker Compose Config
+    runs-on: ubuntu-latest
+    needs: [setup]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate docker-compose config
+        run: docker compose config > /dev/null
+```
+
+## Post-fix verification
+
+1. Commit with message: `fix(ci): enforce Pint + Composer Audit gates, add docker compose validation`
+2. Ensure `pint` and `composer-audit` jobs have `continue-on-error: false`
+3. Ensure new `docker-compose-validate` job exists
+4. Do NOT modify any other jobs
+
+## Documentation updates
+
+After fixing, update `docs/FINDINGS_BACKLOG.md`:
+- F-16: Status → `**Fixed** (batch-1)`
+- F-20: Status → `**Fixed** (batch-1)`
+```
+
+---
+
+## Batch 2 — Env File Cleanup (F-15 + F-17)
+
+**Scope**: `backend/.env.test`, `backend/.env.testing`, `.gitignore`
+**Branch**: `fix/auditv4-batch2-env-cleanup`
+**PR target**: `dev`
+
+### Prompt
+
+```
+You are a senior backend engineer performing audit remediation on a Laravel 12 project using PostgreSQL 16.
+
+## Context
+
+Branch: `dev` → create `fix/auditv4-batch2-env-cleanup`
+
+Two environment file issues identified in audit:
+
+### Issue 1 — AUDIT-001 (F-15): `backend/.env.test` tracked with MySQL config
+
+File `backend/.env.test` is tracked in git and contains:
+- `DB_CONNECTION=mysql` (line 23)
+- `DB_PORT=3306` (line 25)
+- Placeholder mail credentials: `your_email@example.com` / `your_email_password` (lines 59-60)
+
+This contradicts the project's PostgreSQL requirement. CI already uses `cp .env.example .env.testing` so this file is not used in CI.
+
+**Required changes:**
+1. Remove `backend/.env.test` from git tracking: `git rm backend/.env.test`
+2. Add `backend/.env.test` to `.gitignore` (under the existing "Environment variables" section at the top)
+3. The file should NOT be deleted from disk — only untracked
+
+### Issue 2 — AUDIT-003 (F-17): Committed APP_KEY in `backend/.env.testing`
+
+File `backend/.env.testing` (line 3) contains:
+```
+APP_KEY=base64:Ht3gPLkSP7/Bb+U+Wr+fFkPoSq6H5BkJ4qL9n+1N8bQ=
+```
+
+CI already runs `php artisan key:generate --env=testing` so this committed key is unused. Committed encryption keys are a security hygiene issue.
+
+**Required changes:**
+1. In `backend/.env.testing`, change line 3 from:
+   `APP_KEY=base64:Ht3gPLkSP7/Bb+U+Wr+fFkPoSq6H5BkJ4qL9n+1N8bQ=`
+   to:
+   `APP_KEY=`
+2. Add a comment above it: `# Generated by CI (php artisan key:generate --env=testing)`
+
+## Post-fix verification
+
+1. Run `git status` to confirm `.env.test` is staged for deletion
+2. Run `git diff backend/.env.testing` to confirm only APP_KEY line changed
+3. Commit with message: `fix(backend): remove .env.test from git, clear committed APP_KEY`
+
+## Documentation updates
+
+After fixing, update `docs/FINDINGS_BACKLOG.md`:
+- F-15: Status → `**Fixed** (batch-2)`
+- F-17: Status → `**Fixed** (batch-2)`
+```
+
+---
+
+## Batch 3 — Frontend Cleanup (F-18)
+
+**Scope**: `frontend/src/` (multiple files)
+**Branch**: `fix/auditv4-batch3-frontend-cleanup`
+**PR target**: `dev`
+
+### Prompt
+
+```
+You are a senior frontend engineer performing audit remediation on a React 19 + TypeScript 5.7 project.
+
+## Context
+
+Branch: `dev` → create `fix/auditv4-batch3-frontend-cleanup`
+
+### Issue — AUDIT-004 (F-18): TODO markers and console.log in production code
+
+8 TODO markers found in frontend source code. One includes a `console.log` that will emit debug output in production builds.
+
+**Files and specific changes:**
+
+#### 1. `frontend/src/features/home/components/SearchCard.tsx`
+- Line 20-21: Remove `console.log` statement. Keep the TODO comment but make the handler a no-op for now:
+  ```tsx
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    // TODO: wire to availability API
+  }
+  ```
+
+#### 2. `frontend/src/features/home/home.mock.ts`
+- Line 3: `// TODO: replace with local hostel photo asset` → KEEP (mock data, acceptable)
+- Lines 21, 35, 49: `// TODO: local asset` → KEEP (mock data, acceptable)
+
+#### 3. `frontend/src/shared/components/ErrorBoundary.tsx`
+- Line 57: `// TODO: Send to error tracking service (e.g., Sentry)` → KEEP (valid future work)
+
+#### 4. `frontend/src/utils/webVitals.ts`
+- Line 25: `// TODO: Send to analytics service` → KEEP (valid future work)
+
+**Summary: Only the `console.log` in SearchCard.tsx must be removed.** The remaining TODOs are legitimate future-work markers in non-production-path code.
+
+## Post-fix verification
+
+1. Run `cd frontend && npx tsc --noEmit` — must pass with 0 errors
+2. Run `cd frontend && npx vitest run` — must pass (baseline: 145 tests, 13 suites)
+3. Verify no `console.log` remains in SearchCard.tsx
+4. Commit with message: `fix(frontend): remove console.log from SearchCard production code`
+
+## Documentation updates
+
+After fixing, update `docs/FINDINGS_BACKLOG.md`:
+- F-18: Status → `**Fixed** (batch-3)`
+```
+
+---
+
+## Batch 4 — Docs Sync (F-19)
+
+**Scope**: `docs/DEVELOPMENT_HOOKS.md`, `docs/FINDINGS_BACKLOG.md`
+**Branch**: `docs/auditv4-batch4-docs-sync`
+**PR target**: `dev`
+
+### Prompt
+
+```
+You are a technical writer performing audit remediation on project documentation.
+
+## Context
+
+Branch: `dev` → create `docs/auditv4-batch4-docs-sync`
+
+### Issue — AUDIT-005 (F-19): Stale test count in DEVELOPMENT_HOOKS.md
+
+File `docs/DEVELOPMENT_HOOKS.md` line 23 says:
+```
+cd frontend && npx vitest run (142 tests)
+```
+
+Actual count (verified in COMPACT.md and CI): **145 tests** (13 suites).
+
+This is a residual of F-03 which was partially fixed — the README.md was updated but DEVELOPMENT_HOOKS.md was missed.
+
+**Required changes:**
+1. In `docs/DEVELOPMENT_HOOKS.md` line 23, change `142 tests` → `145 tests`
+
+## Post-fix verification
+
+1. Grep for "142 tests" across the entire repo — should return 0 results
+2. Commit with message: `docs: update frontend test count to 145 in DEVELOPMENT_HOOKS.md`
+
+## Documentation updates
+
+After fixing, update `docs/FINDINGS_BACKLOG.md`:
+- F-19: Status → `**Fixed** (batch-4)`
+
+Also update the backlog status for ALL issues to reflect current state:
+- F-15: `**Fixed** (batch-2)`
+- F-16: `**Fixed** (batch-1)`
+- F-17: `**Fixed** (batch-2)`
+- F-18: `**Fixed** (batch-3)`
+- F-19: `**Fixed** (batch-4)`
+- F-20: `**Fixed** (batch-1)`
+```
+
+---
+
+## Execution Order
+
+| Order | Batch | Branch | Key Risk | Dependencies |
+|-------|-------|--------|----------|--------------|
+| 1 | Batch 1 — CI Hardening | `fix/auditv4-batch1-ci-hardening` | CI jobs may fail if Pint/Composer Audit have issues | None |
+| 2 | Batch 2 — Env Cleanup | `fix/auditv4-batch2-env-cleanup` | Must verify CI still passes after .env.test removal | None |
+| 3 | Batch 3 — Frontend Cleanup | `fix/auditv4-batch3-frontend-cleanup` | Must pass tsc + vitest after change | None |
+| 4 | Batch 4 — Docs Sync | `docs/auditv4-batch4-docs-sync` | None — docs only | Run last to capture all status updates |
+
+All batches are independent and can be merged in any order, but Batch 4 should go last since it updates the final status of all findings.
+
+## Post-Merge Checklist
+
+- [ ] All 6 open issues (F-15 through F-20) marked as Fixed in FINDINGS_BACKLOG.md
+- [ ] CI pipeline passes with enforced Pint + Composer Audit gates
+- [ ] `backend/.env.test` no longer tracked in git
+- [ ] `backend/.env.testing` has empty APP_KEY
+- [ ] No `console.log` in SearchCard.tsx
+- [ ] No "142 tests" reference anywhere in repo
+- [ ] `docker compose config` validation job exists in CI

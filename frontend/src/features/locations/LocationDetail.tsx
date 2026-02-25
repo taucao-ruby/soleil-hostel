@@ -36,11 +36,10 @@ const LocationDetail: React.FC = () => {
         const data = await getLocationBySlug(slug, params)
         setLocation(data)
       } catch (err: unknown) {
-        console.error('Failed to fetch location:', err)
         const message =
           err && typeof err === 'object' && 'response' in err
-            ? 'Location not found'
-            : 'Failed to load location. Please try again later.'
+            ? 'Không tìm thấy chi nhánh'
+            : 'Không thể tải thông tin chi nhánh. Vui lòng thử lại sau.'
         setError(message)
       } finally {
         setLoading(false)
@@ -116,13 +115,23 @@ const LocationDetail: React.FC = () => {
               d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
-          <h2 className="mb-2 text-2xl font-bold text-gray-900">{error || 'Location not found'}</h2>
-          <button
-            onClick={() => navigate('/locations')}
-            className="mt-4 text-blue-600 hover:text-blue-800"
-          >
-            ← Back to all locations
-          </button>
+          <h2 className="mb-2 text-2xl font-bold text-gray-900">
+            {error || 'Không tìm thấy chi nhánh'}
+          </h2>
+          <div className="flex justify-center gap-3 mt-4">
+            <button
+              onClick={() => fetchLocation()}
+              className="px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            >
+              Thử lại
+            </button>
+            <button
+              onClick={() => navigate('/locations')}
+              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2"
+            >
+              ← Tất cả chi nhánh
+            </button>
+          </div>
         </div>
       </section>
     )
@@ -134,9 +143,9 @@ const LocationDetail: React.FC = () => {
         {/* Back Link */}
         <button
           onClick={() => navigate('/locations')}
-          className="mb-6 text-sm text-blue-600 hover:text-blue-800"
+          className="mb-6 text-sm text-blue-600 hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded"
         >
-          ← All Locations
+          ← Tất cả chi nhánh
         </button>
 
         {/* Hero Section */}
@@ -171,7 +180,7 @@ const LocationDetail: React.FC = () => {
         {/* Amenities */}
         {location.amenities.length > 0 && (
           <div className="p-6 mb-8 bg-white shadow-sm rounded-xl">
-            <h2 className="mb-4 text-xl font-bold text-gray-900">Amenities</h2>
+            <h2 className="mb-4 text-xl font-bold text-gray-900">Tiện ích</h2>
             <div className="flex flex-wrap gap-3">
               {location.amenities.map(amenity => (
                 <span
@@ -190,11 +199,11 @@ const LocationDetail: React.FC = () => {
 
         {/* Availability Search */}
         <div className="p-6 mb-8 shadow-sm bg-blue-50 rounded-xl">
-          <h2 className="mb-4 text-xl font-bold text-gray-900">Check Availability</h2>
+          <h2 className="mb-4 text-xl font-bold text-gray-900">Kiểm tra phòng trống</h2>
           <form onSubmit={handleSearch} className="flex flex-wrap items-end gap-4">
             <div>
               <label htmlFor="check-in" className="block mb-1 text-sm font-medium text-gray-700">
-                Check-in
+                Nhận phòng
               </label>
               <input
                 id="check-in"
@@ -208,7 +217,7 @@ const LocationDetail: React.FC = () => {
             </div>
             <div>
               <label htmlFor="check-out" className="block mb-1 text-sm font-medium text-gray-700">
-                Check-out
+                Trả phòng
               </label>
               <input
                 id="check-out"
@@ -222,7 +231,7 @@ const LocationDetail: React.FC = () => {
             </div>
             <div>
               <label htmlFor="guests" className="block mb-1 text-sm font-medium text-gray-700">
-                Guests
+                Số khách
               </label>
               <input
                 id="guests"
@@ -236,9 +245,9 @@ const LocationDetail: React.FC = () => {
             </div>
             <button
               type="submit"
-              className="px-6 py-2 font-semibold text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
+              className="px-6 py-2 font-semibold text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
             >
-              Search
+              Tìm kiếm
             </button>
           </form>
         </div>
@@ -246,7 +255,7 @@ const LocationDetail: React.FC = () => {
         {/* Available Rooms */}
         <div>
           <h2 className="mb-6 text-2xl font-bold text-gray-900">
-            Available Rooms <span className="text-lg text-gray-500">({location.rooms.length})</span>
+            Phòng trống <span className="text-lg text-gray-500">({location.rooms.length})</span>
           </h2>
 
           {location.rooms.length > 0 ? (
@@ -285,16 +294,14 @@ const LocationDetail: React.FC = () => {
                         ${room.price}
                         <span className="text-sm font-normal text-gray-500">/night</span>
                       </div>
-                      <span className="text-sm text-gray-500">
-                        Up to {room.max_guests} {room.max_guests === 1 ? 'guest' : 'guests'}
-                      </span>
+                      <span className="text-sm text-gray-500">Tối đa {room.max_guests} khách</span>
                     </div>
 
                     <button
                       onClick={() => handleBookRoom(room)}
-                      className="w-full px-4 py-2 font-semibold text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
+                      className="w-full px-4 py-2 font-semibold text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                     >
-                      Book Now
+                      Đặt ngay
                     </button>
                   </div>
                 </article>
@@ -304,8 +311,8 @@ const LocationDetail: React.FC = () => {
             <div className="py-12 text-center">
               <p className="text-gray-500">
                 {checkIn && checkOut
-                  ? 'No rooms available for the selected dates. Try different dates.'
-                  : 'Search for dates to see available rooms.'}
+                  ? 'Không có phòng trống cho ngày đã chọn. Vui lòng thử ngày khác.'
+                  : 'Tìm kiếm theo ngày để xem phòng trống.'}
               </p>
             </div>
           )}

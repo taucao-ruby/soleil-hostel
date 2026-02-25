@@ -3,10 +3,10 @@
 ## 1) Current Snapshot (keep under 12 lines)
 - Date updated: 2026-02-23
 - Current branch: `dev` (synced with `main`)
-- Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (145 tests, 13 suites, 0 failures)
+- Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (192 tests, 19 suites, 0 failures)
 - Backend test baseline: `cd backend && php artisan test` (737 tests, 2071 assertions) — verified 2026-02-23
 - Pint baseline: `cd backend && vendor/bin/pint --test` (250 files, 0 violations) — verified 2026-02-23
-- Progress summary: Homepage Phase 1 complete; auth HttpOnly fix complete; audit v3 + v4 remediation complete (20/20 findings fixed)
+- Progress summary: Homepage Phase 1 complete; Dashboard Phase 0+1+2+3 complete; SearchCard wired; auth HttpOnly fix complete; audit v3 + v4 remediation complete (20/20 findings fixed)
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
 ## 2) What matters (invariants / guardrails)
@@ -171,7 +171,18 @@ See `docs/FINDINGS_BACKLOG.md` (14 items):
 - Batch-4: F-19 (update 142→145 test count across 6 files), F-02/F-03 confirmed fixed
 - All 20 findings (F-01–F-20) now resolved
 
+### Completed (2026-02-23) — Dashboard Phase 0 + Phase 1
+
+- Phase 0: Replaced inline /dashboard placeholder with lazy-loaded DashboardPage.tsx
+- Phase 1: Guest Dashboard "My Bookings" feature
+  - New files: `bookingViewModel.ts`, `bookingViewModel.test.ts` (12 tests), `useMyBookings.ts`, `GuestDashboard.tsx`, `ConfirmDialog.tsx`
+  - Modified: `booking.types.ts` (added API response types), `booking.api.ts` (fetchMyBookings + cancelBooking), `DashboardPage.tsx` (wired GuestDashboard)
+  - Features: booking list with filter tabs (All/Upcoming/Past), cancel with confirm modal, skeleton/empty/error states, toast notifications
+  - No React Query (not in package.json) — used existing useState+useEffect pattern
+  - CSRF: auto-attached by existing interceptor on cancel POST
+  - Frontend tests: 157 pass (14 suites), tsc --noEmit: 0 errors
+
 ### Next steps (prioritized)
 
-1. Dashboard Phase 2 implementation
+1. Dashboard Phase 2: Admin dashboard (KPICards, OccupancyStrip, RecentBookingsTable, BookingCalendar)
 2. Wire SearchCard to real availability API

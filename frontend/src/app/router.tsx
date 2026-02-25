@@ -19,19 +19,7 @@ const RoomList = lazy(() => import('@/features/rooms/RoomList'))
 const BookingForm = lazy(() => import('@/features/booking/BookingForm'))
 const LocationList = lazy(() => import('@/features/locations/LocationList'))
 const LocationDetail = lazy(() => import('@/features/locations/LocationDetail'))
-
-// Placeholder Dashboard (Phase 2)
-const DashboardPage = () => (
-  <div className="min-h-screen p-8 bg-gray-50">
-    <div className="max-w-4xl mx-auto">
-      <h1 className="mb-4 text-3xl font-bold text-gray-900">Dashboard</h1>
-      <p className="mb-6 text-gray-600">Welcome to your dashboard! Manage your bookings here.</p>
-      <div className="p-6 bg-white shadow-md rounded-xl">
-        <p className="text-gray-500">Dashboard features coming soon...</p>
-      </div>
-    </div>
-  </div>
-)
+const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
 
 /**
  * NavigationSetter - Registers React Router's navigate function
@@ -153,7 +141,9 @@ export const router = createBrowserRouter([
             path: 'dashboard',
             element: (
               <ProtectedRoute>
-                <DashboardPage />
+                <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Loading..." />}>
+                  <DashboardPage />
+                </Suspense>
               </ProtectedRoute>
             ),
           },

@@ -32,7 +32,7 @@ export interface User {
   id: number
   name: string
   email: string
-  role: 'guest' | 'staff' | 'admin'
+  role: 'user' | 'moderator' | 'admin'
   email_verified_at: string | null
   created_at: string
   updated_at: string

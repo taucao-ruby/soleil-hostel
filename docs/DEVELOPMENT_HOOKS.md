@@ -18,9 +18,9 @@ Hooks are designed to be:
 
 - Branch status snapshot: `dev` was recorded as 8 commits ahead of `main`
 - Verified commands:
-  - `cd backend && php artisan test` (`722 tests`, `2012 assertions`)
+  - `cd backend && php artisan test` (`737 tests`, `2071 assertions`)
   - `cd frontend && npx tsc --noEmit`
-  - `cd frontend && npx vitest run` (`145 tests`)
+  - `cd frontend && npx vitest run` (`194 tests`)
   - `docker compose config`
 - Known non-blocking warnings:
   - PHPUnit doc-comment metadata deprecation warnings

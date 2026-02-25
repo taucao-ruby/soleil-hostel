@@ -1,12 +1,12 @@
 ﻿# COMPACT — Soleil Hostel (AI Session Memory)
 
 ## 1) Current Snapshot (keep under 12 lines)
-- Date updated: 2026-02-23
+- Date updated: 2026-02-25
 - Current branch: `dev` (synced with `main`)
-- Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (192 tests, 19 suites, 0 failures)
+- Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (194 tests, 19 suites, 0 failures)
 - Backend test baseline: `cd backend && php artisan test` (737 tests, 2071 assertions) — verified 2026-02-23
 - Pint baseline: `cd backend && vendor/bin/pint --test` (250 files, 0 violations) — verified 2026-02-23
-- Progress summary: Homepage Phase 1 complete; Dashboard Phase 0+1+2+3 complete; SearchCard wired; auth HttpOnly fix complete; audit v3 + v4 remediation complete (20/20 findings fixed)
+- Progress summary: Frontend Phases 0-4 ALL COMPLETE; Homepage Phase 1; Dashboard (GuestDashboard + AdminDashboard); SearchCard wired; audit v3+v4 remediation (20/20 fixed); docs synced 2026-02-25
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
 ## 2) What matters (invariants / guardrails)
@@ -40,9 +40,9 @@
 
 ### Next
 
-- Dashboard Phase 2: `DashboardPage`, `Sidebar`, `KPICards`, `OccupancyStrip`, `RecentBookingsTable`, `BookingCalendar`, `CreateBookingDrawer`, `BookingDetailPanel`, `CancelBookingModal`
-- Wire SearchCard to real availability API when ready
-- Re-run verification command set after backend/frontend behavior changes (why: fast regression detection).
+- Dashboard Phase 5+: booking detail panel, admin actions (restore/force-delete trashed bookings)
+- Admin pagination (currently returns page 1 only per tab)
+- Re-run verification command set after backend/frontend behavior changes.
 - Re-check booking overlap and soft-delete semantics when booking migrations change.
 - Refresh branch and CI snapshot lines after each PR merge or commit batch.
 
@@ -182,7 +182,18 @@ See `docs/FINDINGS_BACKLOG.md` (14 items):
   - CSRF: auto-attached by existing interceptor on cancel POST
   - Frontend tests: 157 pass (14 suites), tsc --noEmit: 0 errors
 
+### Completed (2026-02-25) — Frontend Phases 2-4 + Docs Sync
+
+- Phase 2: SearchCard wired to live `GET /v1/locations`; navigates to `/locations/:slug?check_in=&check_out=&guests=`
+- Phase 3: AdminDashboard with 3 tabs (Đặt phòng / Đã xóa / Liên hệ), lazy-per-tab fetch, `useAdminFetch<T>` hook
+- Phase 4: BookingForm — URL params pre-fill (`check_in`, `check_out`, `guests`), Vietnamese UI, `/v1/bookings` endpoint, `/v1/rooms` endpoint; `AvailabilityResponse` dead type removed
+- vi.hoisted fix in BookingForm.test.tsx (Vitest 2.x hoisting bug); 194/194 tests passing (19 suites)
+- Docs sync: COMPACT, WORKLOG, README, frontend/* all updated to reflect actual code state
+- Git: committed on dev → pushed → merged to main (pre-push: ESLint, Prettier, tsc, 194 tests)
+
 ### Next steps (prioritized)
 
-1. Dashboard Phase 2: Admin dashboard (KPICards, OccupancyStrip, RecentBookingsTable, BookingCalendar)
-2. Wire SearchCard to real availability API
+- Dashboard Phase 5+: Booking detail panel, admin actions (restore/force-delete trashed bookings)
+- Pagination for admin tabs (currently V1 returns page 1 only)
+- PWA / offline support
+- Full i18n (currently Vietnamese strings are inline, not i18n-managed)

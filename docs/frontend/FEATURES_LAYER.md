@@ -1,33 +1,52 @@
 # Features Layer (`src/features/`)
 
-> Business features - auth, booking, rooms, locations
+> Business features - auth, booking, bookings (guest dashboard), admin (admin dashboard), rooms, locations, home
 
 ## Overview
 
 ```text
 src/features/
 ├── auth/
-│   ├── AuthContext.tsx       # Auth provider + useAuth hook (+test)
-│   ├── LoginPage.tsx         # Login form (+test)
-│   ├── RegisterPage.tsx      # Registration form (+test)
-│   └── ProtectedRoute.tsx    # Auth guard component
+│   ├── AuthContext.tsx         # Auth provider + useAuth hook (+test)
+│   ├── LoginPage.tsx           # Login form (+test)
+│   ├── RegisterPage.tsx        # Registration form (+test)
+│   └── ProtectedRoute.tsx      # Auth guard component
 ├── booking/
-│   ├── BookingForm.tsx       # Booking creation form (+test)
-│   ├── booking.api.ts        # Booking API calls
-│   ├── booking.types.ts      # Booking TypeScript interfaces
-│   └── booking.validation.ts # Client-side validation (+test)
+│   ├── BookingForm.tsx         # Booking creation form (+test) — URL params pre-fill, Vietnamese UI
+│   ├── booking.api.ts          # createBooking, fetchMyBookings, cancelBooking
+│   ├── booking.types.ts        # BookingFormData, Booking, BookingApiRaw, BookingsListResponse, CancelBookingResponse
+│   └── booking.validation.ts   # Client-side validation (+test)
+├── bookings/
+│   ├── GuestDashboard.tsx      # Guest "My Bookings" with filter tabs & cancel (+test)
+│   ├── useMyBookings.ts        # useMyBookingsQuery + useCancelBookingMutation hooks
+│   ├── bookingViewModel.ts     # toBookingViewModel, isUpcoming, isPast (+test)
+│   └── booking.constants.ts    # getStatusConfig, formatDateVN, formatDateRangeVN (+test)
+├── admin/
+│   ├── AdminDashboard.tsx      # Admin 3-tab view: Bookings / Trashed / Contacts (+test)
+│   ├── admin.api.ts            # fetchAdminBookings, fetchTrashedBookings, fetchContactMessages
+│   └── admin.types.ts          # AdminBookingRaw, ContactMessageRaw, response wrappers
 ├── locations/
-│   ├── LocationList.tsx      # Locations grid page
-│   ├── LocationDetail.tsx    # Single location + rooms page
-│   ├── LocationCard.tsx      # Location card component
-│   ├── location.api.ts       # Location API calls
-│   ├── location.types.ts     # Location TypeScript interfaces
-│   ├── constants.ts          # Amenity icon mapping
-│   └── index.ts              # Barrel exports
-└── rooms/
-    ├── RoomList.tsx           # Rooms grid page
-    ├── room.api.ts            # Room API calls
-    └── room.types.ts          # Room TypeScript interfaces
+│   ├── LocationList.tsx        # Locations grid page with city filter
+│   ├── LocationDetail.tsx      # Single location + rooms page with availability search
+│   ├── LocationCard.tsx        # Location card component
+│   ├── location.api.ts         # getLocations, getLocationBySlug
+│   ├── location.types.ts       # Location, LocationWithRooms, LocationRoom, response wrappers
+│   ├── constants.ts            # Amenity icon mapping
+│   └── index.ts                # Barrel exports
+├── rooms/
+│   ├── RoomList.tsx            # Rooms grid page
+│   ├── room.api.ts             # getRooms
+│   └── room.types.ts           # Room, RoomsResponse
+└── home/
+    └── components/
+        ├── SearchCard.tsx      # Location search form — fetches locations, navigates to /locations/:slug (+test)
+        ├── Hero.tsx            # Homepage hero section
+        ├── FilterChips.tsx     # Filter chip row (+test)
+        ├── RoomCard.tsx        # Room preview card
+        ├── BottomNav.tsx       # Mobile bottom nav tabs
+        ├── HeaderMobile.tsx    # Mobile sticky header
+        ├── PromoBanner.tsx     # Promotional banner
+        └── ReviewsCarousel.tsx # Reviews display
 ```
 
 ### Key Patterns
@@ -150,19 +169,21 @@ import { validateBookingForm, getMinCheckInDate, getMinCheckOutDate, calculateNi
 
 ```typescript
 import api from '@/shared/lib/api'
-import { Booking, BookingFormData, BookingResponse } from './booking.types'
 
-export async function createBooking(data: BookingFormData): Promise<Booking> {
-  const response = await api.post<BookingResponse>('/bookings', data)
-  return response.data.data
-}
+// POST /v1/bookings — creates a new booking; returns the created Booking
+export async function createBooking(data: BookingFormData): Promise<Booking>
+
+// GET /v1/bookings — returns the authenticated user's bookings (BookingApiRaw[])
+export async function fetchMyBookings(signal?: AbortSignal): Promise<BookingApiRaw[]>
+
+// POST /v1/bookings/:id/cancel — cancels a booking; CSRF auto-attached by interceptor
+export async function cancelBooking(id: number): Promise<CancelBookingResponse>
 ```
-
-**Note:** Only `createBooking` is implemented. No `getAll`, `getById`, `update`, or `cancel` yet.
 
 ### booking.types.ts
 
 ```typescript
+// Form submission payload
 export interface BookingFormData {
   room_id: number
   guest_name: string
@@ -173,6 +194,7 @@ export interface BookingFormData {
   special_requests?: string
 }
 
+// Created booking (POST /v1/bookings response)
 export interface Booking {
   id: number
   room_id: number
@@ -191,6 +213,35 @@ export interface Booking {
 export interface BookingResponse {
   data: Booking
   message?: string
+}
+
+// Raw shape from GET /v1/bookings (BookingResource)
+export interface BookingApiRaw {
+  id: number
+  room_id: number
+  user_id: number
+  check_in: string
+  check_out: string
+  guest_name: string
+  guest_email: string
+  status: string
+  status_label: string | null
+  nights: number
+  amount?: number
+  amount_formatted?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface BookingsListResponse {
+  success: boolean
+  data: BookingApiRaw[]
+}
+
+export interface CancelBookingResponse {
+  success: boolean
+  message: string
+  data: BookingApiRaw
 }
 ```
 
@@ -240,7 +291,7 @@ import api from '@/shared/lib/api'
 import { Room, RoomsResponse } from './room.types'
 
 export async function getRooms(): Promise<Room[]> {
-  const response = await api.get<RoomsResponse>('/rooms')
+  const response = await api.get<RoomsResponse>('/v1/rooms')
   return response.data.data
 }
 ```
@@ -360,10 +411,6 @@ export interface LocationWithRooms extends Location {
 // API response wrappers
 export interface LocationsResponse { success: boolean; message: string; data: Location[] }
 export interface LocationResponse { success: boolean; message: string; data: LocationWithRooms }
-export interface AvailabilityResponse {
-  success: boolean; message: string
-  data: { location: Location; available_rooms: LocationRoom[]; total_available: number }
-}
 ```
 
 ### constants.ts
@@ -392,30 +439,186 @@ export * from './location.types'
 
 ---
 
-## 5. Cross-Feature Dependencies
+---
 
-```text
-booking/ → rooms/       (imports getRooms, Room type for room selection)
-booking/ → shared/utils  (imports isValidEmail for validation)
-auth/    → shared/lib    (imports api client)
-auth/    → shared/utils  (imports setCsrfToken, clearCsrfToken)
-rooms/   → shared/lib    (imports api client)
-locations/ → shared/lib  (imports api client)
+## 5. Bookings Feature (`features/bookings/`)
+
+Guest "My Bookings" dashboard — list, filter, cancel.
+
+### GuestDashboard.tsx
+
+Full booking management UI for authenticated guests.
+
+**Features:**
+
+- Filter tabs: Tất cả / Sắp tới / Đã qua (backed by `isUpcoming`/`isPast` predicates)
+- `BookingCard` renders date range, night count, amount, status badge (Vietnamese labels)
+- Cancel button gated by `booking.canCancel` (only `pending`/`confirmed` statuses)
+- `ConfirmDialog` for cancel confirmation with pending state
+- Loading: 3× `Skeleton` cards; Error: inline retry; Empty: "Đặt phòng ngay" CTA link
+
+**Imports:** `useMyBookings`, `bookingViewModel`, `booking.constants`, `shared/ui`, `utils/toast`
+
+### useMyBookings.ts
+
+Two custom hooks following the `useState+useEffect+AbortController` pattern (no React Query):
+
+```typescript
+// Fetches user's bookings on mount; supports refetch()
+export function useMyBookingsQuery(): {
+  bookings: BookingViewModel[]
+  isLoading: boolean
+  isError: boolean
+  refetch: () => void
+}
+
+// Returns cancel function + pending/error state
+export function useCancelBookingMutation(): {
+  cancel: (id: number) => Promise<boolean>
+  isPending: boolean
+  error: string | null
+  clearError: () => void
+}
 ```
 
-**No feature imports from another feature** except `booking/` → `rooms/` (for room data in the booking form).
+### bookingViewModel.ts
+
+Pure transformation layer — keeps components dumb:
+
+```typescript
+export interface BookingViewModel {
+  id: number
+  status: string
+  statusLabel: string
+  checkIn: Date
+  checkOut: Date
+  guestName: string
+  nights: number
+  amountFormatted: string | undefined
+  canCancel: boolean   // true only for 'pending' | 'confirmed'
+  createdAt: Date
+}
+
+export function toBookingViewModel(raw: BookingApiRaw): BookingViewModel
+export function isUpcoming(booking: BookingViewModel): boolean  // checkIn >= today
+export function isPast(booking: BookingViewModel): boolean      // checkOut < today
+```
+
+### booking.constants.ts
+
+Single source of truth for status badge rendering and date formatting:
+
+```typescript
+// Returns { label: string, colorClass: string } for a booking status string
+export function getStatusConfig(status: string): StatusConfig
+
+// Format Date → Vietnamese "dd/MM/yyyy"
+export function formatDateVN(date: Date): string
+
+// Format check-in — check-out as Vietnamese range
+export function formatDateRangeVN(checkIn: Date, checkOut: Date): string
+```
+
+**Status coverage:** `pending`, `confirmed`, `cancelled`, `completed`, `refund_pending`, `refund_failed`
 
 ---
 
-## 6. What Does NOT Exist
+## 6. Admin Feature (`features/admin/`)
+
+Admin dashboard for managing bookings and contact messages.
+
+### AdminDashboard.tsx
+
+3-tab view with lazy-per-tab data fetching.
+
+**Tabs:**
+
+| Tab        | Label     | API                               | Data type          |
+| ---------- | --------- | --------------------------------- | ------------------ |
+| `bookings` | Đặt phòng | `GET /v1/admin/bookings`          | `AdminBookingRaw`  |
+| `trashed`  | Đã xóa    | `GET /v1/admin/bookings/trashed`  | `AdminBookingRaw`  |
+| `contacts` | Liên hệ   | `GET /v1/admin/contact-messages`  | `ContactMessageRaw`|
+
+**Data fetching:** `useAdminFetch<T>` — generic hook that fetches on first tab activation (`hasFetched` flag prevents re-fetch on tab switch).
+
+**Card components:**
+
+- `AdminBookingCard` — shows guest name, date range, nights, amount, status badge; shows deleted-at + deleted-by metadata for trashed items
+- `ContactCard` — shows name, email, subject, message snippet; highlights unread (blue border + "Mới" badge)
+
+### admin.api.ts
+
+```typescript
+// GET /v1/admin/bookings (paginated 50/page; V1 returns page 1 only)
+export async function fetchAdminBookings(signal?: AbortSignal): Promise<AdminBookingRaw[]>
+
+// GET /v1/admin/bookings/trashed
+export async function fetchTrashedBookings(signal?: AbortSignal): Promise<AdminBookingRaw[]>
+
+// GET /v1/admin/contact-messages (paginated 15/page; V1 returns page 1 only)
+export async function fetchContactMessages(signal?: AbortSignal): Promise<ContactMessageRaw[]>
+```
+
+### admin.types.ts
+
+```typescript
+// Extends BookingApiRaw with optional trashed/refund fields
+export interface AdminBookingRaw extends BookingApiRaw {
+  is_trashed?: boolean
+  deleted_at?: string | null
+  deleted_by?: { id: number; name: string; email: string } | null
+  cancelled_at?: string | null
+  cancelled_by?: { id: number; name: string } | null
+  refund_amount?: number
+  refund_amount_formatted?: string
+  refund_status?: string
+  refund_percentage?: number
+}
+
+// Raw model — no ContactResource in backend; direct paginator response
+export interface ContactMessageRaw {
+  id: number
+  name: string
+  email: string
+  subject: string | null
+  message: string
+  read_at: string | null
+  created_at: string
+  updated_at: string
+}
+```
+
+---
+
+## 7. Cross-Feature Dependencies (formerly Section 5)
+
+```text
+booking/  → rooms/         (imports getRooms, Room type for room selection in BookingForm)
+booking/  → shared/utils   (imports isValidEmail for validation)
+bookings/ → booking/       (imports fetchMyBookings, cancelBooking, BookingApiRaw)
+admin/    → booking/       (imports BookingApiRaw for AdminBookingRaw extension)
+admin/    → bookings/      (imports getStatusConfig, formatDateRangeVN, formatDateVN)
+auth/     → shared/lib     (imports api client)
+auth/     → shared/utils   (imports setCsrfToken, clearCsrfToken)
+rooms/    → shared/lib     (imports api client)
+locations/ → shared/lib    (imports api client)
+```
+
+**Allowed cross-feature import:** `bookings/` and `admin/` may import from `booking/` (same domain, booking data types/API).
+**No other feature imports from another feature.**
+
+---
+
+## 8. What Does NOT Exist
 
 Previously documented but not present in the actual codebase:
 
-- **No `RoomCard.tsx`** - Room cards are rendered inline in `RoomList.tsx`
-- **No Zod schemas** - All validation uses plain TypeScript functions
-- **No `react-hot-toast`** - Auth pages use inline error/success states, no toast notifications
-- **No `react-datepicker`** - Uses native `<input type="date">`
-- **No `@/services/api`** import path - All features use `@/shared/lib/api`
-- **No `validateApiResponse()`** - No runtime response validation
-- **No `bookingApi.getAll/getById/update/cancel`** - Only `createBooking` exists
-- **No `roomsApi.getByStatus/search`** - Only `getRooms` exists
+- **No `RoomCard.tsx`** in `features/rooms/` — Room cards are rendered inline in `RoomList.tsx`
+- **No Zod schemas** — All validation uses plain TypeScript functions
+- **No `react-hot-toast`** — Auth pages use inline error/success states; dashboard uses `react-toastify`
+- **No `react-datepicker`** — Uses native `<input type="date">`
+- **No `@/services/api`** import path — All features use `@/shared/lib/api`
+- **No `validateApiResponse()`** — No runtime response validation
+- **No `bookingApi.getAll/getById/update`** — `createBooking`, `fetchMyBookings`, `cancelBooking` implemented only
+- **No `roomsApi.getByStatus/search`** — Only `getRooms` exists
+- **No `AvailabilityResponse` type** — Removed; `/v1/locations/:slug/availability` endpoint exists in backend but is not called by the frontend (frontend uses the show endpoint with params instead)

@@ -6,7 +6,7 @@
 
 | Layer       | Framework                       | Status     | Files | Tests |
 | ----------- | ------------------------------- | ---------- | ----- | ----- |
-| Unit/Integ. | Vitest + @testing-library/react | Active     | 11    | 142   |
+| Unit/Integ. | Vitest + @testing-library/react | Active     | 19    | 194   |
 | E2E         | Playwright                      | Scaffolded | 1     | -     |
 
 ## 1. Vitest Configuration
@@ -45,39 +45,57 @@ pnpm test:watch       # Watch mode for development
 
 ### Authentication Tests
 
-| File                         | Tests | Coverage                                    |
-| ---------------------------- | ----- | ------------------------------------------- |
-| `AuthContext.test.tsx`        | 12    | Login, logout, register, error states       |
-| `LoginPage.test.tsx`         | 9     | Form rendering, validation, submission      |
-| `RegisterPage.test.tsx`      | 16    | Form validation, password rules, submission |
+| File                     | Tests | Coverage                                    |
+| ------------------------ | ----- | ------------------------------------------- |
+| `AuthContext.test.tsx`   | 8     | Login, logout, register, error states       |
+| `LoginPage.test.tsx`     | 9     | Form rendering, validation, submission      |
+| `RegisterPage.test.tsx`  | 16    | Form validation, password rules, submission |
 
 ### Booking Tests
 
-| File                            | Tests | Coverage                                 |
-| ------------------------------- | ----- | ---------------------------------------- |
-| `BookingForm.test.tsx`          | 20    | Form rendering, date logic, submission   |
-| `booking.validation.test.ts`   | 21    | Date validation, night calculation       |
+| File                          | Tests | Coverage                                                  |
+| ----------------------------- | ----- | --------------------------------------------------------- |
+| `BookingForm.test.tsx`        | 12    | Form rendering, room dropdown, URL params pre-fill        |
+| `booking.validation.test.ts`  | 20    | Date validation, night calculation                        |
+| `bookingViewModel.test.ts`    | 12    | toBookingViewModel, isUpcoming, isPast, canCancel         |
+| `booking.constants.test.ts`   | 6     | getStatusConfig, formatDateVN, formatDateRangeVN          |
+
+### Dashboard Tests
+
+| File                        | Tests | Coverage                                            |
+| --------------------------- | ----- | --------------------------------------------------- |
+| `GuestDashboard.test.tsx`   | 8     | Loading skeleton, empty state, booking cards, tabs  |
+| `AdminDashboard.test.tsx`   | 8     | Tab rendering, loading, data display, error states  |
+| `DashboardPage.test.tsx`    | 5     | Role-based routing (admin vs guest), loading state  |
+
+### Home Tests
+
+| File                      | Tests | Coverage                                          |
+| ------------------------- | ----- | ------------------------------------------------- |
+| `HomePage.test.tsx`       | 14    | Hero, search form, tabs, room cards, CTA links    |
+| `FilterChips.test.tsx`    | 4     | Chip rendering, active state, click handler       |
+| `SearchCard.test.tsx`     | 8     | Loading, location dropdown, navigation on submit  |
+
+### Location Tests
+
+| File                      | Tests | Coverage                          |
+| ------------------------- | ----- | --------------------------------- |
+| `LocationsNav.test.tsx`   | 3     | Nav link rendering, active styles |
 
 ### Shared Component Tests
 
-| File                | Tests | Coverage                            |
-| ------------------- | ----- | ----------------------------------- |
-| `Button.test.tsx`   | 12    | Variants, loading, disabled states  |
-| `Input.test.tsx`    | 10    | Types, error display, accessibility |
+| File              | Tests | Coverage                            |
+| ----------------- | ----- | ----------------------------------- |
+| `Button.test.tsx` | 12    | Variants, loading, disabled states  |
+| `Input.test.tsx`  | 15    | Types, error display, accessibility |
 
 ### Utility Tests
 
-| File                | Tests | Coverage                              |
-| ------------------- | ----- | ------------------------------------- |
-| `csrf.test.ts`      | 6     | Token get/set/clear, header injection |
-| `security.test.ts`  | 22    | XSS sanitization, URL validation      |
-| `api.test.ts`       | 6     | Interceptors, error handling, refresh |
-
-### Page Tests
-
-| File                | Tests | Coverage                          |
-| ------------------- | ----- | --------------------------------- |
-| `HomePage.test.tsx` | 18    | Rendering, navigation, CTA links |
+| File               | Tests | Coverage                              |
+| ------------------ | ----- | ------------------------------------- |
+| `csrf.test.ts`     | 6     | Token get/set/clear, header injection |
+| `security.test.ts` | 22    | XSS sanitization, URL validation      |
+| `api.test.ts`      | 6     | Interceptors, error handling, refresh |
 
 ---
 
@@ -159,12 +177,12 @@ cd frontend && npx vitest run src/features/auth/LoginPage.test.tsx
 cd frontend && npx vitest run --coverage
 ```
 
-### Latest Results (February 12, 2026)
+### Latest Results (February 25, 2026)
 
 ```text
-Test Files  11 passed (11)
-     Tests  142 passed (142)
-  Duration  ~13s
+Test Files  19 passed (19)
+     Tests  194 passed (194)
+  Duration  ~16s
 ```
 
 ---

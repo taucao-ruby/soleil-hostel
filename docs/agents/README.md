@@ -23,6 +23,7 @@ This directory contains the structured governance framework for AI coding agents
 
 ## Related Docs
 
+- [CLAUDE.md](../../CLAUDE.md) — Claude Code CLI master context (start here)
 - [AI Governance](../AI_GOVERNANCE.md) — operational checklists
 - [MCP Server](../MCP.md) — tool server + safety policy
 - [Hooks](../HOOKS.md) — local enforcement

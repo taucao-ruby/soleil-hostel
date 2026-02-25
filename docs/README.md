@@ -328,6 +328,7 @@ docs/
 
 | File                                                           | Purpose                  |
 | -------------------------------------------------------------- | ------------------------ |
+| [../CLAUDE.md](../CLAUDE.md)                                   | Claude Code entry point  |
 | [agents/README.md](./agents/README.md)                         | Agent framework index    |
 | [agents/CONTRACT.md](./agents/CONTRACT.md)                     | Definition of Done       |
 | [agents/ARCHITECTURE_FACTS.md](./agents/ARCHITECTURE_FACTS.md) | Domain invariants        |

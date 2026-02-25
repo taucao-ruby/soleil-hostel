@@ -1,6 +1,6 @@
 # Soleil Hostel - Project Status
 
-**Last Updated:** February 23, 2026
+**Last Updated:** February 25, 2026
 **Current Branch:** `dev` (synced with `main`)
 
 ## Current Status: Audit v4 Remediation Complete, Repo Health Green
@@ -12,10 +12,10 @@
 > Full audit v4 completed February 23, 2026: **6 new findings** (0 critical, 0 high, 2 medium, 4 low).
 > Audit v4 remediation completed February 23, 2026: **6/6 findings fixed** across 4 batches. All prior open items (F-02, F-03) also resolved. **20/20 total findings fixed (100%)**.
 
-Verified on February 23, 2026:
+Verified on February 25, 2026:
 - Backend tests PASS: **737 tests**, **2071 assertions** (`cd backend && php artisan test`)
 - Frontend typecheck PASS (`cd frontend && npx tsc --noEmit`)
-- Frontend unit tests PASS: **19 files**, **192 tests** (`cd frontend && npx vitest run`)
+- Frontend unit tests PASS: **19 files**, **194 tests** (`cd frontend && npx vitest run`)
 - Compose config PASS (`docker compose config`)
 - Pint style PASS: **250 files**, 0 violations (`cd backend && vendor/bin/pint --test`)
 
@@ -116,22 +116,28 @@ Duration: ~40s (verified February 22, 2026)
 ### Frontend (Vitest)
 
 ```text
-145 tests passed (13 test files)
+194 tests passed (19 test files)
 Test files:
-- src/features/booking/booking.validation.test.ts (20 tests)
-- src/features/booking/BookingForm.test.tsx (10 tests)
-- src/shared/components/ui/Input.test.tsx (15 tests)
 - src/features/auth/AuthContext.test.tsx (8 tests)
-- src/pages/HomePage.test.tsx (14 tests)
 - src/features/auth/LoginPage.test.tsx (9 tests)
-- src/shared/lib/api.test.ts (6 tests)
-- src/shared/utils/security.test.ts (22 tests)
-- src/shared/components/ui/Button.test.tsx (12 tests)
-- src/features/home/components/FilterChips.test.tsx (4 tests)
-- src/shared/utils/csrf.test.ts (6 tests)
-- src/features/locations/__tests__/LocationsNav.test.tsx (3 tests)
 - src/features/auth/RegisterPage.test.tsx (16 tests)
-Duration: ~14s (verified February 22, 2026)
+- src/features/booking/BookingForm.test.tsx (12 tests)
+- src/features/booking/booking.validation.test.ts (20 tests)
+- src/features/bookings/bookingViewModel.test.ts (12 tests)
+- src/features/bookings/booking.constants.test.ts (6 tests)
+- src/features/bookings/GuestDashboard.test.tsx (8 tests)
+- src/features/admin/AdminDashboard.test.tsx (8 tests)
+- src/pages/DashboardPage.test.tsx (5 tests)
+- src/pages/HomePage.test.tsx (14 tests)
+- src/features/home/components/FilterChips.test.tsx (4 tests)
+- src/features/home/components/SearchCard.test.tsx (8 tests)
+- src/features/locations/__tests__/LocationsNav.test.tsx (3 tests)
+- src/shared/components/ui/Button.test.tsx (12 tests)
+- src/shared/components/ui/Input.test.tsx (15 tests)
+- src/shared/utils/csrf.test.ts (6 tests)
+- src/shared/utils/security.test.ts (22 tests)
+- src/shared/lib/api.test.ts (6 tests)
+Duration: ~16s (verified February 25, 2026)
 ```
 
 ### E2E (Playwright)

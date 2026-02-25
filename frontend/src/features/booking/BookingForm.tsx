@@ -28,15 +28,19 @@ const BookingForm: React.FC = () => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const roomIdFromUrl = searchParams.get('room_id')
+  const checkInFromUrl = searchParams.get('check_in') || ''
+  const checkOutFromUrl = searchParams.get('check_out') || ''
+  const guestsFromUrl = searchParams.get('guests')
+  const parsedGuests = guestsFromUrl ? parseInt(guestsFromUrl, 10) : NaN
 
   // Form state
   const [formData, setFormData] = useState({
     room_id: roomIdFromUrl ? parseInt(roomIdFromUrl, 10) : (null as number | null),
     guest_name: '',
     guest_email: '',
-    check_in: '',
-    check_out: '',
-    number_of_guests: 1,
+    check_in: checkInFromUrl,
+    check_out: checkOutFromUrl,
+    number_of_guests: isNaN(parsedGuests) || parsedGuests < 1 ? 1 : parsedGuests,
     special_requests: '',
   })
 
@@ -114,7 +118,7 @@ const BookingForm: React.FC = () => {
       console.error('Booking failed:', err)
       const errorMessage =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        'Failed to create booking. Please try again.'
+        'Đặt phòng thất bại. Vui lòng thử lại.'
       setErrors({ submit: errorMessage })
     } finally {
       setLoading(false)
@@ -151,8 +155,8 @@ const BookingForm: React.FC = () => {
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="mb-8 text-center">
-          <h1 className="mb-2 text-4xl font-bold text-gray-900">Book Your Stay</h1>
-          <p className="text-gray-600">Fill in the details to reserve your room</p>
+          <h1 className="mb-2 text-4xl font-bold text-gray-900">Đặt phòng</h1>
+          <p className="text-gray-600">Vui lòng điền thông tin để đặt phòng</p>
         </div>
 
         {/* Booking Form Card */}
@@ -160,13 +164,19 @@ const BookingForm: React.FC = () => {
           <form onSubmit={handleSubmit} noValidate>
             {/* Success Message */}
             {success && (
-              <div data-testid="success-message" className="p-4 mb-6 border border-green-200 rounded-lg bg-green-50">
+              <div
+                data-testid="success-message"
+                className="p-4 mb-6 border border-green-200 rounded-lg bg-green-50"
+              >
                 <p className="text-sm font-medium text-green-800">
-                  ✓ Booking created successfully! Redirecting...
+                  ✓ Đặt phòng thành công! Đang chuyển hướng...
                 </p>
                 {bookingReference && (
                   <p className="mt-2 text-sm text-green-700">
-                    Booking Reference: <span data-testid="booking-reference" className="font-mono font-bold">{bookingReference}</span>
+                    Mã đặt phòng:{' '}
+                    <span data-testid="booking-reference" className="font-mono font-bold">
+                      {bookingReference}
+                    </span>
                   </p>
                 )}
               </div>
@@ -174,7 +184,10 @@ const BookingForm: React.FC = () => {
 
             {/* Error Message */}
             {errors.submit && (
-              <div data-testid="error-message" className="p-4 mb-6 border border-red-200 rounded-lg bg-red-50">
+              <div
+                data-testid="error-message"
+                className="p-4 mb-6 border border-red-200 rounded-lg bg-red-50"
+              >
                 <p className="text-sm font-medium text-red-800">{errors.submit}</p>
               </div>
             )}
@@ -182,11 +195,11 @@ const BookingForm: React.FC = () => {
             {/* Room Selection */}
             <div className="mb-6">
               <label htmlFor="room_id" className="block mb-2 text-sm font-semibold text-gray-700">
-                Select Room *
+                Chọn phòng *
               </label>
               {loadingRooms ? (
                 <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50">
-                  Loading rooms...
+                  Đang tải phòng...
                 </div>
               ) : (
                 <select
@@ -204,7 +217,7 @@ const BookingForm: React.FC = () => {
                   aria-invalid={!!errors.room_id}
                   aria-describedby={errors.room_id ? 'room-error' : undefined}
                 >
-                  <option value="">Choose a room...</option>
+                  <option value="">Chọn phòng...</option>
                   {rooms.map(room => (
                     <option key={room.id} value={room.id}>
                       {room.name} - ${room.price}/night
@@ -225,7 +238,7 @@ const BookingForm: React.FC = () => {
                 htmlFor="guest_name"
                 className="block mb-2 text-sm font-semibold text-gray-700"
               >
-                Guest Name *
+                Tên khách *
               </label>
               <input
                 type="text"
@@ -239,7 +252,7 @@ const BookingForm: React.FC = () => {
                     ? 'border-red-300 focus:ring-red-500'
                     : 'border-gray-300 focus:ring-blue-500'
                 } ${loading ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}`}
-                placeholder="John Doe"
+                placeholder="Nguyễn Văn A"
                 aria-required="true"
                 aria-invalid={!!errors.guest_name}
                 aria-describedby={errors.guest_name ? 'name-error' : undefined}
@@ -257,7 +270,7 @@ const BookingForm: React.FC = () => {
                 htmlFor="guest_email"
                 className="block mb-2 text-sm font-semibold text-gray-700"
               >
-                Email Address *
+                Địa chỉ email *
               </label>
               <input
                 type="email"
@@ -291,7 +304,7 @@ const BookingForm: React.FC = () => {
                   htmlFor="check_in"
                   className="block mb-2 text-sm font-semibold text-gray-700"
                 >
-                  Check-in Date *
+                  Ngày nhận phòng *
                 </label>
                 <input
                   type="date"
@@ -323,7 +336,7 @@ const BookingForm: React.FC = () => {
                   htmlFor="check_out"
                   className="block mb-2 text-sm font-semibold text-gray-700"
                 >
-                  Check-out Date *
+                  Ngày trả phòng *
                 </label>
                 <input
                   type="date"
@@ -356,7 +369,7 @@ const BookingForm: React.FC = () => {
                 htmlFor="number_of_guests"
                 className="block mb-2 text-sm font-semibold text-gray-700"
               >
-                Number of Guests *
+                Số khách *
               </label>
               <input
                 type="number"
@@ -389,7 +402,7 @@ const BookingForm: React.FC = () => {
                 htmlFor="special_requests"
                 className="block mb-2 text-sm font-semibold text-gray-700"
               >
-                Special Requests (Optional)
+                Yêu cầu đặc biệt (Không bắt buộc)
               </label>
               <textarea
                 id="special_requests"
@@ -401,7 +414,7 @@ const BookingForm: React.FC = () => {
                 className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors resize-none ${
                   loading ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'
                 }`}
-                placeholder="Any special requirements or preferences..."
+                placeholder="Yêu cầu hoặc ghi chú thêm..."
               />
             </div>
 
@@ -411,12 +424,12 @@ const BookingForm: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">
-                      {nights} night{nights > 1 ? 's' : ''} × ${selectedRoom?.price}
+                      {nights} đêm × ${selectedRoom?.price}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="text-2xl font-bold text-blue-600">${totalPrice}</p>
-                    <p className="text-xs text-gray-500">Total Price</p>
+                    <p className="text-xs text-gray-500">Tổng giá</p>
                   </div>
                 </div>
               </div>
@@ -456,10 +469,10 @@ const BookingForm: React.FC = () => {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     ></path>
                   </svg>
-                  Creating booking...
+                  Đang đặt phòng...
                 </span>
               ) : (
-                'Complete Booking'
+                'Đặt phòng'
               )}
             </button>
           </form>
@@ -471,7 +484,7 @@ const BookingForm: React.FC = () => {
             onClick={() => navigate(-1)}
             className="text-sm text-gray-600 transition-colors hover:text-gray-900"
           >
-            ← Back
+            ← Quay lại
           </button>
         </div>
       </div>

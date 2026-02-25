@@ -14,6 +14,6 @@ import { Room, RoomsResponse } from './room.types'
  * Returns list of all available rooms
  */
 export async function getRooms(): Promise<Room[]> {
-  const response = await api.get<RoomsResponse>('/rooms')
+  const response = await api.get<RoomsResponse>('/v1/rooms')
   return response.data.data
 }

@@ -21,7 +21,7 @@ import {
  * Creates a new room booking
  */
 export async function createBooking(data: BookingFormData): Promise<Booking> {
-  const response = await api.post<BookingResponse>('/bookings', data)
+  const response = await api.post<BookingResponse>('/v1/bookings', data)
   return response.data.data
 }
 

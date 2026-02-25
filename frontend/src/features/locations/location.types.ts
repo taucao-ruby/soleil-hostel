@@ -81,13 +81,3 @@ export interface LocationResponse {
   message: string
   data: LocationWithRooms
 }
-
-export interface AvailabilityResponse {
-  success: boolean
-  message: string
-  data: {
-    location: Location
-    available_rooms: LocationRoom[]
-    total_available: number
-  }
-}

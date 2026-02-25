@@ -1,29 +1,29 @@
-﻿# ðŸ“š Soleil Hostel Documentation
+﻿# Soleil Hostel Documentation
 
-> **Last Updated:** February 22, 2026 | **Tests:** 737 backend tests (2071 assertions) + 145 frontend unit tests | **Status:** Post-Audit v3 Remediation
+> **Last Updated:** February 25, 2026 | **Tests:** 737 backend tests (2071 assertions) + 194 frontend unit tests | **Status:** Phases 0-4 Complete
 
 ## Quick Navigation
 
-| I want to...                          | Go to                                                             |
-| ------------------------------------- | ----------------------------------------------------------------- |
-| **Get started quickly**               | [Quick Start](#quick-start)                                       |
-| **Understand architecture decisions** | [ADR (Decision Log)](./ADR.md)                                    |
-| **Handle an incident**                | [Operational Playbook](./OPERATIONAL_PLAYBOOK.md)                 |
-| **Know system limitations**           | [Known Limitations](./KNOWN_LIMITATIONS.md)                       |
-| **Deprecate an API**                  | [API Deprecation](./API_DEPRECATION.md)                           |
-| **Database schema**                   | [Database Docs](./DATABASE.md)                                    |
-| **DB invariants & constraints**       | [DB Facts (Invariants & Constraints)](./DB_FACTS.md)              |
-| **Backend documentation**             | [Backend Docs](./backend/README.md)                               |
-| **Frontend documentation**            | [Frontend Docs](./frontend/README.md)                             |
-| **Set up development environment**    | [Setup Guide](./backend/guides/ENVIRONMENT_SETUP.md)              |
-| **Run tests**                         | [Testing Guide](./backend/guides/TESTING.md)                      |
-| **Set up Git hooks**                  | [Development Hooks](./DEVELOPMENT_HOOKS.md)                       |
-| **Migrate to unified auth endpoints** | [Auth Migration Guide](./backend/guides/AUTH_MIGRATION.md)        |
+| I want to...                          | Go to                                                               |
+| ------------------------------------- | ------------------------------------------------------------------- |
+| **Get started quickly**               | [Quick Start](#quick-start)                                         |
+| **Understand architecture decisions** | [ADR (Decision Log)](./ADR.md)                                      |
+| **Handle an incident**                | [Operational Playbook](./OPERATIONAL_PLAYBOOK.md)                   |
+| **Know system limitations**           | [Known Limitations](./KNOWN_LIMITATIONS.md)                         |
+| **Deprecate an API**                  | [API Deprecation](./API_DEPRECATION.md)                             |
+| **Database schema**                   | [Database Docs](./DATABASE.md)                                      |
+| **DB invariants & constraints**       | [DB Facts (Invariants & Constraints)](./DB_FACTS.md)                |
+| **Backend documentation**             | [Backend Docs](./backend/README.md)                                 |
+| **Frontend documentation**            | [Frontend Docs](./frontend/README.md)                               |
+| **Set up development environment**    | [Setup Guide](./backend/guides/ENVIRONMENT_SETUP.md)                |
+| **Run tests**                         | [Testing Guide](./backend/guides/TESTING.md)                        |
+| **Set up Git hooks**                  | [Development Hooks](./DEVELOPMENT_HOOKS.md)                         |
+| **Migrate to unified auth endpoints** | [Auth Migration Guide](./backend/guides/AUTH_MIGRATION.md)          |
 | **Migrate from API v1 to v2**         | [API v1â†’v2 Migration](./backend/guides/API_MIGRATION_V1_TO_V2.md) |
-| **Browse interactive API docs**       | [API Reference (Redoc)](./api/index.html)                         |
-| **Download OpenAPI spec**             | [openapi.yaml](./api/openapi.yaml)                                |
-| **Review performance baselines**      | [Performance Baseline](./PERFORMANCE_BASELINE.md)                 |
-| **Run load tests**                    | [Performance Tests](../tests/performance/README.md)               |
+| **Browse interactive API docs**       | [API Reference (Redoc)](./api/index.html)                           |
+| **Download OpenAPI spec**             | [openapi.yaml](./api/openapi.yaml)                                  |
+| **Review performance baselines**      | [Performance Baseline](./PERFORMANCE_BASELINE.md)                   |
+| **Run load tests**                    | [Performance Tests](../tests/performance/README.md)                 |
 
 ---
 
@@ -156,23 +156,24 @@ docs/
 
 ## Project Status
 
-| Component             | Status               | Tests          |
-| --------------------- | -------------------- | -------------- |
-| Authentication        | âœ… Complete          | 44 tests       |
-| Booking System        | âœ… Complete          | 60 tests       |
-| Booking Notifications | âœ… Complete          | 23 tests       |
-| Email Templates       | âœ… Complete          | 13 tests       |
-| Room Management       | âœ… Complete          | 151 tests      |
-| RBAC                  | âœ… Complete          | 47 tests       |
-| Security Headers      | âœ… Complete          | 14 tests       |
-| XSS Protection        | âœ… Complete          | 48 tests       |
-| Rate Limiting         | âœ… Complete          | 29 tests       |
-| Caching               | âœ… Complete          | 6 tests        |
-| Monitoring & Health   | âœ… Complete          | 30 tests       |
-| Optimistic Locking    | âœ… Complete          | 24 tests       |
-| Repository Layer      | âœ… Complete          | 53 tests       |
-| Email Verification    | âœ… Complete          | 26 tests       |
-| **Total**             | **âœ… Post-Audit v3** | **737 tests**  |
+| Component             | Status                | Tests         |
+| --------------------- | --------------------- | ------------- |
+| Authentication        | ✅ Complete           | 44 tests      |
+| Booking System        | ✅ Complete           | 60 tests      |
+| Booking Notifications | ✅ Complete           | 23 tests      |
+| Email Templates       | ✅ Complete           | 13 tests      |
+| Room Management       | ✅ Complete           | 151 tests     |
+| RBAC                  | ✅ Complete           | 47 tests      |
+| Security Headers      | ✅ Complete           | 14 tests      |
+| XSS Protection        | ✅ Complete           | 48 tests      |
+| Rate Limiting         | ✅ Complete           | 29 tests      |
+| Caching               | ✅ Complete           | 6 tests       |
+| Monitoring & Health   | ✅ Complete           | 30 tests      |
+| Optimistic Locking    | ✅ Complete           | 24 tests      |
+| Repository Layer      | ✅ Complete           | 53 tests      |
+| Email Verification    | ✅ Complete           | 26 tests      |
+| **Backend Total**     | **✅ All 14 systems** | **737 tests** |
+| Frontend (Phase 0-4)  | ✅ Complete           | 194 tests     |
 
 ## Tech Stack
 
@@ -241,6 +242,21 @@ docs/
 
 ---
 
+## Recent Updates (February 2026)
+
+### Frontend Phases 0-4 Complete (February 25, 2026)
+
+- **Phase 0**: Lazy-loaded `DashboardPage` with `ProtectedRoute` + role-based routing
+- **Phase 1**: Guest Dashboard — booking list with filter tabs (All/Upcoming/Past), cancel with confirm modal, skeleton/empty/error states, toast notifications
+- **Phase 2**: SearchCard wired to live locations API (`GET /v1/locations`); navigates to LocationDetail with URL params
+- **Phase 3**: Admin Dashboard — 3 tabs (Đặt phòng / Đã xóa / Liên hệ), lazy-fetch per tab, trashed metadata, unread badge on contacts
+- **Phase 4**: BookingForm polish — URL params pre-fill (`check_in`, `check_out`, `guests`), Vietnamese UI, deprecated `/bookings` → `/v1/bookings`, deprecated `/rooms` → `/v1/rooms`, removed dead `AvailabilityResponse` type
+- **Test suite**: 19 files, 194 tests (was 145 / 13 files before)
+- **All pre-commit and pre-push hooks pass**: ESLint, Prettier, TypeScript typecheck, full test suite
+- See [FEATURES_LAYER.md](./frontend/FEATURES_LAYER.md) for full feature documentation
+
+---
+
 ## Recent Updates (January 2026)
 
 ### Performance Benchmarking & API Documentation (January 2026)
@@ -294,39 +310,39 @@ docs/
 
 ### Root-level
 
-| File                                                         | Purpose                       |
-| ------------------------------------------------------------ | ----------------------------- |
-| [COMPACT.md](./COMPACT.md)                                   | Session memory / current state |
-| [WORKLOG.md](./WORKLOG.md)                                   | Work log                      |
-| [ADR.md](./ADR.md)                                           | Architecture Decision Records |
-| [DATABASE.md](./DATABASE.md)                                 | Database schema & indexes     |
-| [DB_FACTS.md](./DB_FACTS.md)                                 | DB invariants & constraints   |
-| [KNOWN_LIMITATIONS.md](./KNOWN_LIMITATIONS.md)               | System constraints & tech debt |
-| [OPERATIONAL_PLAYBOOK.md](./OPERATIONAL_PLAYBOOK.md)         | Incident runbooks             |
-| [PERFORMANCE_BASELINE.md](./PERFORMANCE_BASELINE.md)         | Performance benchmarks        |
-| [API_DEPRECATION.md](./API_DEPRECATION.md)                   | API versioning & deprecation  |
-| [DEVELOPMENT_HOOKS.md](./DEVELOPMENT_HOOKS.md)               | Detailed hook behavior        |
-| [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md)                   | Migration guide               |
+| File                                                 | Purpose                        |
+| ---------------------------------------------------- | ------------------------------ |
+| [COMPACT.md](./COMPACT.md)                           | Session memory / current state |
+| [WORKLOG.md](./WORKLOG.md)                           | Work log                       |
+| [ADR.md](./ADR.md)                                   | Architecture Decision Records  |
+| [DATABASE.md](./DATABASE.md)                         | Database schema & indexes      |
+| [DB_FACTS.md](./DB_FACTS.md)                         | DB invariants & constraints    |
+| [KNOWN_LIMITATIONS.md](./KNOWN_LIMITATIONS.md)       | System constraints & tech debt |
+| [OPERATIONAL_PLAYBOOK.md](./OPERATIONAL_PLAYBOOK.md) | Incident runbooks              |
+| [PERFORMANCE_BASELINE.md](./PERFORMANCE_BASELINE.md) | Performance benchmarks         |
+| [API_DEPRECATION.md](./API_DEPRECATION.md)           | API versioning & deprecation   |
+| [DEVELOPMENT_HOOKS.md](./DEVELOPMENT_HOOKS.md)       | Detailed hook behavior         |
+| [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md)           | Migration guide                |
 
 ### Agent & Governance
 
-| File                                                         | Purpose                       |
-| ------------------------------------------------------------ | ----------------------------- |
-| [agents/README.md](./agents/README.md)                       | Agent framework index         |
-| [agents/CONTRACT.md](./agents/CONTRACT.md)                   | Definition of Done            |
-| [agents/ARCHITECTURE_FACTS.md](./agents/ARCHITECTURE_FACTS.md) | Domain invariants          |
-| [agents/COMMANDS.md](./agents/COMMANDS.md)                   | Verified commands             |
-| [AI_GOVERNANCE.md](./AI_GOVERNANCE.md)                       | AI agent workflow             |
-| [COMMANDS_AND_GATES.md](./COMMANDS_AND_GATES.md)             | Full commands + CI gates      |
-| [MCP.md](./MCP.md)                                           | MCP server docs               |
-| [HOOKS.md](./HOOKS.md)                                       | Hook enforcement              |
+| File                                                           | Purpose                  |
+| -------------------------------------------------------------- | ------------------------ |
+| [agents/README.md](./agents/README.md)                         | Agent framework index    |
+| [agents/CONTRACT.md](./agents/CONTRACT.md)                     | Definition of Done       |
+| [agents/ARCHITECTURE_FACTS.md](./agents/ARCHITECTURE_FACTS.md) | Domain invariants        |
+| [agents/COMMANDS.md](./agents/COMMANDS.md)                     | Verified commands        |
+| [AI_GOVERNANCE.md](./AI_GOVERNANCE.md)                         | AI agent workflow        |
+| [COMMANDS_AND_GATES.md](./COMMANDS_AND_GATES.md)               | Full commands + CI gates |
+| [MCP.md](./MCP.md)                                             | MCP server docs          |
+| [HOOKS.md](./HOOKS.md)                                         | Hook enforcement         |
 
 ### Audits
 
-| File                                                         | Purpose                       |
-| ------------------------------------------------------------ | ----------------------------- |
-| [AUDIT_2026_02_21.md](./AUDIT_2026_02_21.md)                 | Full repo audit (2026-02-21)  |
-| [FINDINGS_BACKLOG.md](./FINDINGS_BACKLOG.md)                 | Code issues found (not fixed) |
+| File                                         | Purpose                       |
+| -------------------------------------------- | ----------------------------- |
+| [AUDIT_2026_02_21.md](./AUDIT_2026_02_21.md) | Full repo audit (2026-02-21)  |
+| [FINDINGS_BACKLOG.md](./FINDINGS_BACKLOG.md) | Code issues found (not fixed) |
 
 ---
 

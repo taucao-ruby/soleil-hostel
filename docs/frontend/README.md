@@ -134,6 +134,13 @@ pnpm format
 - **Real-time Validation**: Custom validation functions
 - **Booking Status Tracking**: Pending, confirmed, cancelled
 
+### 📊 Dashboard System
+
+- **Guest Dashboard**: Booking list with filter tabs (All/Upcoming/Past), cancel with confirm dialog
+- **Admin Dashboard**: 3-tab view (Bookings / Trashed / Contacts), lazy-fetch per tab
+- **Role-Based Routing**: `user.role === 'admin'` → AdminDashboard, else GuestDashboard
+- **Toast Notifications**: Success/error feedback on cancellation
+
 ### 🎨 UI/UX Excellence
 
 - **Professional Design System**: Consistent typography and spacing
@@ -253,11 +260,14 @@ pnpm dev:docker  # Docker development environment
 
 ### Unit & Integration Testing (Vitest + Testing Library)
 
-- **Component Tests**: 13 test files, 145 tests passing
-- **Auth Tests**: Login, register, context lifecycle
-- **Booking Tests**: Form validation, date logic
-- **UI Tests**: Button, Input component behavior
-- **Security Tests**: CSRF, XSS sanitization, API interceptors
+- **Component Tests**: 19 test files, 194 tests passing
+- **Auth Tests**: Login, register, context lifecycle (33 tests)
+- **Booking Tests**: Form validation, date logic, view model (52 tests)
+- **Dashboard Tests**: GuestDashboard, AdminDashboard, DashboardPage (21 tests)
+- **Home Tests**: HomePage, SearchCard, FilterChips (26 tests)
+- **UI Tests**: Button, Input component behavior (27 tests)
+- **Security Tests**: CSRF, XSS sanitization, API interceptors (34 tests)
+- **Location Tests**: Nav link rendering (3 tests)
 
 ### E2E Testing (Playwright - Scaffolded)
 
@@ -339,7 +349,6 @@ pnpm build
 - **PWA Features**: Offline support and caching
 - **Advanced Analytics**: User behavior tracking
 - **Multi-language Support**: Full i18n implementation
-- **Admin Dashboard**: Management interface
 - **Real-time Updates**: WebSocket integration
 
 ## Available Scripts

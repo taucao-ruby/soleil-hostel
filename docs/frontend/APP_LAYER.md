@@ -66,6 +66,7 @@ const RoomList = lazy(() => import('@/features/rooms/RoomList'))
 const BookingForm = lazy(() => import('@/features/booking/BookingForm'))
 const LocationList = lazy(() => import('@/features/locations/LocationList'))
 const LocationDetail = lazy(() => import('@/features/locations/LocationDetail'))
+const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
 ```
 
 ### AuthLayout Pattern
@@ -78,6 +79,23 @@ const AuthLayout: React.FC = () => {
       <NavigationSetter />
       <Outlet />
     </AuthProvider>
+  )
+}
+```
+
+### PublicLayout Pattern
+
+```typescript
+// Wraps the homepage with mobile-first chrome
+// HeaderMobile (sticky top) + page content + BottomNav (sticky bottom)
+// Does NOT use the dark Header.tsx used by other routes
+const PublicLayout: React.FC = () => {
+  return (
+    <>
+      <HeaderMobile />
+      <Outlet />
+      <BottomNav />
+    </>
   )
 }
 ```
@@ -105,11 +123,15 @@ export const router = createBrowserRouter([
   {
     element: <AuthLayout />,
     children: [
+      // Homepage — mobile-first chrome (HeaderMobile + BottomNav)
       {
-        path: '/',
+        element: <PublicLayout />,
+        children: [{ path: '/', element: <HomePage /> }],
+      },
+      // All other routes — dark Header + Footer via Layout
+      {
         element: <Layout />,
         children: [
-          { index: true, element: <HomePage /> },
           { path: 'login', element: withSuspense(LoginPage) },
           { path: 'register', element: withSuspense(RegisterPage) },
           { path: 'rooms', element: withSuspense(RoomList) },
@@ -117,11 +139,11 @@ export const router = createBrowserRouter([
           { path: 'locations/:slug', element: withSuspense(LocationDetail) },
           {
             path: 'booking',
-            element: <ProtectedRoute><BookingForm /></ProtectedRoute>,
+            element: <ProtectedRoute>{withSuspense(BookingForm)}</ProtectedRoute>,
           },
           {
             path: 'dashboard',
-            element: <ProtectedRoute><DashboardPage /></ProtectedRoute>,
+            element: <ProtectedRoute>{withSuspense(DashboardPage)}</ProtectedRoute>,
           },
           { path: '*', element: <NotFoundPage /> },
         ],
@@ -133,17 +155,17 @@ export const router = createBrowserRouter([
 
 ### Routes Summary
 
-| Path               | Component      | Auth Required | Loading |
-| ------------------ | -------------- | ------------- | ------- |
-| `/`                | HomePage       | No            | Eager   |
-| `/login`           | LoginPage      | No            | Lazy    |
-| `/register`        | RegisterPage   | No            | Lazy    |
-| `/rooms`           | RoomList       | No            | Lazy    |
-| `/locations`       | LocationList   | No            | Lazy    |
-| `/locations/:slug` | LocationDetail | No            | Lazy    |
-| `/booking`         | BookingForm    | Yes           | Lazy    |
-| `/dashboard`       | DashboardPage  | Yes           | Inline  |
-| `*`                | NotFoundPage   | No            | Eager   |
+| Path               | Component      | Layout      | Auth Required | Loading |
+| ------------------ | -------------- | ----------- | ------------- | ------- |
+| `/`                | HomePage       | PublicLayout| No            | Eager   |
+| `/login`           | LoginPage      | Layout      | No            | Lazy    |
+| `/register`        | RegisterPage   | Layout      | No            | Lazy    |
+| `/rooms`           | RoomList       | Layout      | No            | Lazy    |
+| `/locations`       | LocationList   | Layout      | No            | Lazy    |
+| `/locations/:slug` | LocationDetail | Layout      | No            | Lazy    |
+| `/booking`         | BookingForm    | Layout      | Yes           | Lazy    |
+| `/dashboard`       | DashboardPage  | Layout      | Yes           | Lazy    |
+| `*`                | NotFoundPage   | Layout      | No            | Eager   |
 
 ---
 

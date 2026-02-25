@@ -72,12 +72,15 @@ Entry point and routing. See [APP_LAYER.md](APP_LAYER.md).
 
 Business logic organized by domain. See [FEATURES_LAYER.md](FEATURES_LAYER.md).
 
-| Feature      | Components                                             |
-| ------------ | ------------------------------------------------------ |
-| `auth/`      | AuthContext, LoginPage, RegisterPage, ProtectedRoute   |
-| `booking/`   | BookingForm, booking.api, booking.validation, types    |
-| `rooms/`     | RoomList, room.api, room.types                         |
-| `locations/` | LocationList, LocationDetail, LocationCard, types, api |
+| Feature      | Components                                                               |
+| ------------ | ------------------------------------------------------------------------ |
+| `auth/`      | AuthContext, LoginPage, RegisterPage, ProtectedRoute                     |
+| `booking/`   | BookingForm, booking.api, booking.validation, booking.types              |
+| `bookings/`  | GuestDashboard, useMyBookings, bookingViewModel, booking.constants       |
+| `admin/`     | AdminDashboard, admin.api, admin.types                                   |
+| `rooms/`     | RoomList, room.api, room.types                                           |
+| `locations/` | LocationList, LocationDetail, LocationCard, location.api, location.types |
+| `home/`      | SearchCard, Hero, FilterChips, RoomCard, BottomNav, HeaderMobile         |
 
 ### Shared Layer (`src/shared/`)
 
@@ -145,7 +148,7 @@ See [CONFIGURATION.md](CONFIGURATION.md).
 
 See [TESTING.md](TESTING.md).
 
-- **Unit**: Vitest + @testing-library/react (13 files, 145 tests)
+- **Unit**: Vitest + @testing-library/react (19 files, 194 tests)
 - **E2E**: Playwright (scaffolded, 1 spec)
 
 ---

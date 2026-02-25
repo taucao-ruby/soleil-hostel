@@ -22,9 +22,10 @@ src/features/auth/
 Each feature also has its own API module:
 
 ```text
-src/features/booking/booking.api.ts
-src/features/rooms/room.api.ts
-src/features/locations/location.api.ts
+src/features/booking/booking.api.ts    # createBooking, fetchMyBookings, cancelBooking
+src/features/rooms/room.api.ts         # getRooms
+src/features/locations/location.api.ts # getLocations, getLocationBySlug
+src/features/admin/admin.api.ts        # fetchAdminBookings, fetchTrashedBookings, fetchContactMessages
 ```
 
 ---
@@ -194,13 +195,14 @@ Each feature has its own API module that uses the shared `api` client:
 ```typescript
 import api from '@/shared/lib/api'
 
-export const bookingApi = {
-  create: (data) => api.post('/bookings', data),
-  getAll: () => api.get('/bookings'),
-  getById: (id) => api.get(`/bookings/${id}`),
-  update: (id, data) => api.put(`/bookings/${id}`, data),
-  cancel: (id) => api.delete(`/bookings/${id}`),
-}
+// POST /v1/bookings — creates a new booking
+export async function createBooking(data: BookingFormData): Promise<Booking>
+
+// GET /v1/bookings — returns the authenticated user's bookings
+export async function fetchMyBookings(signal?: AbortSignal): Promise<BookingApiRaw[]>
+
+// POST /v1/bookings/:id/cancel — cancels a booking (CSRF auto-attached)
+export async function cancelBooking(id: number): Promise<CancelBookingResponse>
 ```
 
 ### Room API (`features/rooms/room.api.ts`)
@@ -208,10 +210,8 @@ export const bookingApi = {
 ```typescript
 import api from '@/shared/lib/api'
 
-export const roomApi = {
-  getAll: () => api.get('/rooms'),
-  getById: (id) => api.get(`/rooms/${id}`),
-}
+// GET /v1/rooms — returns all rooms
+export async function getRooms(): Promise<Room[]>
 ```
 
 ### Location API (`features/locations/location.api.ts`)
@@ -219,10 +219,30 @@ export const roomApi = {
 ```typescript
 import api from '@/shared/lib/api'
 
-export const locationApi = {
-  getAll: () => api.get('/locations'),
-  getBySlug: (slug) => api.get(`/locations/${slug}`),
-}
+// GET /v1/locations — returns all active locations
+export async function getLocations(): Promise<Location[]>
+
+// GET /v1/locations/:slug — returns a location with its rooms
+// params: check_in, check_out, guests (optional; filters available rooms)
+export async function getLocationBySlug(
+  slug: string,
+  params?: { check_in?: string; check_out?: string; guests?: number }
+): Promise<LocationWithRooms>
+```
+
+### Admin API (`features/admin/admin.api.ts`)
+
+```typescript
+import api from '@/shared/lib/api'
+
+// GET /v1/admin/bookings — paginated admin booking list (p.1 only in V1)
+export async function fetchAdminBookings(signal?: AbortSignal): Promise<AdminBookingRaw[]>
+
+// GET /v1/admin/bookings/trashed — soft-deleted bookings
+export async function fetchTrashedBookings(signal?: AbortSignal): Promise<AdminBookingRaw[]>
+
+// GET /v1/admin/contact-messages — contact form messages
+export async function fetchContactMessages(signal?: AbortSignal): Promise<ContactMessageRaw[]>
 ```
 
 ---

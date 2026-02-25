@@ -191,6 +191,20 @@ See `docs/FINDINGS_BACKLOG.md` (14 items):
 - Docs sync: COMPACT, WORKLOG, README, frontend/* all updated to reflect actual code state
 - Git: committed on dev → pushed → merged to main (pre-push: ESLint, Prettier, tsc, 194 tests)
 
+### Completed (2026-02-25) — CLAUDE.md creation + docs sync
+
+- Created `CLAUDE.md` — Claude Code CLI master context file (6 sections, 221 lines)
+  - §1 Project Overview (verified stack, branching, health baseline, key dirs)
+  - §2 Non-Negotiable Standards (TS strict, no console.log, feature-sliced, CSRF, auth)
+  - §3 Workflow Protocol (12-step checklist, Conventional Commits format, scope rules)
+  - §4 AI Governance (evidence-first, no path guessing, out-of-scope logging, COMPACT discipline, high-risk table)
+  - §5 File-Specific Rules (verified: booking.api.ts, room.api.ts, api.ts, router.tsx, COMPACT.md, backend general)
+  - §6 Quickstart (skill selection table, task prompt template, 3 examples, MCP connection, STOP rules)
+  - Governance Docs table linking all related framework files
+- Edited `docs/README.md` — added CLAUDE.md row to Agent & Governance table
+- Edited `docs/agents/README.md` — added CLAUDE.md bullet to Related Docs
+- Edited `PROJECT_STATUS.md` — corrected frontend: 192→194 tests, 13→19 files, date Feb 25
+
 ### Next steps (prioritized)
 
 - Dashboard Phase 5+: Booking detail panel, admin actions (restore/force-delete trashed bookings)

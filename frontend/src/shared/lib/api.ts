@@ -17,7 +17,7 @@ import { appNavigate } from '@/shared/lib/navigation'
 if (import.meta.env.PROD && !import.meta.env.VITE_API_URL) {
   throw new Error('VITE_API_URL environment variable is required in production')
 }
-const BASE_URL = (import.meta.env.VITE_API_URL as string) || 'http://localhost:8000/api'
+const BASE_URL = (import.meta.env.VITE_API_URL as string) || '/api'
 
 // Refresh mutex - prevents multiple concurrent refresh requests
 let isRefreshing = false

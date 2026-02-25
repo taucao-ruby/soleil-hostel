@@ -2,11 +2,11 @@
 
 ## 1) Current Snapshot (keep under 12 lines)
 - Date updated: 2026-02-25
-- Current branch: `dev` (synced with `main`)
-- Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (194 tests, 19 suites, 0 failures)
+- Current branch: `dev` (2 commits ahead of origin/dev after proxy fix)
+- Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (194 tests, 19 suites, 0 failures) — re-verified after proxy fix
 - Backend test baseline: `cd backend && php artisan test` (737 tests, 2071 assertions) — verified 2026-02-23
 - Pint baseline: `cd backend && vendor/bin/pint --test` (250 files, 0 violations) — verified 2026-02-23
-- Progress summary: Frontend Phases 0-4 ALL COMPLETE; Homepage Phase 1; Dashboard (GuestDashboard + AdminDashboard); SearchCard wired; audit v3+v4 remediation (20/20 fixed); docs synced 2026-02-25
+- Progress summary: Frontend Phases 0-4 ALL COMPLETE; proxy fix committed (backend:8000 → 127.0.0.1:8000); Dashboard + SearchCard wired; audit v3+v4 remediation (20/20 fixed)
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
 ## 2) What matters (invariants / guardrails)
@@ -211,3 +211,11 @@ See `docs/FINDINGS_BACKLOG.md` (14 items):
 - Pagination for admin tabs (currently V1 returns page 1 only)
 - PWA / offline support
 - Full i18n (currently Vietnamese strings are inline, not i18n-managed)
+
+## 2026-02-25 — Fix GET /api/v1/locations 500
+
+- Root cause: Two Vite config files existed (`vite.config.js` + `vite.config.ts`). Vite loads `.js` first — so `vite.config.js` was the active config. That file had the proxy target as `http://backend:8000` (Docker-only hostname, ENOTFOUND locally) → Vite returned 500. Backend was healthy throughout (200 OK confirmed directly). The `.ts` fix alone was insufficient.
+- Fix: Changed proxy fallback target in **both** `vite.config.js` and `vite.config.ts` from `http://backend:8000` to `http://127.0.0.1:8000`. Changed `api.ts` BASE_URL fallback from `http://localhost:8000/api` to `/api` (proxy path, eliminates CORS on local dev). Cleared `VITE_API_URL` in `.env.example`.
+- Files: `frontend/vite.config.js`, `frontend/vite.config.ts`, `frontend/src/shared/lib/api.ts`, `frontend/.env.example`, `docs/COMPACT.md`
+- Gates: `tsc --noEmit` 0 errors ✅, `vitest run` 194/194 ✅ (backend not touched)
+- Commits: `f53a3cb fix(frontend)`, `df8c706 docs(frontend)` + this commit

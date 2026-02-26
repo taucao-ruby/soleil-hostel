@@ -222,6 +222,14 @@ See `docs/FINDINGS_BACKLOG.md` (14 items):
 - Gates: `php artisan test` 737/737 ✅, `tsc --noEmit` 0 errors ✅, `vitest run` 194/194 ✅, `docker compose config` valid ✅
 - Residual risk: if test user's `email_verified_at` is null, `GET /v1/bookings` will return 403 (not 401) after this fix — verify test user is email-verified.
 
+### Completed (2026-02-26) — Rollup path traversal fix (GHSA-mw96-cpmx-2vgc)
+
+- Added `"rollup": ">=4.59.0"` to `pnpm.overrides` in `frontend/package.json`
+- Ran `pnpm install` to regenerate `frontend/pnpm-lock.yaml` (rollup resolved to 4.59.0)
+- Gates: `pnpm audit --audit-level=high` PASS ✅, `tsc --noEmit` 0 errors ✅, `vitest run` 194/194 ✅
+- Remaining moderate advisories (esbuild via vitest@2.1.9→vite@5.4.21, ajv via eslint) are below high threshold and out of scope
+- Files: `frontend/package.json`, `frontend/pnpm-lock.yaml`, `docs/COMPACT.md`
+
 ### Next steps (prioritized)
 
 - F-21: Translate LoginPage + RegisterPage to Vietnamese

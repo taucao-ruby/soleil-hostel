@@ -46,6 +46,23 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'api/auth/login-httponly',
         ]);
+
+        // Exclude the custom httpOnly auth token cookie from Laravel's EncryptCookies middleware.
+        //
+        // WHY: The login-httponly route uses ['web'] middleware, which includes EncryptCookies.
+        // Laravel therefore encrypts the soleil_token cookie value before sending it to the
+        // browser. All subsequent protected routes (refresh, me, bookings) run under the 'api'
+        // middleware group only — EncryptCookies is absent — so $request->cookie('soleil_token')
+        // returns the raw encrypted string. hash('sha256', encryptedString) never matches the
+        // stored hash('sha256', plainUUID), causing token lookup to fail → 401 on every call.
+        //
+        // SECURITY: No regression. The cookie is already protected by:
+        //   - httpOnly=true  (JavaScript cannot read it)
+        //   - SameSite=Strict (no cross-site sending)
+        //   - Cryptographically random UUID value (not guessable)
+        $middleware->encryptCookies(except: [
+            'soleil_token',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // ========== API Response Wrapper ==========

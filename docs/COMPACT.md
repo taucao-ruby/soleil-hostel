@@ -3,10 +3,10 @@
 ## 1) Current Snapshot (keep under 12 lines)
 - Date updated: 2026-02-26
 - Current branch: `dev`
-- Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (194 tests, 19 suites, 0 failures) — re-verified after proxy fix
-- Backend test baseline: `cd backend && php artisan test` (737 tests, 2071 assertions) — verified 2026-02-23
+- Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (194 tests, 19 suites, 0 failures) — re-verified 2026-02-26
+- Backend test baseline: `cd backend && php artisan test` (737 tests, 2071 assertions) — verified 2026-02-26
 - Pint baseline: `cd backend && vendor/bin/pint --test` (250 files, 0 violations) — verified 2026-02-23
-- Progress summary: Frontend Phases 0-4 ALL COMPLETE; auth redirect loop fixed (response.data.data path); proxy fix committed; Dashboard + SearchCard wired; audit v3+v4 remediation (20/20 fixed)
+- Progress summary: Frontend Phases 0-4 ALL COMPLETE; auth 401 fix committed (EncryptCookies mismatch); proxy fix; Dashboard + SearchCard wired; audit v3+v4 remediation (20/20 fixed)
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
 ## 2) What matters (invariants / guardrails)
@@ -213,6 +213,14 @@ See `docs/FINDINGS_BACKLOG.md` (14 items):
 - Logged F-21 (LoginPage/RegisterPage English UI) to FINDINGS_BACKLOG.md
 - Files: `AuthContext.tsx`, `AuthContext.test.tsx`, `FINDINGS_BACKLOG.md`, `COMPACT.md`
 - Gates: `tsc --noEmit` 0 errors, `vitest run` 194/194 pass (19 suites)
+
+### Completed (2026-02-26) — Auth 401 Fix (EncryptCookies mismatch)
+
+- Root cause: `POST /api/auth/login-httponly` has `['web']` middleware → `EncryptCookies` encrypts `soleil_token` cookie before browser receives it. All subsequent routes run under `api` middleware only (no `EncryptCookies`) → `$request->cookie('soleil_token')` returns raw encrypted string → `hash('sha256', encryptedString)` ≠ stored `hash('sha256', plainUUID)` → token lookup returns null → 401 on every protected call.
+- Fix 1: `backend/bootstrap/app.php` — added `$middleware->encryptCookies(except: ['soleil_token'])` to exclude the custom auth token cookie from encryption. Cookie security unchanged: httpOnly + SameSite=Strict + random UUID.
+- Fix 2: `backend/.env.example` — added `SESSION_SECURE_COOKIE=false` to prevent session cookie from being Secure=true on HTTP localhost (secondary: ensures `$request->session()` is usable in local dev).
+- Gates: `php artisan test` 737/737 ✅, `tsc --noEmit` 0 errors ✅, `vitest run` 194/194 ✅, `docker compose config` valid ✅
+- Residual risk: if test user's `email_verified_at` is null, `GET /v1/bookings` will return 403 (not 401) after this fix — verify test user is email-verified.
 
 ### Next steps (prioritized)
 

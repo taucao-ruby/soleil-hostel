@@ -30,3 +30,4 @@ Severity guide:
 | F-18 | `frontend/src` (multiple files) | 8 TODO markers including `console.log` in SearchCard.tsx production code. | Low | Remove console.log; track TODOs in backlog. | **Fixed** (batch-3) |
 | F-19 | `docs/DEVELOPMENT_HOOKS.md:23` | Says "142 tests" for frontend; actual: 145 tests. Residual of F-03. | Low | Update test count. | **Fixed** (batch-4) |
 | F-20 | CI workflows | No `docker compose config` validation in CI despite being listed as DoD gate in agents/CONTRACT.md. | Low | Add lightweight CI job running `docker compose config`. | **Fixed** (batch-1) |
+| F-21 | `frontend/src/features/auth/LoginPage.tsx` + `RegisterPage.tsx` | UI labels in English ("Welcome Back", "Create Account", etc.) instead of Vietnamese. App convention is Vietnamese for all user-facing copy. | Medium | Translate all user-facing strings to Vietnamese, consistent with BookingForm/Dashboard. | Open |

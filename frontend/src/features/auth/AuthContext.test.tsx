@@ -71,7 +71,10 @@ describe('AuthContext', () => {
     sessionStorage.setItem('csrf_token', 'test-csrf')
     mockGet.mockResolvedValue({
       data: {
-        user: { id: 1, name: 'Test User', email: 'test@example.com', role: 'guest' },
+        success: true,
+        data: {
+          user: { id: 1, name: 'Test User', email: 'test@example.com', role: 'guest' },
+        },
       },
     })
 
@@ -110,8 +113,12 @@ describe('AuthContext', () => {
   it('logs in successfully and sets user', async () => {
     mockPost.mockResolvedValue({
       data: {
-        user: { id: 1, name: 'Logged In', email: 'test@example.com', role: 'guest' },
-        csrf_token: 'new-csrf',
+        success: true,
+        data: {
+          user: { id: 1, name: 'Logged In', email: 'test@example.com', role: 'guest' },
+          csrf_token: 'new-csrf',
+        },
+        message: 'Login thành công.',
       },
     })
 
@@ -165,8 +172,12 @@ describe('AuthContext', () => {
   it('logs out and clears user state', async () => {
     mockPost.mockResolvedValueOnce({
       data: {
-        user: { id: 1, name: 'Logged In', email: 'test@example.com', role: 'guest' },
-        csrf_token: 'csrf',
+        success: true,
+        data: {
+          user: { id: 1, name: 'Logged In', email: 'test@example.com', role: 'guest' },
+          csrf_token: 'csrf',
+        },
+        message: 'Login thành công.',
       },
     })
 
@@ -225,9 +236,7 @@ describe('AuthContext', () => {
 
   it('throws error when useAuth is used outside AuthProvider', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    expect(() => render(<TestConsumer />)).toThrow(
-      'useAuth must be used within an AuthProvider'
-    )
+    expect(() => render(<TestConsumer />)).toThrow('useAuth must be used within an AuthProvider')
     spy.mockRestore()
   })
 })

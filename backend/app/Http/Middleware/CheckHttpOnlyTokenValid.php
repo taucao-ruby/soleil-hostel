@@ -106,9 +106,14 @@ class CheckHttpOnlyTokenValid
         }
 
         // ========== Attach to Request ==========
-        // Set authenticated user & token
-        $request->attributes->set('user', $token->tokenable);
+        // Set authenticated user & token on request attributes (used by HttpOnlyTokenController)
+        $user = $token->tokenable;
+        $request->attributes->set('user', $user);
         $request->attributes->set('token', $token);
+
+        // Also set user resolver so $request->user() works for downstream middleware
+        // (e.g. 'verified', 'role') when this middleware is used as a fallback
+        $request->setUserResolver(fn () => $user);
 
         // Throttle last_used_at updates to 1-minute intervals to reduce DB writes
         if (! $token->last_used_at || $token->last_used_at->diffInMinutes(now()) >= 1) {

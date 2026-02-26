@@ -32,12 +32,16 @@ class CheckTokenNotRevokedAndNotExpired
         // If no bearer token is present:
         // - Allow if authenticated via 'web' guard (session auth)
         // - Allow if authenticated via 'sanctum' guard (test framework or valid token already authenticated by Sanctum)
+        // - Fallback to httpOnly cookie token (SPA frontend uses cookie auth)
         if (! $bearerToken) {
             if ($request->user('web') || $request->user('sanctum')) {
                 return $next($request);
             }
-            // No bearer token AND not authenticated by any guard
-            throw new AuthenticationException('Token không được cấp trong Authorization header.');
+
+            // Fallback: delegate to CheckHttpOnlyTokenValid for cookie-based auth
+            $cookieMiddleware = app(CheckHttpOnlyTokenValid::class);
+
+            return $cookieMiddleware->handle($request, $next);
         }
 
         // Tìm token ở database

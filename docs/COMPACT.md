@@ -1,12 +1,12 @@
 ﻿# COMPACT — Soleil Hostel (AI Session Memory)
 
 ## 1) Current Snapshot (keep under 12 lines)
-- Date updated: 2026-02-25
-- Current branch: `dev` (2 commits ahead of origin/dev after proxy fix)
+- Date updated: 2026-02-26
+- Current branch: `dev`
 - Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (194 tests, 19 suites, 0 failures) — re-verified after proxy fix
 - Backend test baseline: `cd backend && php artisan test` (737 tests, 2071 assertions) — verified 2026-02-23
 - Pint baseline: `cd backend && vendor/bin/pint --test` (250 files, 0 violations) — verified 2026-02-23
-- Progress summary: Frontend Phases 0-4 ALL COMPLETE; proxy fix committed (backend:8000 → 127.0.0.1:8000); Dashboard + SearchCard wired; audit v3+v4 remediation (20/20 fixed)
+- Progress summary: Frontend Phases 0-4 ALL COMPLETE; auth redirect loop fixed (response.data.data path); proxy fix committed; Dashboard + SearchCard wired; audit v3+v4 remediation (20/20 fixed)
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
 ## 2) What matters (invariants / guardrails)
@@ -205,8 +205,18 @@ See `docs/FINDINGS_BACKLOG.md` (14 items):
 - Edited `docs/agents/README.md` — added CLAUDE.md bullet to Related Docs
 - Edited `PROJECT_STATUS.md` — corrected frontend: 192→194 tests, 13→19 files, date Feb 25
 
+### Completed (2026-02-26) — Auth Redirect Loop Fix
+
+- Root cause: `AuthContext.tsx` accessed `response.data.user` but backend wraps in `{ success, data: { user, csrf_token }, message }` — correct path is `response.data.data.user`
+- Fixed 3 extraction points: `loginHttpOnly`, `useEffect` validateToken, `me()` function
+- Updated test mocks in `AuthContext.test.tsx` to match real backend response shape
+- Logged F-21 (LoginPage/RegisterPage English UI) to FINDINGS_BACKLOG.md
+- Files: `AuthContext.tsx`, `AuthContext.test.tsx`, `FINDINGS_BACKLOG.md`, `COMPACT.md`
+- Gates: `tsc --noEmit` 0 errors, `vitest run` 194/194 pass (19 suites)
+
 ### Next steps (prioritized)
 
+- F-21: Translate LoginPage + RegisterPage to Vietnamese
 - Dashboard Phase 5+: Booking detail panel, admin actions (restore/force-delete trashed bookings)
 - Pagination for admin tabs (currently V1 returns page 1 only)
 - PWA / offline support

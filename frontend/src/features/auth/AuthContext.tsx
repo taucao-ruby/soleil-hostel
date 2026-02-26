@@ -80,8 +80,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       try {
-        const response = await api.get<{ user: User }>('/auth/me-httponly')
-        setUser(response.data.user)
+        const response = await api.get<{ success: boolean; data: { user: User } }>(
+          '/auth/me-httponly'
+        )
+        setUser(response.data.data.user)
         setError(null)
       } catch (err: unknown) {
         // No valid token - user not authenticated
@@ -122,21 +124,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError(null)
 
       try {
-        const response = await api.post<{ user: User; csrf_token: string }>(
-          '/auth/login-httponly',
-          {
-            email,
-            password,
-            remember_me: rememberMe,
-          }
-        )
+        const response = await api.post<{
+          success: boolean
+          data: { user: User; csrf_token: string }
+          message: string
+        }>('/auth/login-httponly', {
+          email,
+          password,
+          remember_me: rememberMe,
+        })
 
         // Save user to state
-        setUser(response.data.user)
+        setUser(response.data.data.user)
 
         // Save CSRF token to sessionStorage
-        if (response.data.csrf_token) {
-          setCsrfToken(response.data.csrf_token)
+        if (response.data.data.csrf_token) {
+          setCsrfToken(response.data.data.csrf_token)
         }
 
         setError(null)
@@ -243,9 +246,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    */
   const me = useCallback(async (): Promise<User | null> => {
     try {
-      const response = await api.get<{ user: User }>('/auth/me-httponly')
-      setUser(response.data.user)
-      return response.data.user
+      const response = await api.get<{ success: boolean; data: { user: User } }>(
+        '/auth/me-httponly'
+      )
+      setUser(response.data.data.user)
+      return response.data.data.user
     } catch (err) {
       setUser(null)
       throw err

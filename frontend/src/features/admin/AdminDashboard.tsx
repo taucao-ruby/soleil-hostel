@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { fetchAdminBookings, fetchTrashedBookings, fetchContactMessages } from './admin.api'
-import type { AdminBookingRaw, ContactMessageRaw } from './admin.types'
+import {
+  fetchAdminBookings,
+  fetchTrashedBookings,
+  fetchContactMessages,
+  restoreBooking,
+  forceDeleteBooking,
+} from './admin.api'
+import type { AdminBookingRaw, ContactMessageRaw, PaginationMeta } from './admin.types'
 import {
   getStatusConfig,
   formatDateRangeVN,
@@ -8,10 +14,20 @@ import {
 } from '@/features/bookings/booking.constants'
 import Skeleton from '@/shared/components/ui/Skeleton'
 import Button from '@/shared/components/ui/Button'
+import ConfirmDialog from '@/shared/components/ui/ConfirmDialog'
+import { showToast, getErrorMessage } from '@/utils/toast'
 
 // ── Types ───────────────────────────────────────────────
 
 type AdminTab = 'bookings' | 'trashed' | 'contacts'
+
+interface PaginatedFetchState<T> {
+  data: T[]
+  meta: PaginationMeta | null
+  isLoading: boolean
+  isError: boolean
+  hasFetched: boolean
+}
 
 interface FetchState<T> {
   data: T[]
@@ -20,7 +36,7 @@ interface FetchState<T> {
   hasFetched: boolean
 }
 
-// ── Generic fetch hook (matches repo useMyBookingsQuery pattern) ──
+// ── Generic fetch hook (non-paginated, for contacts) ──
 
 function useAdminFetch<T>(fetchFn: (signal?: AbortSignal) => Promise<T[]>, shouldFetch: boolean) {
   const [state, setState] = useState<FetchState<T>>({
@@ -67,6 +83,80 @@ function useAdminFetch<T>(fetchFn: (signal?: AbortSignal) => Promise<T[]>, shoul
   return { ...state, refetch }
 }
 
+// ── Paginated fetch hook (for bookings + trashed) ──
+
+function useAdminPaginatedFetch<T>(
+  fetchFn: (page: number, signal?: AbortSignal) => Promise<{ bookings: T[]; meta: PaginationMeta }>,
+  shouldFetch: boolean
+) {
+  const [page, setPage] = useState(1)
+  const [state, setState] = useState<PaginatedFetchState<T>>({
+    data: [],
+    meta: null,
+    isLoading: false,
+    isError: false,
+    hasFetched: false,
+  })
+  const mountedRef = useRef(true)
+
+  const fetchData = useCallback(
+    async (targetPage: number, signal?: AbortSignal) => {
+      setState(s => ({ ...s, isLoading: true, isError: false }))
+      try {
+        const result = await fetchFn(targetPage, signal)
+        if (mountedRef.current) {
+          setState({
+            data: result.bookings,
+            meta: result.meta,
+            isLoading: false,
+            isError: false,
+            hasFetched: true,
+          })
+        }
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return
+        if (mountedRef.current) {
+          setState(s => ({ ...s, isLoading: false, isError: true, hasFetched: true }))
+        }
+      }
+    },
+    [fetchFn]
+  )
+
+  useEffect(() => {
+    if (!shouldFetch) return
+    mountedRef.current = true
+    const controller = new AbortController()
+    fetchData(page, controller.signal)
+    return () => {
+      mountedRef.current = false
+      controller.abort()
+    }
+  }, [shouldFetch, page, fetchData])
+
+  const refetch = useCallback(() => {
+    setState(s => ({ ...s, hasFetched: false }))
+    // Trigger re-fetch via useEffect by resetting hasFetched
+    // The effect depends on shouldFetch/page/fetchData, so we force via state change
+    setPage(p => p)
+  }, [])
+
+  const goToPage = useCallback((newPage: number) => {
+    setPage(newPage)
+  }, [])
+
+  return { ...state, page, goToPage, refetch }
+}
+
+// ── Trashed fetch wrapper (adapts non-paginated trashed to paginated shape) ──
+
+function useTrashedFetch(shouldFetch: boolean) {
+  return useAdminPaginatedFetch(
+    useCallback((_page: number, signal?: AbortSignal) => fetchTrashedBookings(signal), []),
+    shouldFetch
+  )
+}
+
 // ── Tab config ──────────────────────────────────────────
 
 const TABS: { key: AdminTab; label: string }[] = [
@@ -104,9 +194,54 @@ const ErrorState: React.FC<{ message: string; onRetry: () => void }> = ({ messag
   </div>
 )
 
+// ── Pagination controls ─────────────────────────────────
+
+const PaginationControls: React.FC<{
+  meta: PaginationMeta
+  onPageChange: (page: number) => void
+}> = ({ meta, onPageChange }) => {
+  if (meta.last_page <= 1) return null
+
+  return (
+    <div className="flex items-center justify-center gap-4 mt-4">
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={meta.current_page <= 1}
+        onClick={() => onPageChange(meta.current_page - 1)}
+      >
+        Trước
+      </Button>
+      <span className="text-sm text-gray-600">
+        Trang {meta.current_page} / {meta.last_page}
+      </span>
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={meta.current_page >= meta.last_page}
+        onClick={() => onPageChange(meta.current_page + 1)}
+      >
+        Sau
+      </Button>
+    </div>
+  )
+}
+
 // ── Booking card (admin) ────────────────────────────────
 
-const AdminBookingCard: React.FC<{ booking: AdminBookingRaw }> = ({ booking }) => {
+interface AdminBookingCardProps {
+  booking: AdminBookingRaw
+  onRestore?: (id: number) => void
+  onForceDelete?: (id: number) => void
+  isActionPending?: boolean
+}
+
+const AdminBookingCard: React.FC<AdminBookingCardProps> = ({
+  booking,
+  onRestore,
+  onForceDelete,
+  isActionPending = false,
+}) => {
   const statusConfig = getStatusConfig(booking.status)
   const checkIn = new Date(booking.check_in)
   const checkOut = new Date(booking.check_out)
@@ -133,6 +268,30 @@ const AdminBookingCard: React.FC<{ booking: AdminBookingRaw }> = ({ booking }) =
         <div className="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-400">
           Xóa lúc {formatDateVN(new Date(booking.deleted_at))}
           {booking.deleted_by && ` bởi ${booking.deleted_by.name}`}
+        </div>
+      )}
+      {(onRestore || onForceDelete) && (
+        <div className="mt-3 pt-3 border-t border-gray-100 flex gap-2">
+          {onRestore && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isActionPending}
+              onClick={() => onRestore(booking.id)}
+            >
+              Khôi phục
+            </Button>
+          )}
+          {onForceDelete && (
+            <Button
+              variant="danger"
+              size="sm"
+              disabled={isActionPending}
+              onClick={() => onForceDelete(booking.id)}
+            >
+              Xóa vĩnh viễn
+            </Button>
+          )}
         </div>
       )}
     </div>
@@ -177,9 +336,47 @@ const ContactCard: React.FC<{ contact: ContactMessageRaw }> = ({ contact }) => {
 const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AdminTab>('bookings')
 
-  const bookings = useAdminFetch(fetchAdminBookings, activeTab === 'bookings')
-  const trashed = useAdminFetch(fetchTrashedBookings, activeTab === 'trashed')
+  // Data fetching
+  const bookings = useAdminPaginatedFetch(fetchAdminBookings, activeTab === 'bookings')
+  const trashed = useTrashedFetch(activeTab === 'trashed')
   const contacts = useAdminFetch(fetchContactMessages, activeTab === 'contacts')
+
+  // Trashed actions state
+  const [actionPendingId, setActionPendingId] = useState<number | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
+
+  const handleRestore = useCallback(
+    async (id: number) => {
+      setActionPendingId(id)
+      try {
+        await restoreBooking(id)
+        showToast.success('Đã khôi phục đặt phòng.')
+        trashed.refetch()
+      } catch (err) {
+        showToast.error(getErrorMessage(err))
+      } finally {
+        setActionPendingId(null)
+      }
+    },
+    [trashed]
+  )
+
+  const handleForceDelete = useCallback(
+    async (id: number) => {
+      setActionPendingId(id)
+      try {
+        await forceDeleteBooking(id)
+        showToast.success('Đã xóa vĩnh viễn.')
+        setConfirmDeleteId(null)
+        trashed.refetch()
+      } catch (err) {
+        showToast.error(getErrorMessage(err))
+      } finally {
+        setActionPendingId(null)
+      }
+    },
+    [trashed]
+  )
 
   return (
     <section>
@@ -208,7 +405,7 @@ const AdminDashboard: React.FC = () => {
 
       {/* Bookings tab */}
       {activeTab === 'bookings' && (
-        <div role="tabpanel" aria-label="Đặt phòng">
+        <div role="tabpanel" aria-label="Đặt phòng" className="min-h-[22rem]">
           {bookings.isLoading && <ListSkeleton />}
           {!bookings.isLoading && bookings.isError && (
             <ErrorState message="Không thể tải danh sách đặt phòng." onRetry={bookings.refetch} />
@@ -217,11 +414,16 @@ const AdminDashboard: React.FC = () => {
             <EmptyState message="Chưa có đặt phòng nào." />
           )}
           {!bookings.isLoading && !bookings.isError && bookings.data.length > 0 && (
-            <div className="space-y-3">
-              {bookings.data.map(b => (
-                <AdminBookingCard key={b.id} booking={b} />
-              ))}
-            </div>
+            <>
+              <div className="space-y-3">
+                {bookings.data.map(b => (
+                  <AdminBookingCard key={b.id} booking={b} />
+                ))}
+              </div>
+              {bookings.meta && (
+                <PaginationControls meta={bookings.meta} onPageChange={bookings.goToPage} />
+              )}
+            </>
           )}
         </div>
       )}
@@ -239,7 +441,13 @@ const AdminDashboard: React.FC = () => {
           {!trashed.isLoading && !trashed.isError && trashed.data.length > 0 && (
             <div className="space-y-3">
               {trashed.data.map(b => (
-                <AdminBookingCard key={b.id} booking={b} />
+                <AdminBookingCard
+                  key={b.id}
+                  booking={b}
+                  onRestore={handleRestore}
+                  onForceDelete={(id: number) => setConfirmDeleteId(id)}
+                  isActionPending={actionPendingId !== null}
+                />
               ))}
             </div>
           )}
@@ -265,6 +473,22 @@ const AdminDashboard: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* Force delete confirmation dialog */}
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        title="Xóa vĩnh viễn đặt phòng?"
+        description="Hành động này không thể hoàn tác. Dữ liệu đặt phòng sẽ bị xóa hoàn toàn khỏi hệ thống."
+        confirmLabel="Xóa vĩnh viễn"
+        cancelLabel="Quay lại"
+        isPending={actionPendingId !== null}
+        onConfirm={() => {
+          if (confirmDeleteId !== null) {
+            handleForceDelete(confirmDeleteId)
+          }
+        }}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
     </section>
   )
 }

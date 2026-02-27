@@ -62,11 +62,11 @@ trait RoomTestAssertions
     {
         $response->assertStatus(409)
             ->assertJson([
-                'error' => 'resource_out_of_date',
+                'success' => false,
             ])
             ->assertJsonStructure([
+                'success',
                 'message',
-                'error',
             ]);
     }
 

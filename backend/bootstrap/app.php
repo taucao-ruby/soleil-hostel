@@ -9,7 +9,9 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -95,12 +97,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // ========== Optimistic Lock Conflict ==========
         // Return 409 Conflict when concurrent modification is detected
         // Client should refresh data and retry the operation
-        // NOTE: Maintains legacy format for backward compatibility
         $exceptions->render(function (OptimisticLockException $e, Request $request) {
-            return response()->json([
-                'error' => 'resource_out_of_date',
-                'message' => 'The room has been modified by another user. Please refresh and try again.',
-            ], 409);
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return ApiResponse::conflict($e->getMessage());
+            }
         });
 
         // Handle authorization exceptions (403)
@@ -114,6 +114,43 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (AuthenticationException $e, Request $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return ApiResponse::unauthorized('Unauthenticated. Please log in.');
+            }
+        });
+
+        // ========== Generic HTTP exceptions (405, 429, etc.) ==========
+        $exceptions->render(function (HttpException $e, Request $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return ApiResponse::error(
+                    $e->getMessage() ?: 'HTTP error.',
+                    null,
+                    $e->getStatusCode()
+                );
+            }
+        });
+
+        // ========== Catch-all for unhandled exceptions ==========
+        // Prevents stack trace leaks in production API responses.
+        // Excludes HttpResponseException — Laravel uses it internally for
+        // rate limiting (429), redirects, and other framework-level responses.
+        $exceptions->render(function (\Throwable $e, Request $request) {
+            if ($e instanceof \Illuminate\Http\Exceptions\HttpResponseException) {
+                return null; // Let Laravel handle it natively
+            }
+
+            if ($request->expectsJson() || $request->is('api/*')) {
+                Log::error('Unhandled API exception', [
+                    'exception' => get_class($e),
+                    'message' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => $request->attributes->get('correlation_id'),
+                ]);
+
+                $message = config('app.debug')
+                    ? $e->getMessage()
+                    : 'Internal server error.';
+
+                return ApiResponse::serverError($message);
             }
         });
     })->create();

@@ -3,10 +3,10 @@
 ## 1) Current Snapshot (keep under 12 lines)
 - Date updated: 2026-02-27
 - Current branch: `dev`
-- Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (208 tests, 20 suites, 0 failures) — verified 2026-02-27
-- Backend test baseline: `cd backend && php artisan test` (746 tests, 2114 assertions) — verified 2026-02-27
-- Pint baseline: `cd backend && vendor/bin/pint --test` (250 files, 0 violations) — verified 2026-02-23
-- Progress summary: Frontend Phases 0-4 ALL COMPLETE; auth 401 fix committed (EncryptCookies mismatch); proxy fix; Dashboard + SearchCard wired; audit v3+v4 remediation (20/20 fixed)
+- Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (218 tests, 20 suites, 0 failures) — verified 2026-02-27
+- Backend test baseline: `cd backend && php artisan test` (756 tests, 2171 assertions) — verified 2026-02-27
+- Pint baseline: `cd backend && vendor/bin/pint --test` (252 files, 0 violations) — verified 2026-02-27
+- Progress summary: Frontend Phases 0-4 ALL COMPLETE + FE-002/FE-003 admin features; TD-001 API error standardization; auth 401 fix; audit v3+v4 remediation (20/20 fixed)
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
 ## 2) What matters (invariants / guardrails)
@@ -262,6 +262,30 @@ See `docs/FINDINGS_BACKLOG.md` (14 items):
 - Finding: `auth()->id()` returns null on v1 cookie-auth requests because CheckHttpOnlyTokenValid sets `$request->setUserResolver()` but not `auth()->guard('sanctum')->setUser()` — controllers using `auth()->id()` will fail with 500 on cookie fallback path. Not fixed here (out of scope).
 - Files: `backend/tests/Feature/Auth/SoleilTokenCookieEncryptionTest.php` (new), `docs/COMPACT.md`
 - Gates: `php artisan test` 746/746 ✅, `pint --test` PASS ✅
+
+## 2026-02-27 — FE-002/FE-003: Admin Trashed Actions + Pagination
+
+- FE-002: Trashed tab restore (POST /v1/admin/bookings/:id/restore) + force delete (DELETE /v1/admin/bookings/:id/force) with ConfirmDialog
+- FE-003: Paginated fetch hook (`useAdminPaginatedFetch`), PaginationControls (Trước/Sau), boundary disabling, hidden when last_page<=1
+- Trashed tab wrapper adapts non-paginated endpoint to paginated shape
+- AdminBookingCard: action buttons (Khôi phục / Xóa vĩnh viễn) with pending state disabling
+- Toast feedback on success/error for restore and force-delete
+- Tests: 10 new tests (trashed actions + pagination) in AdminDashboard.test.tsx
+- Files: `admin.api.ts` (+restoreBooking, +forceDeleteBooking), `admin.types.ts` (+PaginationMeta, +AdminBookingsPaginatedResult), `AdminDashboard.tsx` (paginated hooks, actions, PaginationControls), `AdminDashboard.test.tsx`
+- Gates: `tsc --noEmit` 0 errors ✅, `vitest run` 218/218 ✅ (20 suites)
+
+## 2026-02-27 — TD-001: Standardize API Error Format
+
+- Added `trace_id` field to all `ApiResponse` responses (reads `correlation_id` from request attributes set by `AddCorrelationId` middleware)
+- Added `ApiResponse::conflict()` method for 409 responses
+- Fixed `OptimisticLockException` handler in `bootstrap/app.php` to use `ApiResponse::conflict()` instead of legacy `{ error, message }` format
+- Added generic `HttpException` handler (405, 429, etc.) using `ApiResponse::error()`
+- Added catch-all `\Throwable` handler: logs unhandled exceptions, returns standardized JSON, no stack trace in prod (debug mode shows message)
+- Excluded `HttpResponseException` from catch-all (used internally by Laravel for rate limiting)
+- Updated `EnsureUserHasRole` middleware to use `ApiResponse` for 401/403/500 responses
+- Updated 5 existing optimistic lock tests (`RoomTestAssertions.php`, `RoomOptimisticLockingTest.php`, `RoomConcurrencyTest.php`) from legacy `{ error }` to `{ success }` assertions
+- New test file: `ApiErrorFormatTest.php` (10 tests, 57 assertions) covering: 404/401/403/422 format, trace_id propagation, auto-generation, no stack trace leak, JSON content-type
+- Gates: `php artisan test` 756/756 ✅ (2171 assertions), `pint --test` 252 files 0 violations ✅, `tsc --noEmit` 0 errors ✅, `vitest run` 218/218 ✅, `docker compose config` PASS ✅
 
 ## 2026-02-25 — Fix GET /api/v1/locations 500
 

@@ -39,18 +39,31 @@ export interface ContactMessageRaw {
 }
 
 /**
+ * Pagination metadata from Laravel LengthAwarePaginator.
+ */
+export interface PaginationMeta {
+  current_page: number
+  last_page: number
+  per_page: number
+  total: number
+}
+
+/**
+ * Paginated bookings result (used by useAdminPaginatedFetch).
+ */
+export interface AdminBookingsPaginatedResult {
+  bookings: AdminBookingRaw[]
+  meta: PaginationMeta
+}
+
+/**
  * Response: GET /v1/admin/bookings
  */
 export interface AdminBookingsResponse {
   success: boolean
   data: {
     bookings: AdminBookingRaw[]
-    meta: {
-      current_page: number
-      last_page: number
-      per_page: number
-      total: number
-    }
+    meta: PaginationMeta
   }
 }
 

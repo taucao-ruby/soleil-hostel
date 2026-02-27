@@ -172,7 +172,18 @@ final class ApiResponse
     }
 
     /**
+     * Conflict response (409).
+     * Used for optimistic lock / concurrent modification errors.
+     */
+    public static function conflict(string $message = 'Resource conflict.'): JsonResponse
+    {
+        return self::error($message, null, 409);
+    }
+
+    /**
      * Build the standardized response structure.
+     *
+     * Includes trace_id from AddCorrelationId middleware when available.
      */
     private static function respond(
         bool $success,
@@ -182,12 +193,20 @@ final class ApiResponse
         ?array $meta,
         int $status
     ): JsonResponse {
+        $traceId = null;
+        try {
+            $traceId = request()->attributes->get('correlation_id');
+        } catch (\Throwable) {
+            // Request not available (e.g., console context)
+        }
+
         $response = [
             'success' => $success,
             'data' => $data,
             'message' => $message,
             'errors' => $errors,
             'meta' => $meta ?? ['pagination' => null],
+            'trace_id' => $traceId,
             'timestamp' => now()->toIso8601String(),
         ];
 

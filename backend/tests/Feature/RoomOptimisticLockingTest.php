@@ -393,7 +393,7 @@ class RoomOptimisticLockingTest extends TestCase
         // Assert
         $response->assertStatus(409)
             ->assertJson([
-                'error' => 'resource_out_of_date',
+                'success' => false,
                 'message' => 'The room has been modified by another user. Please refresh and try again.',
             ]);
     }
@@ -465,7 +465,7 @@ class RoomOptimisticLockingTest extends TestCase
         // Assert
         $response2->assertStatus(409)
             ->assertJson([
-                'error' => 'resource_out_of_date',
+                'success' => false,
             ]);
 
         // Verify first user's update was preserved

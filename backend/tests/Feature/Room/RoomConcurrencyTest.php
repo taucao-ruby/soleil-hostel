@@ -330,7 +330,7 @@ class RoomConcurrencyTest extends TestCase
 
         // Assert: 409 Conflict returned
         $response->assertStatus(409)
-            ->assertJson(['error' => 'resource_out_of_date']);
+            ->assertJson(['success' => false]);
 
         // Verify 'booked' status persisted
         $room->refresh();
@@ -361,7 +361,7 @@ class RoomConcurrencyTest extends TestCase
         // Assert: Response includes error details for client-side handling
         $response->assertStatus(409)
             ->assertJson([
-                'error' => 'resource_out_of_date',
+                'success' => false,
                 'message' => 'The room has been modified by another user. Please refresh and try again.',
             ]);
     }

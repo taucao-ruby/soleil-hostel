@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Enums\UserRole;
+use App\Http\Responses\ApiResponse;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -34,9 +35,7 @@ class EnsureUserHasRole
         $user = $request->user();
 
         if (! $user) {
-            return response()->json([
-                'message' => 'Unauthenticated.',
-            ], 401);
+            return ApiResponse::unauthorized('Unauthenticated.');
         }
 
         $requiredRole = UserRole::tryFrom($role);
@@ -45,15 +44,11 @@ class EnsureUserHasRole
             // Invalid role parameter - log and deny
             report(new \InvalidArgumentException("Invalid role parameter in middleware: {$role}"));
 
-            return response()->json([
-                'message' => 'Server configuration error.',
-            ], 500);
+            return ApiResponse::serverError('Server configuration error.');
         }
 
         if (! $user->isAtLeast($requiredRole)) {
-            return response()->json([
-                'message' => 'Forbidden. Insufficient permissions.',
-            ], 403);
+            return ApiResponse::forbidden('Forbidden. Insufficient permissions.');
         }
 
         return $next($request);

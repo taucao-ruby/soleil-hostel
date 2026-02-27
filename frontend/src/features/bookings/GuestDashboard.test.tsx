@@ -11,6 +11,10 @@ import type { BookingApiRaw } from '@/features/booking/booking.types'
 const mockRefetch = vi.fn()
 const mockCancel = vi.fn<(id: number) => Promise<boolean>>()
 
+const { mockUseAuth } = vi.hoisted(() => ({
+  mockUseAuth: vi.fn(),
+}))
+
 const { mockShowToast } = vi.hoisted(() => ({
   mockShowToast: {
     success: vi.fn(),
@@ -19,6 +23,10 @@ const { mockShowToast } = vi.hoisted(() => ({
     info: vi.fn(),
     promise: vi.fn(),
   },
+}))
+
+vi.mock('@/features/auth/AuthContext', () => ({
+  useAuth: mockUseAuth,
 }))
 
 vi.mock('./useMyBookings', () => ({
@@ -30,6 +38,17 @@ vi.mock('@/utils/toast', () => ({
   showToast: mockShowToast,
   getErrorMessage: (err: unknown) => (typeof err === 'string' ? err : 'Error'),
 }))
+
+// ── Default verified user ────────────────────────────────
+const verifiedUser = {
+  id: 1,
+  name: 'Test User',
+  email: 'test@example.com',
+  role: 'user' as const,
+  email_verified_at: '2026-01-01T00:00:00.000Z',
+  created_at: '2026-01-01T00:00:00.000Z',
+  updated_at: '2026-01-01T00:00:00.000Z',
+}
 
 import { useMyBookingsQuery, useCancelBookingMutation } from './useMyBookings'
 
@@ -72,6 +91,17 @@ function renderDashboard() {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockUseAuth.mockReturnValue({
+    user: verifiedUser,
+    isAuthenticated: true,
+    loading: false,
+    error: null,
+    loginHttpOnly: vi.fn(),
+    registerHttpOnly: vi.fn(),
+    logoutHttpOnly: vi.fn(),
+    me: vi.fn(),
+    clearError: vi.fn(),
+  })
   mockedMutation.mockReturnValue({
     cancel: mockCancel,
     isPending: false,
@@ -239,5 +269,29 @@ describe('GuestDashboard', () => {
     // Vietnamese date format: dd/MM/yyyy
     expect(screen.getByText(/01\/06\/2026/)).toBeInTheDocument()
     expect(screen.getByText(/03\/06\/2026/)).toBeInTheDocument()
+  })
+
+  it('shows email verification banner when email_verified_at is null', () => {
+    mockUseAuth.mockReturnValue({
+      user: { ...verifiedUser, email_verified_at: null },
+      isAuthenticated: true,
+      loading: false,
+      error: null,
+      loginHttpOnly: vi.fn(),
+      registerHttpOnly: vi.fn(),
+      logoutHttpOnly: vi.fn(),
+      me: vi.fn(),
+      clearError: vi.fn(),
+    })
+    mockedQuery.mockReturnValue({
+      bookings: [],
+      isLoading: false,
+      isError: true, // simulates the backend 403
+      refetch: mockRefetch,
+    })
+
+    renderDashboard()
+    expect(screen.getByText('Email chưa được xác minh')).toBeInTheDocument()
+    expect(screen.queryByText('Không thể tải danh sách đặt phòng.')).not.toBeInTheDocument()
   })
 })

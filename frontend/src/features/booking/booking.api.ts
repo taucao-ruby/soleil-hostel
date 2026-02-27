@@ -2,6 +2,8 @@ import api from '@/shared/lib/api'
 import {
   Booking,
   BookingApiRaw,
+  BookingDetailRaw,
+  BookingDetailResponse,
   BookingFormData,
   BookingResponse,
   BookingsListResponse,
@@ -46,4 +48,15 @@ export async function fetchMyBookings(signal?: AbortSignal): Promise<BookingApiR
 export async function cancelBooking(id: number): Promise<CancelBookingResponse> {
   const response = await api.post<CancelBookingResponse>(`/v1/bookings/${id}/cancel`)
   return response.data
+}
+
+/**
+ * Fetch a single booking by ID
+ *
+ * GET /v1/bookings/:id
+ * Requires authentication. Returns booking with eager-loaded room relationship.
+ */
+export async function getBookingById(id: number, signal?: AbortSignal): Promise<BookingDetailRaw> {
+  const response = await api.get<BookingDetailResponse>(`/v1/bookings/${id}`, { signal })
+  return response.data.data
 }

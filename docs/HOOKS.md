@@ -16,7 +16,7 @@ See also: [DEVELOPMENT_HOOKS.md](./DEVELOPMENT_HOOKS.md) for detailed behavior d
 
 ## Pre-commit: What It Runs
 
-1. **Blocked files check**: `.env*`, private keys, `vendor/`, `node_modules/`, cache/storage internals
+1. **Blocked files check**: `.env*` (except `.env.example`), private keys, `vendor/`, `node_modules/`, cache/storage internals
 2. **Secret detection**: Scans added lines for common secret patterns
 3. **File size check**: Blocks staged files > 2 MB
 4. **Binary file check**: Blocks non-allowed binary files

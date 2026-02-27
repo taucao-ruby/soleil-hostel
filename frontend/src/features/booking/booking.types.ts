@@ -67,3 +67,29 @@ export interface CancelBookingResponse {
   message: string
   data: BookingApiRaw
 }
+
+/** Room summary returned inside BookingDetailRaw (whenLoaded in BookingResource) */
+export interface BookingDetailRoom {
+  id: number
+  name: string
+  display_name: string | null
+  room_number: string | null
+  max_guests: number
+  price: number
+}
+
+/**
+ * Single-booking detail shape from GET /v1/bookings/:id
+ * Extends BookingApiRaw with additional fields returned when the room
+ * relationship is eager-loaded (BookingService::getBookingById loads room).
+ */
+export interface BookingDetailRaw extends BookingApiRaw {
+  cancelled_at?: string
+  refund_amount_formatted?: string
+  room?: BookingDetailRoom
+}
+
+export interface BookingDetailResponse {
+  success: boolean
+  data: BookingDetailRaw
+}

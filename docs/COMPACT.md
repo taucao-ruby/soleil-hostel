@@ -1,10 +1,10 @@
 ﻿# COMPACT — Soleil Hostel (AI Session Memory)
 
 ## 1) Current Snapshot (keep under 12 lines)
-- Date updated: 2026-02-26
+- Date updated: 2026-02-27
 - Current branch: `dev`
-- Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (194 tests, 19 suites, 0 failures) — re-verified 2026-02-26
-- Backend test baseline: `cd backend && php artisan test` (737 tests, 2071 assertions) — verified 2026-02-26
+- Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (208 tests, 20 suites, 0 failures) — verified 2026-02-27
+- Backend test baseline: `cd backend && php artisan test` (746 tests, 2114 assertions) — verified 2026-02-27
 - Pint baseline: `cd backend && vendor/bin/pint --test` (250 files, 0 violations) — verified 2026-02-23
 - Progress summary: Frontend Phases 0-4 ALL COMPLETE; auth 401 fix committed (EncryptCookies mismatch); proxy fix; Dashboard + SearchCard wired; audit v3+v4 remediation (20/20 fixed)
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
@@ -237,6 +237,31 @@ See `docs/FINDINGS_BACKLOG.md` (14 items):
 - Pagination for admin tabs (currently V1 returns page 1 only)
 - PWA / offline support
 - Full i18n (currently Vietnamese strings are inline, not i18n-managed)
+
+## 2026-02-27 — FE-001: Booking Detail Panel
+
+- Added `BookingDetailPanel.tsx` — modal panel (no Drawer primitive available) opened by clicking "Xem chi tiết" on any BookingCard
+- Panel fields: room name + number, check-in/out dates, nights, status badge, guest name/email, amount, refund amount, cancelled_at, created_at
+- Added `getBookingById(id, signal?)` to `booking.api.ts` + `BookingDetailRaw` / `BookingDetailRoom` / `BookingDetailResponse` types to `booking.types.ts`
+- Modified `GuestDashboard.tsx`: BookingCard gets `onViewDetail` prop; panel wired with `selectedBookingId` + `isPanelOpen` state
+- Panel behaviour: Escape key closes, backdrop click closes, "Đóng" button closes; loading skeleton / error+retry / success states
+- Added `BookingDetailPanel.test.tsx` (14 tests): closed renders nothing, API not called when closed, loading skeleton, success fields, error+retry, Escape closes, backdrop closes, Đóng closes, cancelled_at shown, cancelled_at hidden for non-cancelled, refund amount shown, reopen fetches again
+- Limitation: panel is a modal (not drawer) — Drawer component not in codebase. Room location not shown (room relation in getBookingById does not load location). Number of guests not shown (absent from BookingResource/BookingApiRaw).
+- Files: `frontend/src/features/bookings/BookingDetailPanel.tsx` (new), `frontend/src/features/bookings/BookingDetailPanel.test.tsx` (new), `frontend/src/features/bookings/GuestDashboard.tsx` (modified), `frontend/src/features/booking/booking.api.ts` (modified), `frontend/src/features/booking/booking.types.ts` (modified)
+- Gates: `tsc --noEmit` 0 errors ✅, `vitest run` 208/208 ✅ (20 suites, was 194/194)
+
+## 2026-02-27 — EncryptCookies Exception Regression Tests
+
+- Added `SoleilTokenCookieEncryptionTest.php` (9 tests, 43 assertions) verifying the `encryptCookies(except: ['soleil_token'])` config does not introduce security regressions
+- TEST-1: soleil_token cookie is plain UUID (not encrypted), matches DB token_identifier, hash matches token_hash
+- TEST-2: Control cookie (laravel_session) remains encrypted (not plain UUID, length > 36)
+- TEST-3: Cookie UUID resolves user via CheckHttpOnlyTokenValid on me-httponly endpoint
+- TEST-3b: Cookie fallback in CheckTokenNotRevokedAndNotExpired passes auth on v1 endpoints (not 401)
+- TEST-3c/d/e: Unknown UUID → 401, revoked token → 401 TOKEN_REVOKED, expired → 401 TOKEN_EXPIRED
+- TEST-4: Security headers (HSTS, X-Frame-Options, CSP, etc.) still present on both public and authenticated endpoints
+- Finding: `auth()->id()` returns null on v1 cookie-auth requests because CheckHttpOnlyTokenValid sets `$request->setUserResolver()` but not `auth()->guard('sanctum')->setUser()` — controllers using `auth()->id()` will fail with 500 on cookie fallback path. Not fixed here (out of scope).
+- Files: `backend/tests/Feature/Auth/SoleilTokenCookieEncryptionTest.php` (new), `docs/COMPACT.md`
+- Gates: `php artisan test` 746/746 ✅, `pint --test` PASS ✅
 
 ## 2026-02-25 — Fix GET /api/v1/locations 500
 

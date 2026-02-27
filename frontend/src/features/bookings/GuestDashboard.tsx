@@ -1,11 +1,13 @@
 import React, { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '@/features/auth/AuthContext'
 import { useMyBookingsQuery, useCancelBookingMutation } from './useMyBookings'
 import { isUpcoming, isPast, type BookingViewModel } from './bookingViewModel'
 import { getStatusConfig, formatDateRangeVN } from './booking.constants'
 import Skeleton from '@/shared/components/ui/Skeleton'
 import Button from '@/shared/components/ui/Button'
 import ConfirmDialog from '@/shared/components/ui/ConfirmDialog'
+import BookingDetailPanel from './BookingDetailPanel'
 import { showToast } from '@/utils/toast'
 import { getErrorMessage } from '@/utils/toast'
 
@@ -15,9 +17,10 @@ type FilterTab = 'all' | 'upcoming' | 'past'
 interface BookingCardProps {
   booking: BookingViewModel
   onCancel: (id: number) => void
+  onViewDetail: (id: number) => void
 }
 
-const BookingCard: React.FC<BookingCardProps> = ({ booking, onCancel }) => {
+const BookingCard: React.FC<BookingCardProps> = ({ booking, onCancel, onViewDetail }) => {
   const statusConfig = getStatusConfig(booking.status)
 
   return (
@@ -38,8 +41,16 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onCancel }) => {
           {statusConfig.label}
         </span>
       </div>
-      {booking.canCancel && (
-        <div className="mt-4 flex justify-end">
+      <div className="mt-4 flex items-center justify-between">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onViewDetail(booking.id)}
+          aria-label={`Xem chi tiết đặt phòng #${booking.id}`}
+        >
+          Xem chi tiết
+        </Button>
+        {booking.canCancel && (
           <Button
             variant="outline"
             size="sm"
@@ -48,8 +59,8 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onCancel }) => {
           >
             Hủy
           </Button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
@@ -65,17 +76,26 @@ const BookingListSkeleton: React.FC = () => (
 
 // ── GuestDashboard ───────────────────────────────────────────
 const GuestDashboard: React.FC = () => {
+  const { user } = useAuth()
   const { bookings, isLoading, isError, refetch } = useMyBookingsQuery()
   const { cancel, isPending, error: cancelError } = useCancelBookingMutation()
 
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
   const [cancelTarget, setCancelTarget] = useState<number | null>(null)
+  const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null)
+  const [isPanelOpen, setIsPanelOpen] = useState(false)
 
   const filtered = useMemo(() => {
     if (activeTab === 'upcoming') return bookings.filter(isUpcoming)
     if (activeTab === 'past') return bookings.filter(isPast)
     return bookings
   }, [bookings, activeTab])
+
+  const handleViewDetail = (id: number) => {
+    setSelectedBookingId(id)
+    setIsPanelOpen(true)
+  }
+  const handlePanelClose = () => setIsPanelOpen(false)
 
   const handleCancelClick = (id: number) => setCancelTarget(id)
   const handleCancelDismiss = () => {
@@ -100,6 +120,24 @@ const GuestDashboard: React.FC = () => {
     { key: 'upcoming', label: 'Sắp tới' },
     { key: 'past', label: 'Đã qua' },
   ]
+
+  // ── Email verification guard ────────────────────────────
+  if (user && !user.email_verified_at) {
+    return (
+      <section>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Đặt phòng của tôi</h2>
+        </div>
+        <div className="p-6 bg-amber-50 border border-amber-200 rounded-xl text-center">
+          <p className="text-amber-800 font-medium mb-2">Email chưa được xác minh</p>
+          <p className="text-amber-700 text-sm">
+            Vui lòng kiểm tra hộp thư của bạn và nhấp vào liên kết xác minh để xem danh sách đặt
+            phòng.
+          </p>
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section>
@@ -164,10 +202,22 @@ const GuestDashboard: React.FC = () => {
       {!isLoading && !isError && filtered.length > 0 && (
         <div className="space-y-3">
           {filtered.map(booking => (
-            <BookingCard key={booking.id} booking={booking} onCancel={handleCancelClick} />
+            <BookingCard
+              key={booking.id}
+              booking={booking}
+              onCancel={handleCancelClick}
+              onViewDetail={handleViewDetail}
+            />
           ))}
         </div>
       )}
+
+      {/* Booking detail panel */}
+      <BookingDetailPanel
+        bookingId={selectedBookingId}
+        open={isPanelOpen}
+        onClose={handlePanelClose}
+      />
 
       {/* Cancel confirmation modal */}
       <ConfirmDialog

@@ -48,8 +48,16 @@ export function normalizePath(relativePath) {
   return relativePath.replace(/\\/g, "/").replace(/^\.\//, "");
 }
 
-export function matchesBlockedPath(filePath, blockedPatterns) {
+export function matchesBlockedPath(filePath, blockedPatterns, allowedPatterns = []) {
   const normalized = normalizePath(filePath);
+  if (
+    allowedPatterns.length > 0 &&
+    allowedPatterns.some((pattern) =>
+      minimatch(normalized, pattern, { dot: true, nocase: true }),
+    )
+  ) {
+    return false;
+  }
   return blockedPatterns.some((pattern) =>
     minimatch(normalized, pattern, { dot: true, nocase: true }),
   );

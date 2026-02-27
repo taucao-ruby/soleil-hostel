@@ -3,6 +3,7 @@
 .env.local
 .env.*.local
 backend/.env.test
+backend/.env.testing
 
 # IDE
 .vscode/

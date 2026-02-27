@@ -32,7 +32,7 @@ const failures = [];
 const secretPatterns = compileSecretPatterns(policy);
 
 for (const relativePath of stagedFiles) {
-  if (matchesBlockedPath(relativePath, policy.blocked_paths || [])) {
+  if (matchesBlockedPath(relativePath, policy.blocked_paths || [], policy.allowed_paths || [])) {
     failures.push(
       `Blocked path: ${relativePath}. Remove it from the commit or use ${getBypassEnvName(policy)}=1.`,
     );

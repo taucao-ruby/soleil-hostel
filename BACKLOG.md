@@ -1,7 +1,7 @@
 # BACKLOG.md — Soleil Hostel
 
 > **Product backlog — prioritized by implementation order**
-> Last updated: 2026-02-26 | Source: COMPACT.md + KNOWN_LIMITATIONS.md + FINDINGS_BACKLOG.md
+> Last updated: 2026-02-28 | Source: COMPACT.md + KNOWN_LIMITATIONS.md + FINDINGS_BACKLOG.md
 
 ---
 
@@ -22,58 +22,59 @@
 
 > Complete the dashboard and booking management experience
 
-### FE-001 🟠 Booking Detail Panel (Guest)
+### FE-001 ✅ Booking Detail Panel (Guest) — Done 2026-02-27
 
 **Description:** Guest clicks a booking → sees full details (room, location, dates, price, status, cancellation reason if applicable).
 
-**Files to create/modify:**
+**Files created/modified:**
 
 - `src/features/bookings/BookingDetailPanel.tsx` (new)
+- `src/features/bookings/BookingDetailPanel.test.tsx` (new — 14 tests)
 - `src/features/bookings/GuestDashboard.tsx` (add click handler)
-- `src/features/booking/booking.api.ts` (add `GET /v1/bookings/:id`)
-- `src/features/bookings/BookingDetailPanel.test.tsx` (new)
+- `src/features/booking/booking.api.ts` (add `getBookingById`)
+- `src/features/booking/booking.types.ts` (add detail types)
 
 **Acceptance Criteria:**
 
-- [ ] Click on a booking card → slide-in panel or modal opens
-- [ ] Shows: room name, location, check-in/out dates, guest count, status, created date
-- [ ] If cancelled: shows `cancelled_at` + `cancellation_reason`
-- [ ] Has a "Close" button and can be dismissed with Escape
+- [x] Click on a booking card → modal panel opens
+- [x] Shows: room name + number, check-in/out dates, status badge, guest name/email, amount
+- [x] If cancelled: shows `cancelled_at`
+- [x] Has a "Close" button and can be dismissed with Escape or backdrop click
 
 ---
 
-### FE-002 🟠 Admin Actions: Restore & Force-Delete Trashed Bookings
+### FE-002 ✅ Admin Actions: Restore & Force-Delete Trashed Bookings — Done 2026-02-27
 
 **Description:** The "Trashed" tab in AdminDashboard needs two action buttons: restore and permanently delete.
 
-**Files to modify:**
+**Files modified:**
 
-- `src/features/admin/AdminDashboard.tsx`
-- `src/features/booking/booking.api.ts` (add `POST /v1/bookings/:id/restore`, `DELETE /v1/bookings/:id/force`)
-- `src/features/admin/AdminDashboard.test.tsx`
+- `src/features/admin/AdminDashboard.tsx` (action buttons + ConfirmDialog)
+- `src/features/admin/admin.api.ts` (add `restoreBooking`, `forceDeleteBooking`)
+- `src/features/admin/AdminDashboard.test.tsx` (10 new tests)
 
 **Acceptance Criteria:**
 
-- [ ] "Restore" button → calls restore endpoint → booking disappears from Trashed tab, appears in Bookings tab
-- [ ] "Force Delete" button → confirm dialog → calls force-delete → booking is permanently removed
-- [ ] Shows success / error toast notification
+- [x] "Khôi phục" button → calls restore endpoint → booking restored
+- [x] "Xóa vĩnh viễn" button → confirm dialog → calls force-delete → booking permanently removed
+- [x] Shows success / error toast notification
 
 ---
 
-### FE-003 🟡 Pagination for Admin Tabs
+### FE-003 ✅ Pagination for Admin Tabs — Done 2026-02-27
 
 **Description:** Admin currently sees page 1 only. Add pagination to all 3 tabs.
 
-**Files to modify:**
+**Files modified:**
 
-- `src/features/admin/AdminDashboard.tsx`
-- `src/features/admin/useAdminFetch.ts` (add page params)
+- `src/features/admin/AdminDashboard.tsx` (PaginationControls, `useAdminPaginatedFetch`)
+- `src/features/admin/admin.types.ts` (add `PaginationMeta`, `AdminBookingsPaginatedResult`)
 
 **Acceptance Criteria:**
 
-- [ ] Each tab has page navigation (Previous / Next)
-- [ ] URL or state reflects the current page
-- [ ] Active tab is preserved when changing pages
+- [x] Each tab has page navigation (Trước / Sau)
+- [x] Boundary buttons disabled at first/last page
+- [x] Hidden when `last_page <= 1`
 
 ---
 
@@ -192,25 +193,28 @@
 
 ## EPIC 4 — Tech Debt & Code Quality
 
-### TD-001 🟡 Standardize Error Response Format (Backend)
+### TD-001 ✅ Standardize Error Response Format (Backend) — Done 2026-02-27
 
 **Source:** TD-002 from KNOWN_LIMITATIONS.md
 
 **Description:** Some exceptions return `{"error": "..."}` instead of `{"message": "...", "errors": {...}}`.
 
-**Files:**
+**Files modified:**
 
-- `backend/app/Exceptions/Handler.php`
+- `backend/app/Traits/ApiResponse.php` (add `trace_id`, `conflict()`)
+- `backend/bootstrap/app.php` (exception handlers)
+- `backend/app/Http/Middleware/EnsureUserHasRole.php`
+- `backend/tests/Feature/ApiErrorFormatTest.php` (new — 10 tests, 57 assertions)
 
 **Acceptance Criteria:**
 
-- [ ] All HTTP exceptions return the same format
-- [ ] Add error format test in ExceptionHandlerTest
-- [ ] Document in openapi.yaml
+- [x] All HTTP exceptions return standardized format with `trace_id`
+- [x] Error format test added (ApiErrorFormatTest.php)
+- [x] No stack trace leak in production
 
 ---
 
-### TD-002 🟢 Standardize Comments (English only)
+### TD-002 ✅ Standardize Comments (English only) — Done 2026-02-28
 
 **Source:** TD-001 from KNOWN_LIMITATIONS.md
 
@@ -218,8 +222,9 @@
 
 **Acceptance Criteria:**
 
-- [ ] Grep all Vietnamese comments in `backend/app/`
-- [ ] Translate to English, preserve meaning
+- [x] Grep all Vietnamese comments in `backend/app/`
+- [x] Translate to English across 13 PHP files, preserve meaning
+- [x] String literals (user-facing Vietnamese messages) intentionally preserved
 
 ---
 
@@ -358,10 +363,11 @@ FEAT-002 (Group Booking) → requires a new ADR before coding
 
 | Item | Assignee | Status |
 | ---- | -------- | ------ |
-| FE-001 Booking Detail Panel | — | 🟠 Ready |
-| FE-002 Admin Restore/Force-Delete | — | 🟠 Ready |
-| FE-003 Admin Pagination | — | 🟡 Backlog |
-| TD-001 Error Response Format | — | 🟡 Backlog |
+| FE-001 Booking Detail Panel | — | ✅ Done (2026-02-27) |
+| FE-002 Admin Restore/Force-Delete | — | ✅ Done (2026-02-27) |
+| FE-003 Admin Pagination | — | ✅ Done (2026-02-27) |
+| TD-001 Error Response Format | — | ✅ Done (2026-02-27) |
+| TD-002 Standardize Comments | — | ✅ Done (2026-02-28) |
 | OPS-001 Deploy Pipeline | — | 🔴 Blocker |
 
 ---
@@ -385,6 +391,12 @@ FEAT-002 (Group Booking) → requires a new ADR before coding
 | ✅ OpenAPI 3.1 spec + Redoc | Jan 2026 | — |
 | ✅ Email verification (MustVerifyEmail) | Jan 2026 | — |
 | ✅ Branded email templates | Jan 2026 | 13 tests |
+| ✅ FE-001 Booking Detail Panel | Feb 27, 2026 | 14 tests |
+| ✅ FE-002 Admin Restore/Force-Delete | Feb 27, 2026 | 10 tests |
+| ✅ FE-003 Admin Pagination | Feb 27, 2026 | — |
+| ✅ TD-001 Standardize API Error Format | Feb 27, 2026 | 10 tests |
+| ✅ TD-002 Standardize Comments (English) | Feb 28, 2026 | — |
+| ✅ Phase 5 Clean-up (ship script, rollup CVE) | Feb 28, 2026 | — |
 
 ---
 

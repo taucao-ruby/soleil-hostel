@@ -32,6 +32,7 @@ This playbook provides step-by-step procedures for handling operational events. 
 | [Double Booking Reported](#double-booking-reported)         | High     | [Jump](#double-booking-reported)     |
 | [Slow Response Times](#slow-response-times)                 | Medium   | [Jump](#slow-response-times)         |
 | [Failed Deployment Rollback](#failed-deployment-rollback)   | High     | [Jump](#failed-deployment-rollback)  |
+| [HTTPS / TLS Setup](#https--tls-setup-self-hosted)          | Setup    | [Jump](#https--tls-setup-self-hosted)|
 
 ---
 
@@ -787,7 +788,7 @@ DB::cursor()->each(function ($row) {
 
 ### Failed Deployment Rollback
 
-**Severity**: High  
+**Severity**: High
 **SLA**: Respond within 15 minutes
 
 #### Detection
@@ -796,23 +797,61 @@ DB::cursor()->each(function ($row) {
 - Error rate spikes
 - Users reporting issues
 
-#### Steps
+#### Steps — Managed Platform (Forge/Render/Coolify)
+
+1. **One-click rollback** in platform dashboard (reverts to previous release)
+2. **Verify**: `curl -s https://your-domain.com/api/health/live`
+
+#### Steps — Docker Compose (self-hosted)
+
+1. **Put app in maintenance mode**
+
+   ```bash
+   docker compose -f docker-compose.prod.yml exec backend php artisan down --message="Maintenance in progress"
+   ```
+
+2. **Roll back to previous image tag**
+
+   ```bash
+   # Option A: rebuild from previous commit
+   git checkout HEAD~1
+   docker compose -f docker-compose.prod.yml up -d --build backend frontend
+
+   # Option B: use a known-good image tag (if using GHCR)
+   # Edit docker-compose.prod.yml image: tags, then:
+   docker compose -f docker-compose.prod.yml up -d backend frontend
+   ```
+
+3. **If database migration issue**
+
+   ```bash
+   docker compose -f docker-compose.prod.yml exec backend php artisan migrate:rollback --step=1
+   ```
+
+4. **Bring app back up**
+
+   ```bash
+   docker compose -f docker-compose.prod.yml exec backend php artisan up
+   ```
+
+5. **Verify rollback**
+
+   ```bash
+   curl -s https://your-domain.com/api/health/live
+   # Expected: {"status":"ok"}
+   ```
+
+#### Steps — Git-only (no Docker)
 
 1. **Quick rollback**
 
    ```bash
-   # If using deploy script
    php artisan down --message="Maintenance in progress"
-
-   # Revert to previous release
    git checkout HEAD~1
-
-   # Rebuild caches
    composer install --optimize-autoloader
    php artisan config:cache
    php artisan route:cache
    php artisan view:cache
-
    php artisan up
    ```
 
@@ -822,21 +861,48 @@ DB::cursor()->each(function ($row) {
    php artisan migrate:rollback --step=1
    ```
 
-3. **If using Forge/Envoyer**
+#### Post-Rollback
 
-   - One-click rollback in dashboard
-   - Reverts symlink to previous release
+- Investigate before retrying deployment
+- What broke? Local testing missed issue? CI/CD tests incomplete?
+- Document in post-mortem
 
-4. **Verify rollback**
+---
 
-   ```bash
-   curl -s https://your-domain.com/api/health/live
-   ```
+---
 
-5. **Investigate before retrying deployment**
-   - What broke?
-   - Local testing missed issue?
-   - CI/CD tests incomplete?
+### HTTPS / TLS Setup (Self-Hosted)
+
+The repo includes a Caddy reverse proxy config (`Caddyfile`) that provides automatic HTTPS via Let's Encrypt.
+
+#### Quick Start
+
+```bash
+# Set your domain and start with the proxy profile
+DOMAIN=soleilhotel.com docker compose -f docker-compose.prod.yml --profile proxy up -d
+```
+
+Caddy automatically:
+- Obtains and renews TLS certificates from Let's Encrypt
+- Redirects HTTP → HTTPS
+- Proxies `/api/*` → backend, everything else → frontend
+
+#### Requirements
+
+- Port 80 and 443 must be open on the host
+- DNS A record pointing to the server IP
+- `FRONTEND_PORT` should not be 80 when using proxy (Caddy binds 80/443)
+
+#### Local Testing (no TLS)
+
+```bash
+DOMAIN=localhost docker compose -f docker-compose.prod.yml --profile proxy up -d
+# Access at http://localhost
+```
+
+#### Managed Platforms
+
+Forge, Render, and Coolify handle TLS automatically — no Caddyfile needed.
 
 ---
 

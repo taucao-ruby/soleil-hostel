@@ -1,0 +1,32 @@
+# Reverse proxy with automatic HTTPS (via Let's Encrypt)
+# Usage: set DOMAIN env var before starting Caddy
+#   DOMAIN=soleilhotel.com docker compose -f docker-compose.prod.yml --profile proxy up -d
+#
+# For local testing without TLS:
+#   DOMAIN=localhost docker compose -f docker-compose.prod.yml --profile proxy up -d
+
+{$DOMAIN:localhost} {
+    # API requests → backend container
+    handle /api/* {
+        reverse_proxy backend:80
+    }
+
+    # Frontend SPA → frontend container
+    handle {
+        reverse_proxy frontend:80
+    }
+
+    # Security headers
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+    }
+
+    # Logging
+    log {
+        output stdout
+        format console
+    }
+}

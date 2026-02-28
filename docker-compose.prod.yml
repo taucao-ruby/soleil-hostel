@@ -1,5 +1,6 @@
 # Production Docker Compose — self-hosted deployment
 # Usage: docker compose -f docker-compose.prod.yml up -d
+# With HTTPS proxy: docker compose -f docker-compose.prod.yml --profile proxy up -d
 # Requires: .env (or env_file) with production values
 #
 # For managed platforms (Forge, Render, Coolify): use deploy.yml workflow instead.
@@ -107,8 +108,36 @@ services:
       timeout: 5s
       retries: 3
 
+  # Optional: Caddy reverse proxy with automatic HTTPS
+  # Activate with: --profile proxy
+  # Set DOMAIN env var: DOMAIN=soleilhotel.com
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    profiles:
+      - proxy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+
 volumes:
   dbdata:
     driver: local
   redisdata:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
     driver: local

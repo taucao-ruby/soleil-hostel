@@ -2,11 +2,11 @@
 
 ## 1) Current Snapshot (keep under 12 lines)
 - Date updated: 2026-02-28
-- Current branch: `dev`
+- Current branch: `chore/i18n-001-td-003` (PR-4 of 4 committed)
 - Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (218 tests, 20 suites, 0 failures) — verified 2026-02-27
-- Backend test baseline: `cd backend && php artisan test` (756 tests, 2171 assertions) — verified 2026-02-27
-- Pint baseline: `cd backend && vendor/bin/pint --test` (252 files, 0 violations) — verified 2026-02-27
-- Progress summary: Frontend Phases 0-4 ALL COMPLETE + FE-002/FE-003 + TD-001 + TD-002 (Phase 5 clean-up complete); audit v3+v4 remediation (20/20 fixed); rollup CVE override done
+- Backend test baseline: `cd backend && php artisan test` (765 tests, 2188 assertions) — verified 2026-02-28
+- Pint baseline: `cd backend && vendor/bin/pint --test` (258 files, 0 violations) — verified 2026-02-28
+- Progress summary: OPS-001 (docker-compose.prod + .env.production.example + frontend prod Dockerfile), OPS-001 (Caddy proxy + rollback docs), PAY-001 (Cashier bootstrap), I18N-001+TD-003 (i18n translations + factory methods)
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
 ## 2) What matters (invariants / guardrails)
@@ -25,9 +25,13 @@
 
 ## 3) Active work (Now / Next)
 ### Now
-- Keep this COMPACT snapshot current after each meaningful change batch.
-- Keep branch/test snapshot synced with `../PROJECT_STATUS.md` and latest local verification runs.
-- Keep warning/noise notes current so failures are not masked by known benign output.
+- 4 PRs pushed, awaiting review on GitHub (all target `dev`):
+  - PR-1 `fix/ops-001-critical`: docker-compose.prod + .env.production.example + frontend prod Dockerfile
+  - PR-2 `fix/ops-001-proxy-health-rollback`: Caddy reverse proxy + rollback docs
+  - PR-3 `feat/pay-001-cashier-bootstrap`: Laravel Cashier + Stripe webhook
+  - PR-4 `chore/i18n-001-td-003`: i18n translations + BookingFactory helpers
+- Suggested merge order: PR-1 → PR-2 → PR-3 → PR-4
+- GitHub CLI (`gh`) installed via winget (v2.87.3) — authenticate with `gh auth login` before use
 
 ### Completed this session (2026-02-21)
 
@@ -233,10 +237,10 @@ See `docs/FINDINGS_BACKLOG.md` (14 items):
 ### Next steps (prioritized)
 
 - F-21: Translate LoginPage + RegisterPage to Vietnamese
-- Dashboard Phase 5+: Booking detail panel, admin actions (restore/force-delete trashed bookings)
-- Pagination for admin tabs (currently V1 returns page 1 only)
+- Frontend i18n: wire react-i18next or equivalent for frontend strings
+- Dashboard Phase 5+: Booking detail panel enhancements
 - PWA / offline support
-- Full i18n (currently Vietnamese strings are inline, not i18n-managed)
+- Stripe webhook handlers: implement payment_intent.succeeded + charge.refunded logic
 
 ## 2026-02-27 — FE-001: Booking Detail Panel
 
@@ -304,3 +308,38 @@ Gates: no app logic changed — regressions not expected; run locally to confirm
 - Files: `frontend/vite.config.js`, `frontend/vite.config.ts`, `frontend/src/shared/lib/api.ts`, `frontend/.env.example`, `docs/COMPACT.md`
 - Gates: `tsc --noEmit` 0 errors ✅, `vitest run` 194/194 ✅ (backend not touched)
 - Commits: `f53a3cb fix(frontend)`, `df8c706 docs(frontend)` + this commit
+
+## 2026-02-28 — 4-PR Batch: OPS-001 + PAY-001 + I18N-001 + TD-003
+
+### PR-1: OPS-001 Critical (branch: `fix/ops-001-critical`, commit: `5df1d98`)
+- Created `docker-compose.prod.yml` (db, redis, backend, frontend services with healthchecks)
+- Created `backend/.env.production.example` (pgsql, no secrets — actual .env.production is gitignored)
+- Added multi-stage production build to `frontend/Dockerfile` (nginx:1.27-alpine)
+- Created `frontend/nginx.conf` for SPA routing
+- Files: 4 new/modified
+
+### PR-2: OPS-001 High/Med (branch: `fix/ops-001-proxy-health-rollback`, commit: `a086004`)
+- Created `Caddyfile` for auto-HTTPS reverse proxy (api/* → backend, * → frontend)
+- Added optional Caddy proxy service to `docker-compose.prod.yml` (--profile proxy)
+- Added Docker rollback + HTTPS setup sections to `docs/OPERATIONAL_PLAYBOOK.md`
+- Files: 3 new/modified
+
+### PR-3: PAY-001 Bootstrap (branch: `feat/pay-001-cashier-bootstrap`, commit: `b856216`)
+- Installed `laravel/cashier ^16.3`
+- Added `Billable` trait to `User` model
+- Created Cashier migration (stripe_id, pm_type, pm_last_four, trial_ends_at)
+- Created `StripeWebhookController` extending Cashier's WebhookController (stub handlers)
+- Added `POST /api/webhooks/stripe` route
+- Updated `.env.example` with Stripe env vars
+- Created `StripeWebhookTest` (4 tests: signature verification, invalid payloads)
+- Gates: 760 backend tests ✅, pint ✅
+- Files: 7 new/modified
+
+### PR-4: I18N-001 + TD-003 (branch: `chore/i18n-001-td-003`, commit: `ad80c15`)
+- Created `lang/en/booking.php` (30 keys), `lang/vi/booking.php`, `lang/en/messages.php` (17 keys), `lang/vi/messages.php`
+- Replaced hardcoded strings with `__()` in 5 controllers (BookingController, RoomController, LocationController, AdminBookingController, ContactController)
+- Set `APP_LOCALE=vi` in `.env.example`
+- Added `expired()`, `cancelledByAdmin()`, `multiDay()` factory methods to `BookingFactory`
+- Created `LocaleTest` (5 tests) + `BookingFactoryMethodsTest` (4 tests)
+- Gates: 765 backend tests ✅, pint 258 files ✅
+- Files: 13 new/modified

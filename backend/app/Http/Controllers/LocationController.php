@@ -36,7 +36,7 @@ class LocationController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Location list fetched successfully',
+            'message' => __('messages.location_list_fetched'),
             'data' => LocationResource::collection($locations),
         ]);
     }
@@ -82,7 +82,7 @@ class LocationController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Location fetched successfully',
+            'message' => __('messages.location_fetched'),
             'data' => new LocationResource($location),
         ]);
     }
@@ -118,7 +118,7 @@ class LocationController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Availability checked successfully',
+            'message' => __('messages.availability_checked'),
             'data' => [
                 'location' => new LocationResource($location),
                 'available_rooms' => RoomResource::collection($availableRooms),

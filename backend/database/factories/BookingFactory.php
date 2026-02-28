@@ -192,6 +192,41 @@ class BookingFactory extends Factory
     }
 
     /**
+     * Create an expired booking (check-out in the past).
+     */
+    public function expired(): static
+    {
+        $checkIn = Carbon::now()->subDays($this->faker->numberBetween(10, 60))->startOfDay();
+        $checkOut = $checkIn->clone()->addDays($this->faker->numberBetween(1, 5));
+
+        return $this->state(fn (array $attributes) => [
+            'check_in' => $checkIn,
+            'check_out' => $checkOut,
+            'status' => BookingStatus::CONFIRMED,
+        ]);
+    }
+
+    /**
+     * Create a booking cancelled by a specific admin.
+     */
+    public function cancelledByAdmin(User $admin): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => BookingStatus::CANCELLED,
+            'cancelled_at' => Carbon::now()->subHours($this->faker->numberBetween(1, 48)),
+            'cancelled_by' => $admin->id,
+        ]);
+    }
+
+    /**
+     * Alias for forDays() — create a multi-day booking.
+     */
+    public function multiDay(int $days = 3): static
+    {
+        return $this->forDays($days);
+    }
+
+    /**
      * Create a soft deleted booking.
      *
      * @param  User|null  $deletedBy  User who deleted the booking

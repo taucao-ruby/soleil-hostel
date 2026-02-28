@@ -85,7 +85,7 @@ class AdminBookingController extends Controller
         $booking = $this->bookingService->getTrashedBookingById($id);
 
         if (! $booking) {
-            return $this->error('Trashed booking not found.', 404);
+            return $this->error(__('booking.trashed_not_found'), 404);
         }
 
         return $this->success(new BookingResource($booking));
@@ -104,7 +104,7 @@ class AdminBookingController extends Controller
         $booking = $this->bookingService->getTrashedBookingById($id);
 
         if (! $booking) {
-            return $this->error('Trashed booking not found.', 404);
+            return $this->error(__('booking.trashed_not_found'), 404);
         }
 
         // Check for overlapping active bookings before restoring
@@ -116,7 +116,7 @@ class AdminBookingController extends Controller
         )->exists();
 
         if ($hasOverlap) {
-            return $this->error('Cannot restore booking: date range conflicts with existing bookings.', 422);
+            return $this->error(__('booking.restore_conflict'), 422);
         }
 
         $result = $this->bookingService->restore($booking);
@@ -124,11 +124,11 @@ class AdminBookingController extends Controller
         if ($result) {
             return $this->success(
                 new BookingResource($booking->fresh(['room', 'user'])),
-                'Booking restored successfully.'
+                __('booking.restored')
             );
         }
 
-        return $this->error('Failed to restore booking.', 500);
+        return $this->error(__('booking.restore_failed'), 500);
     }
 
     /**
@@ -145,16 +145,16 @@ class AdminBookingController extends Controller
         $booking = $this->bookingService->getTrashedBookingById($id);
 
         if (! $booking) {
-            return $this->error('Trashed booking not found. Only soft-deleted bookings can be permanently deleted.', 404);
+            return $this->error(__('booking.trashed_not_found_force'), 404);
         }
 
         $result = $this->bookingService->forceDelete($booking);
 
         if ($result) {
-            return $this->success(null, 'Booking permanently deleted.');
+            return $this->success(null, __('booking.permanently_deleted'));
         }
 
-        return $this->error('Failed to permanently delete booking.', 500);
+        return $this->error(__('booking.force_delete_failed'), 500);
     }
 
     /**
@@ -180,7 +180,7 @@ class AdminBookingController extends Controller
             $booking = $this->bookingService->getTrashedBookingById($id);
 
             if (! $booking) {
-                $failed[] = ['id' => $id, 'reason' => 'Not found'];
+                $failed[] = ['id' => $id, 'reason' => __('booking.bulk_not_found')];
 
                 continue;
             }
@@ -194,7 +194,7 @@ class AdminBookingController extends Controller
             )->exists();
 
             if ($hasOverlap) {
-                $failed[] = ['id' => $id, 'reason' => 'Date conflict'];
+                $failed[] = ['id' => $id, 'reason' => __('booking.bulk_date_conflict')];
 
                 continue;
             }
@@ -202,13 +202,13 @@ class AdminBookingController extends Controller
             if ($this->bookingService->restore($booking)) {
                 $restored++;
             } else {
-                $failed[] = ['id' => $id, 'reason' => 'Restore failed'];
+                $failed[] = ['id' => $id, 'reason' => __('booking.bulk_restore_failed')];
             }
         }
 
         return $this->success([
             'restored_count' => $restored,
             'failed' => $failed,
-        ], "{$restored} booking(s) restored.");
+        ], __('booking.bulk_restored', ['count' => $restored]));
     }
 }

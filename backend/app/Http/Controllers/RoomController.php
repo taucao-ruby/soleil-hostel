@@ -51,7 +51,7 @@ class RoomController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Room list fetched successfully',
+            'message' => __('messages.room_list_fetched'),
             'data' => RoomResource::collection($rooms),
         ]);
     }
@@ -70,7 +70,7 @@ class RoomController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Room fetched successfully',
+            'message' => __('messages.room_fetched'),
             'data' => new RoomResource($room),
         ]);
     }
@@ -91,7 +91,7 @@ class RoomController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Room created successfully',
+            'message' => __('messages.room_created'),
             'data' => new RoomResource($room),
         ], 201);
     }
@@ -139,7 +139,7 @@ class RoomController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Room updated successfully',
+            'message' => __('messages.room_updated'),
             'data' => new RoomResource($updatedRoom),
         ]);
     }
@@ -165,7 +165,7 @@ class RoomController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Room deleted successfully',
+            'message' => __('messages.room_deleted'),
         ]);
     }
 }

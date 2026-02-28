@@ -28,13 +28,13 @@ class ContactController extends Controller
             'subject' => 'nullable|string|max:255',
             'message' => 'required|string|max:5000',
         ], [
-            'name.required' => 'Name is required.',
-            'name.max' => 'Name cannot exceed 255 characters.',
-            'email.required' => 'Email is required.',
-            'email.email' => 'Please provide a valid email.',
-            'subject.max' => 'Subject cannot exceed 255 characters.',
-            'message.required' => 'Message cannot be empty.',
-            'message.max' => 'Message cannot exceed 5000 characters.',
+            'name.required' => __('messages.contact_name_required'),
+            'name.max' => __('messages.contact_name_max'),
+            'email.required' => __('messages.contact_email_required'),
+            'email.email' => __('messages.contact_email_email'),
+            'subject.max' => __('messages.contact_subject_max'),
+            'message.required' => __('messages.contact_message_required'),
+            'message.max' => __('messages.contact_message_max'),
         ]);
 
         // Purify name, subject, and message using HTML Purifier (whitelist approach, not regex blacklist)
@@ -55,7 +55,7 @@ class ContactController extends Controller
             'subject' => $validated['subject'] ?? '',
         ]);
 
-        return $this->success($contactMessage, 'Message received. We will get back to you soon.', 201);
+        return $this->success($contactMessage, __('messages.contact_received'), 201);
     }
 
     /**
@@ -77,7 +77,7 @@ class ContactController extends Controller
 
         $messages = $query->paginate(min($perPage, 100));
 
-        return $this->success($messages, 'Contact messages retrieved.');
+        return $this->success($messages, __('messages.contacts_retrieved'));
     }
 
     /**
@@ -88,6 +88,6 @@ class ContactController extends Controller
         $message = ContactMessage::findOrFail($id);
         $message->markAsRead();
 
-        return $this->success($message, 'Message marked as read.');
+        return $this->success($message, __('messages.contact_marked_read'));
     }
 }

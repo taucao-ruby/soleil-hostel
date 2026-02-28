@@ -13,12 +13,12 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
- * HttpOnlyTokenController - Token authentication qua httpOnly cookie
+ * HttpOnlyTokenController - Token authentication via httpOnly cookie
  *
  * CRITICAL SECURITY:
- * - Token lưu trong httpOnly cookie, KHÔNG localStorage
- * - XSS attacks không thể lấy được token
- * - CSRF protection qua SameSite=Strict
+ * - Token is stored in the httpOnly cookie, NOT in localStorage
+ * - XSS attacks cannot access the token
+ * - CSRF protection via SameSite=Strict
  * - Token rotation + device binding mitigates token theft
  */
 class HttpOnlyTokenController extends Controller
@@ -26,7 +26,7 @@ class HttpOnlyTokenController extends Controller
     use ApiResponse;
 
     /**
-     * LOGIN - Cấp httpOnly Cookie token
+     * LOGIN - Issue an httpOnly cookie token
      *
      * POST /api/auth/login-httponly
      *
@@ -34,9 +34,9 @@ class HttpOnlyTokenController extends Controller
      * 1. Authenticate user
      * 2. Create token_identifier (UUID) + token_hash
      * 3. Set httpOnly Cookie (Secure, SameSite=Strict)
-     * 4. Return CSRF token để frontend dùng X-XSRF-TOKEN header
+     * 4. Return CSRF token for the frontend to use as X-XSRF-TOKEN header
      *
-     * Result: XSS không access được token
+     * Result: XSS cannot access the token
      */
     public function login(Request $request): JsonResponse
     {
@@ -79,21 +79,21 @@ class HttpOnlyTokenController extends Controller
         }
 
         // ========== Generate Security Identifiers ==========
-        // token_identifier: UUID dùng trong cookie
-        // token_hash: hash(identifier) dùng lookup DB
+        // token_identifier: UUID stored in the cookie
+        // token_hash: hash of the identifier for database lookup
         $tokenIdentifier = Str::uuid()->toString();
         $tokenHash = hash('sha256', $tokenIdentifier);
 
         // ========== Device Fingerprint (Optional) ==========
-        // Bind token với device (phòng token theft nếu cookie bị leak)
+        // Bind token to device fingerprint (mitigates token theft if cookie is leaked)
         $deviceFingerprint = $this->generateDeviceFingerprint($request);
 
         // ========== Create Token in DB ==========
         $tokenId = DB::table('personal_access_tokens')->insertGetId([
             'name' => 'httponly-web-cookie',
             'token' => $tokenHash,  // Hashed identifier
-            'token_identifier' => $tokenIdentifier,  // Plain UUID dùng trong cookie
-            'token_hash' => $tokenHash,  // Index để lookup nhanh
+            'token_identifier' => $tokenIdentifier,  // Plain UUID stored in the cookie
+            'token_hash' => $tokenHash,  // Indexed for fast lookup
             'abilities' => json_encode(['*']),
             'tokenable_id' => $user->id,
             'tokenable_type' => 'App\\Models\\User',
@@ -121,11 +121,11 @@ class HttpOnlyTokenController extends Controller
 
         // ========== SET httpOnly COOKIE ==========
         // 🔐 CRITICAL SECURITY FLAGS:
-        // - httpOnly=true: JavaScript không thể access qua document.cookie
-        // - Secure=true: Chỉ gửi qua HTTPS
-        // - SameSite=Strict: Không gửi cross-site requests (phòng CSRF + XSS worm)
-        // - Path=/: Accessible ở tất cả routes
-        // - Domain=.soleilhostel.com: Share với subdomains
+        // - httpOnly=true: JavaScript cannot access via document.cookie
+        // - Secure=true: Only transmitted over HTTPS
+        // - SameSite=Strict: Not sent with cross-site requests (prevents CSRF and XSS worm attacks)
+        // - Path=/: Accessible on all routes
+        // - Domain=.soleilhostel.com: Shared with subdomains
 
         $response->cookie(
             config('sanctum.cookie_name', 'soleil_token'),  // name
@@ -148,9 +148,9 @@ class HttpOnlyTokenController extends Controller
      * POST /api/auth/refresh-httponly
      *
      * SECURITY FLOW:
-     * 1. Validate old token từ cookie
+     * 1. Validate old token from cookie
      * 2. Check expiration + refresh count
-     * 3. Create new token với fresh refresh_count
+     * 3. Create new token with a fresh refresh_count
      * 4. Revoke old token
      * 5. Set new httpOnly cookie
      *
@@ -277,7 +277,7 @@ class HttpOnlyTokenController extends Controller
     }
 
     /**
-     * ME - Get current user info từ httpOnly cookie token
+     * ME - Retrieve current user info from the httpOnly cookie token
      *
      * GET /api/auth/me-httponly
      */
@@ -309,10 +309,10 @@ class HttpOnlyTokenController extends Controller
     }
 
     /**
-     * Generate device fingerprint từ request headers
+     * Generate device fingerprint from request headers.
      *
-     * Bind token với device (nếu cookie bị leak, hacker tidak thể dùng từ device khác)
-     * Trade-off: Legitimate users changing device sẽ bị reject
+     * Bind token to device (if cookie is leaked, attacker cannot use it from a different device).
+     * Trade-off: Legitimate users switching devices will be rejected until they re-authenticate.
      *
      * Components:
      * - User-Agent: Browser identification

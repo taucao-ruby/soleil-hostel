@@ -6,17 +6,17 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Laravel\Sanctum\PersonalAccessToken as SanctumPersonalAccessToken;
 
 /**
- * PersonalAccessToken Model - Override Sanctum với token expiration + revocation
+ * PersonalAccessToken Model — Sanctum override with token expiration and revocation
  *
- * Đây là CRITICAL component: mỗi token PHẢI có expiration date
- * Không có expiration = infinite access = bảo mật thảm họa
+ * CRITICAL component: every token MUST have an expiration date
+ * No expiration = infinite access = security disaster
  *
  * Token lifecycle:
- * 1. Create: created_at, expires_at (now + 1h hoặc 30 ngày)
- * 2. Use: last_used_at cập nhật mỗi request
- * 3. Refresh: tạo token mới, revoke token cũ
+ * 1. Create: created_at, expires_at (now + 1h or 30 days)
+ * 2. Use: last_used_at updated each request
+ * 3. Refresh: create new token, revoke old token
  * 4. Logout: set revoked_at = now
- * 5. Expired: hết hạn → 401 Unauthorized
+ * 5. Expired: token expired → 401 Unauthorized
  */
 class PersonalAccessToken extends SanctumPersonalAccessToken
 {
@@ -81,11 +81,11 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
     }
 
     /**
-     * Scope: Lấy token chưa hết hạn (expires_at NULL hoặc > now)
+     * Scope: Get non-expired tokens (expires_at NULL or > now)
      *
      * Queries:
      * - expires_at IS NULL OR expires_at > now()
-     * - Efficient với index trên expires_at
+     * - Efficient with index on expires_at
      */
     public function scopeNotExpired($query)
     {
@@ -96,7 +96,7 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
     }
 
     /**
-     * Scope: Lấy token chưa bị revoke
+     * Scope: Get non-revoked tokens
      *
      * Queries:
      * - revoked_at IS NULL
@@ -107,12 +107,12 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
     }
 
     /**
-     * Scope: Token hoàn toàn hợp lệ (không hết hạn + không revoke)
+     * Scope: Fully valid tokens (not expired + not revoked)
      *
-     * Lần mỗi request gọi, check:
-     * - token chưa hết hạn
-     * - token chưa bị revoke
-     * - last_used_at cập nhật
+     * Called on each request to check:
+     * - token is not expired
+     * - token is not revoked
+     * - last_used_at is updated
      */
     public function scopeValid($query)
     {
@@ -120,9 +120,9 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
     }
 
     /**
-     * Scope: Token hết hạn (expires_at < now)
+     * Scope: Expired tokens (expires_at < now)
      *
-     * Dùng cho cleanup cron job, xóa old tokens
+     * Used by cleanup cron job to delete old tokens
      */
     public function scopeExpired($query)
     {
@@ -133,7 +133,7 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
     }
 
     /**
-     * Scope: Lấy token của user theo type (short_lived hoặc long_lived)
+     * Scope: Get user tokens by type (short_lived or long_lived)
      */
     public function scopeOfType($query, string $type)
     {
@@ -141,9 +141,9 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
     }
 
     /**
-     * Scope: Lấy tất cả token chủ động trên 1 user (exclude current)
+     * Scope: Get all active tokens for a user (exclude current)
      *
-     * Dùng cho "logout all other devices" feature
+     * Used for "logout all other devices" feature
      */
     public function scopeOtherDevices($query, ?string $currentDeviceId = null)
     {
@@ -155,26 +155,26 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
     }
 
     /**
-     * Check: Token hiện tại có hết hạn?
+     * Check: Is the current token expired?
      *
-     * Dùng trong middleware hoặc request:
+     * Used in middleware or request validation:
      * if ($token->isExpired()) {
-     *     throw new AuthenticationException('Token đã hết hạn');
+     *     throw new AuthenticationException('Token expired');
      * }
      */
     public function isExpired(): bool
     {
-        // expires_at NULL = không hết hạn (legacy)
+        // expires_at NULL = never expires (legacy tokens)
         if ($this->expires_at === null) {
             return false;
         }
 
-        // expires_at < now = hết hạn
+        // expires_at < now = expired
         return $this->expires_at->isPast();
     }
 
     /**
-     * Check: Token có bị revoke không?
+     * Check: Is the token revoked?
      */
     public function isRevoked(): bool
     {
@@ -182,9 +182,9 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
     }
 
     /**
-     * Check: Token hợp lệ (chưa hết hạn + chưa revoke)?
+     * Check: Is the token valid (not expired + not revoked)?
      *
-     * Entry point duy nhất để check token validity
+     * Single entry point for token validity checks
      */
     public function isValid(): bool
     {
@@ -199,13 +199,13 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
      * - Save to DB
      * - Return boolean
      *
-     * Khi logout hoặc refresh token, gọi method này:
+     * Call this method on logout or token refresh:
      * $oldToken->revoke();
      */
     public function revoke(): bool
     {
         if ($this->isRevoked()) {
-            return false; // Đã revoke rồi
+            return false; // Already revoked
         }
 
         $this->update(['revoked_at' => now()]);
@@ -214,9 +214,9 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
     }
 
     /**
-     * Unrevoke token (nếu cần emergency restore)
+     * Unrevoke token (for emergency restore only)
      *
-     * Cẩn thận: chỉ dùng khi CHẮC CHẮN safe (e.g., app restore)
+     * Caution: only use when absolutely certain it is safe (e.g., app restore)
      */
     public function unrevoke(): bool
     {
@@ -230,17 +230,17 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
     }
 
     /**
-     * Cập nhật last_used_at khi token được dùng
+     * Update last_used_at when token is used
      *
-     * Dùng trong middleware, sau khi validate token:
+     * Used in middleware after token validation:
      * $token->recordUsage();
      *
-     * Optimization: batch update (1x/phút) thay vì mỗi request
-     * để tránh quá nhiều writes
+     * Optimization: batch update (once per minute) instead of every request
+     * to avoid excessive DB writes
      */
     public function recordUsage(): bool
     {
-        // Chỉ update nếu last_used_at cách đó > 1 phút
+        // Only update if last_used_at is more than 1 minute ago
         if (
             $this->last_used_at === null ||
             $this->last_used_at->addMinute()->isPast()
@@ -252,9 +252,9 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
     }
 
     /**
-     * Increment refresh count (dùng để detect suspicious activity)
+     * Increment refresh count (used to detect suspicious activity)
      *
-     * Nếu token bị refresh quá nhiều lần trong vài giây → suspicious
+     * If token is refreshed too many times within seconds → suspicious
      */
     public function incrementRefreshCount(): void
     {
@@ -262,7 +262,7 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
     }
 
     /**
-     * Reset refresh count (khi logout hoặc hết session)
+     * Reset refresh count (on logout or session end)
      */
     public function resetRefreshCount(): void
     {
@@ -270,10 +270,10 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
     }
 
     /**
-     * Check: Token này sắp hết hạn không?
+     * Check: Is this token expiring soon?
      *
-     * Dùng để proactive refresh trước khi hết hạn
-     * Thường check 5 phút trước expires_at
+     * Used for proactive refresh before expiration
+     * Typically checks 5 minutes before expires_at
      */
     public function isExpiringSoon(int $minutesBefore = 5): bool
     {
@@ -281,14 +281,14 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
             return false;
         }
 
-        // Nếu expires_at < now + 5 phút → return true
+        // If expires_at < now + threshold minutes → return true
         return $this->expires_at->lessThanOrEqualTo(now()->addMinutes($minutesBefore));
     }
 
     /**
-     * Tính thời gian còn lại (đơn vị: phút)
+     * Calculate remaining time (in minutes)
      *
-     * Dùng frontend để display "token hết hạn trong X phút"
+     * Used by frontend to display "token expires in X minutes"
      */
     public function getMinutesUntilExpiration(): ?int
     {
@@ -300,9 +300,9 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
     }
 
     /**
-     * Tính thời gian còn lại (đơn vị: giây)
+     * Calculate remaining time (in seconds)
      *
-     * Dùng trong response header: X-Token-Expires-In: 3600
+     * Used in response header: X-Token-Expires-In: 3600
      */
     public function getSecondsUntilExpiration(): ?int
     {
@@ -314,26 +314,26 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
     }
 
     /**
-     * Logout tất cả device khác (single device login)
+     * Logout all other devices (single device login)
      *
      * Logic:
-     * 1. Lấy tất cả token của user (trừ current device)
-     * 2. Revoke tất cả
-     * 3. Return số token bị revoke
+     * 1. Get all user tokens (except current device)
+     * 2. Revoke all
+     * 3. Return count of revoked tokens
      *
-     * Ví dụ: Khi user login trên device mới:
+     * Example: When user logs in on a new device:
      * $newToken->revokeOtherDevices($user);
      */
     public function revokeOtherDevices($user): int
     {
         $count = 0;
 
-        // Lấy tất cả token chưa revoke của user (except current device)
+        // Get all non-revoked tokens for the user (except current device)
         $otherTokens = $user->tokens()
             ->otherDevices($this->device_id)
             ->get();
 
-        // Revoke từng token
+        // Revoke each token
         foreach ($otherTokens as $token) {
             if ($token->revoke()) {
                 $count++;
@@ -344,9 +344,9 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
     }
 
     /**
-     * Logout tất cả session (force logout)
+     * Logout all sessions (force logout)
      *
-     * Dùng khi user đổi password hoặc phát hiện hack
+     * Used when user changes password or detects a compromise
      */
     public function revokeAllUserTokens($user): int
     {
@@ -364,23 +364,23 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
     }
 
     /**
-     * Cleanup: Xóa expired tokens cũ hơn 7 ngày
+     * Cleanup: Delete expired tokens older than 7 days
      *
      * Cron job: php artisan schedule:work
      *
-     * Dùng trong: Console\Kernel.php
+     * Used in: Console\Kernel.php
      * $schedule->call(function () {
      *     PersonalAccessToken::cleanup();
      * })->daily();
      */
     public static function cleanup(): void
     {
-        // Xóa token expired > 7 ngày
+        // Delete tokens expired more than 7 days ago
         static::expired()
             ->where('expires_at', '<', now()->subDays(7))
             ->delete();
 
-        // Xóa token revoke > 7 ngày
+        // Delete tokens revoked more than 7 days ago
         static::where('revoked_at', '<', now()->subDays(7))
             ->delete();
     }
@@ -388,7 +388,7 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
     /**
      * Get human-readable status
      *
-     * Dùng để debug hoặc log: token.status = 'expired' | 'revoked' | 'valid'
+     * Used for debugging or logging: token.status = 'expired' | 'revoked' | 'valid'
      */
     public function getStatus(): string
     {

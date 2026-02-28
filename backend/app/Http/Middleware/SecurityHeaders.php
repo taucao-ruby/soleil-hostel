@@ -7,12 +7,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 /**
- * SecurityHeaders Middleware - Triển khai tất cả security headers 2025
+ * SecurityHeaders Middleware - Applies all recommended security response headers (2025 baseline)
  *
- * ⚠️ KHÔNG CÓ SECURITY HEADERS = MỜI HACKER VÀO NHÀ UỐNG TRÀ
+ * ⚠️ Missing security headers significantly increases exposure to common web attacks
  *
- * Headers được apply:
- * 1. HSTS (Strict-Transport-Security) - Buộc HTTPS, prevent downgrade attacks
+ * Headers applied:
+ * 1. HSTS (Strict-Transport-Security) - Enforce HTTPS, prevent downgrade attacks
  * 2. X-Frame-Options - Prevent clickjacking
  * 3. X-Content-Type-Options - Prevent MIME sniffing
  * 4. Referrer-Policy - Control referrer leakage
@@ -51,10 +51,10 @@ class SecurityHeaders
         $isProduction = ! $isDevelopment;
 
         // ========== 1. HSTS (HTTP Strict-Transport-Security) ==========
-        // Buộc browser gửi HTTPS, prevent SSL stripping attacks
-        // max-age = 63072000 seconds (2 years, standard cho production)
-        // includeSubDomains: áp dụng cho tất cả subdomains
-        // preload: đưa lên HSTS preload list toàn cầu
+        // Forces the browser to use HTTPS; prevents SSL-stripping attacks
+        // max-age = 63072000 seconds (2 years, standard for production)
+        // includeSubDomains: applies the policy to all subdomains
+        // preload: registers the domain on the global HSTS preload list
         if ($isProduction) {
             $response->headers->set(
                 'Strict-Transport-Security',
@@ -62,7 +62,7 @@ class SecurityHeaders
                 true
             );
         } else {
-            // Dev: shorter HSTS để test
+            // Dev: shorter HSTS max-age for easier local testing
             $response->headers->set(
                 'Strict-Transport-Security',
                 'max-age=31536000; includeSubDomains',
@@ -71,21 +71,21 @@ class SecurityHeaders
         }
 
         // ========== 2. X-Frame-Options ==========
-        // Prevent clickjacking attacks (thay đổi nút bấm, hide form fields, etc)
-        // DENY: Không cho embed trong bất kỳ frame nào
+        // Prevents clickjacking (button replacement, hidden form field injection, etc.)
+        // DENY: Forbids embedding this response in any frame
         $response->headers->set('X-Frame-Options', 'DENY', true);
 
         // ========== 3. X-Content-Type-Options ==========
-        // Prevent MIME sniffing (hacker cố gắng execute image như JS)
-        // nosniff: Bắt buộc tuân theo Content-Type, không đoán
+        // Prevents MIME-type sniffing (attacker tries to execute an image as JavaScript)
+        // nosniff: Requires browsers to honor the declared Content-Type
         $response->headers->set('X-Content-Type-Options', 'nosniff', true);
 
         // ========== 4. Referrer-Policy ==========
-        // Control mỗi Referrer header leak ra ngoài (privacy + security)
+        // Controls how much Referrer information is leaked to external origins
         // strict-origin-when-cross-origin:
-        //   - Same-origin: gửi full URL
-        //   - Cross-origin: chỉ gửi origin (không path)
-        //   - Less secure: không gửi referrer
+        //   - Same-origin: sends full URL
+        //   - Cross-origin: sends origin only (no path or query string)
+        //   - Insecure: omits the Referrer header
         $response->headers->set(
             'Referrer-Policy',
             'strict-origin-when-cross-origin',
@@ -93,15 +93,15 @@ class SecurityHeaders
         );
 
         // ========== 5. Permissions-Policy (formerly Feature-Policy) ==========
-        // Disable dangerous browser APIs mà hacker có thể abuse
-        // () = disabled, *=() = tất cả origin đều bị disable
+        // Disables browser APIs that could be abused by an attacker
+        // () = feature disabled; the list applies to all origins
         $permissionsPolicy = $this->buildPermissionsPolicy();
         $response->headers->set('Permissions-Policy', $permissionsPolicy, true);
 
         // ========== 6. Cross-Origin-Opener-Policy ==========
-        // Prevent một trang web khác open window và control trang ta
-        // same-origin: Chỉ allow same-origin openers
-        // same-origin-allow-popups: Allow popups nhưng cross-origin opener bị isolate
+        // Prevents other pages from opening and controlling this window
+        // same-origin: only same-origin openers are permitted
+        // same-origin-allow-popups: allows popups but isolates cross-origin openers
         $response->headers->set('Cross-Origin-Opener-Policy', 'same-origin', true);
 
         // ========== 7. Cross-Origin-Embedder-Policy ==========
@@ -111,7 +111,7 @@ class SecurityHeaders
 
         // ========== 8. Cross-Origin-Resource-Policy ==========
         // Control who can load this resource (prevent clickjacking, Spectre)
-        // same-origin: Chỉ same-origin request mới được
+        // same-origin: only same-origin requests may load this resource
         $response->headers->set('Cross-Origin-Resource-Policy', 'same-origin', true);
 
         // ========== 9. Content-Security-Policy (CSP) ==========
@@ -126,8 +126,8 @@ class SecurityHeaders
         $response->headers->set('Content-Security-Policy', $csp, true);
 
         // ========== CSP-Report-Only (Audit Mode) ==========
-        // Report CSP violations mà không block (để test)
-        // Nếu bật CSP_REPORTING=1 trong .env, dùng report-only thay vì enforce
+        // Reports CSP violations without blocking (for audit/testing)
+        // Enable via CSP_REPORTING=1 in .env to use report-only instead of enforce mode
         if (config('security-headers.csp.reporting_enabled', false) && ! $isDevelopment) {
             $response->headers->set(
                 'Content-Security-Policy-Report-Only',
@@ -136,8 +136,8 @@ class SecurityHeaders
             );
         }
 
-        // ========== 10. X-Content-Type-Options (redundant nhưng important) ==========
-        // Some old browsers chỉ nhận X-Content-Type-Options
+        // ========== 10. X-Permitted-Cross-Domain-Policies (belt-and-suspenders) ==========
+        // Some older browsers recognise only X-Content-Type-Options
         $response->headers->set('X-Permitted-Cross-Domain-Policies', 'none', true);
 
         // Do not leak CSP nonce in response headers.
@@ -148,8 +148,8 @@ class SecurityHeaders
     }
 
     /**
-     * Build Permissions-Policy header
-     * Cực nghiêm ngặt: disable tất cả dangerous APIs
+     * Build Permissions-Policy header.
+     * Extremely strict: disables all potentially dangerous browser APIs.
      */
     private function buildPermissionsPolicy(): string
     {
@@ -177,8 +177,8 @@ class SecurityHeaders
     }
 
     /**
-     * CSP cho Development (relaxed)
-     * Allow hot reload, unsafe-eval, localhost:5173
+     * CSP for development (relaxed).
+     * Allows hot reload, unsafe-eval, and localhost:5173.
      */
     private function buildCspDevelopment(): string
     {
@@ -188,10 +188,10 @@ class SecurityHeaders
         return implode('; ', [
             "default-src 'self'",
 
-            // Script: allow nonce, inline dùng trong dev, hot reload, unsafe-eval
+            // Script: allow nonce, inline scripts for dev tooling, HMR, and unsafe-eval
             "script-src 'self' 'nonce-{$nonce}' 'unsafe-inline' 'unsafe-eval' {$viteHost} ws://{$viteHost}",
 
-            // Style: allow nonce, inline, Vite assets
+            // Style: allow nonce, inline styles for Vite assets
             "style-src 'self' 'nonce-{$nonce}' 'unsafe-inline' {$viteHost}",
 
             // Font: allow same-origin + data URIs (fonts embedded)
@@ -224,8 +224,8 @@ class SecurityHeaders
     }
 
     /**
-     * CSP cho Production (cực nghiêm ngặt)
-     * Nonce-based scripts, hash for inline styles, strict-dynamic
+     * CSP for production (maximum strictness).
+     * Nonce-based scripts, hash for inline styles, strict-dynamic.
      */
     private function buildCspProduction(): string
     {

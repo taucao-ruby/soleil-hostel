@@ -16,10 +16,10 @@ use RuntimeException;
 use Throwable;
 
 /**
- * CreateBookingService - Xử lý tạo booking với an toàn double-booking
+ * CreateBookingService - Handles booking creation with double-booking safety
  *
- * Triển khai pessimistic locking (SELECT ... FOR UPDATE) để đảm bảo không bao giờ có overlap
- * kể cả dưới tải cao (100-500 request/giây)
+ * Implements pessimistic locking (SELECT ... FOR UPDATE) to guarantee no booking overlaps
+ * even under high load (100–500 requests/second)
  *
  * Transaction Isolation Strategy:
  * - Uses READ COMMITTED isolation (PostgreSQL default) with FOR UPDATE locks
@@ -38,10 +38,10 @@ use Throwable;
  */
 class CreateBookingService
 {
-    // Số lần retry khi deadlock hoặc serialization failure
+    // Number of retry attempts on deadlock or serialization failure
     private const MAX_RETRY_ATTEMPTS = 3;
 
-    // Thời gian chờ giữa retry (exponential backoff: 100ms, 200ms, 400ms)
+    // Base delay between retries in ms (exponential backoff: 100ms, 200ms, 400ms)
     private const BASE_RETRY_DELAY_MS = 100;
 
     // PostgreSQL SQLSTATE codes
@@ -50,14 +50,14 @@ class CreateBookingService
     private const SQLSTATE_DEADLOCK_DETECTED = '40P01';
 
     /**
-     * Tạo booking mới với đảm bảo không overlap
+     * Create a new booking guaranteed not to overlap with existing bookings
      *
      * @param  Carbon|\DateTime|string  $checkIn
      * @param  Carbon|\DateTime|string  $checkOut
      *
-     * @throws RuntimeException Khi phòng không tồn tại
-     * @throws RuntimeException Khi phòng đã được đặt cho ngày chỉ định
-     * @throws Throwable Khi database error khác xảy ra
+     * @throws RuntimeException If the room does not exist
+     * @throws RuntimeException If the room is already booked for the specified dates
+     * @throws Throwable On any other database error
      */
     public function create(
         int $roomId,
@@ -74,7 +74,7 @@ class CreateBookingService
 
         $this->validateDates($checkIn, $checkOut);
 
-        // Thử tạo booking với retry logic cho deadlock
+        // Attempt booking creation with deadlock retry logic
         return $this->createWithDeadlockRetry(
             $roomId,
             $checkIn,
@@ -87,16 +87,16 @@ class CreateBookingService
     }
 
     /**
-     * Tạo booking với retry logic cho deadlock và serialization failure
+     * Create a booking with retry logic for deadlock and serialization failures
      *
-     * Khi 2+ transaction cùng lock các row và cố gắng update chéo nhau,
-     * PostgreSQL/MySQL sẽ raise deadlock exception.
+     * When 2+ transactions simultaneously lock rows and attempt cross-updates,
+     * PostgreSQL/MySQL will raise a deadlock exception.
      *
      * Error Types:
      * - Deadlock (40P01): Two transactions waiting for each other's locks
      * - Serialization Failure (40001): SERIALIZABLE/REPEATABLE READ conflict
      *
-     * Giải pháp: Retry với exponential backoff + jitter
+     * Resolution: Retry with exponential backoff and jitter
      */
     private function createWithDeadlockRetry(
         int $roomId,
@@ -252,17 +252,17 @@ class CreateBookingService
     }
 
     /**
-     * Tạo booking với pessimistic locking (SELECT ... FOR UPDATE)
+     * Create a booking using pessimistic locking (SELECT ... FOR UPDATE)
      *
      * Flow:
-     * 1. Bắt đầu transaction
-     * 2. SELECT từ bookings table FOR UPDATE (lock các row matching condition)
-     * 3. Kiểm tra xem có booking trùng không
-     * 4. Nếu không có, INSERT booking mới
-     * 5. Commit transaction (release lock)
+     * 1. Begin transaction
+     * 2. SELECT from bookings FOR UPDATE (locks rows matching the overlap condition)
+     * 3. Check for overlapping bookings
+     * 4. If no conflicts, INSERT the new booking
+     * 5. Commit transaction (releases lock)
      *
-     * Điều quan trọng: Lock được giữ cho đến khi transaction commit/rollback,
-     * đảm bảo không có transaction khác có thể tạo booking trùng
+     * Key: Lock is held until the transaction commits or rolls back,
+     * preventing any other transaction from creating a conflicting booking
      */
     private function createBookingWithLocking(
         int $roomId,
@@ -282,7 +282,7 @@ class CreateBookingService
             $userId,
             $additionalData
         ) {
-            // Step 1: Kiểm tra phòng tồn tại
+            // Step 1: Verify room exists
             $room = Room::find($roomId);
             if (! $room) {
                 throw new ModelNotFoundException(
@@ -290,23 +290,23 @@ class CreateBookingService
                 );
             }
 
-            // Step 2: Lấy lock trên tất cả active booking của phòng này
-            // Query này sẽ lock các row từ bookings table mà thỏa điều kiện
-            // Các transaction khác cố gắng SELECT FOR UPDATE hoặc update sẽ bị chờ
+            // Step 2: Acquire lock on all active bookings for this room
+            // This query locks matching rows in the bookings table
+            // Other transactions attempting SELECT FOR UPDATE or UPDATE on these rows will wait
             $existingBookings = Booking::query()
                 ->overlappingBookings($roomId, $checkIn, $checkOut)
                 ->withLock()
                 ->get();
 
-            // Step 3: Nếu có booking trùng, throw exception
-            // Exception sẽ được catch ở ngoài và xử lý
+            // Step 3: Throw if overlapping bookings exist
+            // Exception is caught and handled by the caller
             if ($existingBookings->isNotEmpty()) {
                 throw new RuntimeException(
                     'Room is already booked for the specified dates. Please choose different dates.'
                 );
             }
 
-            // Step 4: Tạo booking mới (vẫn trong transaction, lock vẫn được giữ)
+            // Step 4: Insert new booking (still within transaction; lock is still held)
             $booking = Booking::create([
                 'room_id' => $roomId,
                 'check_in' => $checkIn,
@@ -324,10 +324,10 @@ class CreateBookingService
     }
 
     /**
-     * Update booking với check overlap (exclude chính nó)
+     * Update a booking while checking for overlaps (excluding the booking itself)
      *
-     * Giống như create, nhưng exclude booking id hiện tại
-     * để tránh check constraint với chính nó
+     * Similar to create, but excludes the current booking ID
+     * to prevent a false overlap conflict with itself
      */
     public function update(
         Booking $booking,
@@ -339,7 +339,7 @@ class CreateBookingService
         $this->validateDates($checkIn, $checkOut, true, $request);
 
         return DB::transaction(function () use ($booking, $checkIn, $checkOut, $additionalData) {
-            // Lấy lock trên overlapping bookings (exclude current booking)
+            // Acquire lock on overlapping bookings (excluding the current booking)
             $conflicts = Booking::query()
                 ->overlappingBookings($booking->room_id, $checkIn, $checkOut, $booking->id)
                 ->withLock()

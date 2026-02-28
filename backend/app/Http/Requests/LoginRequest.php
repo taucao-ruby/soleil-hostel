@@ -5,10 +5,10 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * LoginRequest - Validation cho POST /api/auth/login
+ * LoginRequest - Request validation for POST /api/auth/login
  *
  * Rules:
- * - email: required, valid email format, exists ở users table
+ * - email: required, valid RFC email, must exist in the users table
  * - password: required, string, min 8 chars
  * - remember_me: optional boolean (default false)
  * - device_name: optional string (identify device)
@@ -16,14 +16,14 @@ use Illuminate\Foundation\Http\FormRequest;
  * Flow:
  * 1. Validate input
  * 2. Check email + password
- * 3. Tạo token (short_lived hoặc long_lived based on remember_me)
+ * 3. Create token (short_lived or long_lived based on remember_me)
  * 4. Return token + user info
  */
 class LoginRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true; // Public endpoint, ai cũng có thể login
+        return true; // Public endpoint — anyone may attempt login
     }
 
     public function rules(): array
@@ -43,7 +43,7 @@ class LoginRequest extends FormRequest
                 'min:8',
             ],
 
-            // Remember me: optional, nếu true → long_lived token (30 ngày)
+            // remember_me: optional; when true, issues a long_lived token (30-day expiry)
             'remember_me' => [
                 'sometimes',
                 'boolean',
@@ -59,7 +59,7 @@ class LoginRequest extends FormRequest
     }
 
     /**
-     * Custom validation messages (tiếng Việt)
+     * Custom validation messages (Vietnamese locale)
      */
     public function messages(): array
     {
@@ -96,7 +96,7 @@ class LoginRequest extends FormRequest
     }
 
     /**
-     * Get device name (default: "Web Browser" hoặc user agent)
+     * Get device name (defaults to "Web Browser" or a type inferred from the user agent)
      */
     public function getDeviceName(): string
     {
@@ -104,7 +104,7 @@ class LoginRequest extends FormRequest
             return $this->input('device_name');
         }
 
-        // Fallback: detect device type từ user agent
+        // Fallback: infer device type from the user agent string
         $userAgent = $this->userAgent();
 
         if (str_contains($userAgent, 'Mobile')) {

@@ -12,12 +12,12 @@ use Illuminate\Queue\SerializesModels;
 use RuntimeException;
 
 /**
- * CreateBookingJob - Queue job để tạo booking với auto-retry
+ * CreateBookingJob - Queue job to create a booking with auto-retry
  *
- * Use case: Nếu API request nhận deadlock exception quá nhiều lần,
- * thay vì return 500 ngay, có thể queue job để retry sau.
+ * Use case: When an API request encounters repeated deadlock exceptions,
+ * instead of returning 500 immediately, queue a job to retry later.
  *
- * Cách dùng:
+ * Usage:
  * ```
  * CreateBookingJob::dispatch(
  *     userId: $user->id,
@@ -29,7 +29,7 @@ use RuntimeException;
  * );
  * ```
  *
- * Hoặc dùng ở controller khi detect tải cao:
+ * Or use in controller when high load is detected:
  * ```
  * if ($attemptCount > 3) {
  *     CreateBookingJob::dispatch(...);
@@ -43,7 +43,7 @@ class CreateBookingJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    // Retry 3 lần nếu fail
+    // Retry up to 3 times on failure
     public int $tries = 3;
 
     // Backup queue
@@ -70,7 +70,7 @@ class CreateBookingJob implements ShouldQueue
             throw new RuntimeException("User not found: {$this->userId}");
         }
 
-        // Tạo booking qua service (có pessimistic locking)
+        // Create booking via service (with pessimistic locking)
         $booking = $bookingService->create(
             roomId: $this->roomId,
             checkIn: $this->checkIn,
@@ -94,7 +94,7 @@ class CreateBookingJob implements ShouldQueue
     /**
      * Handle job failure.
      *
-     * Được gọi khi job fail sau tất cả retry
+     * Called when the job fails after all retry attempts
      */
     public function failed(\Throwable $exception): void
     {

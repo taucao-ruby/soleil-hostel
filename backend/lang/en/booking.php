@@ -1,0 +1,35 @@
+<?php
+
+return [
+    'created' => 'Booking created successfully',
+    'updated' => 'Booking updated successfully',
+    'deleted' => 'Booking cancelled successfully',
+    'cancelled' => 'Booking cancelled successfully.',
+    'confirmed' => 'Booking confirmed successfully. Confirmation email queued.',
+    'create_error' => 'An error occurred while creating the booking. Please try again.',
+    'update_error' => 'An error occurred while updating the booking.',
+    'confirm_invalid_status' => "Cannot confirm booking: current status is ':status'",
+    'refund_failed' => 'Refund processing failed. Your booking has been marked for cancellation and our team will process the refund manually.',
+    'cancel_with_refund' => 'Booking cancelled successfully. A refund of :amount has been processed.',
+    'cancel_no_refund' => 'Booking cancelled successfully. No refund is available based on the cancellation policy.',
+    'room_not_found' => 'Room with ID :id not found.',
+    'room_unavailable' => 'Room is already booked for the specified dates. Please choose different dates.',
+    'checkout_before_checkin' => 'Check-out date must be after check-in date.',
+    'create_retry_exhausted' => 'Unable to create booking after 3 attempts due to database conflicts. Please try again.',
+    'create_failed' => 'Unable to create booking.',
+    'already_cancelled' => 'Booking is already cancelled.',
+    'confirm_wrong_status' => "Cannot confirm booking: current status is ':status', expected 'pending'",
+
+    // Admin
+    'trashed_not_found' => 'Trashed booking not found.',
+    'trashed_not_found_force' => 'Trashed booking not found. Only soft-deleted bookings can be permanently deleted.',
+    'restore_conflict' => 'Cannot restore booking: date range conflicts with existing bookings.',
+    'restored' => 'Booking restored successfully.',
+    'restore_failed' => 'Failed to restore booking.',
+    'permanently_deleted' => 'Booking permanently deleted.',
+    'force_delete_failed' => 'Failed to permanently delete booking.',
+    'bulk_restored' => ':count booking(s) restored.',
+    'bulk_not_found' => 'Not found',
+    'bulk_date_conflict' => 'Date conflict',
+    'bulk_restore_failed' => 'Restore failed',
+];

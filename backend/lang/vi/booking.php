@@ -1,0 +1,35 @@
+<?php
+
+return [
+    'created' => 'Đặt phòng thành công',
+    'updated' => 'Cập nhật đặt phòng thành công',
+    'deleted' => 'Hủy đặt phòng thành công',
+    'cancelled' => 'Hủy đặt phòng thành công.',
+    'confirmed' => 'Xác nhận đặt phòng thành công. Email xác nhận đã được gửi.',
+    'create_error' => 'Đã xảy ra lỗi khi đặt phòng. Vui lòng thử lại.',
+    'update_error' => 'Đã xảy ra lỗi khi cập nhật đặt phòng.',
+    'confirm_invalid_status' => "Không thể xác nhận: trạng thái hiện tại là ':status'",
+    'refund_failed' => 'Hoàn tiền thất bại. Đặt phòng đã được đánh dấu hủy và đội ngũ sẽ xử lý hoàn tiền thủ công.',
+    'cancel_with_refund' => 'Hủy đặt phòng thành công. Đã hoàn tiền :amount.',
+    'cancel_no_refund' => 'Hủy đặt phòng thành công. Không đủ điều kiện hoàn tiền theo chính sách hủy.',
+    'room_not_found' => 'Không tìm thấy phòng có ID :id.',
+    'room_unavailable' => 'Phòng đã được đặt trong khoảng thời gian này. Vui lòng chọn ngày khác.',
+    'checkout_before_checkin' => 'Ngày check-out phải sau ngày check-in.',
+    'create_retry_exhausted' => 'Không thể tạo đặt phòng sau 3 lần thử do xung đột database. Vui lòng thử lại.',
+    'create_failed' => 'Không thể tạo đặt phòng.',
+    'already_cancelled' => 'Đặt phòng đã bị hủy.',
+    'confirm_wrong_status' => "Không thể xác nhận: trạng thái hiện tại là ':status', cần 'pending'",
+
+    // Admin
+    'trashed_not_found' => 'Không tìm thấy đặt phòng đã xóa.',
+    'trashed_not_found_force' => 'Không tìm thấy đặt phòng đã xóa. Chỉ có thể xóa vĩnh viễn các đặt phòng đã bị xóa mềm.',
+    'restore_conflict' => 'Không thể khôi phục: khoảng thời gian xung đột với đặt phòng hiện có.',
+    'restored' => 'Khôi phục đặt phòng thành công.',
+    'restore_failed' => 'Khôi phục đặt phòng thất bại.',
+    'permanently_deleted' => 'Đã xóa vĩnh viễn đặt phòng.',
+    'force_delete_failed' => 'Xóa vĩnh viễn đặt phòng thất bại.',
+    'bulk_restored' => 'Đã khôi phục :count đặt phòng.',
+    'bulk_not_found' => 'Không tìm thấy',
+    'bulk_date_conflict' => 'Xung đột ngày',
+    'bulk_restore_failed' => 'Khôi phục thất bại',
+];

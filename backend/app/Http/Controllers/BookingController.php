@@ -77,7 +77,7 @@ class BookingController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Booking created successfully',
+                'message' => __('booking.created'),
                 'data' => new BookingResource($booking->load('room')),
             ], 201);
         } catch (RuntimeException $e) {
@@ -96,7 +96,7 @@ class BookingController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'An error occurred while creating the booking. Please try again.',
+                'message' => __('booking.create_error'),
             ], 500);
         }
     }
@@ -150,7 +150,7 @@ class BookingController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Booking updated successfully',
+                'message' => __('booking.updated'),
                 'data' => new BookingResource($booking->load('room')),
             ]);
         } catch (RuntimeException $e) {
@@ -166,7 +166,7 @@ class BookingController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'An error occurred while updating the booking.',
+                'message' => __('booking.update_error'),
             ], 500);
         }
     }
@@ -194,7 +194,7 @@ class BookingController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Booking cancelled successfully',
+            'message' => __('booking.deleted'),
         ], 200);
     }
 
@@ -214,7 +214,7 @@ class BookingController extends Controller
         if ($booking->status !== BookingStatus::PENDING) {
             return response()->json([
                 'success' => false,
-                'message' => "Cannot confirm booking: current status is '{$booking->status->value}'",
+                'message' => __('booking.confirm_invalid_status', ['status' => $booking->status->value]),
             ], 422);
         }
 
@@ -223,7 +223,7 @@ class BookingController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Booking confirmed successfully. Confirmation email queued.',
+                'message' => __('booking.confirmed'),
                 'data' => new BookingResource($booking->load('room')),
             ]);
         } catch (\RuntimeException $e) {
@@ -276,7 +276,7 @@ class BookingController extends Controller
         } catch (RefundFailedException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Refund processing failed. Your booking has been marked for cancellation and our team will process the refund manually.',
+                'message' => __('booking.refund_failed'),
                 'error' => 'refund_failed',
                 'retryable' => $e->isRetryable(),
             ], $e->getHttpStatusCode());
@@ -291,13 +291,13 @@ class BookingController extends Controller
         if ($booking->refund_amount && $booking->refund_amount > 0) {
             $formattedAmount = number_format($booking->refund_amount / 100, 2);
 
-            return "Booking cancelled successfully. A refund of \${$formattedAmount} has been processed.";
+            return __('booking.cancel_with_refund', ['amount' => '$'.$formattedAmount]);
         }
 
         if ($booking->payment_intent_id && $booking->refund_amount === 0) {
-            return 'Booking cancelled successfully. No refund is available based on the cancellation policy.';
+            return __('booking.cancel_no_refund');
         }
 
-        return 'Booking cancelled successfully.';
+        return __('booking.cancelled');
     }
 }

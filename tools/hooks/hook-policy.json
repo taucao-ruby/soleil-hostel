@@ -2,7 +2,8 @@
   "allow_bypass_env": "SKIP_HOOKS",
   "max_file_size_bytes": 2097152,
   "allowed_paths": [
-    "**/.env.example"
+    "**/.env.example",
+    "**/.env.*.example"
   ],
   "blocked_paths": [
     ".env",

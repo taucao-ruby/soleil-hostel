@@ -8,6 +8,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\CspViolationReportController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\Payment\StripeWebhookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -95,6 +96,10 @@ Route::post('/csp-violation-report', [CspViolationReportController::class, 'repo
 
 // Contact form (public - with rate limiting)
 Route::post('/contact', [ContactController::class, 'store'])->middleware('throttle:3,1');
+
+// ========== STRIPE WEBHOOKS ==========
+// Signature verification handled by Cashier (STRIPE_WEBHOOK_SECRET env var)
+Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handleWebhook']);
 
 // ========== EMAIL VERIFICATION ROUTES ==========
 // These routes require authentication but NOT verified email

@@ -52,7 +52,7 @@ class Booking extends Model
 
     /**
      * Auto-purify these fields when saving
-     * Dùng HTML Purifier whitelist, chứ không phải regex blacklist
+     * Uses HTML Purifier whitelist, not regex blacklist
      * (Regex XSS = 99% bypass. HTML Purifier = 0% bypass)
      */
     public function getPurifiableFields(): array
@@ -239,14 +239,14 @@ class Booking extends Model
     }
 
     /**
-     * Scope: Tìm các booking của phòng với ngày trùng lặp
+     * Scope: Find overlapping bookings for a room within a date range
      *
-     * Dùng half-open interval [check_in, check_out):
-     * - Cho phép book_old.check_out == book_new.check_in (checkout sáng, check-in trưa cùng ngày)
+     * Uses half-open interval [check_in, check_out):
+     * - Allows book_old.check_out == book_new.check_in (same-day turnover)
      *
-     * @param  int  $roomId  ID phòng
-     * @param  Carbon|\DateTime  $checkIn  Ngày check-in mới
-     * @param  Carbon|\DateTime  $checkOut  Ngày check-out mới
+     * @param  int  $roomId  Room ID
+     * @param  Carbon|\DateTime  $checkIn  New check-in date
+     * @param  Carbon|\DateTime  $checkOut  New check-out date
      */
     public function scopeOverlappingBookings(
         Builder $query,
@@ -255,24 +255,24 @@ class Booking extends Model
         $checkOut,
         ?int $excludeBookingId = null
     ): Builder {
-        // Đảm bảo các tham số là Carbon instance
+        // Ensure parameters are Carbon instances
         $checkIn = $checkIn instanceof Carbon ? $checkIn : Carbon::parse($checkIn);
         $checkOut = $checkOut instanceof Carbon ? $checkOut : Carbon::parse($checkOut);
 
-        // Logic overlap với half-open interval [a1, b1) và [a2, b2):
-        // Overlap xảy ra khi: a1 < b2 AND a2 < b1
+        // Overlap logic with half-open interval [a1, b1) and [a2, b2):
+        // Overlap occurs when: a1 < b2 AND a2 < b1
         //
         // Trong SQL: check_in < check_out_new AND check_out > check_in_new
         return $query
             ->where('room_id', $roomId)
             ->whereIn('status', self::ACTIVE_STATUSES)
-            ->where('check_in', '<', $checkOut) // Ngày bắt đầu của booking hiện tại < ngày kết thúc mới
-            ->where('check_out', '>', $checkIn) // Ngày kết thúc của booking hiện tại > ngày bắt đầu mới
+            ->where('check_in', '<', $checkOut) // Existing booking start < new end date
+            ->where('check_out', '>', $checkIn) // Existing booking end > new start date
             ->when($excludeBookingId, fn ($q, $excludeId) => $q->where('id', '!=', $excludeId));
     }
 
     /**
-     * Scope: Lọc booking active (chưa hủy)
+     * Scope: Filter active bookings (not cancelled)
      */
     public function scopeActive(Builder $query): Builder
     {
@@ -280,7 +280,7 @@ class Booking extends Model
     }
 
     /**
-     * Scope: Lọc booking cancelled
+     * Scope: Filter cancelled bookings
      */
     public function scopeCancelled(Builder $query): Builder
     {
@@ -288,7 +288,7 @@ class Booking extends Model
     }
 
     /**
-     * Scope: Lọc booking theo status
+     * Scope: Filter bookings by status
      */
     public function scopeByStatus(Builder $query, BookingStatus $status): Builder
     {
@@ -298,7 +298,7 @@ class Booking extends Model
     // ===== ACCESSORS / MUTATORS =====
 
     /**
-     * Accessor: Kiểm tra booking đã qua (check_out đã là quá khứ)
+     * Accessor: Check if booking has expired (check_out is in the past)
      */
     public function isExpired(): bool
     {
@@ -306,7 +306,7 @@ class Booking extends Model
     }
 
     /**
-     * Accessor: Kiểm tra booking đã started (check_in đã là quá khứ hoặc hôm nay)
+     * Accessor: Check if booking has started (check_in is past or today)
      */
     public function isStarted(): bool
     {
@@ -314,7 +314,7 @@ class Booking extends Model
     }
 
     /**
-     * Accessor: Số đêm đặt (duration in nights)
+     * Accessor: Number of nights (duration in nights)
      */
     public function getNightsAttribute(): int
     {
@@ -322,7 +322,7 @@ class Booking extends Model
     }
 
     /**
-     * Accessor: Kiểm tra ngày cho phép (check_out có bằng check_in không - không được)
+     * Accessor: Check if date range is valid (check_out must not equal check_in)
      */
     public function isValidDateRange(): bool
     {
@@ -330,10 +330,10 @@ class Booking extends Model
     }
 
     /**
-     * Scope: Lấy lock FOR UPDATE trên các booking trùng
+     * Scope: Acquire FOR UPDATE lock on overlapping bookings
      *
-     * Dùng pessimistic locking để đảm bảo transaction safety
-     * DB sẽ lock các row matching query này, ngăn transaction khác sửa
+     * Uses pessimistic locking to ensure transaction safety
+     * DB locks matching rows, preventing other transactions from modifying them
      */
     public function scopeWithLock(Builder $query): Builder
     {

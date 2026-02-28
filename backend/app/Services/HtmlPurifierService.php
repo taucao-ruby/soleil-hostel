@@ -10,9 +10,9 @@ use Illuminate\Support\Facades\Log;
 /**
  * HTML Purifier Service - Singleton
  *
- * Sanitize HTML content từ user input một cách an toàn:
- * - Sử dụng whitelist thay vì blacklist (regex KHÔNG dùng)
- * - Cache config để performance <1ms
+ * Safely sanitize HTML content from user input:
+ * - Uses whitelist instead of blacklist (no regex)
+ * - Caches config for <1ms performance
  * - Auto-detect dev vs prod environment
  *
  * Usage:
@@ -42,9 +42,9 @@ class HtmlPurifierService
     /**
      * Purify HTML content
      *
-     * @param  string  $html  Raw HTML input từ user
+     * @param  string  $html  Raw HTML input from user
      * @param  array  $options  Override config (optional)
-     * @return string Clean HTML safe để render
+     * @return string Clean HTML safe to render
      */
     public static function purify(string $html, array $options = []): string
     {
@@ -55,7 +55,7 @@ class HtmlPurifierService
      * Purify + return plain text (strip all HTML)
      *
      * @param  string  $html  Raw HTML input
-     * @return string Plain text, safe để dùng
+     * @return string Plain text, safe to use
      */
     public static function plaintext(string $html): string
     {
@@ -63,7 +63,7 @@ class HtmlPurifierService
     }
 
     /**
-     * Check if string contains HTML (dùng trước purify để decide)
+     * Check if string contains HTML (call before purify to decide whether purification is needed)
      */
     public static function isHtml(string $input): bool
     {
@@ -79,15 +79,15 @@ class HtmlPurifierService
             return '';
         }
 
-        // Load config từ config/purifier.php
+        // Load config from config/purifier.php
         try {
             $baseConfig = config('purifier.'.(app()->isLocal() ? 'dev' : 'prod'), []);
         } catch (\Throwable $e) {
-            // Nếu app() chưa boot, use default dev config
+            // If app() has not booted yet, fall back to default dev config
             $baseConfig = config('purifier.dev', []);
         }
 
-        // Override với options nếu có
+        // Merge caller-supplied options if provided
         if (! empty($options)) {
             $baseConfig = array_merge($baseConfig, $options);
         }
@@ -119,10 +119,10 @@ class HtmlPurifierService
 
         // CSS properties - strict disable
         if (isset($baseConfig['CSS.AllowedProperties'])) {
-            // CSS.AllowedProperties phải là array, không phải boolean
+            // CSS.AllowedProperties must be an array, not a boolean
             $cssProps = $baseConfig['CSS.AllowedProperties'];
             if ($cssProps === false) {
-                $cssProps = []; // false => empty array để disable
+                $cssProps = []; // false => empty array to disable all CSS properties
             }
             $config->set('CSS.AllowedProperties', $cssProps);
         }
@@ -141,7 +141,7 @@ class HtmlPurifierService
             $config->set('Core.Encoding', $baseConfig['Core.Encoding']);
         }
 
-        // Cache directory cho config
+        // Cache directory for HTMLPurifier config serialization
         try {
             $cacheDir = storage_path('framework/cache/purifier');
         } catch (\Throwable $e) {
@@ -164,13 +164,13 @@ class HtmlPurifierService
             $config->set('Cache.DefinitionImpl', null);
         }
 
-        // Khởi tạo HTMLPurifier
+        // Initialize HTMLPurifier instance
         $purifier = new HTMLPurifier($config);
 
         // Purify!
         $clean = $purifier->purify($html);
 
-        // Log attempt nếu enabled
+        // Log attempt if enabled
         try {
             if (config('purifier.log_attempts', true) && $html !== $clean) {
                 \Log::warning('XSS content detected and purified', [
@@ -186,7 +186,7 @@ class HtmlPurifierService
     }
 
     /**
-     * Reset singleton cache (dùng trong tests)
+     * Reset singleton instance (used in tests to ensure a clean state)
      */
     public static function flush(): void
     {

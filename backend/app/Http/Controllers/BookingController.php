@@ -48,12 +48,12 @@ class BookingController extends Controller
     /**
      * Store a newly created resource in storage.
      *
-     * Dùng CreateBookingService để đảm bảo không double-booking
-     * Service sẽ handle transaction + pessimistic locking + retry logic
+     * Uses CreateBookingService to prevent double-booking
+     * Service handles the transaction, pessimistic locking, and retry logic
      *
      * INPUT SANITIZATION:
-     * - FormRequest validation sẽ reject invalid input
-     * - Booking model trait sẽ auto-purify guest_name (HTML Purifier, không regex)
+     * - FormRequest validation rejects invalid input
+     * - Booking model trait auto-purifies guest_name (HTML Purifier, not regex)
      * - Regex blacklist = 99% bypass. HTML Purifier = 0% bypass.
      */
     public function store(StoreBookingRequest $request): JsonResponse
@@ -61,7 +61,7 @@ class BookingController extends Controller
         $validated = $request->validated();
 
         try {
-            // Gọi service để tạo booking (có pessimistic locking)
+            // Delegate to service to create booking (includes pessimistic locking)
             $booking = $this->createBookingService->create(
                 roomId: $validated['room_id'],
                 checkIn: $validated['check_in'],
@@ -81,13 +81,13 @@ class BookingController extends Controller
                 'data' => new BookingResource($booking->load('room')),
             ], 201);
         } catch (RuntimeException $e) {
-            // Xử lý lỗi từ service (phòng đặt, không tồn tại, v.v.)
+            // Handle business errors from the service (room unavailable, not found, etc.)
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
             ], 422);
         } catch (\Throwable $e) {
-            // Log error nếu cần
+            // Log unexpected errors
             Log::error('Booking creation failed: '.$e->getMessage(), [
                 'user_id' => auth()->id(),
                 'room_id' => $validated['room_id'] ?? null,
@@ -106,7 +106,7 @@ class BookingController extends Controller
      */
     public function show(Booking $booking): JsonResponse
     {
-        // Kiểm tra authorization dùng policy
+        // Authorize via policy
         $this->authorize('view', $booking);
 
         $cachedBooking = $this->bookingService->getBookingById($booking->id);
@@ -120,11 +120,11 @@ class BookingController extends Controller
     /**
      * Update the specified resource in storage.
      *
-     * Dùng CreateBookingService để update, đảm bảo không overlap
+     * Uses CreateBookingService to update, ensuring no overlap with existing bookings
      */
     public function update(UpdateBookingRequest $request, Booking $booking): JsonResponse
     {
-        // Kiểm tra authorization
+        // Authorize update
         $this->authorize('update', $booking);
 
         $validated = $request->validated();
@@ -133,7 +133,7 @@ class BookingController extends Controller
             // Store original booking data BEFORE updating (to compare changes later)
             $originalBookingData = (object) $booking->toArray();
 
-            // Gọi service update - convert strings to Carbon dates
+            // Call service to update — convert date strings to Carbon instances
             // Pass guest_name and guest_email via additionalData
             $booking = $this->createBookingService->update(
                 booking: $booking,
@@ -182,7 +182,7 @@ class BookingController extends Controller
      */
     public function destroy(Booking $booking): JsonResponse
     {
-        // Kiểm tra authorization
+        // Authorize deletion
         $this->authorize('delete', $booking);
 
         // Dispatch event for cache invalidation BEFORE deleting

@@ -5,37 +5,37 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * RefreshTokenRequest - Validation cho POST /api/auth/refresh
+ * RefreshTokenRequest - Request validation for POST /api/auth/refresh
  *
  * Rules:
  * - token: required, string (current token)
  *
  * Flow:
- * 1. Extract token từ Authorization header
- * 2. Validate: token tồn tại, chưa expire, chưa revoke
- * 3. Tạo token mới (cùng loại)
- * 4. Revoke token cũ
- * 5. Return token mới
+ * 1. Extract token from the Authorization header
+ * 2. Validate: token exists, not expired, not revoked
+ * 3. Create new token (same type as the original)
+ * 4. Revoke old token
+ * 5. Return new token
  *
- * IMPORTANT: Không cấp token mới nếu token cũ đã:
- * - Hết hạn (expired)
- * - Bị revoke
+ * IMPORTANT: A new token is NOT issued if the current token is:
+ * - Expired
+ * - Revoked
  *
- * Nếu cập nhập 401 → frontend phải login lại
+ * On 401 response → frontend must re-authenticate
  */
 class RefreshTokenRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // Token validation bằng middleware, không cần authorize() ở đây
+        // Token validation is handled by middleware; authorize() is always true here
         return true;
     }
 
     public function rules(): array
     {
         return [
-            // Token: optional ở form, nhưng REQUIRED ở Authorization header
-            // Middleware sẽ check Authorization header, không form field
+            // Token: not a form field; validated by the Authorization header in middleware
+            // Middleware validates the Authorization header, not a form field
         ];
     }
 

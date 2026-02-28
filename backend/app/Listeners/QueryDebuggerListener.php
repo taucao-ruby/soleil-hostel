@@ -6,14 +6,14 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Query Debugger Listener - Phát hiện N+1 tự động
+ * Query Debugger Listener - Automatic N+1 detection
  *
  * N+1 pattern:
- * 1 query lấy 100 items
- * + 100 queries lấy child items
- * = 101 queries thay vì 1 query + JOIN
+ * 1 query fetches 100 items
+ * + 100 queries fetch child items
+ * = 101 queries instead of 1 query + JOIN
  *
- * Listener này track và cảnh báo
+ * This listener tracks and alerts on threshold violations
  */
 class QueryDebuggerListener
 {
@@ -36,15 +36,15 @@ class QueryDebuggerListener
             'bindings' => $event->bindings,
         ];
 
-        // Alert nếu vượt threshold
+        // Alert if threshold exceeded
         if (count($this->queries) > config('query-detector.threshold')) {
             Log::warning('⚠️ N+1 QUERY DETECTED!', [
                 'total_queries' => count($this->queries),
                 'threshold' => config('query-detector.threshold'),
-                'last_queries' => array_slice($this->queries, -5), // 5 queries cuối
+                'last_queries' => array_slice($this->queries, -5), // last 5 queries
             ]);
 
-            // Throw exception trong testing để fail CI
+            // Throw exception during testing to fail CI
             if (app()->runningUnitTests()) {
                 throw new \RuntimeException(
                     sprintf(

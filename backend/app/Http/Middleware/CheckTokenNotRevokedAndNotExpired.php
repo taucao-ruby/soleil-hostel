@@ -11,21 +11,21 @@ use Laravel\Sanctum\Sanctum;
 /**
  * CheckTokenNotRevokedAndNotExpired Middleware
  *
- * CRITICAL: Validate mỗi request có token:
- * 1. Không hết hạn (expires_at > now)
- * 2. Không bị revoke (revoked_at IS NULL)
- * 3. Cập nhật last_used_at
+ * CRITICAL: Validates every request that carries a token:
+ * 1. Not expired (expires_at > now)
+ * 2. Not revoked (revoked_at IS NULL)
+ * 3. Records last_used_at
  *
- * Nếu token không valid → return 401 Unauthorized
+ * If token is invalid → return 401 Unauthorized
  *
- * Middleware này được gọi TRƯỚC khi request đến controller
- * Đảm bảo mọi protected endpoint đều check token validity
+ * This middleware runs BEFORE the request reaches the controller.
+ * Ensures every protected endpoint validates token state.
  */
 class CheckTokenNotRevokedAndNotExpired
 {
     public function handle(Request $request, Closure $next)
     {
-        // Lấy token từ Authorization header
+        // Extract token from Authorization header
         // Format: "Authorization: Bearer <token>"
         $bearerToken = $request->bearerToken();
 
@@ -44,21 +44,21 @@ class CheckTokenNotRevokedAndNotExpired
             return $cookieMiddleware->handle($request, $next);
         }
 
-        // Tìm token ở database
+        // Look up token in the database
         // Sanctum tokens use "{id}|{unhashed_token}" format from createToken()
         // findToken() handles splitting the ID prefix and hashing correctly
         $token = PersonalAccessToken::findToken($bearerToken);
 
         if (! $token) {
-            // Token không tồn tại → 401
+            // Token not found → 401
             throw new AuthenticationException('Token không hợp lệ hoặc không tồn tại.');
         }
 
-        // ========== CHECK: Token hết hạn? ==========
+        // ========== CHECK: Token expired? ==========
         // IMPORTANT: Check expiration BEFORE authenticating user
         if ($token->isExpired()) {
-            // Token hết hạn → 401
-            // Frontend sẽ nhận 401 → gọi refresh endpoint
+            // Token expired → 401
+            // Frontend receives 401 → calls refresh endpoint
             return response()->json([
                 'message' => 'Token đã hết hạn. Vui lòng refresh token.',
                 'code' => 'TOKEN_EXPIRED',
@@ -66,11 +66,11 @@ class CheckTokenNotRevokedAndNotExpired
             ], 401);
         }
 
-        // ========== CHECK: Token bị revoke? ==========
+        // ========== CHECK: Token revoked? ==========
         // IMPORTANT: Check revocation BEFORE authenticating user
         if ($token->isRevoked()) {
-            // Token bị revoke (logout/refresh/force logout) → 401
-            // User phải login lại
+            // Token revoked (logout/refresh/force-logout) → 401
+            // User must log in again
             return response()->json([
                 'message' => 'Token đã bị revoke. Vui lòng login lại.',
                 'code' => 'TOKEN_REVOKED',
@@ -100,8 +100,8 @@ class CheckTokenNotRevokedAndNotExpired
 
         // ========== CHECK: Refresh count (suspicious activity) ==========
         if ($token->refresh_count > config('sanctum.max_refresh_count_per_hour')) {
-            // Quá nhiều refresh trong ngắn thời gian → suspicious
-            // Revoke token này để bảo vệ account
+            // Too many refreshes in a short period → suspicious
+            // Revoke this token to protect the account
             $token->revoke();
 
             return response()->json([
@@ -110,9 +110,9 @@ class CheckTokenNotRevokedAndNotExpired
             ], 401);
         }
 
-        // ========== SUCCESS: Token hợp lệ ==========
-        // Cập nhật last_used_at để track token usage
-        // Optimization: chỉ update nếu cách lần trước > 1 phút (avoid too many writes)
+        // ========== SUCCESS: Token is valid ==========
+        // Update last_used_at to track token usage
+        // Optimization: only update if more than 1 minute has passed since last update (reduces write frequency)
         $token->recordUsage();
 
         // Continue with request

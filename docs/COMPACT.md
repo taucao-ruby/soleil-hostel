@@ -1,12 +1,12 @@
 ﻿# COMPACT — Soleil Hostel (AI Session Memory)
 
 ## 1) Current Snapshot (keep under 12 lines)
-- Date updated: 2026-02-27
+- Date updated: 2026-02-28
 - Current branch: `dev`
 - Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (218 tests, 20 suites, 0 failures) — verified 2026-02-27
 - Backend test baseline: `cd backend && php artisan test` (756 tests, 2171 assertions) — verified 2026-02-27
 - Pint baseline: `cd backend && vendor/bin/pint --test` (252 files, 0 violations) — verified 2026-02-27
-- Progress summary: Frontend Phases 0-4 ALL COMPLETE + FE-002/FE-003 admin features; TD-001 API error standardization; auth 401 fix; audit v3+v4 remediation (20/20 fixed)
+- Progress summary: Frontend Phases 0-4 ALL COMPLETE + FE-002/FE-003 + TD-001 + TD-002 (Phase 5 clean-up complete); audit v3+v4 remediation (20/20 fixed); rollup CVE override done
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
 ## 2) What matters (invariants / guardrails)
@@ -286,6 +286,16 @@ See `docs/FINDINGS_BACKLOG.md` (14 items):
 - Updated 5 existing optimistic lock tests (`RoomTestAssertions.php`, `RoomOptimisticLockingTest.php`, `RoomConcurrencyTest.php`) from legacy `{ error }` to `{ success }` assertions
 - New test file: `ApiErrorFormatTest.php` (10 tests, 57 assertions) covering: 404/401/403/422 format, trace_id propagation, auto-generation, no stack trace leak, JSON content-type
 - Gates: `php artisan test` 756/756 ✅ (2171 assertions), `pint --test` 252 files 0 violations ✅, `tsc --noEmit` 0 errors ✅, `vitest run` 218/218 ✅, `docker compose config` PASS ✅
+
+## 2026-02-28 — Phase 5: Audit & Friday Clean-up (TD-002 + Security + Ship Script)
+
+TD-002: translated all `//`, `/* */`, and PHPDoc comments from Vietnamese to English across 13 `backend/app/**` PHP files. String literals (user-facing messages) preserved intentionally. Out-of-scope finding logged as F-22 (Indonesian string in `HttpOnlyTokenController.php:290`). Security rollup override already done 2026-02-26. New `scripts/ship.sh` runs 3 CI gates and prints `READY TO SHIP` or exits with `[FAIL] <step>`. `PROJECT_STATUS.md` updated with Phase 5 block, new test counts (756/218), and Q2-2026 roadmap.
+
+Files touched: `backend/app/` (13 PHP files, comments only), `scripts/ship.sh` (new), `PROJECT_STATUS.md`, `docs/FINDINGS_BACKLOG.md` (F-22), `docs/COMPACT.md`.
+
+Gates: no app logic changed — regressions not expected; run locally to confirm baseline held.
+
+---
 
 ## 2026-02-25 — Fix GET /api/v1/locations 500
 

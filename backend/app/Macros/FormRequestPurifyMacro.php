@@ -16,7 +16,7 @@ use App\Services\HtmlPurifierService;
  * $request->purify(['message']);  // Purify 'message' field only
  * $request->purifyAll();           // Purify all validated data
  *
- * Hoặc trong FormRequest class:
+ * Or in a FormRequest class:
  * public function prepareForValidation()
  * {
  *     $this->merge([

@@ -10,8 +10,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Review Model
  *
- * Auto-purify HTML content từ guest reviews
- * Title + content được sanitize tự động qua trait Purifiable
+ * Auto-purify HTML content from guest reviews
+ * Title + content are automatically sanitized via the Purifiable trait
  */
 class Review extends Model
 {
@@ -43,8 +43,8 @@ class Review extends Model
     /**
      * Fields to auto-purify when saving
      *
-     * Dùng HTML Purifier whitelist, chứ không phải regex blacklist
-     * Title + content được strip safe tags, block <script>, on*, javascript:, v.v.
+     * Uses HTML Purifier whitelist, not regex blacklist
+     * Title + content are stripped to safe tags; blocks <script>, on*, javascript:, etc.
      *
      * @return array<string>
      */

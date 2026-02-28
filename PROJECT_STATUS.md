@@ -1,9 +1,9 @@
 # Soleil Hostel - Project Status
 
-**Last Updated:** February 25, 2026
+**Last Updated:** February 28, 2026
 **Current Branch:** `dev` (synced with `main`)
 
-## Current Status: Audit v4 Remediation Complete, Repo Health Green
+## Current Status: Phase 5 Clean-up Complete, Repo Health Green
 
 > Full audit v1 completed February 9, 2026: **61 issues** found, **61/61 resolved (100%)**.
 > Full audit v2 completed February 10–11, 2026: **98 issues** found, **98/98 resolved (100%)**.
@@ -11,13 +11,14 @@
 > Audit v3 remediation completed February 22, 2026: **12/14 findings fixed**.
 > Full audit v4 completed February 23, 2026: **6 new findings** (0 critical, 0 high, 2 medium, 4 low).
 > Audit v4 remediation completed February 23, 2026: **6/6 findings fixed** across 4 batches. All prior open items (F-02, F-03) also resolved. **20/20 total findings fixed (100%)**.
+> Phase 5 (Friday clean-up) completed February 28, 2026: TD-002 (all Vietnamese developer comments translated to English across `backend/app/**`); `pnpm.overrides` rollup ≥ 4.59.0 (applied 2026-02-26); `scripts/ship.sh` release gate script added.
 
-Verified on February 25, 2026:
-- Backend tests PASS: **737 tests**, **2071 assertions** (`cd backend && php artisan test`)
+Verified on February 27, 2026:
+- Backend tests PASS: **756 tests**, **2171 assertions** (`cd backend && php artisan test`)
 - Frontend typecheck PASS (`cd frontend && npx tsc --noEmit`)
-- Frontend unit tests PASS: **19 files**, **194 tests** (`cd frontend && npx vitest run`)
+- Frontend unit tests PASS: **20 files**, **218 tests** (`cd frontend && npx vitest run`)
 - Compose config PASS (`docker compose config`)
-- Pint style PASS: **250 files**, 0 violations (`cd backend && vendor/bin/pint --test`)
+- Pint style PASS: **252 files**, 0 violations (`cd backend && vendor/bin/pint --test`)
 
 Latest audit report: [AUDIT_REPORT.md](./AUDIT_REPORT.md)
 Findings backlog: [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md)
@@ -30,16 +31,17 @@ Remediation playbook: [PROMPT_AUDIT_FIX.md](./PROMPT_AUDIT_FIX.md)
 
 ```text
 Backend (Laravel)  ██████████████████████░  99%
-Frontend (React)   ████████████████████░░  93%
-Testing            █████████████████████░  97%
+Frontend (React)   ████████████████████░░  95%
+Testing            █████████████████████░  98%
 Audit v1           █████████████████████░ 100% ✅ 61/61
 Audit v2           █████████████████████░ 100% ✅ 98/98
 Audit v3 (docs)    █████████████████████░ 100% ✅ 14/14 fixed
 Audit v4           █████████████████████░ 100% ✅ 6/6 fixed
+Phase 5 (clean-up) █████████████████████░ 100% ✅ TD-002 + security + ship script
 Documentation      █████████████████████░ 100%
 Deployment         ███████████░░░░░░░░░░░  50%
 ─────────────────────────────────────────────
-Total Progress     █████████████████░░░░░  82%
+Total Progress     ██████████████████░░░░  85%
 ```
 
 ### Audit v4 Summary (February 23, 2026)
@@ -85,6 +87,21 @@ Repo-wide documentation audit covering backend, frontend, all docs, CI/CD, MCP s
 | `fix/auditv3-pr3-fk-reviews-bookings` | F-09 | FK `reviews.booking_id → bookings.id` (ON DELETE RESTRICT) |
 | `docs/auditv3-pr4-docs-sync` | F-01, F-05, F-10–F-13 | Docs sync: room_status, pnpm, TODOs, booking status |
 
+### Phase 5 Summary (February 28, 2026)
+
+Friday audit clean-up targeting technical debt, supply-chain security, and release tooling.
+
+| Item | Description | Status |
+| --- | --- | --- |
+| **TD-002** | Translate all Vietnamese developer comments in `backend/app/**` to English | ✅ Done |
+| **Security** | `pnpm.overrides` `rollup >= 4.59.0` (Vite supply-chain CVE) | ✅ Done (2026-02-26) |
+| **ship script** | `scripts/ship.sh` — runs 3 CI gates, prints `READY TO SHIP` or exits with label | ✅ Done |
+| **Status doc** | This file updated with Phase 5 entry + Q2-2026 roadmap | ✅ Done |
+
+**Files changed:** `backend/app/**` (12 PHP files — comments only); `scripts/ship.sh` (new); `PROJECT_STATUS.md`; `docs/COMPACT.md`; `docs/FINDINGS_BACKLOG.md`
+
+---
+
 ### Previous Audit History
 
 #### Audit v2 (February 11, 2026) — All Resolved
@@ -108,36 +125,16 @@ Repo-wide documentation audit covering backend, frontend, all docs, CI/CD, MCP s
 ### Backend (PHPUnit/Pest)
 
 ```text
-737 tests passed
-2071 assertions
-Duration: ~40s (verified February 22, 2026)
+756 tests passed
+2171 assertions
+Duration: ~40s (verified February 27, 2026)
 ```
 
 ### Frontend (Vitest)
 
 ```text
-194 tests passed (19 test files)
-Test files:
-- src/features/auth/AuthContext.test.tsx (8 tests)
-- src/features/auth/LoginPage.test.tsx (9 tests)
-- src/features/auth/RegisterPage.test.tsx (16 tests)
-- src/features/booking/BookingForm.test.tsx (12 tests)
-- src/features/booking/booking.validation.test.ts (20 tests)
-- src/features/bookings/bookingViewModel.test.ts (12 tests)
-- src/features/bookings/booking.constants.test.ts (6 tests)
-- src/features/bookings/GuestDashboard.test.tsx (8 tests)
-- src/features/admin/AdminDashboard.test.tsx (8 tests)
-- src/pages/DashboardPage.test.tsx (5 tests)
-- src/pages/HomePage.test.tsx (14 tests)
-- src/features/home/components/FilterChips.test.tsx (4 tests)
-- src/features/home/components/SearchCard.test.tsx (8 tests)
-- src/features/locations/__tests__/LocationsNav.test.tsx (3 tests)
-- src/shared/components/ui/Button.test.tsx (12 tests)
-- src/shared/components/ui/Input.test.tsx (15 tests)
-- src/shared/utils/csrf.test.ts (6 tests)
-- src/shared/utils/security.test.ts (22 tests)
-- src/shared/lib/api.test.ts (6 tests)
-Duration: ~16s (verified February 25, 2026)
+218 tests passed (20 test files)
+Duration: ~16s (verified February 27, 2026)
 ```
 
 ### E2E (Playwright)
@@ -186,8 +183,21 @@ cd frontend && npx vitest run
 docker compose config
 ```
 
+## Q2 2026 Roadmap
+
+| Feature | Priority | Notes |
+| --- | --- | --- |
+| **Stripe Payment Integration** | High | Checkout session, webhook handler, refund flow; Stripe SDK added as backend dependency |
+| **Booking Detail Panel** | Medium | Guest: read-only; Admin: editable inline |
+| **Admin Pagination** | Medium | All three dashboard tabs (Bookings / Trashed / Contacts) currently return page 1 only |
+| **E2E Test Suite (Playwright)** | Medium | Scaffolded; blocked on stable staging environment |
+| **2FA (TOTP)** | Low | Force-logout-all on 2FA enable already wired in `logoutAll()`; TOTP issuance pending |
+| **Deployment Pipeline** | Low | Docker Compose validated; cloud target TBD |
+
+---
+
 ## Status Note
 
-Audit v1 (61/61), v2 (98/98), v3 (14/14), v4 (6/6) are complete in repository history.
+Audit v1 (61/61), v2 (98/98), v3 (14/14), v4 (6/6), and Phase 5 clean-up are complete in repository history.
 All 20 findings (F-01 through F-20) have been resolved. No open items remain.
 Findings backlog: [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md)

@@ -11,17 +11,17 @@ use Illuminate\Http\Request;
  * CheckHttpOnlyTokenValid - Validate httpOnly cookie token
  *
  * CRITICAL SECURITY:
- * - Token luôn trong httpOnly cookie, KHÔNG Authorization header
+ * - Token is always in the httpOnly cookie, NOT in the Authorization header
  * - XSS cannot access, CSRF mitigated by SameSite=Strict
  * - Validates: Existence, expiration, revocation, suspicious activity
- * - Sets $request->auth() để dùng trong controllers
+ * - Sets resolved user on $request attributes for use in controllers
  *
  * Middleware Pipeline:
- * 1. Extract token_identifier từ httpOnly cookie
- * 2. Hash & lookup token_hash trong DB
+ * 1. Extract token_identifier from the httpOnly cookie
+ * 2. Hash the identifier and look up token_hash in the database
  * 3. Validate token state (expired, revoked, refresh_count abuse)
- * 4. Validate device fingerprint nếu enabled
- * 5. Attach token & user vào $request attributes
+ * 4. Validate device fingerprint if enabled
+ * 5. Attach token and user to $request attributes
  */
 class CheckHttpOnlyTokenValid
 {
@@ -124,7 +124,7 @@ class CheckHttpOnlyTokenValid
     }
 
     /**
-     * Generate device fingerprint từ request headers
+     * Generate device fingerprint from request headers.
      * MUST MATCH HttpOnlyTokenController::generateDeviceFingerprint()
      */
     private function generateDeviceFingerprint(Request $request): ?string

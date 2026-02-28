@@ -20,14 +20,14 @@ use Illuminate\Support\Str;
  * CRITICAL: Token expiration + refresh logic
  *
  * Endpoints:
- * - POST /api/auth/login → Tạo token (short_lived hoặc long_lived)
- * - POST /api/auth/refresh → Tạo token mới + revoke token cũ
- * - POST /api/auth/logout → Revoke token hiện tại
+ * - POST /api/auth/login → Create token (short_lived or long_lived)
+ * - POST /api/auth/refresh → Create new token and revoke the old one
+ * - POST /api/auth/logout → Revoke the current token
  * - GET /api/auth/me → Get current user info + token expiration
  *
  * Token lifecycle:
- * 1. Login: Create token (expires_at = now + 1h hoặc 30 ngày)
- * 2. Use: Update last_used_at mỗi request
+ * 1. Login: Create token (expires_at = now + 1h or 30 days)
+ * 2. Use: Update last_used_at on every request
  * 3. Refresh: Create new token + revoke old
  * 4. Logout: Revoke token
  * 5. Expired: Return 401
@@ -37,7 +37,7 @@ class AuthController extends Controller
     use ApiResponse;
 
     /**
-     * Login - Tạo personal access token
+     * Login — Create a personal access token
      *
      * POST /api/auth/login
      * {
@@ -63,7 +63,7 @@ class AuthController extends Controller
         $user = User::where('email', $request->getEmail())->first();
 
         if (! $user || ! password_verify($request->getPassword(), $user->password)) {
-            // Email hoặc password sai → 401
+            // Invalid email or password → 401
             throw new AuthenticationException('Email hoặc mật khẩu không đúng.');
         }
 
@@ -72,25 +72,25 @@ class AuthController extends Controller
             $user->sendEmailVerificationNotification();
         }
 
-        // ========== Determine: Short-lived hoặc Long-lived ==========
+        // ========== Determine: Short-lived or Long-lived ==========
         $shouldRemember = $request->shouldRemember();
 
         if ($shouldRemember) {
-            // Remember me = true → long_lived token (30 ngày)
+            // Remember me = true → long_lived token (30 days)
             $tokenType = 'long_lived';
             $expiresInMinutes = config('sanctum.long_lived_token_expiration_days') * 24 * 60;
             $expiresAt = now()->addDays(config('sanctum.long_lived_token_expiration_days'));
         } else {
-            // Remember me = false → short_lived token (1 giờ)
+            // Remember me = false → short_lived token (1 hour)
             $tokenType = 'short_lived';
             $expiresInMinutes = config('sanctum.short_lived_token_expiration_minutes');
             $expiresAt = now()->addMinutes($expiresInMinutes);
         }
 
         // ========== Single Device Login ==========
-        // Nếu enabled, logout tất cả device khác khi login device mới
+        // If enabled, revoke all other device tokens on new device login
         if (config('sanctum.single_device_login')) {
-            // Revoke tất cả token chưa revoke/hết hạn của user
+            // Revoke all active (non-revoked, non-expired) tokens for the user
             PersonalAccessToken::where('tokenable_id', $user->id)
                 ->where('tokenable_type', 'App\\Models\\User')
                 ->notExpired()
@@ -99,13 +99,13 @@ class AuthController extends Controller
         }
 
         // ========== Create Token ==========
-        // Device ID: UUID unique per device (dùng để identify device)
+        // Device ID: unique UUID per device, used to identify the device
         $deviceId = Str::uuid();
 
-        // Token name: device name hoặc "Web Browser"
+        // Token name: device name or "Web Browser" fallback
         $tokenName = $request->getDeviceName();
 
-        // Tạo plain text token
+        // Generate plain text token
         $plainTextToken = \Illuminate\Support\Str::random(40);
 
         // Hash token (Sanctum stores hashed token in DB)
@@ -146,7 +146,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Refresh Token - Tạo token mới + revoke token cũ
+     * Refresh Token — Create a new token and revoke the old one
      *
      * POST /api/auth/refresh
      * Headers: Authorization: Bearer <token>
@@ -161,27 +161,27 @@ class AuthController extends Controller
      *   "old_token_status": "revoked"
      * }
      *
-     * IMPORTANT: Token refresh là CRITICAL operation
-     * - Phải lấy token cũ từ Authorization header
-     * - Validate: token không expired, không revoke
-     * - Create token mới (cùng loại: short_lived/long_lived)
-     * - Revoke token cũ (tránh duplicate token)
-     * - Return token mới
+     * IMPORTANT: Token refresh is a CRITICAL operation
+     * - The old token must be extracted from the Authorization header
+     * - Validate: token is not expired and not revoked
+     * - Create new token (same type: short_lived/long_lived)
+     * - Revoke the old token (prevents duplicate token access)
+     * - Return the new token
      *
-     * Nếu token cũ expired/revoke → return 401 (phải login lại)
+     * If the old token is expired or revoked → return 401 (user must re-authenticate)
      */
     public function refresh(RefreshTokenRequest $request): JsonResponse
     {
-        // ========== Lấy token cũ từ Authorization header ==========
+        // ========== Retrieve old token from Authorization header ==========
         $bearerToken = $request->bearerToken();
 
         if (! $bearerToken) {
             throw new AuthenticationException('Authorization header không tồn tại.');
         }
 
-        // ========== Transaction với pessimistic lock (phòng race condition) ==========
+        // ========== Transaction with pessimistic lock (prevents race conditions) ==========
         return DB::transaction(function () use ($bearerToken) {
-            // Lock token row để prevent concurrent refresh
+            // Lock token row to prevent concurrent refresh
             $oldToken = PersonalAccessToken::where(
                 'token',
                 hash('sha256', $bearerToken)
@@ -191,12 +191,12 @@ class AuthController extends Controller
                 throw new AuthenticationException('Token không hợp lệ.');
             }
 
-            // ========== Validate: Token chưa expire? ==========
+            // ========== Validate: Token not expired? ==========
             if ($oldToken->isExpired()) {
                 return $this->error('Token đã hết hạn. Vui lòng login lại.', 401, ['code' => 'TOKEN_EXPIRED']);
             }
 
-            // ========== Validate: Token chưa revoke? ==========
+            // ========== Validate: Token not revoked? ==========
             if ($oldToken->isRevoked()) {
                 return $this->error('Token đã bị revoke. Vui lòng login lại.', 401, ['code' => 'TOKEN_REVOKED']);
             }
@@ -216,7 +216,7 @@ class AuthController extends Controller
             $user = $oldToken->tokenable;
             $tokenType = $oldToken->type;
 
-            // ========== Determine expiration (giữ nguyên type) ==========
+            // ========== Determine expiration (preserve token type) ==========
             if ($tokenType === 'long_lived') {
                 $expiresInMinutes = config('sanctum.long_lived_token_expiration_days') * 24 * 60;
                 $expiresAt = now()->addDays(config('sanctum.long_lived_token_expiration_days'));
@@ -225,13 +225,13 @@ class AuthController extends Controller
                 $expiresAt = now()->addMinutes($expiresInMinutes);
             }
 
-            // ========== Create token mới ==========
+            // ========== Create new token ==========
             $newPlainTextToken = \Illuminate\Support\Str::random(40);
             $newHashedToken = hash('sha256', $newPlainTextToken);
 
             // Manually create new token using raw SQL
             $newTokenId = DB::table('personal_access_tokens')->insertGetId([
-                'name' => $oldToken->name, // Giữ nguyên device name
+                'name' => $oldToken->name, // Preserve device name from old token
                 'token' => $newHashedToken,
                 'abilities' => is_array($oldToken->abilities)
                     ? json_encode($oldToken->abilities)
@@ -249,9 +249,9 @@ class AuthController extends Controller
 
             $newTokenModel = PersonalAccessToken::find($newTokenId);
 
-            // ========== Revoke token cũ (inside transaction) ==========
+            // ========== Revoke old token (inside transaction) ==========
             // CRITICAL: Refresh token rotation with pessimistic lock
-            // Revoke token cũ → tránh duplicate token access
+            // Revoke old token → prevents duplicate token access
             $oldToken->revoke();
 
             // ========== Response ==========
@@ -283,12 +283,12 @@ class AuthController extends Controller
      *   "revoked_at": "2025-11-20T13:45:00Z"
      * }
      *
-     * IMPORTANT: Nếu logout → token không thể dùng tiếp
-     * revoked_at được set → middleware sẽ return 401
+     * IMPORTANT: After logout, the token is permanently unusable.
+     * revoked_at is set → subsequent requests via middleware return 401
      */
     public function logout(Request $request): JsonResponse
     {
-        // ========== Lấy token ==========
+        // ========== Retrieve token ==========
         $bearerToken = $request->bearerToken();
 
         if (! $bearerToken) {
@@ -320,12 +320,12 @@ class AuthController extends Controller
      * POST /api/auth/logout-all
      * Headers: Authorization: Bearer <token>
      *
-     * Revoke tất cả token của user (force logout all devices)
+     * Revoke all tokens for the user (force logout from all devices)
      *
-     * Dùng khi:
-     * - User đổi password → force logout tất cả
-     * - User phát hiện hack → force logout + reset password
-     * - 2FA enabled → force logout tất cả (re-auth with 2FA)
+     * Use cases:
+     * - User changes password → force logout from all devices
+     * - User detects a security breach → force logout + reset password
+     * - 2FA enabled → force logout from all devices (re-auth with 2FA required)
      */
     public function logoutAll(Request $request): JsonResponse
     {
@@ -347,7 +347,7 @@ class AuthController extends Controller
         // Get user
         $user = $token->tokenable;
 
-        // Revoke tất cả token
+        // Revoke all active tokens
         $revokedCount = 0;
         $user->tokens()
             ->notRevoked()

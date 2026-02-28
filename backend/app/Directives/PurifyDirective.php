@@ -7,15 +7,15 @@ use App\Services\HtmlPurifierService;
 /**
  * Blade Directive @purify
  *
- * Render HTML content an toàn trong views
+ * Safely render HTML content in views
  *
  * Usage:
  *
  * @purify($variable)
  * @purify($review->content)
- * {!! $review->content|purify !!}  // Filter syntax (nếu register làm filter)
+ * {!! $review->content|purify !!}  // Filter syntax (if registered as a filter)
  *
- * Nội bộ gọi HtmlPurifierService::purify()
+ * Delegates to HtmlPurifierService::purify()
  */
 class PurifyDirective
 {

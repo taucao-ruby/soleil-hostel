@@ -7,8 +7,8 @@ use Illuminate\Foundation\Http\FormRequest;
 /**
  * Store Review Form Request
  *
- * Auto-purifies user input từ guest reviews
- * Dùng HTML Purifier whitelist, không regex blacklist
+ * Auto-purifies user input from guest reviews
+ * Uses HTML Purifier whitelist, not regex blacklist
  * (Regex XSS = 99% bypass. HTML Purifier = 0% bypass)
  */
 class StoreReviewRequest extends FormRequest
@@ -54,7 +54,7 @@ class StoreReviewRequest extends FormRequest
     {
         $validated = parent::validated($key, $default);
 
-        // Purify HTML fields nếu array
+        // Purify HTML fields if result is an array
         if (is_array($validated)) {
             $validated = $this->purify(['title', 'content']);
         }

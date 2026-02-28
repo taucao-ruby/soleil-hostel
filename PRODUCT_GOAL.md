@@ -1,7 +1,7 @@
 # PRODUCT_GOAL.md — Soleil Hostel
 
 > **Product goals and strategic direction**
-> Last updated: 2026-02-26
+> Last updated: 2026-02-28
 
 ---
 
@@ -59,9 +59,9 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 | Optimistic Locking (rooms + locations) | ✅ Complete | 24 tests |
 | Repository Layer | ✅ Complete | 53 tests |
 | Email Verification | ✅ Complete | 26 tests |
-| **Backend total** | **✅ 14 systems** | **737 tests** |
+| **Backend total** | **✅ 14 systems** | **756 tests** |
 
-### Frontend (React 19 + TypeScript) — 93% complete
+### Frontend (React 19 + TypeScript) — 95% complete
 
 | Phase | Feature | Status |
 | ----- | ------- | ------ |
@@ -70,7 +70,8 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 | Phase 2 | SearchCard wired to live API `/v1/locations`, navigate with URL params | ✅ Complete |
 | Phase 3 | AdminDashboard: 3 tabs (Bookings / Trashed / Contacts), lazy fetch | ✅ Complete |
 | Phase 4 | BookingForm: URL param pre-fill, Vietnamese UI, v1 endpoints | ✅ Complete |
-| Phase 5+ | Booking detail panel, advanced admin actions, pagination | 🔄 In progress |
+| Phase 5 | Booking detail panel, admin restore/force-delete, pagination | ✅ Complete |
+| Phase 5+ | Payment UI, i18n, PWA | 🔄 Next |
 
 ### Multi-Location Architecture
 
@@ -141,7 +142,8 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 [DONE] Q1-2026  — Email templates, caching, locking, monitoring, repo layer
 [DONE] Q1-2026  — Frontend Phases 0-4: dashboard, search, admin, booking form
 [DONE] Q1-2026  — Audit v1-v4 (20/20 findings resolved), CLAUDE.md governance
-[NOW]  Q1-2026  — Frontend Phase 5: detail panel, admin actions, pagination
+[DONE] Q1-2026  — Frontend Phase 5: detail panel, admin actions, pagination
+[DONE] Q1-2026  — Phase 5 clean-up: TD-002 (comments EN), ship script, rollup CVE fix
 [NEXT] Q2-2026  — Payment integration (Stripe/VNPay), i18n, PWA
 [NEXT] Q2-2026  — Deployment pipeline complete (currently 50%)
 [PLAN] Q3-2026  — Webhook system, email delivery tracking, audit log retention

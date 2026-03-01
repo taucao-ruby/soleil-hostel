@@ -1,9 +1,9 @@
 # Soleil Hostel - Project Status
 
-**Last Updated:** February 28, 2026
+**Last Updated:** March 1, 2026
 **Current Branch:** `dev` (synced with `main`)
 
-## Current Status: Phase 5 Clean-up Complete, Repo Health Green
+## Current Status: DevSecOps + Backend Hardening Complete, Repo Health Green
 
 > Full audit v1 completed February 9, 2026: **61 issues** found, **61/61 resolved (100%)**.
 > Full audit v2 completed February 10–11, 2026: **98 issues** found, **98/98 resolved (100%)**.
@@ -11,14 +11,15 @@
 > Audit v3 remediation completed February 22, 2026: **12/14 findings fixed**.
 > Full audit v4 completed February 23, 2026: **6 new findings** (0 critical, 0 high, 2 medium, 4 low).
 > Audit v4 remediation completed February 23, 2026: **6/6 findings fixed** across 4 batches. All prior open items (F-02, F-03) also resolved. **20/20 total findings fixed (100%)**.
-> Phase 5 (Friday clean-up) completed February 28, 2026: TD-002 (all Vietnamese developer comments translated to English across `backend/app/**`); `pnpm.overrides` rollup ≥ 4.59.0 (applied 2026-02-26); `scripts/ship.sh` release gate script added.
+> Phase 5 (Friday clean-up) completed February 28, 2026: TD-002, rollup CVE fix, ship script.
+> March 1, 2026: DevSecOps Batch 1 (Docker/Redis/Caddy hardening, CI gates), Batch 2 backend fixes (review purification, booking fillable, Stripe webhooks), i18n test fix, minimatch CVE fix, Cashier bootstrap, i18n translations.
 
-Verified on February 27, 2026:
-- Backend tests PASS: **756 tests**, **2171 assertions** (`cd backend && php artisan test`)
+Verified on March 1, 2026:
+- Backend tests PASS: **790 tests**, **2245 assertions** (`cd backend && php artisan test`)
 - Frontend typecheck PASS (`cd frontend && npx tsc --noEmit`)
 - Frontend unit tests PASS: **20 files**, **218 tests** (`cd frontend && npx vitest run`)
 - Compose config PASS (`docker compose config`)
-- Pint style PASS: **252 files**, 0 violations (`cd backend && vendor/bin/pint --test`)
+- Pint style PASS: **264 files**, 0 violations (`cd backend && vendor/bin/pint --test`)
 
 Latest audit report: [AUDIT_REPORT.md](./AUDIT_REPORT.md)
 Findings backlog: [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md)
@@ -32,16 +33,18 @@ Remediation playbook: [PROMPT_AUDIT_FIX.md](./PROMPT_AUDIT_FIX.md)
 ```text
 Backend (Laravel)  ██████████████████████░  99%
 Frontend (React)   ████████████████████░░  95%
-Testing            █████████████████████░  98%
+Testing            ██████████████████████  99%
 Audit v1           █████████████████████░ 100% ✅ 61/61
 Audit v2           █████████████████████░ 100% ✅ 98/98
 Audit v3 (docs)    █████████████████████░ 100% ✅ 14/14 fixed
 Audit v4           █████████████████████░ 100% ✅ 6/6 fixed
 Phase 5 (clean-up) █████████████████████░ 100% ✅ TD-002 + security + ship script
+DevSecOps          █████████████████████░ 100% ✅ Docker/Redis/Caddy + CI gates
+Payment bootstrap  ██████████████░░░░░░░░  65% ✅ Cashier + webhooks (checkout UI pending)
 Documentation      █████████████████████░ 100%
-Deployment         ███████████░░░░░░░░░░░  50%
+Deployment         ███████████████░░░░░░░  60%
 ─────────────────────────────────────────────
-Total Progress     ██████████████████░░░░  85%
+Total Progress     ████████████████████░░  90%
 ```
 
 ### Audit v4 Summary (February 23, 2026)
@@ -100,6 +103,27 @@ Friday audit clean-up targeting technical debt, supply-chain security, and relea
 
 **Files changed:** `backend/app/**` (12 PHP files — comments only); `scripts/ship.sh` (new); `PROJECT_STATUS.md`; `docs/COMPACT.md`; `docs/FINDINGS_BACKLOG.md`
 
+### March 1 Summary — DevSecOps + Backend Hardening
+
+Major infrastructure and backend improvements across 6 commits.
+
+| Item | Description | Status |
+| --- | --- | --- |
+| **OPS-001** | `docker-compose.prod.yml`, `.env.production.example`, frontend prod Dockerfile (nginx) | ✅ Done |
+| **OPS-001** | Caddy reverse proxy (auto-HTTPS), Docker rollback docs | ✅ Done |
+| **PAY-001** | Laravel Cashier bootstrap + Stripe webhook handlers (3 events) | ✅ Done |
+| **I18N-001** | Backend i18n: 47 translation keys (en + vi), `__()` in 5 controllers | ✅ Done |
+| **TD-003** | BookingFactory helper methods (`expired`, `cancelledByAdmin`, `multiDay`) | ✅ Done |
+| **DevSecOps** | Redis `protected-mode`, Caddy security headers, non-root Docker, CI typecheck gate | ✅ Done |
+| **C-01/C-02** | Fix review FormRequest purification crash (`$this->purify()` → `HtmlPurifierService`) | ✅ Done |
+| **H-01** | Add `cancellation_reason` to Booking `$fillable` | ✅ Done |
+| **H-03** | Implement Stripe webhook handlers (payment succeeded, charge refunded, payment failed) | ✅ Done |
+| **Security** | `minimatch >= 10.2.3` override (GHSA-7r86, GHSA-23c5) | ✅ Done |
+| **Psalm** | Fix `buildCancellationMessage()` return type with `(string)` cast | ✅ Done |
+| **Tests** | Update 14 test assertions to use `__()` translation keys | ✅ Done |
+
+**Test counts:** Backend 769 → 790 (+21 tests), Frontend 218 (unchanged)
+
 ---
 
 ### Previous Audit History
@@ -125,16 +149,16 @@ Friday audit clean-up targeting technical debt, supply-chain security, and relea
 ### Backend (PHPUnit/Pest)
 
 ```text
-756 tests passed
-2171 assertions
-Duration: ~40s (verified February 27, 2026)
+790 tests passed
+2245 assertions
+Duration: ~45s (verified March 1, 2026)
 ```
 
 ### Frontend (Vitest)
 
 ```text
 218 tests passed (20 test files)
-Duration: ~16s (verified February 27, 2026)
+Duration: ~16s (verified March 1, 2026)
 ```
 
 ### E2E (Playwright)
@@ -159,7 +183,7 @@ Playwright remains scaffolded; app runtime required for execution
 | --- | --- |
 | [docs/README.md](./docs/README.md) | Documentation entry point |
 | [docs/AUDIT_2026_02_21.md](./docs/AUDIT_2026_02_21.md) | Latest audit (v3) findings |
-| [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md) | Code issues backlog (20 items, all fixed) |
+| [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md) | Code issues backlog (24 items, 20 fixed, 4 open) |
 | [docs/COMMANDS_AND_GATES.md](./docs/COMMANDS_AND_GATES.md) | Verified commands + CI gates |
 | [docs/AI_GOVERNANCE.md](./docs/AI_GOVERNANCE.md) | AI agent workflow |
 | [docs/agents/](./docs/agents/) | Agent framework |
@@ -187,9 +211,9 @@ docker compose config
 
 | Feature | Priority | Notes |
 | --- | --- | --- |
-| **Stripe Payment Integration** | High | Checkout session, webhook handler, refund flow; Stripe SDK added as backend dependency |
-| **Booking Detail Panel** | Medium | Guest: read-only; Admin: editable inline |
-| **Admin Pagination** | Medium | All three dashboard tabs (Bookings / Trashed / Contacts) currently return page 1 only |
+| **Stripe Payment Integration** | High | Cashier bootstrapped, webhooks implemented; checkout session + payment UI pending |
+| **Booking Detail Panel** | ✅ Done | Guest read-only panel with 14 tests (Feb 27) |
+| **Admin Pagination** | ✅ Done | All 3 tabs paginated with Trước/Sau controls (Feb 27) |
 | **E2E Test Suite (Playwright)** | Medium | Scaffolded; blocked on stable staging environment |
 | **2FA (TOTP)** | Low | Force-logout-all on 2FA enable already wired in `logoutAll()`; TOTP issuance pending |
 | **Deployment Pipeline** | Low | Docker Compose validated; cloud target TBD |
@@ -199,5 +223,5 @@ docker compose config
 ## Status Note
 
 Audit v1 (61/61), v2 (98/98), v3 (14/14), v4 (6/6), and Phase 5 clean-up are complete in repository history.
-All 20 findings (F-01 through F-20) have been resolved. No open items remain.
+Findings F-01 through F-20 resolved. F-21 through F-24 open (3 low/medium, 1 high deferred).
 Findings backlog: [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md)

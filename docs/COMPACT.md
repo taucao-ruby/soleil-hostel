@@ -3,11 +3,11 @@
 ## 1) Current Snapshot (keep under 12 lines)
 
 - Date updated: 2026-03-01
-- Current branch: `dev` (Batch 2 backend fixes applied; uncommitted)
-- Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (218 tests, 20 suites, 0 failures) — verified 2026-03-01
+- Current branch: `dev` (synced with `main`; all work committed and pushed)
+- Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (218 tests, 20 suites) — verified 2026-03-01
 - Backend test baseline: `cd backend && php artisan test` (790 tests, 2245 assertions) — verified 2026-03-01
 - Pint baseline: `cd backend && vendor/bin/pint --test` (264 files, 0 violations) — verified 2026-03-01
-- Progress summary: OPS-001, PAY-001, I18N-001+TD-003, Batch 1 DevSecOps, Batch 2 Backend Fixes (C-01, C-02, H-01, H-03)
+- Progress summary: OPS-001, PAY-001, I18N-001+TD-003, DevSecOps, Batch 2 Fixes, docs sync complete
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
 ## 2) What matters (invariants / guardrails)
@@ -29,26 +29,18 @@
 
 ### Now
 
-- All 4 PRs merged into `dev`; branch is clean and ahead of `main`
-- PHPStan + Psalm referenced in AGENTS.md/CLAUDE.md but NOT in `composer.json` require-dev and not installed — document-only gap, no runtime impact
+- `dev` and `main` synced; all March 1 work committed and pushed
 - GitHub CLI (`gh`) installed via winget (v2.87.3) — authenticate with `gh auth login` before use
-
-### Completed this session (2026-02-21)
-
-- Homepage Phase 1: implemented 8-section mobile-first public homepage per spec
-  - New files: `home.tokens.ts`, `home.types.ts`, `home.mock.ts`, `RoomsSection.tsx`, `SiteFooter.tsx`
-  - Rewritten: `Hero.tsx`, `SearchCard.tsx`, `FilterChips.tsx`, `RoomCard.tsx`, `BottomNav.tsx`, `PromoBanner.tsx`, `ReviewsCarousel.tsx`, `HomePage.tsx`
-  - Fixed 7 defects: C-01 (watermark), C-02 (flat colour), C-03 (no role=search), H-01 (Cuộn xuống), H-02 (duplicate CTA), H-03 (no pill), M-01/M-03 (layout)
-  - Regression tests added in `HomePage.test.tsx` + `FilterChips.test.tsx` (14 + 4 tests)
-  - Router: `PublicLayout` (HeaderMobile + BottomNav) added around `/`
+- Open findings: F-21 (LoginPage English), F-22 (Indonesian string), F-23 (MD lint), F-24 (HasUuids conflict)
 
 ### Next
 
-- Dashboard Phase 5+: booking detail panel, admin actions (restore/force-delete trashed bookings)
-- Admin pagination (currently returns page 1 only per tab)
-- Re-run verification command set after backend/frontend behavior changes.
-- Re-check booking overlap and soft-delete semantics when booking migrations change.
-- Refresh branch and CI snapshot lines after each PR merge or commit batch.
+- PAY-001 Phase 2: Stripe checkout session + frontend payment UI
+- Frontend i18n (I18N-002): wire translation keys for frontend strings
+- F-21: Translate LoginPage + RegisterPage to Vietnamese
+- F-24: Fix PersonalAccessToken HasUuids + integer PK conflict
+- E2E tests (Playwright): blocked on stable staging environment
+- Deployment: SSH-based deploy step + post-deploy health check
 
 ## 4) Verification checklist (copy/paste)
 

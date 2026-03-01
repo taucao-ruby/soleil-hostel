@@ -1,7 +1,7 @@
 # BACKLOG.md — Soleil Hostel
 
 > **Product backlog — prioritized by implementation order**
-> Last updated: 2026-02-28 | Source: COMPACT.md + KNOWN_LIMITATIONS.md + FINDINGS_BACKLOG.md
+> Last updated: 2026-03-01 | Source: COMPACT.md + KNOWN_LIMITATIONS.md + FINDINGS_BACKLOG.md
 
 ---
 
@@ -108,34 +108,41 @@
 > Integrate real payment processing (currently mocked)
 > **Source:** LIM-002 from KNOWN_LIMITATIONS.md
 
-### PAY-001 🔴 Stripe / VNPay Integration (Phase 1)
+### PAY-001 🟡 Stripe / VNPay Integration (Phase 1) — Bootstrap Done
 
 **Description:** Replace the mock `processRefund()` with the real Stripe SDK.
 
-**Backend files to modify:**
+**Completed (March 1, 2026):**
 
-- `backend/app/Services/CancellationService.php` (processRefund)
-- `backend/config/payment.php` (new)
-- `backend/app/Jobs/ReconcileRefundsJob.php`
+- [x] Laravel Cashier `^16.3` installed, `Billable` trait on User model
+- [x] Cashier migration (stripe_id, pm_type, pm_last_four, trial_ends_at)
+- [x] `POST /api/webhooks/stripe` endpoint with signature verification
+- [x] Webhook handlers: `payment_intent.succeeded`, `charge.refunded`, `payment_intent.payment_failed`
+- [x] 14 tests (4 webhook signature + 10 handler tests)
 
-**Acceptance Criteria:**
+**Remaining:**
 
 - [ ] `POST /v1/bookings` → creates a Payment Intent before confirming
 - [ ] Payment confirmed → booking status = `confirmed`
 - [ ] Cancellation → automatic refund via Stripe
+- [ ] Checkout session frontend UI
 - [ ] No API keys committed (use `config('payment.stripe_secret')`)
 
 ---
 
-### PAY-002 🟡 Webhook Handling for Payment Events
+### PAY-002 🟡 Webhook Handling for Payment Events — Partially Done
 
 **Source:** LIM-006
 
 **Description:** Receive webhooks from Stripe (payment.succeeded, refund.created, charge.failed).
 
-**Acceptance Criteria:**
+**Completed (March 1, 2026):**
 
-- [ ] Endpoint `POST /api/webhooks/stripe` with signature verification
+- [x] Endpoint `POST /api/webhooks/stripe` with signature verification
+- [x] 3 event handlers implemented with idempotency checks
+
+**Remaining:**
+
 - [ ] Exponential backoff retry on webhook failure
 - [ ] Dead letter queue for failed webhooks
 
@@ -159,21 +166,22 @@
 
 > **Source:** LIM-008 from KNOWN_LIMITATIONS.md
 
-### I18N-001 🟡 Backend i18n (Laravel)
+### I18N-001 ✅ Backend i18n (Laravel) — Done 2026-03-01
 
 **Description:** Replace all hardcoded strings with the `__()` helper.
 
-**Files:**
+**Files created/modified:**
 
-- `backend/resources/lang/vi/` (new)
-- `backend/resources/lang/en/` (new)
-- All Notifications and validation messages
+- `backend/lang/en/booking.php` (30 keys), `backend/lang/vi/booking.php`
+- `backend/lang/en/messages.php` (17 keys), `backend/lang/vi/messages.php`
+- 5 controllers updated: BookingController, RoomController, LocationController, AdminBookingController, ContactController
+- `APP_LOCALE=vi` set in `.env.example`
 
 **Acceptance Criteria:**
 
-- [ ] `APP_LOCALE=vi` → all system messages in Vietnamese
-- [ ] `APP_LOCALE=en` → English
-- [ ] Date format follows locale (Carbon)
+- [x] `APP_LOCALE=vi` → all system messages in Vietnamese
+- [x] `APP_LOCALE=en` → English
+- [ ] Date format follows locale (Carbon) — not yet implemented
 
 ---
 
@@ -228,7 +236,7 @@
 
 ---
 
-### TD-003 🟢 Test Factory Completeness
+### TD-003 ✅ Test Factory Completeness — Done 2026-03-01
 
 **Source:** TD-003 from KNOWN_LIMITATIONS.md
 
@@ -236,9 +244,9 @@
 
 **Acceptance Criteria:**
 
-- [ ] `BookingFactory::expired()` — booking that has already expired
-- [ ] `BookingFactory::multiDay(int $days)` — multi-day booking with specific dates
-- [ ] `BookingFactory::cancelledByAdmin()` — cancelled by an admin
+- [x] `BookingFactory::expired()` — booking that has already expired
+- [x] `BookingFactory::multiDay(int $days)` — multi-day booking with specific dates
+- [x] `BookingFactory::cancelledByAdmin()` — cancelled by an admin
 
 ---
 
@@ -258,16 +266,26 @@
 
 ## EPIC 5 — Deployment & Infrastructure
 
-### OPS-001 🔴 Complete Deployment Pipeline (currently 50%)
+### OPS-001 🟠 Complete Deployment Pipeline (currently 60%)
 
 **Description:** The CI/CD pipeline needs to be finalized to deploy to production.
 
-**Acceptance Criteria:**
+**Completed (March 1, 2026):**
 
-- [ ] GitHub Actions workflow `deploy.yml` for staging and production
+- [x] `docker-compose.prod.yml` with healthchecks (db, redis, backend, frontend)
+- [x] `.env.production.example` (pgsql, no secrets)
+- [x] Frontend multi-stage Dockerfile (nginx:1.27-alpine)
+- [x] Caddy reverse proxy with auto-HTTPS (optional `--profile proxy`)
+- [x] Docker rollback + HTTPS setup docs in OPERATIONAL_PLAYBOOK.md
+- [x] Redis `protected-mode`, non-root Docker, security headers
+- [x] CI: `frontend-typecheck` job, fixed hardcoded URLs, pinned actions
+- [x] Secrets managed via GitHub Secrets (no hardcoding)
+
+**Remaining:**
+
+- [ ] SSH-based deploy step requires `DEPLOY_HOST` secret in GitHub
 - [ ] Automated health check after deploy
 - [ ] Automatic rollback if health check fails
-- [ ] Secrets managed via GitHub Secrets (no hardcoding)
 
 ---
 
@@ -368,7 +386,10 @@ FEAT-002 (Group Booking) → requires a new ADR before coding
 | FE-003 Admin Pagination | — | ✅ Done (2026-02-27) |
 | TD-001 Error Response Format | — | ✅ Done (2026-02-27) |
 | TD-002 Standardize Comments | — | ✅ Done (2026-02-28) |
-| OPS-001 Deploy Pipeline | — | 🔴 Blocker |
+| TD-003 Test Factory Completeness | — | ✅ Done (2026-03-01) |
+| I18N-001 Backend i18n | — | ✅ Done (2026-03-01) |
+| PAY-001 Stripe Bootstrap + Webhooks | — | ✅ Bootstrap Done (2026-03-01) |
+| OPS-001 Deploy Pipeline | — | 🟠 60% (infra done, deploy step pending) |
 
 ---
 
@@ -397,6 +418,13 @@ FEAT-002 (Group Booking) → requires a new ADR before coding
 | ✅ TD-001 Standardize API Error Format | Feb 27, 2026 | 10 tests |
 | ✅ TD-002 Standardize Comments (English) | Feb 28, 2026 | — |
 | ✅ Phase 5 Clean-up (ship script, rollup CVE) | Feb 28, 2026 | — |
+| ✅ OPS-001 Infra (prod compose, Caddy, Docker hardening) | Mar 1, 2026 | — |
+| ✅ PAY-001 Cashier Bootstrap + Stripe Webhooks | Mar 1, 2026 | 14 tests |
+| ✅ I18N-001 Backend i18n (47 keys, en + vi) | Mar 1, 2026 | 9 tests |
+| ✅ TD-003 BookingFactory helpers | Mar 1, 2026 | — |
+| ✅ DevSecOps Batch 1 (Redis, Caddy, CI gates) | Mar 1, 2026 | — |
+| ✅ Batch 2 Backend Fixes (C-01, C-02, H-01, H-03) | Mar 1, 2026 | 21 tests |
+| ✅ minimatch CVE fix (GHSA-7r86, GHSA-23c5) | Mar 1, 2026 | — |
 
 ---
 

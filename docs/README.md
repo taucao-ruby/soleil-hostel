@@ -1,6 +1,6 @@
 ﻿# Soleil Hostel Documentation
 
-> **Last Updated:** February 25, 2026 | **Tests:** 737 backend tests (2071 assertions) + 194 frontend unit tests | **Status:** Phases 0-4 Complete
+> **Last Updated:** March 1, 2026 | **Tests:** 790 backend tests (2245 assertions) + 218 frontend unit tests | **Status:** Phases 0-5 Complete + DevSecOps
 
 ## Quick Navigation
 
@@ -172,8 +172,10 @@ docs/
 | Optimistic Locking    | ✅ Complete           | 24 tests      |
 | Repository Layer      | ✅ Complete           | 53 tests      |
 | Email Verification    | ✅ Complete           | 26 tests      |
-| **Backend Total**     | **✅ All 14 systems** | **737 tests** |
-| Frontend (Phase 0-4)  | ✅ Complete           | 194 tests     |
+| Stripe/Cashier        | ✅ Bootstrap          | 14 tests      |
+| Backend i18n          | ✅ Complete           | 9 tests       |
+| **Backend Total**     | **✅ All 16 systems** | **790 tests** |
+| Frontend (Phase 0-5)  | ✅ Complete           | 218 tests     |
 
 ## Tech Stack
 
@@ -242,7 +244,20 @@ docs/
 
 ---
 
-## Recent Updates (February 2026)
+## Recent Updates (March 2026)
+
+### DevSecOps + Backend Hardening (March 1, 2026)
+
+- **OPS-001**: Production Docker Compose, `.env.production.example`, frontend prod Dockerfile (nginx), Caddy reverse proxy
+- **DevSecOps Batch 1**: Redis `protected-mode`, Caddy security headers, non-root Docker, CI typecheck gate
+- **PAY-001**: Laravel Cashier `^16.3` bootstrap, Stripe webhook handlers (3 events), 14 tests
+- **I18N-001**: Backend i18n — 47 translation keys (en + vi), `__()` in 5 controllers, 9 tests
+- **TD-003**: BookingFactory helper methods (`expired`, `cancelledByAdmin`, `multiDay`)
+- **Batch 2 Fixes**: Review purification crash (C-01/C-02), Booking `$fillable` (H-01), Stripe webhooks (H-03), 21 tests
+- **Security**: minimatch `>=10.2.3` override (GHSA-7r86, GHSA-23c5)
+- **Test counts**: Backend 769 → 790 (+21 tests), Frontend 218 (unchanged)
+
+## Updates (February 2026)
 
 ### Frontend Phases 0-4 Complete (February 25, 2026)
 

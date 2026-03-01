@@ -1,7 +1,7 @@
 # PRODUCT_GOAL.md — Soleil Hostel
 
 > **Product goals and strategic direction**
-> Last updated: 2026-02-28
+> Last updated: 2026-03-01
 
 ---
 
@@ -49,6 +49,8 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 | Booking system (create, cancel, soft delete, audit) | ✅ Complete | 60 tests |
 | Booking email notifications | ✅ Complete | 23 tests |
 | Branded email templates | ✅ Complete | 13 tests |
+| Stripe/Cashier integration | ✅ Bootstrap | 14 tests |
+| Backend i18n (en + vi) | ✅ Complete | 9 tests |
 | Room management (optimistic locking, status) | ✅ Complete | 151 tests |
 | RBAC (3 roles: user / moderator / admin) | ✅ Complete | 47 tests |
 | Security headers (CSP, HSTS, XSS) | ✅ Complete | 14 tests |
@@ -59,7 +61,7 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 | Optimistic Locking (rooms + locations) | ✅ Complete | 24 tests |
 | Repository Layer | ✅ Complete | 53 tests |
 | Email Verification | ✅ Complete | 26 tests |
-| **Backend total** | **✅ 14 systems** | **756 tests** |
+| **Backend total** | **✅ 16 systems** | **790 tests** |
 
 ### Frontend (React 19 + TypeScript) — 95% complete
 
@@ -122,8 +124,8 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 
 ### Out of current scope
 
-- **Online payment** (Stripe/VNPay) — not integrated, currently mocked
-- **Internationalization (i18n)** — UI has hardcoded Vietnamese strings, no translation framework
+- **Online payment checkout UI** — Stripe Cashier bootstrapped + webhooks implemented; checkout session + frontend payment form pending
+- **Frontend i18n** — Backend i18n complete (47 keys, en + vi); frontend strings still hardcoded Vietnamese
 - **Multi-tenancy** — One installation = one hostel chain; no shared DB across brands
 - **PWA / Offline** — No service worker yet
 
@@ -144,8 +146,10 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 [DONE] Q1-2026  — Audit v1-v4 (20/20 findings resolved), CLAUDE.md governance
 [DONE] Q1-2026  — Frontend Phase 5: detail panel, admin actions, pagination
 [DONE] Q1-2026  — Phase 5 clean-up: TD-002 (comments EN), ship script, rollup CVE fix
-[NEXT] Q2-2026  — Payment integration (Stripe/VNPay), i18n, PWA
-[NEXT] Q2-2026  — Deployment pipeline complete (currently 50%)
+[DONE] Q1-2026  — DevSecOps: Docker/Redis/Caddy hardening, CI gates, Cashier bootstrap
+[DONE] Q1-2026  — Backend i18n (47 keys), Stripe webhooks, review purification fix
+[NEXT] Q2-2026  — Payment checkout UI (Stripe/VNPay), frontend i18n, PWA
+[NEXT] Q2-2026  — Deployment pipeline complete (currently 60%)
 [PLAN] Q3-2026  — Webhook system, email delivery tracking, audit log retention
 ```
 

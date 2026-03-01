@@ -251,7 +251,7 @@ class BookingNotificationTest extends TestCase
         $response->assertOk()
             ->assertJson([
                 'success' => true,
-                'message' => 'Booking confirmed successfully. Confirmation email queued.',
+                'message' => __('booking.confirmed'),
             ]);
 
         $this->assertEquals(BookingStatus::CONFIRMED, $booking->fresh()->status);
@@ -290,7 +290,7 @@ class BookingNotificationTest extends TestCase
         $response->assertOk()
             ->assertJson([
                 'success' => true,
-                'message' => 'Booking cancelled successfully.',
+                'message' => __('booking.cancelled'),
             ]);
 
         $this->assertEquals(BookingStatus::CANCELLED, $booking->fresh()->status);

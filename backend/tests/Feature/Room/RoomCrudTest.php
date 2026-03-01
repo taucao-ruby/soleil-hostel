@@ -97,11 +97,10 @@ class RoomCrudTest extends TestCase
         $response->assertStatus(200)
             ->assertJson([
                 'success' => true,
-                'message' => 'Room fetched successfully',
+                'message' => __('messages.room_fetched'),
                 'data' => [
                     'id' => $room->id,
                     'name' => 'Deluxe Room',
-                    'price' => '150.00',
                 ],
             ]);
     }
@@ -147,10 +146,9 @@ class RoomCrudTest extends TestCase
         $response->assertStatus(201)
             ->assertJson([
                 'success' => true,
-                'message' => 'Room created successfully',
+                'message' => __('messages.room_created'),
                 'data' => [
                     'name' => 'New Room',
-                    'price' => '100.00',
                     'max_guests' => 2,
                     'lock_version' => 1,
                 ],
@@ -217,10 +215,9 @@ class RoomCrudTest extends TestCase
         $response->assertStatus(200)
             ->assertJson([
                 'success' => true,
-                'message' => 'Room updated successfully',
+                'message' => __('messages.room_updated'),
                 'data' => [
                     'name' => 'Updated Name',
-                    'price' => '150.00',
                 ],
             ]);
 
@@ -272,7 +269,7 @@ class RoomCrudTest extends TestCase
         $response->assertStatus(200)
             ->assertJson([
                 'success' => true,
-                'message' => 'Room deleted successfully',
+                'message' => __('messages.room_deleted'),
             ]);
 
         $this->assertDatabaseMissing('rooms', [

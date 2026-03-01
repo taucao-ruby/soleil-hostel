@@ -3,11 +3,11 @@
 ## 1) Current Snapshot (keep under 12 lines)
 
 - Date updated: 2026-03-01
-- Current branch: `dev` (all PRs + DevSecOps batches merged; working tree clean)
+- Current branch: `dev` (Batch 2 backend fixes applied; uncommitted)
 - Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (218 tests, 20 suites, 0 failures) — verified 2026-03-01
-- Backend test baseline: `cd backend && php artisan test` (769 tests, 2192 assertions) — verified 2026-03-01
-- Pint baseline: `cd backend && vendor/bin/pint --test` (261 files, 0 violations) — verified 2026-03-01
-- Progress summary: OPS-001, PAY-001, I18N-001+TD-003, Batch 1 DevSecOps (CI gates + deploy fix + Redis/Caddy/Docker hardening)
+- Backend test baseline: `cd backend && php artisan test` (790 tests, 2245 assertions) — verified 2026-03-01
+- Pint baseline: `cd backend && vendor/bin/pint --test` (264 files, 0 violations) — verified 2026-03-01
+- Progress summary: OPS-001, PAY-001, I18N-001+TD-003, Batch 1 DevSecOps, Batch 2 Backend Fixes (C-01, C-02, H-01, H-03)
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
 ## 2) What matters (invariants / guardrails)
@@ -394,3 +394,40 @@ C-04, H-10, H-11, H-14, M-26, M-27, M-28
 #### Notes
 - No `scripts/deploy-forge.sh` exists — migration handled via deploy.yml SSH step instead
 - Trivy remains non-blocking (continue-on-error: true) with documented justification
+
+## 2026-03-01 — Batch 2: Backend Critical Bugs & Data Integrity
+
+### What changed
+
+#### PR-1: Fix Review FormRequest broken purify() calls (C-01, C-02)
+- **Root cause**: `StoreReviewRequest` and `UpdateReviewRequest` called `$this->purify()` which doesn't exist on `FormRequest` — the `Purifiable` trait is Model-only. This would crash at runtime with `BadMethodCallException`.
+- **Fix**: Replaced `$this->purify()` with `HtmlPurifierService::purify()` applied to each validated field.
+- **Tests**: 8 new tests in `tests/Unit/Requests/ReviewRequestPurificationTest.php` — validates no crash, XSS stripping, single-key access, rating bounds.
+- **Files**: `app/Http/Requests/StoreReviewRequest.php`, `app/Http/Requests/UpdateReviewRequest.php`, test file (new)
+
+#### PR-2: Add cancellation_reason to Booking $fillable (H-01)
+- **Root cause**: `Booking::$fillable` included `cancelled_at` and `cancelled_by` but NOT `cancellation_reason`. Mass assignment via `$booking->update(['cancellation_reason' => '...'])` silently dropped the field.
+- **Fix**: Added `'cancellation_reason'` to `$fillable` array.
+- **Tests**: 3 new tests in `tests/Unit/Models/BookingFillableTest.php` — validates field is fillable and persists via mass assignment.
+- **H-02 deferred**: Auth controllers use `DB::table()->insertGetId()` for token creation, but switching to Eloquent fails because `PersonalAccessToken` has `HasUuids` trait with integer PK. Logged as F-24 in FINDINGS_BACKLOG.md.
+- **Files**: `app/Models/Booking.php`, `docs/FINDINGS_BACKLOG.md`, test file (new)
+
+#### PR-3: Implement Stripe webhook handlers (H-03)
+- **Root cause**: `handlePaymentIntentSucceeded()` and `handleChargeRefunded()` were TODO stubs that only logged.
+- **Fix**: Implemented full handler logic:
+  - `handlePaymentIntentSucceeded`: finds booking by `payment_intent_id`, confirms via `BookingService::confirmBooking()`, idempotent for already-confirmed bookings
+  - `handleChargeRefunded`: finds booking by charge's `payment_intent`, updates `refund_id/refund_status/refund_amount/refund_error`, transitions to `cancelled` or `refund_failed`
+  - `handlePaymentIntentPaymentFailed`: new handler, logs failure, booking remains pending for retry
+  - All handlers include idempotency checks and error handling
+- **Tests**: 10 new tests in `tests/Feature/Payment/StripeWebhookHandlerTest.php`
+- **Files**: `app/Http/Controllers/Payment/StripeWebhookController.php`, test file (new)
+
+### Gates
+- `php artisan test`: 790 tests, 2245 assertions ✅ (was 769/2192)
+- `vendor/bin/pint --test`: 264 files, 0 violations ✅
+- Frontend: not touched — [SKIPPED]
+- `docker compose config`: not touched — [SKIPPED]
+
+### Residual
+- F-24: Auth controllers use Query Builder for token creation; requires `HasUuids` fix before switching to Eloquent (see FINDINGS_BACKLOG.md)
+- M-06, M-07, L-06: Validation rules already meet standards (verified: `password min:8`, `guest_name min:2`, `max_guests integer|min:1`)

@@ -2,12 +2,13 @@
 
 namespace App\Http\Requests;
 
+use App\Services\HtmlPurifierService;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * UpdateReviewRequest - Example FormRequest with validation + purification
+ * UpdateReviewRequest - FormRequest with validation + purification
  *
- * Best practice: Purify in validated() method to ensure clean data
+ * Purifies user input via HtmlPurifierService in validated() method
  */
 class UpdateReviewRequest extends FormRequest
 {
@@ -64,17 +65,22 @@ class UpdateReviewRequest extends FormRequest
     /**
      * Get the validated data from the request.
      *
-     * ✅ BEST PRACTICE: Purify here, not in controller
-     * This ensures all user input is sanitized before controller processes it
+     * Purifies HTML content fields before controller processes the data.
      */
     public function validated($key = null, $default = null): mixed
     {
-        if ($key !== null) {
-            return parent::validated($key, $default);
+        $validated = parent::validated($key, $default);
+
+        if ($key !== null || ! is_array($validated)) {
+            return $validated;
         }
 
-        // Purify HTML content fields
-        // This strips dangerous tags/attributes while preserving safe formatting
-        return $this->purify(['title', 'content']);
+        foreach (['title', 'content'] as $field) {
+            if (isset($validated[$field]) && is_string($validated[$field])) {
+                $validated[$field] = HtmlPurifierService::purify($validated[$field]);
+            }
+        }
+
+        return $validated;
     }
 }

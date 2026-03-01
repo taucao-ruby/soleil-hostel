@@ -12,7 +12,7 @@ RUN composer install --no-scripts --no-autoloader --prefer-dist
 COPY . .
 RUN composer dump-autoload --optimize
 
-# Stage 2: Production image
+# Stage 2: Production image (non-root)
 FROM php:8.3-fpm
 WORKDIR /var/www
 RUN apt-get update && apt-get install -y \
@@ -22,8 +22,13 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 COPY docker/nginx.conf /etc/nginx/sites-available/default
 COPY --from=builder /var/www /var/www
-RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
-EXPOSE 80
+# Non-root: fix permissions for www-data, disable nginx user directive
+RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache \
+    && mkdir -p /var/run/nginx /var/lib/nginx/body /var/lib/nginx/proxy /var/lib/nginx/fastcgi \
+    && chown -R www-data:www-data /var/run/nginx /var/lib/nginx /var/log/nginx \
+    && sed -i 's/^user .*/# user directive disabled for non-root/' /etc/nginx/nginx.conf
+USER www-data
+EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD php -r "exit(file_get_contents('http://localhost:80/api/health') === false ? 1 : 0);"
-CMD ["sh", "-c", "php-fpm -D && nginx -g 'daemon off;'"]
+  CMD php -r "exit(file_get_contents('http://localhost:8080/api/health') === false ? 1 : 0);"
+CMD ["sh", "-c", "php-fpm -D && nginx -g 'daemon off; pid /var/run/nginx/nginx.pid;'"]

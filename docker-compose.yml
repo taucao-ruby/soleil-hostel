@@ -10,7 +10,7 @@ services:
     environment:
       POSTGRES_USER: ${DB_USERNAME:-soleil}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
-      POSTGRES_DB: ${DB_DATABASE:-homestay}
+      POSTGRES_DB: ${DB_DATABASE:-soleil_hostel}
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
@@ -65,10 +65,11 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     working_dir: /var/www
+    user: root
     volumes:
       - ./backend:/var/www
     ports:
-      - "127.0.0.1:8000:80"
+      - "127.0.0.1:8000:8080"
     depends_on:
       - db
       - redis
@@ -83,7 +84,7 @@ services:
       DB_CONNECTION: ${DB_CONNECTION:-pgsql}
       DB_HOST: ${DB_HOST:-db}
       DB_PORT: ${DB_PORT:-5432}
-      DB_DATABASE: ${DB_DATABASE:-homestay}
+      DB_DATABASE: ${DB_DATABASE:-soleil_hostel}
       DB_USERNAME: ${DB_USERNAME:-soleil}
       DB_PASSWORD: ${DB_PASSWORD:-secret}
       REDIS_HOST: ${REDIS_HOST:-redis}

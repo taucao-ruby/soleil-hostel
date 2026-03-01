@@ -1,15 +1,17 @@
 ﻿# COMPACT — Soleil Hostel (AI Session Memory)
 
 ## 1) Current Snapshot (keep under 12 lines)
+
 - Date updated: 2026-03-01
-- Current branch: `ci/gates-and-deploy-fix` (Batch 1 DevSecOps — PR-2 of 2)
-- Latest verified commands: `docker compose config` PASS, `docker compose -f docker-compose.prod.yml config` PASS — verified 2026-03-01
-- Backend test baseline: 769 tests, 2192 assertions — verified 2026-03-01
-- Frontend test baseline: 218 tests, 20 suites — verified 2026-03-01
-- Progress summary: Batch 1 DevSecOps hardening (infra/redis-caddy-docker + ci-gates-deploy-fix)
+- Current branch: `dev` (all PRs + DevSecOps batches merged; working tree clean)
+- Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (218 tests, 20 suites, 0 failures) — verified 2026-03-01
+- Backend test baseline: `cd backend && php artisan test` (769 tests, 2192 assertions) — verified 2026-03-01
+- Pint baseline: `cd backend && vendor/bin/pint --test` (261 files, 0 violations) — verified 2026-03-01
+- Progress summary: OPS-001, PAY-001, I18N-001+TD-003, Batch 1 DevSecOps (CI gates + deploy fix + Redis/Caddy/Docker hardening)
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
 ## 2) What matters (invariants / guardrails)
+
 - Booking overlap must remain half-open: `[check_in, check_out)`.
 - Active overlap statuses are only `pending` and `confirmed`.
 - Production invariant: PostgreSQL exclusion constraint uses `daterange(check_in, check_out, '[)')` with `deleted_at IS NULL`.
@@ -24,13 +26,11 @@
 - Keep runtime security/config reads through `config()`, not ad hoc `env()` usage in app logic.
 
 ## 3) Active work (Now / Next)
+
 ### Now
-- 4 PRs pushed, awaiting review on GitHub (all target `dev`):
-  - PR-1 `fix/ops-001-critical`: docker-compose.prod + .env.production.example + frontend prod Dockerfile
-  - PR-2 `fix/ops-001-proxy-health-rollback`: Caddy reverse proxy + rollback docs
-  - PR-3 `feat/pay-001-cashier-bootstrap`: Laravel Cashier + Stripe webhook
-  - PR-4 `chore/i18n-001-td-003`: i18n translations + BookingFactory helpers
-- Suggested merge order: PR-1 → PR-2 → PR-3 → PR-4
+
+- All 4 PRs merged into `dev`; branch is clean and ahead of `main`
+- PHPStan + Psalm referenced in AGENTS.md/CLAUDE.md but NOT in `composer.json` require-dev and not installed — document-only gap, no runtime impact
 - GitHub CLI (`gh`) installed via winget (v2.87.3) — authenticate with `gh auth login` before use
 
 ### Completed this session (2026-02-21)
@@ -51,7 +51,9 @@
 - Refresh branch and CI snapshot lines after each PR merge or commit batch.
 
 ## 4) Verification checklist (copy/paste)
+
 Required baseline:
+
 ```bash
 cd backend && php artisan test
 cd frontend && npx tsc --noEmit
@@ -60,6 +62,7 @@ docker compose config
 ```
 
 Useful lint/format/static checks:
+
 ```bash
 cd frontend && pnpm lint
 cd frontend && pnpm format
@@ -69,11 +72,13 @@ cd backend && vendor/bin/psalm
 ```
 
 ## 5) Known warnings / noise (non-blocking)
+
 - PHPUnit doc-comment metadata deprecation warnings can appear; treat as non-blocking when `php artisan test` is PASS.
 - Vitest can emit `act(...)` and non-boolean DOM attribute warnings; treat as non-blocking when `npx vitest run` is PASS.
 - Any new warning pattern or warning volume increase should be treated as a change signal and reviewed.
 
 ## 6) Key pointers (docs / important files)
+
 - [Project Status](../PROJECT_STATUS.md)
 - [Audit Report](../AUDIT_REPORT.md)
 - [Remediation Playbook](../PROMPT_AUDIT_FIX.md)
@@ -92,6 +97,7 @@ cd backend && vendor/bin/psalm
 - [Findings Backlog](./FINDINGS_BACKLOG.md)
 
 ## 7) Update protocol (how to maintain COMPACT)
+
 - When to update:
   - after each PR/merge
   - after each batch of agent changes
@@ -192,7 +198,7 @@ See `docs/FINDINGS_BACKLOG.md` (14 items):
 - Phase 3: AdminDashboard with 3 tabs (Đặt phòng / Đã xóa / Liên hệ), lazy-per-tab fetch, `useAdminFetch<T>` hook
 - Phase 4: BookingForm — URL params pre-fill (`check_in`, `check_out`, `guests`), Vietnamese UI, `/v1/bookings` endpoint, `/v1/rooms` endpoint; `AvailabilityResponse` dead type removed
 - vi.hoisted fix in BookingForm.test.tsx (Vitest 2.x hoisting bug); 194/194 tests passing (19 suites)
-- Docs sync: COMPACT, WORKLOG, README, frontend/* all updated to reflect actual code state
+- Docs sync: COMPACT, WORKLOG, README, frontend/\* all updated to reflect actual code state
 - Git: committed on dev → pushed → merged to main (pre-push: ESLint, Prettier, tsc, 194 tests)
 
 ### Completed (2026-02-25) — CLAUDE.md creation + docs sync
@@ -312,6 +318,7 @@ Gates: no app logic changed — regressions not expected; run locally to confirm
 ## 2026-02-28 — 4-PR Batch: OPS-001 + PAY-001 + I18N-001 + TD-003
 
 ### PR-1: OPS-001 Critical (branch: `fix/ops-001-critical`, commit: `5df1d98`)
+
 - Created `docker-compose.prod.yml` (db, redis, backend, frontend services with healthchecks)
 - Created `backend/.env.production.example` (pgsql, no secrets — actual .env.production is gitignored)
 - Added multi-stage production build to `frontend/Dockerfile` (nginx:1.27-alpine)
@@ -319,12 +326,14 @@ Gates: no app logic changed — regressions not expected; run locally to confirm
 - Files: 4 new/modified
 
 ### PR-2: OPS-001 High/Med (branch: `fix/ops-001-proxy-health-rollback`, commit: `a086004`)
-- Created `Caddyfile` for auto-HTTPS reverse proxy (api/* → backend, * → frontend)
+
+- Created `Caddyfile` for auto-HTTPS reverse proxy (api/_ → backend, _ → frontend)
 - Added optional Caddy proxy service to `docker-compose.prod.yml` (--profile proxy)
 - Added Docker rollback + HTTPS setup sections to `docs/OPERATIONAL_PLAYBOOK.md`
 - Files: 3 new/modified
 
 ### PR-3: PAY-001 Bootstrap (branch: `feat/pay-001-cashier-bootstrap`, commit: `b856216`)
+
 - Installed `laravel/cashier ^16.3`
 - Added `Billable` trait to `User` model
 - Created Cashier migration (stripe_id, pm_type, pm_last_four, trial_ends_at)
@@ -336,6 +345,7 @@ Gates: no app logic changed — regressions not expected; run locally to confirm
 - Files: 7 new/modified
 
 ### PR-4: I18N-001 + TD-003 (branch: `chore/i18n-001-td-003`, commit: `ad80c15`)
+
 - Created `lang/en/booking.php` (30 keys), `lang/vi/booking.php`, `lang/en/messages.php` (17 keys), `lang/vi/messages.php`
 - Replaced hardcoded strings with `__()` in 5 controllers (BookingController, RoomController, LocationController, AdminBookingController, ContactController)
 - Set `APP_LOCALE=vi` in `.env.example`

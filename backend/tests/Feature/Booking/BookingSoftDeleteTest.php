@@ -82,7 +82,7 @@ class BookingSoftDeleteTest extends TestCase
         $response->assertStatus(200)
             ->assertJson([
                 'success' => true,
-                'message' => 'Booking cancelled successfully',
+                'message' => __('booking.deleted'),
             ]);
 
         // Booking should NOT appear in normal queries
@@ -218,7 +218,7 @@ class BookingSoftDeleteTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonPath('success', true)
-            ->assertJsonPath('message', 'Booking restored successfully.');
+            ->assertJsonPath('message', __('booking.restored'));
 
         // Booking should be active again
         $booking = Booking::find($this->booking->id);
@@ -264,7 +264,7 @@ class BookingSoftDeleteTest extends TestCase
 
         $response->assertStatus(422)
             ->assertJsonPath('success', false)
-            ->assertJsonPath('message', 'Cannot restore booking: date range conflicts with existing bookings.');
+            ->assertJsonPath('message', __('booking.restore_conflict'));
     }
 
     // ===== FORCE DELETE TESTS =====
@@ -282,7 +282,7 @@ class BookingSoftDeleteTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonPath('success', true)
-            ->assertJsonPath('message', 'Booking permanently deleted.');
+            ->assertJsonPath('message', __('booking.permanently_deleted'));
 
         // Booking should be completely gone
         $this->assertDatabaseMissing('bookings', ['id' => $bookingId]);
@@ -299,7 +299,7 @@ class BookingSoftDeleteTest extends TestCase
             ->deleteJson("/api/admin/bookings/{$this->booking->id}/force");
 
         $response->assertStatus(404)
-            ->assertJsonPath('message', 'Trashed booking not found. Only soft-deleted bookings can be permanently deleted.');
+            ->assertJsonPath('message', __('booking.trashed_not_found_force'));
     }
 
     /**
@@ -411,7 +411,7 @@ class BookingSoftDeleteTest extends TestCase
             ->postJson('/api/admin/bookings/99999/restore');
 
         $response->assertStatus(404)
-            ->assertJsonPath('message', 'Trashed booking not found.');
+            ->assertJsonPath('message', __('booking.trashed_not_found'));
     }
 
     /**

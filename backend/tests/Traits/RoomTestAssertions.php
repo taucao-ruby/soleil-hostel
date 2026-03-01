@@ -78,7 +78,7 @@ trait RoomTestAssertions
         $response->assertStatus(201)
             ->assertJson([
                 'success' => true,
-                'message' => 'Room created successfully',
+                'message' => __('messages.room_created'),
             ])
             ->assertJsonPath('data.lock_version', 1);
     }
@@ -91,7 +91,7 @@ trait RoomTestAssertions
         $response->assertStatus(200)
             ->assertJson([
                 'success' => true,
-                'message' => 'Room updated successfully',
+                'message' => __('messages.room_updated'),
             ])
             ->assertJsonPath('data.lock_version', $expectedNewVersion);
     }

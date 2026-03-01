@@ -97,7 +97,7 @@ class ConcurrentBookingTest extends TestCase
             ])
             ->assertJson([
                 'success' => true,
-                'message' => 'Booking created successfully',
+                'message' => __('booking.created'),
                 'data' => [
                     'room_id' => $this->room->id,
                     'guest_name' => 'John Doe',

@@ -36,6 +36,7 @@ class Booking extends Model
         // Cancellation audit
         'cancelled_at',
         'cancelled_by',
+        'cancellation_reason',
     ];
 
     protected $casts = [

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Services\HtmlPurifierService;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -54,9 +55,14 @@ class StoreReviewRequest extends FormRequest
     {
         $validated = parent::validated($key, $default);
 
-        // Purify HTML fields if result is an array
-        if (is_array($validated)) {
-            $validated = $this->purify(['title', 'content']);
+        if ($key !== null || ! is_array($validated)) {
+            return $validated;
+        }
+
+        foreach (['title', 'content'] as $field) {
+            if (isset($validated[$field]) && is_string($validated[$field])) {
+                $validated[$field] = HtmlPurifierService::purify($validated[$field]);
+            }
         }
 
         return $validated;

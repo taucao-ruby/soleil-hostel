@@ -54,20 +54,27 @@ const BookingForm: React.FC = () => {
 
   // Fetch available rooms on mount
   useEffect(() => {
+    const controller = new AbortController()
+
     const fetchRooms = async () => {
       try {
-        const data = await getRooms()
-        // Filter only available rooms
-        const availableRooms = data.filter(room => room.status === 'available')
-        setRooms(availableRooms)
+        const data = await getRooms(controller.signal)
+        if (!controller.signal.aborted) {
+          // Filter only available rooms
+          const availableRooms = data.filter(room => room.status === 'available')
+          setRooms(availableRooms)
+        }
       } catch (err) {
-        console.error('Failed to fetch rooms:', err)
+        if (err instanceof DOMException && err.name === 'AbortError') return
       } finally {
-        setLoadingRooms(false)
+        if (!controller.signal.aborted) {
+          setLoadingRooms(false)
+        }
       }
     }
 
     fetchRooms()
+    return () => controller.abort()
   }, [])
 
   // Calculate selected room price

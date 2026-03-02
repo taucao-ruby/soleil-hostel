@@ -19,6 +19,7 @@ function sendToAnalytics(metric: Metric): void {
   // Example: Google Analytics, Vercel Analytics, or custom endpoint
 
   if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
     console.log(`[Web Vitals] ${metric.name}:`, metric.value, metric)
   }
 

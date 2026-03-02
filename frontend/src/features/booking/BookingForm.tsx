@@ -54,20 +54,28 @@ const BookingForm: React.FC = () => {
 
   // Fetch available rooms on mount
   useEffect(() => {
+    const controller = new AbortController()
+
     const fetchRooms = async () => {
       try {
-        const data = await getRooms()
-        // Filter only available rooms
-        const availableRooms = data.filter(room => room.status === 'available')
-        setRooms(availableRooms)
+        const data = await getRooms(controller.signal)
+        if (!controller.signal.aborted) {
+          // Filter only available rooms
+          const availableRooms = data.filter(room => room.status === 'available')
+          setRooms(availableRooms)
+        }
       } catch (err) {
-        console.error('Failed to fetch rooms:', err)
+        if (err instanceof DOMException && err.name === 'AbortError') return
+        // Room fetch failure is non-critical; form remains usable
       } finally {
-        setLoadingRooms(false)
+        if (!controller.signal.aborted) {
+          setLoadingRooms(false)
+        }
       }
     }
 
     fetchRooms()
+    return () => controller.abort()
   }, [])
 
   // Calculate selected room price
@@ -115,7 +123,6 @@ const BookingForm: React.FC = () => {
         navigate('/dashboard')
       }, 2000)
     } catch (err) {
-      console.error('Booking failed:', err)
       const errorMessage =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
         'Đặt phòng thất bại. Vui lòng thử lại.'

@@ -4,8 +4,15 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import LoginPage from './LoginPage'
 
+// ── Hoisted mock state (must be declared before vi.mock factories run) ────
+const { mockNavigate, mockLoginHttpOnly, mockClearError, mockAuthRef } = vi.hoisted(() => ({
+  mockNavigate: vi.fn(),
+  mockLoginHttpOnly: vi.fn(),
+  mockClearError: vi.fn(),
+  mockAuthRef: { current: null as string | null },
+}))
+
 // Partial mock — keep real Router components, override useNavigate
-const mockNavigate = vi.fn()
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
   return {
@@ -15,14 +22,10 @@ vi.mock('react-router-dom', async () => {
 })
 
 // Mock AuthContext
-const mockLoginHttpOnly = vi.fn()
-const mockClearError = vi.fn()
-let mockAuthError: string | null = null
-
 vi.mock('./AuthContext', () => ({
   useAuth: () => ({
     loginHttpOnly: mockLoginHttpOnly,
-    error: mockAuthError,
+    error: mockAuthRef.current,
     clearError: mockClearError,
   }),
 }))
@@ -38,7 +41,7 @@ function renderLoginPage() {
 describe('LoginPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAuthError = null
+    mockAuthRef.current = null
   })
 
   it('renders the login form', () => {
@@ -104,7 +107,7 @@ describe('LoginPage', () => {
   })
 
   it('displays auth error from context', () => {
-    mockAuthError = 'Invalid credentials'
+    mockAuthRef.current = 'Invalid credentials'
     renderLoginPage()
 
     expect(screen.getByText('Invalid credentials')).toBeInTheDocument()

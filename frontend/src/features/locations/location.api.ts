@@ -18,8 +18,8 @@ import type {
  *
  * GET /v1/locations
  */
-export async function getLocations(): Promise<Location[]> {
-  const response = await api.get<LocationsResponse>('/v1/locations')
+export async function getLocations(signal?: AbortSignal): Promise<Location[]> {
+  const response = await api.get<LocationsResponse>('/v1/locations', { signal })
   return response.data.data
 }
 
@@ -44,4 +44,3 @@ export async function getLocationBySlug(
   })
   return response.data.data
 }
-

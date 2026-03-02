@@ -26,21 +26,30 @@ const LocationList: React.FC = () => {
   const navigate = useNavigate()
 
   useEffect(() => {
+    const controller = new AbortController()
+
     const fetchLocations = async () => {
       try {
         setLoading(true)
         setError(null)
-        const data = await getLocations()
-        setLocations(data)
+        const data = await getLocations(controller.signal)
+        if (!controller.signal.aborted) {
+          setLocations(data)
+        }
       } catch (err) {
-        console.error('Failed to fetch locations:', err)
-        setError('Failed to load locations. Please try again later.')
+        if (err instanceof DOMException && err.name === 'AbortError') return
+        if (!controller.signal.aborted) {
+          setError('Failed to load locations. Please try again later.')
+        }
       } finally {
-        setLoading(false)
+        if (!controller.signal.aborted) {
+          setLoading(false)
+        }
       }
     }
 
     fetchLocations()
+    return () => controller.abort()
   }, [])
 
   const cities = useMemo(() => {

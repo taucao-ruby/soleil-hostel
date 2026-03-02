@@ -66,6 +66,7 @@ const BookingForm: React.FC = () => {
         }
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return
+        // Room fetch failure is non-critical; form remains usable
       } finally {
         if (!controller.signal.aborted) {
           setLoadingRooms(false)
@@ -122,7 +123,6 @@ const BookingForm: React.FC = () => {
         navigate('/dashboard')
       }, 2000)
     } catch (err) {
-      console.error('Booking failed:', err)
       const errorMessage =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
         'Đặt phòng thất bại. Vui lòng thử lại.'

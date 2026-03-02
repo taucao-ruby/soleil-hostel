@@ -23,8 +23,8 @@ const Header: React.FC = () => {
     try {
       await logoutHttpOnly()
       navigate('/')
-    } catch (err) {
-      console.error('Logout failed:', err)
+    } catch {
+      // Logout API failure is non-critical; user is already navigating away
     }
   }
 

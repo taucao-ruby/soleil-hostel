@@ -16,6 +16,7 @@ function mountApp() {
     // Helpful debug message instead of throwing - avoids "Target container is not a DOM element"
     // when scripts execute before the body is parsed or the template doesn't include the mount node.
     // This makes the client more robust across server-rendered templates.
+    // eslint-disable-next-line no-console
     console.error('React mount failed: #root element not found in the DOM.')
     return
   }

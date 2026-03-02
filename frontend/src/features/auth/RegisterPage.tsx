@@ -92,8 +92,7 @@ const RegisterPage: React.FC = () => {
       setTimeout(() => {
         navigate('/dashboard')
       }, 1000)
-    } catch (err) {
-      console.error('Registration failed:', err)
+    } catch {
       // Error is handled by AuthContext and displayed via authError
     } finally {
       setLoading(false)

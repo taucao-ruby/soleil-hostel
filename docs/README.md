@@ -1,6 +1,6 @@
 ﻿# Soleil Hostel Documentation
 
-> **Last Updated:** March 1, 2026 | **Tests:** 790 backend tests (2245 assertions) + 218 frontend unit tests | **Status:** Phases 0-5 Complete + DevSecOps
+> **Last Updated:** March 2, 2026 | **Tests:** 857 backend tests (2430 assertions) + 226 frontend unit tests | **Status:** Phases 0-5 Complete + DevSecOps + Quality Hardening
 
 ## Quick Navigation
 
@@ -174,8 +174,9 @@ docs/
 | Email Verification    | ✅ Complete           | 26 tests      |
 | Stripe/Cashier        | ✅ Bootstrap          | 14 tests      |
 | Backend i18n          | ✅ Complete           | 9 tests       |
-| **Backend Total**     | **✅ All 16 systems** | **790 tests** |
-| Frontend (Phase 0-5)  | ✅ Complete           | 218 tests     |
+| PHPStan/Larastan      | ✅ Installed          | Baseline 151  |
+| **Backend Total**     | **✅ All 17 systems** | **857 tests** |
+| Frontend (Phase 0-5)  | ✅ Complete           | 226 tests     |
 
 ## Tech Stack
 
@@ -246,6 +247,12 @@ docs/
 
 ## Recent Updates (March 2026)
 
+### Backend Quality + Frontend Hardening (March 2, 2026)
+
+- **Batch 3**: HealthService extraction (464→~80 lines), 4 FormRequests extracted, PHPStan/Larastan installed (Level 5, baseline 151), Contact+Review tests (+19)
+- **Batch 4**: AbortController cleanup (RoomList, LocationList, BookingForm), vi.hoisted() auth mocks, no-console ESLint rule, RoomList tests (+8)
+- **Test counts**: Backend 790 → 857 (+67 tests), Frontend 218 → 226 (+8 tests, +1 suite)
+
 ### DevSecOps + Backend Hardening (March 1, 2026)
 
 - **OPS-001**: Production Docker Compose, `.env.production.example`, frontend prod Dockerfile (nginx), Caddy reverse proxy
@@ -257,7 +264,7 @@ docs/
 - **Security**: minimatch `>=10.2.3` override (GHSA-7r86, GHSA-23c5)
 - **Test counts**: Backend 769 → 790 (+21 tests), Frontend 218 (unchanged)
 
-## Updates (February 2026)
+### Updates (February 2026)
 
 ### Frontend Phases 0-4 Complete (February 25, 2026)
 

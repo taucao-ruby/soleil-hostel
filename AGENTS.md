@@ -4,6 +4,7 @@ Purpose: Long-term memory and onboarding guide for coding agents working in this
 Scope: Documentation and engineering conventions for the current `dev` branch.
 
 ## 1. Quick Project Overview
+
 - System: Monorepo for Soleil Hostel with a Laravel backend API and React TypeScript frontend.
 - Core domains:
   - Locations
@@ -18,6 +19,7 @@ Scope: Documentation and engineering conventions for the current `dev` branch.
   - Cancellation/refund flows
 
 Repo map (key paths):
+
 - `./backend/` - Laravel API, migrations, tests, auth, booking logic.
 - `./frontend/` - React + TypeScript SPA and unit tests.
 - `./docs/` - Architecture, guides, operations, database docs.
@@ -26,6 +28,7 @@ Repo map (key paths):
 - `./.github/workflows/deploy.yml` - CD pipeline.
 
 ## 2. Tech Stack and Tooling
+
 - Backend:
   - Laravel: `laravel/framework:^12.0` (from `./backend/composer.json`)
   - PHP: `^8.2`
@@ -44,7 +47,9 @@ Repo map (key paths):
   - Note: CI backend jobs in workflows run PostgreSQL services
 
 ## 3. Golden Commands (copy/paste)
+
 Required verification commands:
+
 ```bash
 cd backend && php artisan test
 cd frontend && npx tsc --noEmit
@@ -53,16 +58,19 @@ docker compose config
 ```
 
 Useful lint/format/static checks present in repo:
+
 ```bash
-cd frontend && npm run lint
-cd frontend && npm run format
+cd frontend && pnpm run lint
+cd frontend && pnpm run format
 cd backend && vendor/bin/pint --test
 cd backend && vendor/bin/phpstan analyse
 cd backend && vendor/bin/psalm
 ```
 
 ## 4. Repository Conventions (Do / Don't)
+
 Do:
+
 - Backend:
   - Keep HTTP layer thin in `./backend/app/Http/Controllers/*Controller.php`.
   - Put request validation in `./backend/app/Http/Requests/*Request.php`.
@@ -76,12 +84,14 @@ Do:
 - Follow existing naming patterns (`*Controller`, `*Request`, `*Service`, `*.api.ts`, `*.types.ts`).
 
 Don't:
+
 - Do not call `env()` in runtime application logic; use `config()` and config files.
 - Do not bypass config-backed security settings in auth/session/cookie flows.
 - Do not leak secrets or add plaintext credentials to repo/config.
 - Do not introduce wide refactors when task scope is narrow.
 
 ## 5. Architecture Decisions Snapshot
+
 - Auth model:
   - Sanctum plus custom `personal_access_tokens` fields: `token_identifier`, `token_hash`, `device_id`, `device_fingerprint`, `expires_at`, `revoked_at`, `refresh_count`, `last_rotated_at`.
   - Supports rotation/refresh and revocation checks in middleware/controllers.
@@ -96,6 +106,7 @@ Don't:
   - Pessimistic locking (`SELECT ... FOR UPDATE`) in booking/cancellation flows.
 
 ## 6. Safety and Security Guardrails
+
 - Secrets:
   - Never commit real secrets (`APP_KEY`, Redis passwords, tokens, API keys).
   - Keep `.env*` values sanitized; treat all auth artifacts as sensitive.
@@ -111,27 +122,34 @@ Don't:
   - If logic depends on Postgres-only behavior, verify against PostgreSQL before merge.
 
 ## 7. Testing and Quality Gates
+
 Definition of Done (minimum):
+
 - `cd backend && php artisan test` passes.
 - `cd frontend && npx tsc --noEmit` passes.
 - `cd frontend && npx vitest run` passes.
 - `docker compose config` passes.
 
 When changing booking logic:
+
 - Add/update overlap tests (including edge cases with adjacent dates and soft-deleted bookings).
 - Preserve half-open interval behavior `[check_in, check_out)`.
 - Keep logic compatible with PostgreSQL exclusion constraint semantics.
 
 When changing auth/token logic:
+
 - Add/update tests for token expiry, revocation, refresh rotation, and suspicious refresh behavior.
 - Verify both Bearer and HttpOnly-cookie paths when affected.
 
 When changing migrations/indexes/constraints:
+
 - Validate rollback safety and index/constraint names.
 - Verify SQLite test impact and PostgreSQL production behavior.
 
 ## 8. High-Risk Areas Checklist (for agents)
+
 Before merging changes in these areas, do an explicit risk pass:
+
 - Booking overlap checks, date boundaries, status transitions.
 - Cancellation/refund flows and idempotency behavior.
 - Auth rotation/logout/revocation, unified auth mode detection.
@@ -139,22 +157,30 @@ Before merging changes in these areas, do an explicit risk pass:
 - Docker/CI parity and environment-specific behavior.
 - Any change that affects `APP_KEY`, Redis auth, cookie config, or secret handling.
 
-## 9. Current Status Snapshot (Feb 11, 2026)
+## 9. Current Status Snapshot (Mar 2, 2026)
+
 From `./PROJECT_STATUS.md`:
-- Branch context: `dev` (recorded as 8 commits ahead of `main` on Feb 11, 2026).
-- Audit history: v1 and v2 marked complete in repo history; current repo health marked green.
-- Verified results (Feb 11, 2026):
-  - Backend: `722 tests`, `2012 assertions` via `cd backend && php artisan test`.
+
+- Branch context: `dev` (synced with `main` as of March 2, 2026).
+- Audit history: v1–v4 marked complete; current repo health marked green.
+- Verified results (Mar 2, 2026):
+  - Backend: `857 tests`, `2430 assertions` via `cd backend && php artisan test`.
   - Frontend typecheck: pass via `cd frontend && npx tsc --noEmit`.
-  - Frontend unit tests: `145 tests` in `13 files` via `cd frontend && npx vitest run`.
+  - Frontend unit tests: `226 tests` in `21 files` via `cd frontend && npx vitest run`.
   - Docker compose config validation: pass via `docker compose config`.
+  - Pint style: `275 files`, 0 violations via `cd backend && vendor/bin/pint --test`.
+  - PHPStan Level 5 with Larastan installed (baseline: 151 pre-existing errors).
 - Security/dev fixes recorded as completed:
   - No plaintext Redis secrets
   - Docker compose quoting fix
   - `APP_KEY` not regenerated each start
   - MySQL vs PostgreSQL mismatch addressed
+  - Non-root Docker production stage
+  - HSTS + security headers in Caddy
+  - CI typecheck gate added
 
 Reference docs:
+
 - Audit report: `./AUDIT_REPORT.md`
 - Audit fixes v1: `./AUDIT_FIX_PROMTS_V1.md`
 - Audit fixes v2: `./AUDIT_FIX_PROMTS_V2.md`
@@ -162,23 +188,26 @@ Reference docs:
 - Operational runbooks: `./docs/OPERATIONAL_PLAYBOOK.md`
 
 ## 10. How to Work With This Repo (agent instructions)
+
 Before coding:
+
 - Read this file first, then open only the most relevant docs under `./docs/`.
 - For backend changes, check related migrations/tests/services before editing.
 - For frontend changes, inspect the target feature folder and shared libs first.
 
 During coding:
+
 - Keep diffs small and scoped.
 - Preserve existing architecture boundaries (Controller -> Request -> Service -> Repository).
 - Avoid broad refactors unless explicitly requested.
 - Keep security and config discipline intact.
 
 Before finishing:
+
 - Run the Definition of Done commands.
 - Summarize what changed, what was validated, and any residual risk.
 - If behavior changed, update docs in the same area (not needed for docs-only tasks unless content is outdated).
 
 Unknown / verify in repo:
+
 - CI branch policy vs `dev` naming alignment (`develop` appears in workflows). Verify expected branch mapping before workflow changes.
-
-

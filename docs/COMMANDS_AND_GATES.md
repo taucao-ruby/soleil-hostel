@@ -1,6 +1,6 @@
 # Commands and Quality Gates
 
-Verified against code on 2026-02-22. Source: `composer.json`, `frontend/package.json`, root `package.json`, `.github/workflows/*.yml`, `tools/hooks/`, `mcp/soleil-mcp/policy.json`.
+Verified against code on 2026-03-02. Source: `composer.json`, `frontend/package.json`, root `package.json`, `.github/workflows/*.yml`, `tools/hooks/`, `mcp/soleil-mcp/policy.json`.
 
 ## Backend Commands
 
@@ -94,7 +94,7 @@ Expected: `Found 0 errors.` (implicit — no output means pass)
 cd frontend && npx vitest run
 ```
 
-Expected: 145 tests passed, 0 failed (as of 2026-02-21).
+Expected: 226 tests passed, 0 failed (as of 2026-03-02).
 
 CI variant:
 
@@ -148,46 +148,46 @@ npm run hooks:run:prepush  # Dry-run pre-push
 
 Triggers: PR to `main`/`dev`, push to `main`/`dev`.
 
-| Job | Commands | Expected | Blocking |
-|-----|----------|----------|----------|
-| backend-tests | `php artisan test --parallel --processes=4 --min-coverage-percentage=95` | Pass + 95% coverage | Yes |
-| booking-stress-test | `php backend/tests/stubs/concurrent_booking_test.php` (50 concurrent) | No double-bookings | Yes |
-| nplusone-detection | `php artisan test tests/Feature/NPlusOneQueriesTest.php` | Query count within threshold | Yes |
-| phpstan | `phpstan analyse --error-format=github` (Level 5) | 0 errors | Yes |
-| psalm | `psalm --output-format=github` (Level 1) | Advisory | No (continue-on-error) |
-| pint | `vendor/bin/pint --test` | 0 style violations | No (continue-on-error) |
-| lint (PHP) | `find app tests -name "*.php" \| xargs php -l` | 0 syntax errors | Yes |
-| composer-audit | `composer audit` | Advisory | No (continue-on-error) |
-| npm-audit | `pnpm audit --audit-level=high` | Advisory | No (continue-on-error) |
-| security-scan | Gitleaks action | No exposed secrets | Yes |
-| frontend-unit-tests | `pnpm test:unit --coverage` | 0 failures | Yes |
-| frontend-lint | `pnpm run build` + `pnpm run lint` | 0 errors | Yes |
+| Job                 | Commands                                                                 | Expected                     | Blocking               |
+| ------------------- | ------------------------------------------------------------------------ | ---------------------------- | ---------------------- |
+| backend-tests       | `php artisan test --parallel --processes=4 --min-coverage-percentage=95` | Pass + 95% coverage          | Yes                    |
+| booking-stress-test | `php backend/tests/stubs/concurrent_booking_test.php` (50 concurrent)    | No double-bookings           | Yes                    |
+| nplusone-detection  | `php artisan test tests/Feature/NPlusOneQueriesTest.php`                 | Query count within threshold | Yes                    |
+| phpstan             | `phpstan analyse --error-format=github` (Level 5)                        | 0 errors                     | Yes                    |
+| psalm               | `psalm --output-format=github` (Level 1)                                 | Advisory                     | No (continue-on-error) |
+| pint                | `vendor/bin/pint --test`                                                 | 0 style violations           | Yes                    |
+| lint (PHP)          | `find app tests -name "*.php" \| xargs php -l`                           | 0 syntax errors              | Yes                    |
+| composer-audit      | `composer audit`                                                         | Advisory                     | No (continue-on-error) |
+| npm-audit           | `pnpm audit --audit-level=high`                                          | Advisory                     | No (continue-on-error) |
+| security-scan       | Gitleaks action                                                          | No exposed secrets           | Yes                    |
+| frontend-unit-tests | `pnpm test:unit --coverage`                                              | 0 failures                   | Yes                    |
+| frontend-lint       | `pnpm run build` + `pnpm run lint`                                       | 0 errors                     | Yes                    |
 
 ### deploy.yml (CD)
 
 Triggers: push tags `v*`, manual workflow_dispatch.
 
-| Job | Gate | Notes |
-|-----|------|-------|
-| backend-tests | Pass before deploy | Re-runs tests with PG |
-| frontend-build | Build + lint | Uploads dist artifact |
-| e2e-tests | Playwright (tags/manual only) | Chromium, backend+frontend servers |
-| docker-build | Build + push to GHCR | Tags: semver, sha |
-| trivy-scan | Docker image vulnerability scan | Advisory |
-| deploy | Zero-downtime to Forge/Render/Coolify/SSH | Health check after deploy |
-| release | Semantic release (tags only) | GitHub release |
+| Job            | Gate                                      | Notes                              |
+| -------------- | ----------------------------------------- | ---------------------------------- |
+| backend-tests  | Pass before deploy                        | Re-runs tests with PG              |
+| frontend-build | Build + lint                              | Uploads dist artifact              |
+| e2e-tests      | Playwright (tags/manual only)             | Chromium, backend+frontend servers |
+| docker-build   | Build + push to GHCR                      | Tags: semver, sha                  |
+| trivy-scan     | Docker image vulnerability scan           | Advisory                           |
+| deploy         | Zero-downtime to Forge/Render/Coolify/SSH | Health check after deploy          |
+| release        | Semantic release (tags only)              | GitHub release                     |
 
 ## Quality Gates Summary
 
-| Gate | Command | Expected | Enforced by |
-|------|---------|----------|-------------|
-| Frontend typecheck | `npx tsc --noEmit` | 0 errors | pre-push hook, CI |
-| Frontend unit tests | `npx vitest run` | 0 failures | pre-push hook, CI |
-| Backend tests | `php artisan test` | 0 failures | pre-push hook, CI |
-| Docker validate | `docker compose config` | Valid YAML | pre-push hook (if Docker available), CI |
-| PHPStan | `phpstan analyse` | 0 errors | CI |
-| Backend coverage | `--min-coverage-percentage=95` | >= 95% | CI |
-| Gitleaks | Gitleaks action | No secrets | CI |
+| Gate                | Command                        | Expected   | Enforced by                             |
+| ------------------- | ------------------------------ | ---------- | --------------------------------------- |
+| Frontend typecheck  | `npx tsc --noEmit`             | 0 errors   | pre-push hook, CI                       |
+| Frontend unit tests | `npx vitest run`               | 0 failures | pre-push hook, CI                       |
+| Backend tests       | `php artisan test`             | 0 failures | pre-push hook, CI                       |
+| Docker validate     | `docker compose config`        | Valid YAML | pre-push hook (if Docker available), CI |
+| PHPStan             | `phpstan analyse`              | 0 errors   | CI                                      |
+| Backend coverage    | `--min-coverage-percentage=95` | >= 95%     | CI                                      |
+| Gitleaks            | Gitleaks action                | No secrets | CI                                      |
 
 ## Bypassing Hooks
 

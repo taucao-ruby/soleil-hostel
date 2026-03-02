@@ -1,20 +1,20 @@
 # BACKLOG.md — Soleil Hostel
 
 > **Product backlog — prioritized by implementation order**
-> Last updated: 2026-03-01 | Source: COMPACT.md + KNOWN_LIMITATIONS.md + FINDINGS_BACKLOG.md
+> Last updated: 2026-03-02 | Source: COMPACT.md + KNOWN_LIMITATIONS.md + FINDINGS_BACKLOG.md
 
 ---
 
 ## Status Legend
 
-| Symbol | Meaning |
-| ------ | ------- |
-| 🔴 Blocker | Blocks release or other features |
-| 🟠 High | Must be done in the current sprint |
-| 🟡 Medium | Next sprint |
-| 🟢 Low | When time permits |
-| ✅ Done | Completed |
-| ❌ Won't Do | Out of scope |
+| Symbol      | Meaning                            |
+| ----------- | ---------------------------------- |
+| 🔴 Blocker  | Blocks release or other features   |
+| 🟠 High     | Must be done in the current sprint |
+| 🟡 Medium   | Next sprint                        |
+| 🟢 Low      | When time permits                  |
+| ✅ Done     | Completed                          |
+| ❌ Won't Do | Out of scope                       |
 
 ---
 
@@ -379,53 +379,57 @@ FEAT-002 (Group Booking) → requires a new ADR before coding
 
 ## Current Sprint (Q1-2026)
 
-| Item | Assignee | Status |
-| ---- | -------- | ------ |
-| FE-001 Booking Detail Panel | — | ✅ Done (2026-02-27) |
-| FE-002 Admin Restore/Force-Delete | — | ✅ Done (2026-02-27) |
-| FE-003 Admin Pagination | — | ✅ Done (2026-02-27) |
-| TD-001 Error Response Format | — | ✅ Done (2026-02-27) |
-| TD-002 Standardize Comments | — | ✅ Done (2026-02-28) |
-| TD-003 Test Factory Completeness | — | ✅ Done (2026-03-01) |
-| I18N-001 Backend i18n | — | ✅ Done (2026-03-01) |
-| PAY-001 Stripe Bootstrap + Webhooks | — | ✅ Bootstrap Done (2026-03-01) |
-| OPS-001 Deploy Pipeline | — | 🟠 60% (infra done, deploy step pending) |
+| Item                                                          | Assignee | Status                                   |
+| ------------------------------------------------------------- | -------- | ---------------------------------------- |
+| FE-001 Booking Detail Panel                                   | —        | ✅ Done (2026-02-27)                     |
+| FE-002 Admin Restore/Force-Delete                             | —        | ✅ Done (2026-02-27)                     |
+| FE-003 Admin Pagination                                       | —        | ✅ Done (2026-02-27)                     |
+| TD-001 Error Response Format                                  | —        | ✅ Done (2026-02-27)                     |
+| TD-002 Standardize Comments                                   | —        | ✅ Done (2026-02-28)                     |
+| TD-003 Test Factory Completeness                              | —        | ✅ Done (2026-03-01)                     |
+| I18N-001 Backend i18n                                         | —        | ✅ Done (2026-03-01)                     |
+| PAY-001 Stripe Bootstrap + Webhooks                           | —        | ✅ Bootstrap Done (2026-03-01)           |
+| Batch 3 Backend Quality (H-04, H-05, M-01..M-09, M-12)        | —        | ✅ Done (2026-03-02)                     |
+| Batch 4 Frontend Quality (H-08, H-09, M-14, M-17, M-18, M-21) | —        | ✅ Done (2026-03-02)                     |
+| OPS-001 Deploy Pipeline                                       | —        | 🟠 60% (infra done, deploy step pending) |
 
 ---
 
 ## Done (reference)
 
-| Item | Completed | Notes |
-| ---- | --------- | ----- |
-| ✅ Auth system (Bearer + HttpOnly) | Dec 2025 | 44 tests |
-| ✅ Booking system (lock, soft delete, audit) | Dec 2025 | 60 tests |
-| ✅ Room management + optimistic lock | Jan 2026 | 151 tests |
-| ✅ RBAC (3 roles, enum) | Dec 2025 | 47 tests |
-| ✅ Security headers + XSS + rate limiting | Dec 2025–Jan 2026 | 91 tests |
-| ✅ Email templates + notifications | Jan 2026 | 36 tests |
-| ✅ Redis caching + event-driven invalidation | Dec 2025 | 6 tests |
-| ✅ Monitoring + health probes | Jan 2026 | 30 tests |
-| ✅ Multi-location architecture (ADR-013) | Feb 2026 | — |
-| ✅ Frontend Phase 0-4 (Dashboard, Search, Admin, Booking) | Feb 2026 | 194 tests |
-| ✅ Audit v1–v4 (20/20 findings resolved) | Feb 2026 | — |
-| ✅ CLAUDE.md governance framework | Feb 2026 | — |
-| ✅ OpenAPI 3.1 spec + Redoc | Jan 2026 | — |
-| ✅ Email verification (MustVerifyEmail) | Jan 2026 | — |
-| ✅ Branded email templates | Jan 2026 | 13 tests |
-| ✅ FE-001 Booking Detail Panel | Feb 27, 2026 | 14 tests |
-| ✅ FE-002 Admin Restore/Force-Delete | Feb 27, 2026 | 10 tests |
-| ✅ FE-003 Admin Pagination | Feb 27, 2026 | — |
-| ✅ TD-001 Standardize API Error Format | Feb 27, 2026 | 10 tests |
-| ✅ TD-002 Standardize Comments (English) | Feb 28, 2026 | — |
-| ✅ Phase 5 Clean-up (ship script, rollup CVE) | Feb 28, 2026 | — |
-| ✅ OPS-001 Infra (prod compose, Caddy, Docker hardening) | Mar 1, 2026 | — |
-| ✅ PAY-001 Cashier Bootstrap + Stripe Webhooks | Mar 1, 2026 | 14 tests |
-| ✅ I18N-001 Backend i18n (47 keys, en + vi) | Mar 1, 2026 | 9 tests |
-| ✅ TD-003 BookingFactory helpers | Mar 1, 2026 | — |
-| ✅ DevSecOps Batch 1 (Redis, Caddy, CI gates) | Mar 1, 2026 | — |
-| ✅ Batch 2 Backend Fixes (C-01, C-02, H-01, H-03) | Mar 1, 2026 | 21 tests |
-| ✅ minimatch CVE fix (GHSA-7r86, GHSA-23c5) | Mar 1, 2026 | — |
+| Item                                                                                          | Completed         | Notes     |
+| --------------------------------------------------------------------------------------------- | ----------------- | --------- |
+| ✅ Auth system (Bearer + HttpOnly)                                                            | Dec 2025          | 44 tests  |
+| ✅ Booking system (lock, soft delete, audit)                                                  | Dec 2025          | 60 tests  |
+| ✅ Room management + optimistic lock                                                          | Jan 2026          | 151 tests |
+| ✅ RBAC (3 roles, enum)                                                                       | Dec 2025          | 47 tests  |
+| ✅ Security headers + XSS + rate limiting                                                     | Dec 2025–Jan 2026 | 91 tests  |
+| ✅ Email templates + notifications                                                            | Jan 2026          | 36 tests  |
+| ✅ Redis caching + event-driven invalidation                                                  | Dec 2025          | 6 tests   |
+| ✅ Monitoring + health probes                                                                 | Jan 2026          | 30 tests  |
+| ✅ Multi-location architecture (ADR-013)                                                      | Feb 2026          | —         |
+| ✅ Frontend Phase 0-4 (Dashboard, Search, Admin, Booking)                                     | Feb 2026          | 194 tests |
+| ✅ Audit v1–v4 (20/20 findings resolved)                                                      | Feb 2026          | —         |
+| ✅ CLAUDE.md governance framework                                                             | Feb 2026          | —         |
+| ✅ OpenAPI 3.1 spec + Redoc                                                                   | Jan 2026          | —         |
+| ✅ Email verification (MustVerifyEmail)                                                       | Jan 2026          | —         |
+| ✅ Branded email templates                                                                    | Jan 2026          | 13 tests  |
+| ✅ FE-001 Booking Detail Panel                                                                | Feb 27, 2026      | 14 tests  |
+| ✅ FE-002 Admin Restore/Force-Delete                                                          | Feb 27, 2026      | 10 tests  |
+| ✅ FE-003 Admin Pagination                                                                    | Feb 27, 2026      | —         |
+| ✅ TD-001 Standardize API Error Format                                                        | Feb 27, 2026      | 10 tests  |
+| ✅ TD-002 Standardize Comments (English)                                                      | Feb 28, 2026      | —         |
+| ✅ Phase 5 Clean-up (ship script, rollup CVE)                                                 | Feb 28, 2026      | —         |
+| ✅ OPS-001 Infra (prod compose, Caddy, Docker hardening)                                      | Mar 1, 2026       | —         |
+| ✅ PAY-001 Cashier Bootstrap + Stripe Webhooks                                                | Mar 1, 2026       | 14 tests  |
+| ✅ I18N-001 Backend i18n (47 keys, en + vi)                                                   | Mar 1, 2026       | 9 tests   |
+| ✅ TD-003 BookingFactory helpers                                                              | Mar 1, 2026       | —         |
+| ✅ DevSecOps Batch 1 (Redis, Caddy, CI gates)                                                 | Mar 1, 2026       | —         |
+| ✅ Batch 2 Backend Fixes (C-01, C-02, H-01, H-03)                                             | Mar 1, 2026       | 21 tests  |
+| ✅ minimatch CVE fix (GHSA-7r86, GHSA-23c5)                                                   | Mar 1, 2026       | —         |
+| ✅ Batch 3: HealthService extraction, FormRequests, PHPStan/Larastan, Contact+Review tests    | Mar 2, 2026       | 67 tests  |
+| ✅ Batch 4: AbortController cleanup, vi.hoisted auth mocks, no-console ESLint, RoomList tests | Mar 2, 2026       | 8 tests   |
 
 ---
 
-*See product goals at [PRODUCT_GOAL.md](./PRODUCT_GOAL.md) — See project health at [PROJECT_STATUS.md](./PROJECT_STATUS.md)*
+_See product goals at [PRODUCT_GOAL.md](./PRODUCT_GOAL.md) — See project health at [PROJECT_STATUS.md](./PROJECT_STATUS.md)_

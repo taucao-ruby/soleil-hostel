@@ -284,36 +284,30 @@ Email sending is fire-and-forget. No delivery confirmation or retry on failure.
 ### LIM-008: No Internationalization (i18n)
 
 **Impact**: Low  
-**Status**: Planned  
+**Status**: Partially Resolved  
 **Affected**: UI, emails, error messages
 
 #### Description
 
-All text is hardcoded in English. No language switching capability.
+Backend i18n completed (March 2026): 47 translation keys (en + vi), `__()` helper in 5 controllers. Frontend strings remain hardcoded in Vietnamese with some English exceptions (LoginPage, RegisterPage).
 
 #### Consequences
 
-- English-only interface
-- Cannot localize for other markets
-- Date/currency formats fixed
+- Frontend has no language switching capability
+- Some pages have mixed Vietnamese/English text
+- Date/currency formats not yet localized
 
 #### Current Hardcoded Text
 
 ```php
-// Notifications
-->subject('🎉 Booking Confirmed - Soleil Hostel')
-
-// Validation messages
-'email' => 'The email must be a valid email address.'
-
-// Error messages
-'Room not available for selected dates'
+// Backend: now uses __() helper (resolved)
+__('booking.confirmed')
+__('messages.not_found')
 ```
 
 #### Planned Resolution
 
-- Laravel's `__()` helper for all strings
-- Translation files in `resources/lang/`
+- Frontend i18n library (I18N-002) for language switching
 - Date/currency localization via Carbon
 
 ---
@@ -354,41 +348,28 @@ Audit logs (soft-deleted records, activity logs) grow indefinitely.
 
 ### TD-001: Mixed Vietnamese/English Comments
 
-**Status**: Low Priority  
+**Status**: ~~Low Priority~~ **Resolved** (2026-02-28, TD-002)  
 **Affected**: Code readability
 
-Some code comments are in Vietnamese (e.g., `CreateBookingService`). Should be standardized to English.
+All backend comments translated to English across 13 PHP files.
 
 ---
 
 ### TD-002: Inconsistent Error Response Format
 
-**Status**: Medium Priority  
+**Status**: ~~Medium Priority~~ **Resolved** (2026-02-27, TD-001 in BACKLOG)  
 **Affected**: API consumers
 
-Some errors return different structures:
-
-```json
-// Standard format
-{"message": "Error message", "errors": {...}}
-
-// Some exceptions
-{"error": "Error message"}
-```
-
-**Resolution**: Standardize via exception handler.
+Standardized via `ApiResponse` trait with `trace_id`, unified exception handler. 10 tests.
 
 ---
 
 ### TD-003: Test Data Factories Not Comprehensive
 
-**Status**: Low Priority  
+**Status**: ~~Low Priority~~ **Resolved** (2026-03-01)  
 **Affected**: Test isolation
 
-Some factories don't cover all edge cases:
-
-- No factory for expired bookings
-- No factory for multi-day bookings with specific dates
+Added `BookingFactory::expired()`, `cancelledByAdmin()`, `multiDay()` methods.
 
 ---
 
@@ -430,17 +411,17 @@ Cannot book multiple rooms in a single transaction.
 
 The following critical/high-severity issues were identified during the v2 audit. See [AUDIT_REPORT.md](../AUDIT_REPORT.md) for full details.
 
-| ID         | Severity | Issue                                                           | Status  |
-| ---------- | -------- | --------------------------------------------------------------- | ------- |
-| BE-NEW-01  | CRITICAL | Cookie lifetime calculation bug (sessions expire too soon)      | Pending |
-| SEC-NEW-01 | CRITICAL | Revoked tokens work on unified auth endpoints                   | Pending |
-| DV-NEW-01  | CRITICAL | APP_KEY regenerated on every Docker start                       | Pending |
-| DV-NEW-02  | CRITICAL | CI tests run MySQL but production uses PostgreSQL               | Pending |
-| SEC-NEW-02 | CRITICAL | Redis password committed to VCS in plaintext                    | Pending |
-| DV-NEW-03  | CRITICAL | Redis password hardcoded in Docker healthcheck                  | Pending |
-| BE-NEW-02  | HIGH     | Rate limit middleware runs business logic before throttle check | Pending |
-| BE-NEW-03  | HIGH     | `cancellation_reason` column queried but never created          | Pending |
-| SEC-NEW-03 | HIGH     | Legacy token creation has no expiration                         | Pending |
+| ID         | Severity | Issue                                                           | Status |
+| ---------- | -------- | --------------------------------------------------------------- | ------ |
+| BE-NEW-01  | CRITICAL | Cookie lifetime calculation bug (sessions expire too soon)      | Fixed  |
+| SEC-NEW-01 | CRITICAL | Revoked tokens work on unified auth endpoints                   | Fixed  |
+| DV-NEW-01  | CRITICAL | APP_KEY regenerated on every Docker start                       | Fixed  |
+| DV-NEW-02  | CRITICAL | CI tests run MySQL but production uses PostgreSQL               | Fixed  |
+| SEC-NEW-02 | CRITICAL | Redis password committed to VCS in plaintext                    | Fixed  |
+| DV-NEW-03  | CRITICAL | Redis password hardcoded in Docker healthcheck                  | Fixed  |
+| BE-NEW-02  | HIGH     | Rate limit middleware runs business logic before throttle check | Fixed  |
+| BE-NEW-03  | HIGH     | `cancellation_reason` column queried but never created          | Fixed  |
+| SEC-NEW-03 | HIGH     | Legacy token creation has no expiration                         | Fixed  |
 
 ---
 

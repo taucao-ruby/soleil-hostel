@@ -13,7 +13,7 @@ import { Room, RoomsResponse } from './room.types'
  * GET /rooms
  * Returns list of all available rooms
  */
-export async function getRooms(): Promise<Room[]> {
-  const response = await api.get<RoomsResponse>('/v1/rooms')
+export async function getRooms(signal?: AbortSignal): Promise<Room[]> {
+  const response = await api.get<RoomsResponse>('/v1/rooms', { signal })
   return response.data.data
 }

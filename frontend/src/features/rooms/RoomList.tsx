@@ -25,21 +25,30 @@ const RoomList: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    const controller = new AbortController()
+
     const fetchRooms = async () => {
       try {
         setLoading(true)
         setError(null)
-        const data = await getRooms()
-        setRooms(data)
+        const data = await getRooms(controller.signal)
+        if (!controller.signal.aborted) {
+          setRooms(data)
+        }
       } catch (err) {
-        console.error('Failed to fetch rooms:', err)
-        setError('Failed to load rooms. Please try again later.')
+        if (err instanceof DOMException && err.name === 'AbortError') return
+        if (!controller.signal.aborted) {
+          setError('Failed to load rooms. Please try again later.')
+        }
       } finally {
-        setLoading(false)
+        if (!controller.signal.aborted) {
+          setLoading(false)
+        }
       }
     }
 
     fetchRooms()
+    return () => controller.abort()
   }, [])
 
   /**

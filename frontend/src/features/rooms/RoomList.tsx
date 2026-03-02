@@ -31,8 +31,7 @@ const RoomList: React.FC = () => {
         setError(null)
         const data = await getRooms()
         setRooms(data)
-      } catch (err) {
-        console.error('Failed to fetch rooms:', err)
+      } catch {
         setError('Failed to load rooms. Please try again later.')
       } finally {
         setLoading(false)

@@ -32,8 +32,7 @@ const LocationList: React.FC = () => {
         setError(null)
         const data = await getLocations()
         setLocations(data)
-      } catch (err) {
-        console.error('Failed to fetch locations:', err)
+      } catch {
         setError('Failed to load locations. Please try again later.')
       } finally {
         setLoading(false)

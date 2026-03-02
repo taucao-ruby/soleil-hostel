@@ -69,8 +69,7 @@ const LoginPage: React.FC = () => {
       setTimeout(() => {
         navigate('/dashboard')
       }, 500)
-    } catch (err) {
-      console.error('Login failed:', err)
+    } catch {
       // Error is handled by AuthContext and displayed via authError
     } finally {
       setLoading(false)

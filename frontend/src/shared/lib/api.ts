@@ -146,7 +146,11 @@ api.interceptors.response.use(
         }
 
         // Only log if it's not a 401 (401 means not logged in - expected)
-        if (!isAxiosError(refreshError) || refreshError.response?.status !== 401) {
+        if (
+          import.meta.env.DEV &&
+          (!isAxiosError(refreshError) || refreshError.response?.status !== 401)
+        ) {
+          // eslint-disable-next-line no-console
           console.error('Token refresh failed:', refreshError)
         }
 

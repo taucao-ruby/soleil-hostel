@@ -226,8 +226,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null)
       clearCsrfToken()
       setError(null)
-    } catch (err) {
-      console.error('Logout error:', err)
+    } catch {
       // Even if API call fails, clear local state
       setUser(null)
       clearCsrfToken()

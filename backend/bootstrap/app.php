@@ -35,8 +35,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // ========== Register global middleware ==========
         // Correlation ID should run first for request tracing
         $middleware->prepend(\App\Http\Middleware\AddCorrelationId::class);
-        // CORS must run early to handle preflight requests
-        $middleware->prepend(\App\Http\Middleware\Cors::class);
+        // CORS handled by Laravel's built-in HandleCors via config/cors.php (M-08)
         // SecurityHeaders must run early in the pipeline (before response is finalized)
         $middleware->prepend(\App\Http\Middleware\SecurityHeaders::class);
         // Performance logging runs at the end to capture full request duration

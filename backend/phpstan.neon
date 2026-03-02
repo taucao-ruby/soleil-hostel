@@ -1,3 +1,6 @@
+includes:
+  - vendor/larastan/larastan/extension.neon
+
 parameters:
   level: 5
 
@@ -11,68 +14,25 @@ parameters:
   reportUnmatchedIgnoredErrors: false
 
   ignoreErrors:
-    # ====== Laravel Framework (without larastan) ======
-    # Eloquent magic static methods (where, find, create, etc.)
-    - '#Call to an undefined static method App\\Models\\#'
-    # Laravel Facades (Log, Redis, Blade, Octane)
-    - '#on an unknown class (Log|Redis|Blade|Octane)#'
-    # Illuminate undefined methods (query builder, relations, collections)
-    - '#Call to an undefined method Illuminate\\#'
-    - '#Call to an undefined static method Illuminate\\#'
-    - '#Access to an undefined property#'
-    # App-level dynamic methods (traits, macros, event listeners)
-    - '#Call to an undefined method App\\#'
-    # Symfony Response methods wrapped by Laravel
-    - '#Call to an undefined method Symfony\\Component\\HttpFoundation\\Response::#'
-
     # ====== Optional Dependencies (not in composer.json) ======
     - '#Stripe\\#'
     - '#Laravel\\Octane#'
-    - '#App\\Octane#'
-
-    # ====== Eloquent Scope/Relation Return Types ======
-    - '#should return Illuminate\\Database\\Eloquent\\Builder but returns Illuminate\\Database\\Query\\Builder#'
-    - '#should return Illuminate\\Database\\Eloquent\\Relations\\.+ but returns#'
 
     # ====== PHPDoc ======
     - '#PHPDoc tag .+ has invalid value#'
     - '#PHPDoc tag .+ references unknown parameter#'
-    - '#PHPDoc type .+ is not covariant with#'
-
-    # ====== Generic/Template Types ======
-    - '#Template type .+ is not referenced in a parameter#'
-    - '#contains unresolvable type#'
-
-    # ====== Defensive is_array() checks on already-typed arrays ======
-    - '#Call to function is_array\(\) with .* will always evaluate to true#'
 
     # ====== Defensive Coding (null-safe, null-coalesce, isset) ======
     - '#Using nullsafe .+ on non-nullable type#'
     - '#on left side of \?\? always exists and is not nullable#'
-    - '#on left side of \?\? is unnecessary#'
     - '#Expression on left side of \?\? is not nullable#'
-    - '#in isset\(\) always exists and is not nullable#'
 
     # ====== Dead Code (common in DI/event-driven Laravel apps) ======
     - '#Property .+ is never read, only written#'
-    - '#is never assigned .+ so it can be removed from the property type#'
     - '#Constant .+ is unused#'
-    - '#Method .+ is unused#'
-
-    # ====== Control Flow (defensive/daemon patterns) ======
-    - '#While loop condition is always true#'
-    - '#Unreachable statement#'
-    - '#If condition is always true#'
-    - '#Right side of .+ is always true#'
-
-    # ====== Method Override Compatibility ======
-    - '#should return array<string, mixed> but returns array<int\|string, mixed>#'
 
     # ====== Type Coercion (config values, header values) ======
-    - '#Parameter .+ of function sleep expects int#'
-    - '#expects array\|string, int given#'
     - '#Cannot access property .+ on object\|string#'
-    - '#Parameter .+ of function implode expects#'
 
   typeAliases:
     ID: 'int|string'

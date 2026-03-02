@@ -2,12 +2,12 @@
 
 ## 1) Current Snapshot (keep under 12 lines)
 
-- Date updated: 2026-03-01
-- Current branch: `dev` (synced with `main`; all work committed and pushed)
+- Date updated: 2026-03-02
+- Current branch: `refactor/batch-3-backend-quality` (from `dev`)
 - Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (218 tests, 20 suites) — verified 2026-03-01
-- Backend test baseline: `cd backend && php artisan test` (790 tests, 2245 assertions) — verified 2026-03-01
-- Pint baseline: `cd backend && vendor/bin/pint --test` (264 files, 0 violations) — verified 2026-03-01
-- Progress summary: OPS-001, PAY-001, I18N-001+TD-003, DevSecOps, Batch 2 Fixes, docs sync complete
+- Backend test baseline: `cd backend && php artisan test` (857 tests, 2430 assertions) — verified 2026-03-02
+- Pint baseline: `cd backend && vendor/bin/pint --test` (275 files, 0 violations) — verified 2026-03-02
+- Progress summary: OPS-001, PAY-001, I18N-001+TD-003, DevSecOps, Batch 2+3 Fixes, docs sync complete
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
 ## 2) What matters (invariants / guardrails)
@@ -236,9 +236,10 @@ See `docs/FINDINGS_BACKLOG.md` (14 items):
 
 - F-21: Translate LoginPage + RegisterPage to Vietnamese
 - Frontend i18n: wire react-i18next or equivalent for frontend strings
+- H-06: Switch test DB to PostgreSQL (blocked: no documented process, needs Docker for all devs)
+- M-11: Migration squashing (blocked: no documented squash process, deploy risk)
+- F-24: Fix PersonalAccessToken HasUuids + integer PK conflict
 - Dashboard Phase 5+: Booking detail panel enhancements
-- PWA / offline support
-- Stripe webhook handlers: implement payment_intent.succeeded + charge.refunded logic
 
 ## 2026-02-27 — FE-001: Booking Detail Panel
 
@@ -423,3 +424,52 @@ C-04, H-10, H-11, H-14, M-26, M-27, M-28
 ### Residual
 - F-24: Auth controllers use Query Builder for token creation; requires `HasUuids` fix before switching to Eloquent (see FINDINGS_BACKLOG.md)
 - M-06, M-07, L-06: Validation rules already meet standards (verified: `password min:8`, `guest_name min:2`, `max_guests integer|min:1`)
+
+## 2026-03-02 — Batch 3: Backend Refactoring & Testing Coverage
+
+### PR-1: refactor/health-service (M-01, M-12)
+- Extracted 464-line HealthController into HealthService + thin controller (~80 lines)
+- Service methods: basicCheck(), readinessCheck(), detailedCheck(), checkComponent()
+- Added 15 feature tests + 15 unit tests for health endpoints
+- Files: `app/Services/HealthService.php` (new), `app/Http/Controllers/HealthController.php`, `tests/Feature/Health/HealthEndpointTest.php` (new), `tests/Unit/Services/HealthServiceTest.php` (new)
+
+### PR-2: refactor/controllers-formrequests (M-02..M-05, L-03)
+- Created 4 FormRequest classes: BulkRestoreBookingsRequest, StoreContactRequest, ShowLocationRequest, LocationAvailabilityRequest
+- Updated AdminBookingController, ContactController, LocationController to use FormRequests
+- StoreContactRequest includes HTML purification in validated() override
+- RoomController already compliant (L-03 verified as resolved)
+- Added 15 validation tests
+- Files: 4 new FormRequests, 3 controllers modified, 1 test file (new)
+
+### PR-3: cleanup/routes-cors-debug (M-08, M-09)
+- Removed debug /test route from web.php (M-09)
+- Removed custom Cors middleware from global stack; switched to Laravel's built-in HandleCors via config/cors.php (M-08)
+- Updated config/cors.php with explicit methods/headers matching prior behavior
+- Updated CORS tests for HandleCors 204 preflight + added disallowed-origin test
+- Added DebugRouteTest verifying /test returns 404
+- Files: `routes/web.php`, `config/cors.php`, `bootstrap/app.php`, 2 test files
+
+### PR-4: quality/static-analysis + tests (H-04, H-05)
+- Installed phpstan/phpstan ^2.1 + larastan/larastan ^3.9
+- Updated phpstan.neon with Larastan extension; generated baseline (151 errors)
+- Added 10 Contact endpoint tests (store, XSS, admin index/read)
+- Added 9 Review model tests (scopes, relationships, purification)
+- H-06 (PostgreSQL test DB) DEFERRED: no documented process; needs Docker running
+
+### PR-5: migrations-squash — BLOCKED
+- No documented migration-squash process in repo
+- Cannot prove deploy safety without coordination
+- Recommendation: use `php artisan schema:dump --prune` after verifying all environments are aligned
+
+### Gates
+- `php artisan test`: 857 tests, 2430 assertions ✅ (was 790/2245)
+- `vendor/bin/pint --test`: 275 files, 0 violations ✅
+- `vendor/bin/phpstan analyse`: installed, baseline generated (151 pre-existing errors)
+- Frontend: not touched — [SKIPPED]
+- `docker compose config`: not touched — [SKIPPED]
+
+### Residual
+- H-06: PostgreSQL test DB switch — needs documented process + Docker requirement
+- M-11: Migration squashing — needs schema:dump workflow + deploy coordination
+- L-01, L-02, L-04, L-05, L-07, L-08: Low-priority items without clear code evidence in current scan; may need specific issue descriptions to locate
+- Custom `app/Http/Middleware/Cors.php` file retained (not deleted) for reference; no longer registered in middleware stack

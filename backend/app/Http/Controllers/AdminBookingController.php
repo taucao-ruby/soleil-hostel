@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\BulkRestoreBookingsRequest;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
 use App\Services\BookingService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 /**
  * AdminBookingController - Admin-only booking management
@@ -164,14 +164,9 @@ class AdminBookingController extends Controller
      *
      * @param  array  $ids  Array of booking IDs to restore
      */
-    public function restoreBulk(Request $request): JsonResponse
+    public function restoreBulk(BulkRestoreBookingsRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'ids' => 'required|array|min:1',
-            'ids.*' => 'integer|exists:bookings,id',
-        ]);
-
-        $ids = $validated['ids'];
+        $ids = $request->validated('ids');
 
         $restored = 0;
         $failed = [];

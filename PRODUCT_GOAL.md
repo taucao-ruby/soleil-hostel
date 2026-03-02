@@ -1,7 +1,7 @@
 # PRODUCT_GOAL.md — Soleil Hostel
 
 > **Product goals and strategic direction**
-> Last updated: 2026-03-01
+> Last updated: 2026-03-02
 
 ---
 
@@ -15,11 +15,11 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 
 ## 2. Target Users
 
-| Group | Description | Core Need |
-| ----- | ----------- | --------- |
-| **Guest** | Domestic and international travelers visiting Hue | Find rooms, book quickly, view and cancel their own bookings |
-| **Moderator** | Staff at Soleil properties | View booking lists, handle contact requests |
-| **Admin** | System and operations managers | Manage all bookings, restore, force-delete, reporting |
+| Group         | Description                                       | Core Need                                                    |
+| ------------- | ------------------------------------------------- | ------------------------------------------------------------ |
+| **Guest**     | Domestic and international travelers visiting Hue | Find rooms, book quickly, view and cancel their own bookings |
+| **Moderator** | Staff at Soleil properties                        | View booking lists, handle contact requests                  |
+| **Admin**     | System and operations managers                    | Manage all bookings, restore, force-delete, reporting        |
 
 ---
 
@@ -43,37 +43,41 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 
 ### Backend (Laravel 12) — 99% complete
 
-| Module | Status | Tests |
-| ------ | ------ | ----- |
-| Authentication (Bearer + HttpOnly cookie, 2FA-ready) | ✅ Complete | 44 tests |
-| Booking system (create, cancel, soft delete, audit) | ✅ Complete | 60 tests |
-| Booking email notifications | ✅ Complete | 23 tests |
-| Branded email templates | ✅ Complete | 13 tests |
-| Stripe/Cashier integration | ✅ Bootstrap | 14 tests |
-| Backend i18n (en + vi) | ✅ Complete | 9 tests |
-| Room management (optimistic locking, status) | ✅ Complete | 151 tests |
-| RBAC (3 roles: user / moderator / admin) | ✅ Complete | 47 tests |
-| Security headers (CSP, HSTS, XSS) | ✅ Complete | 14 tests |
-| XSS Protection (HTML Purifier) | ✅ Complete | 48 tests |
-| Rate Limiting (multi-tier) | ✅ Complete | 29 tests |
-| Redis Caching (event-driven invalidation) | ✅ Complete | 6 tests |
-| Monitoring & Health probes | ✅ Complete | 30 tests |
-| Optimistic Locking (rooms + locations) | ✅ Complete | 24 tests |
-| Repository Layer | ✅ Complete | 53 tests |
-| Email Verification | ✅ Complete | 26 tests |
-| **Backend total** | **✅ 16 systems** | **790 tests** |
+| Module                                               | Status            | Tests         |
+| ---------------------------------------------------- | ----------------- | ------------- |
+| Authentication (Bearer + HttpOnly cookie, 2FA-ready) | ✅ Complete       | 44 tests      |
+| Booking system (create, cancel, soft delete, audit)  | ✅ Complete       | 60 tests      |
+| Booking email notifications                          | ✅ Complete       | 23 tests      |
+| Branded email templates                              | ✅ Complete       | 13 tests      |
+| Stripe/Cashier integration                           | ✅ Bootstrap      | 14 tests      |
+| Backend i18n (en + vi)                               | ✅ Complete       | 9 tests       |
+| Room management (optimistic locking, status)         | ✅ Complete       | 151 tests     |
+| RBAC (3 roles: user / moderator / admin)             | ✅ Complete       | 47 tests      |
+| Security headers (CSP, HSTS, XSS)                    | ✅ Complete       | 14 tests      |
+| XSS Protection (HTML Purifier)                       | ✅ Complete       | 48 tests      |
+| Rate Limiting (multi-tier)                           | ✅ Complete       | 29 tests      |
+| Redis Caching (event-driven invalidation)            | ✅ Complete       | 6 tests       |
+| Monitoring & Health probes                           | ✅ Complete       | 30 tests      |
+| Optimistic Locking (rooms + locations)               | ✅ Complete       | 24 tests      |
+| Repository Layer                                     | ✅ Complete       | 53 tests      |
+| Email Verification                                   | ✅ Complete       | 26 tests      |
+| PHPStan/Larastan (Level 5)                           | ✅ Installed      | Baseline 151  |
+| **Backend total**                                    | **✅ 17 systems** | **857 tests** |
 
-### Frontend (React 19 + TypeScript) — 95% complete
+### Frontend (React 19 + TypeScript) — 96% complete
 
-| Phase | Feature | Status |
-| ----- | ------- | ------ |
-| Phase 0 | DashboardPage lazy-loaded, ProtectedRoute, role-based routing | ✅ Complete |
-| Phase 1 | GuestDashboard: booking list, filter tabs, cancel with confirm | ✅ Complete |
-| Phase 2 | SearchCard wired to live API `/v1/locations`, navigate with URL params | ✅ Complete |
-| Phase 3 | AdminDashboard: 3 tabs (Bookings / Trashed / Contacts), lazy fetch | ✅ Complete |
-| Phase 4 | BookingForm: URL param pre-fill, Vietnamese UI, v1 endpoints | ✅ Complete |
-| Phase 5 | Booking detail panel, admin restore/force-delete, pagination | ✅ Complete |
-| Phase 5+ | Payment UI, i18n, PWA | 🔄 Next |
+| Phase    | Feature                                                                      | Status      |
+| -------- | ---------------------------------------------------------------------------- | ----------- |
+| Phase 0  | DashboardPage lazy-loaded, ProtectedRoute, role-based routing                | ✅ Complete |
+| Phase 1  | GuestDashboard: booking list, filter tabs, cancel with confirm               | ✅ Complete |
+| Phase 2  | SearchCard wired to live API `/v1/locations`, navigate with URL params       | ✅ Complete |
+| Phase 3  | AdminDashboard: 3 tabs (Bookings / Trashed / Contacts), lazy fetch           | ✅ Complete |
+| Phase 4  | BookingForm: URL param pre-fill, Vietnamese UI, v1 endpoints                 | ✅ Complete |
+| Phase 5  | Booking detail panel, admin restore/force-delete, pagination                 | ✅ Complete |
+| Quality  | AbortController cleanup, vi.hoisted mocks, no-console ESLint, RoomList tests | ✅ Complete |
+| Phase 5+ | Payment UI, i18n, PWA                                                        | 🔄 Next     |
+
+**Frontend tests:** 226 tests across 21 suites (verified March 2, 2026)
 
 ### Multi-Location Architecture
 
@@ -85,15 +89,15 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 
 ## 5. Technology Stack
 
-| Layer | Technology |
-| ----- | ---------- |
-| Frontend | React 19, TypeScript 5.7, Vite 6, TailwindCSS 3, Vitest 2 |
-| Backend | Laravel 12, PHP 8.2+, Sanctum (custom token columns) |
-| Database | PostgreSQL 16 (production), SQLite in-memory (tests) |
-| Cache / Queue | Redis 7 |
-| Infrastructure | Docker Compose, GitHub Actions CI |
-| API Spec | OpenAPI 3.1 (Redoc interactive docs) |
-| Monitoring | Sentry, structured JSON logging, Correlation ID, Health probes |
+| Layer          | Technology                                                     |
+| -------------- | -------------------------------------------------------------- |
+| Frontend       | React 19, TypeScript 5.7, Vite 6, TailwindCSS 3, Vitest 2      |
+| Backend        | Laravel 12, PHP 8.2+, Sanctum (custom token columns)           |
+| Database       | PostgreSQL 16 (production), SQLite in-memory (tests)           |
+| Cache / Queue  | Redis 7                                                        |
+| Infrastructure | Docker Compose, GitHub Actions CI                              |
+| API Spec       | OpenAPI 3.1 (Redoc interactive docs)                           |
+| Monitoring     | Sentry, structured JSON logging, Correlation ID, Health probes |
 
 ---
 
@@ -110,13 +114,13 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 
 ## 7. Business Goals
 
-| Goal | Success Metric |
-| ---- | -------------- |
-| Reduce booking time | < 3 minutes from search to confirmation |
-| Zero double-bookings | 0 overlapping reservations on the same room |
-| Controlled cancellations | Admin processes requests within 24 hours |
-| System uptime | ≥ 99.5% (SLA target) |
-| API response time | < 200ms p95 for booking endpoints |
+| Goal                     | Success Metric                              |
+| ------------------------ | ------------------------------------------- |
+| Reduce booking time      | < 3 minutes from search to confirmation     |
+| Zero double-bookings     | 0 overlapping reservations on the same room |
+| Controlled cancellations | Admin processes requests within 24 hours    |
+| System uptime            | ≥ 99.5% (SLA target)                        |
+| API response time        | < 200ms p95 for booking endpoints           |
 
 ---
 
@@ -148,6 +152,8 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 [DONE] Q1-2026  — Phase 5 clean-up: TD-002 (comments EN), ship script, rollup CVE fix
 [DONE] Q1-2026  — DevSecOps: Docker/Redis/Caddy hardening, CI gates, Cashier bootstrap
 [DONE] Q1-2026  — Backend i18n (47 keys), Stripe webhooks, review purification fix
+[DONE] Q1-2026  — Batch 3: HealthService extraction, FormRequests, PHPStan/Larastan, Contact+Review tests
+[DONE] Q1-2026  — Batch 4: AbortController cleanup, vi.hoisted auth mocks, no-console ESLint, RoomList tests
 [NEXT] Q2-2026  — Payment checkout UI (Stripe/VNPay), frontend i18n, PWA
 [NEXT] Q2-2026  — Deployment pipeline complete (currently 60%)
 [PLAN] Q3-2026  — Webhook system, email delivery tracking, audit log retention
@@ -155,4 +161,4 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 
 ---
 
-*See technical details at [docs/README.md](./docs/README.md) — See full backlog at [BACKLOG.md](./BACKLOG.md)*
+_See technical details at [docs/README.md](./docs/README.md) — See full backlog at [BACKLOG.md](./BACKLOG.md)_

@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreContactRequest;
 use App\Models\ContactMessage;
-use App\Services\HtmlPurifierService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,31 +20,10 @@ class ContactController extends Controller
      * - message is purified using HTML Purifier whitelist
      * - Regex blacklist = 99% bypass. HTML Purifier = 0% bypass.
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreContactRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255',
-            'subject' => 'nullable|string|max:255',
-            'message' => 'required|string|max:5000',
-        ], [
-            'name.required' => __('messages.contact_name_required'),
-            'name.max' => __('messages.contact_name_max'),
-            'email.required' => __('messages.contact_email_required'),
-            'email.email' => __('messages.contact_email_email'),
-            'subject.max' => __('messages.contact_subject_max'),
-            'message.required' => __('messages.contact_message_required'),
-            'message.max' => __('messages.contact_message_max'),
-        ]);
+        $validated = $request->validated();
 
-        // Purify name, subject, and message using HTML Purifier (whitelist approach, not regex blacklist)
-        // SEC-NEW-06: Purify all text inputs to prevent XSS
-        $validated['name'] = HtmlPurifierService::purify($validated['name']);
-        $validated['subject'] = HtmlPurifierService::purify($validated['subject'] ?? '');
-        $validated['message'] = HtmlPurifierService::purify($validated['message']);
-
-        // Persist the contact message to database
-        // Note: ContactMessage model also has Purifiable trait as additional layer
         $contactMessage = ContactMessage::create($validated);
 
         // Log as additional audit trail with masked email

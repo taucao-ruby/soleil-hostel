@@ -2,107 +2,44 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\HealthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Redis;
 
 /**
  * Health check controller for monitoring endpoints.
  *
- * Provides endpoints for load balancers, monitoring systems,
- * and container orchestration health checks.
+ * Thin HTTP layer — all check logic lives in HealthService.
  *
  * FAILURE SEMANTICS for Soleil Hostel Booking System:
- * ================================================
- * - Database: CRITICAL - 503 if down (booking engine, optimistic locking, money paths)
- * - Cache: DEGRADED - 200 with warning (system still operable, reduced performance)
- * - Queue: DEGRADED - 200 with warning (async jobs delayed, OTA sync may lag)
- *
- * This aligns with the booking-critical invariant: "No database = no bookings"
+ * - Database: CRITICAL — 503 if down (booking engine, optimistic locking, money paths)
+ * - Cache: DEGRADED — 200 with warning (system still operable, reduced performance)
+ * - Queue: DEGRADED — 200 with warning (async jobs delayed, OTA sync may lag)
  */
 class HealthController extends Controller
 {
-    /**
-     * Component criticality levels for failure semantics.
-     */
-    private const CRITICAL_COMPONENTS = ['database'];
-
-    private const DEGRADED_COMPONENTS = ['cache', 'queue', 'redis'];
+    public function __construct(
+        private HealthService $healthService
+    ) {}
 
     /**
      * Basic health check endpoint.
-     *
-     * Returns a simple {"status": "ok"} response for basic monitoring.
-     * Merged from HealthCheckController for consolidation.
      */
     public function check(): JsonResponse
     {
-        $health = [
-            'status' => 'healthy',
-            'timestamp' => now()->toIso8601String(),
-            'services' => [],
-        ];
+        $result = $this->healthService->basicCheck();
 
-        // ========== DATABASE CHECK ==========
-        try {
-            DB::connection()->getPdo();
-            $health['services']['database'] = [
-                'status' => 'up',
-                'connection' => config('database.default'),
-            ];
-        } catch (\Exception $e) {
-            $health['status'] = 'unhealthy';
-            $health['services']['database'] = [
-                'status' => 'down',
-                'error' => $e->getMessage(),
-            ];
-        }
-
-        // ========== REDIS CHECK ==========
-        try {
-            if (! extension_loaded('redis')) {
-                $health['status'] = 'unhealthy';
-                $health['services']['redis'] = [
-                    'status' => 'down',
-                    'error' => 'Redis PHP extension not loaded',
-                ];
-            } else {
-                Redis::ping();
-                $health['services']['redis'] = [
-                    'status' => 'up',
-                    'connections' => ['default'],
-                ];
-            }
-        } catch (\Throwable $e) {
-            $health['status'] = 'unhealthy';
-            $health['services']['redis'] = [
-                'status' => 'down',
-                'error' => $e->getMessage(),
-            ];
-        }
-
-        // ========== MEMORY CHECK ==========
-        $health['services']['memory'] = [
-            'status' => 'ok',
-            'usage_mb' => round(memory_get_usage() / 1024 / 1024, 2),
-            'limit_mb' => (int) ini_get('memory_limit'),
-        ];
-
-        $statusCode = $health['status'] === 'healthy' ? 200 : 503;
-
-        return response()->json($health, $statusCode, [
+        return response()->json([
+            'status' => $result['status'],
+            'timestamp' => $result['timestamp'],
+            'services' => $result['services'],
+        ], $result['status_code'], [
             'Cache-Control' => 'no-cache, no-store, must-revalidate',
         ]);
     }
 
     /**
      * Basic liveness probe.
-     *
-     * Returns 200 if the application is running.
-     * Used by Kubernetes/Docker for liveness checks.
-     * This is a "shallow" check - just verifies the app process is alive.
      */
     public function liveness(): JsonResponse
     {
@@ -114,147 +51,43 @@ class HealthController extends Controller
 
     /**
      * Readiness probe with dependency checks.
-     *
-     * Returns 200 only if CRITICAL dependencies are available.
-     * Non-critical component failures result in 200 with 'degraded' status.
-     * Used by Kubernetes for readiness checks.
-     *
-     * FAILURE SEMANTICS:
-     * - Database down → 503 (system unhealthy, cannot accept requests)
-     * - Cache/Queue down → 200 degraded (system operable but impaired)
      */
     public function readiness(): JsonResponse
     {
-        $checks = [
-            'database' => $this->checkDatabase(),
-            'cache' => $this->checkCache(),
-            'redis' => $this->checkRedis(),
-        ];
-
-        // Determine overall status based on criticality
-        $criticalHealthy = $this->areCriticalComponentsHealthy($checks);
-        $allHealthy = ! in_array(false, array_column($checks, 'healthy'));
-
-        if (! $criticalHealthy) {
-            $status = 'unhealthy';
-            $statusCode = 503;
-        } elseif (! $allHealthy) {
-            $status = 'degraded';
-            $statusCode = 200; // Still accept traffic, but warn
-        } else {
-            $status = 'ok';
-            $statusCode = 200;
-        }
+        $result = $this->healthService->readinessCheck();
 
         return response()->json([
-            'status' => $status,
-            'timestamp' => now()->toIso8601String(),
-            'checks' => $checks,
-            'failure_semantics' => [
-                'critical' => self::CRITICAL_COMPONENTS,
-                'degraded' => self::DEGRADED_COMPONENTS,
-            ],
-        ], $statusCode);
+            'status' => $result['status'],
+            'timestamp' => $result['timestamp'],
+            'checks' => $result['checks'],
+            'failure_semantics' => $result['failure_semantics'],
+        ], $result['status_code']);
     }
 
     /**
-     * Check if all critical components are healthy.
-     *
-     * @param  array<string, array>  $checks
-     */
-    private function areCriticalComponentsHealthy(array $checks): bool
-    {
-        foreach (self::CRITICAL_COMPONENTS as $component) {
-            if (isset($checks[$component]) && ! $checks[$component]['healthy']) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * Detailed health check with metrics.
-     *
-     * Provides comprehensive health information for monitoring dashboards.
-     * Includes all component checks, system metrics, and degradation info.
+     * Detailed health check with metrics (admin only).
      */
     public function detailed(Request $request): JsonResponse
     {
-        $checks = [
-            'database' => $this->checkDatabase(),
-            'cache' => $this->checkCache(),
-            'redis' => $this->checkRedis(),
-            'storage' => $this->checkStorage(),
-            'queue' => $this->checkQueue(),
-        ];
-
-        $criticalHealthy = $this->areCriticalComponentsHealthy($checks);
-        $allHealthy = ! in_array(false, array_column($checks, 'healthy'));
-        $healthyCount = count(array_filter(array_column($checks, 'healthy')));
-        $totalCount = count($checks);
-
-        // Determine status based on criticality
-        if (! $criticalHealthy) {
-            $status = 'unhealthy';
-            $statusCode = 503;
-        } elseif (! $allHealthy) {
-            $status = 'degraded';
-            $statusCode = 200;
-        } else {
-            $status = 'ok';
-            $statusCode = 200;
-        }
-
-        $metrics = [
-            'uptime_seconds' => $this->getUptimeSeconds(),
-            'memory_usage_mb' => round(memory_get_usage(true) / 1024 / 1024, 2),
-            'peak_memory_mb' => round(memory_get_peak_usage(true) / 1024 / 1024, 2),
-            'php_version' => PHP_VERSION,
-            'laravel_version' => app()->version(),
-        ];
-
-        // Identify degraded components for alerting
-        $degradedComponents = [];
-        foreach (self::DEGRADED_COMPONENTS as $component) {
-            if (isset($checks[$component]) && ! $checks[$component]['healthy']) {
-                $degradedComponents[] = $component;
-            }
-        }
+        $result = $this->healthService->detailedCheck();
 
         return response()->json([
-            'status' => $status,
-            'timestamp' => now()->toIso8601String(),
-            'app' => [
-                'name' => config('app.name'),
-                'environment' => config('app.env'),
-                'debug' => config('app.debug'),
-            ],
-            'checks' => $checks,
-            'summary' => [
-                'healthy' => $healthyCount,
-                'total' => $totalCount,
-                'percentage' => round(($healthyCount / $totalCount) * 100, 1),
-                'degraded_components' => $degradedComponents,
-            ],
-            'failure_semantics' => [
-                'critical' => self::CRITICAL_COMPONENTS,
-                'degraded' => self::DEGRADED_COMPONENTS,
-                'note' => 'Database failure = 503 (booking engine down). Cache/Queue failure = 200 degraded (still operable).',
-            ],
-            'metrics' => $metrics,
-        ], $statusCode);
+            'status' => $result['status'],
+            'timestamp' => $result['timestamp'],
+            'app' => $result['app'],
+            'checks' => $result['checks'],
+            'summary' => $result['summary'],
+            'failure_semantics' => $result['failure_semantics'],
+            'metrics' => $result['metrics'],
+        ], $result['status_code']);
     }
 
     /**
      * Individual database health check endpoint.
-     *
-     * CRITICAL component - 503 if unhealthy.
-     * The booking system cannot operate without database (optimistic locking, money paths).
      */
     public function database(): JsonResponse
     {
-        $check = $this->checkDatabase();
+        $check = $this->healthService->checkComponent('database');
 
         return response()->json([
             'component' => 'database',
@@ -266,199 +99,31 @@ class HealthController extends Controller
 
     /**
      * Individual cache health check endpoint.
-     *
-     * DEGRADED component - 200 even if unhealthy (system still operable).
      */
     public function cache(): JsonResponse
     {
-        $check = $this->checkCache();
+        $check = $this->healthService->checkComponent('cache');
 
         return response()->json([
             'component' => 'cache',
             'criticality' => 'degraded',
             'timestamp' => now()->toIso8601String(),
             ...$check,
-        ], 200); // Always 200 - degraded component
+        ], 200);
     }
 
     /**
      * Individual queue health check endpoint.
-     *
-     * DEGRADED component - 200 even if unhealthy (async jobs delayed, OTA sync may lag).
      */
     public function queue(): JsonResponse
     {
-        $check = $this->checkQueue();
+        $check = $this->healthService->checkComponent('queue');
 
         return response()->json([
             'component' => 'queue',
             'criticality' => 'degraded',
             'timestamp' => now()->toIso8601String(),
             ...$check,
-        ], 200); // Always 200 - degraded component
-    }
-
-    /**
-     * Check database connectivity.
-     */
-    protected function checkDatabase(): array
-    {
-        try {
-            $start = microtime(true);
-            DB::connection()->getPdo();
-            DB::select('SELECT 1');
-            $latency = round((microtime(true) - $start) * 1000, 2);
-
-            return [
-                'healthy' => true,
-                'latency_ms' => $latency,
-                'connection' => config('database.default'),
-            ];
-        } catch (\Exception $e) {
-            return [
-                'healthy' => false,
-                'error' => $e->getMessage(),
-            ];
-        }
-    }
-
-    /**
-     * Check cache connectivity.
-     */
-    protected function checkCache(): array
-    {
-        try {
-            $start = microtime(true);
-            $key = 'health_check_'.uniqid();
-            Cache::put($key, 'test', 10);
-            $value = Cache::get($key);
-            Cache::forget($key);
-            $latency = round((microtime(true) - $start) * 1000, 2);
-
-            return [
-                'healthy' => $value === 'test',
-                'latency_ms' => $latency,
-                'driver' => config('cache.default'),
-            ];
-        } catch (\Exception $e) {
-            return [
-                'healthy' => false,
-                'error' => $e->getMessage(),
-            ];
-        }
-    }
-
-    /**
-     * Check Redis connectivity.
-     */
-    protected function checkRedis(): array
-    {
-        try {
-            // Check if Redis extension is loaded
-            if (! extension_loaded('redis')) {
-                return [
-                    'healthy' => false,
-                    'error' => 'Redis PHP extension not loaded',
-                ];
-            }
-
-            $start = microtime(true);
-            Redis::ping();
-            $latency = round((microtime(true) - $start) * 1000, 2);
-
-            return [
-                'healthy' => true,
-                'latency_ms' => $latency,
-            ];
-        } catch (\Throwable $e) {
-            return [
-                'healthy' => false,
-                'error' => $e->getMessage(),
-            ];
-        }
-    }
-
-    /**
-     * Check storage writability.
-     */
-    protected function checkStorage(): array
-    {
-        try {
-            $testFile = storage_path('app/health_check_'.uniqid());
-            file_put_contents($testFile, 'test');
-            $content = file_get_contents($testFile);
-            unlink($testFile);
-
-            return [
-                'healthy' => $content === 'test',
-                'writable' => true,
-            ];
-        } catch (\Exception $e) {
-            return [
-                'healthy' => false,
-                'error' => $e->getMessage(),
-            ];
-        }
-    }
-
-    /**
-     * Check queue connectivity.
-     */
-    protected function checkQueue(): array
-    {
-        try {
-            $driver = config('queue.default');
-
-            // For sync driver, just return healthy
-            if ($driver === 'sync') {
-                return [
-                    'healthy' => true,
-                    'driver' => $driver,
-                    'note' => 'Sync driver - no external connection',
-                ];
-            }
-
-            // For Redis queue, check connection
-            if ($driver === 'redis') {
-                // Check if Redis extension is loaded
-                if (! extension_loaded('redis')) {
-                    return [
-                        'healthy' => false,
-                        'driver' => $driver,
-                        'error' => 'Redis PHP extension not loaded',
-                    ];
-                }
-
-                Redis::connection(config('queue.connections.redis.connection', 'default'))->ping();
-
-                return [
-                    'healthy' => true,
-                    'driver' => $driver,
-                ];
-            }
-
-            return [
-                'healthy' => true,
-                'driver' => $driver,
-            ];
-        } catch (\Throwable $e) {
-            return [
-                'healthy' => false,
-                'error' => $e->getMessage(),
-            ];
-        }
-    }
-
-    /**
-     * Get application uptime in seconds.
-     */
-    protected function getUptimeSeconds(): int
-    {
-        // Use Laravel's startup time if using Octane
-        if (defined('LARAVEL_START')) {
-            return (int) (microtime(true) - LARAVEL_START);
-        }
-
-        return 0;
+        ], 200);
     }
 }

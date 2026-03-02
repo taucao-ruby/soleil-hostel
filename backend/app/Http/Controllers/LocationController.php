@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\LocationAvailabilityRequest;
+use App\Http\Requests\ShowLocationRequest;
 use App\Http\Resources\LocationResource;
 use App\Http\Resources\RoomResource;
 use App\Models\Location;
@@ -51,13 +53,8 @@ class LocationController extends Controller
      * - check_out: date - filter rooms available before this date
      * - guests: int - filter rooms with sufficient capacity
      */
-    public function show(string $slug, Request $request): JsonResponse
+    public function show(string $slug, ShowLocationRequest $request): JsonResponse
     {
-        $request->validate([
-            'check_in' => 'nullable|date|required_with:check_out',
-            'check_out' => 'nullable|date|after:check_in',
-            'guests' => 'nullable|integer|min:1',
-        ]);
 
         $location = Location::query()
             ->where('slug', $slug)
@@ -99,13 +96,8 @@ class LocationController extends Controller
      * Optional query params:
      * - guests: int (min capacity filter)
      */
-    public function availability(string $slug, Request $request): JsonResponse
+    public function availability(string $slug, LocationAvailabilityRequest $request): JsonResponse
     {
-        $request->validate([
-            'check_in' => 'required|date|after_or_equal:today',
-            'check_out' => 'required|date|after:check_in',
-            'guests' => 'nullable|integer|min:1',
-        ]);
 
         $location = Location::where('slug', $slug)->active()->firstOrFail();
 

@@ -36,13 +36,13 @@ class StoreContactRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'name.required' => __('messages.contact_name_required'),
-            'name.max' => __('messages.contact_name_max'),
-            'email.required' => __('messages.contact_email_required'),
-            'email.email' => __('messages.contact_email_email'),
-            'subject.max' => __('messages.contact_subject_max'),
-            'message.required' => __('messages.contact_message_required'),
-            'message.max' => __('messages.contact_message_max'),
+            'name.required' => (string) __('messages.contact_name_required'),
+            'name.max' => (string) __('messages.contact_name_max'),
+            'email.required' => (string) __('messages.contact_email_required'),
+            'email.email' => (string) __('messages.contact_email_email'),
+            'subject.max' => (string) __('messages.contact_subject_max'),
+            'message.required' => (string) __('messages.contact_message_required'),
+            'message.max' => (string) __('messages.contact_message_max'),
         ];
     }
 

@@ -176,7 +176,7 @@ class HealthService
     /**
      * Check a single component.
      *
-     * @return array{healthy: bool, ...}
+     * @return array<string, mixed>
      */
     public function checkComponent(string $component): array
     {

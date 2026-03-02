@@ -127,7 +127,8 @@ class ReviewModelTest extends TestCase
     public function test_recent_scope_orders_by_created_at_desc(): void
     {
         $old = $this->createReviewWithDeps();
-        $old->update(['created_at' => now()->subDays(5)]);
+        $old->created_at = now()->subDays(5);
+        $old->save();
 
         $new = $this->createReviewWithDeps();
 

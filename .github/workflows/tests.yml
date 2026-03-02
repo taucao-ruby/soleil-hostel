@@ -523,7 +523,7 @@ jobs:
             | tar -xz -C /usr/local/bin gitleaks
           gitleaks version
       - name: Check for exposed credentials
-        run: gitleaks detect --source . --redact --verbose --log-opts="--all"
+        run: gitleaks detect --source . --redact --verbose --log-opts="--all" --config .gitleaks.toml
 
   # ========== FRONTEND TYPECHECK (tsc --noEmit) ==========
   frontend-typecheck:

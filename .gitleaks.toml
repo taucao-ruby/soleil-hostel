@@ -1,0 +1,21 @@
+# Gitleaks configuration — allowlist for known false positives
+# All entries below have been audited and confirmed NOT to contain real secrets.
+# See: https://github.com/gitleaks/gitleaks#configuration
+
+[allowlist]
+  description = "Allowlist of audited false positives (doc examples, empty placeholders, deleted files)"
+
+  # Commit hashes containing only false positives (doc examples, empty .env placeholders, test fixtures)
+  commits = [
+    # .env.example — STRIPE_WEBHOOK_SECRET= (empty placeholder)
+    "b8562167dc3684be922f529cc2954e19e5b84731",
+    # docs/backend/guides/API_MIGRATION_V1_TO_V2.md — curl "Bearer YOUR_TOKEN" examples
+    "8eeaaa2df3a308ecbdb78bb139bcb29fc36b3530",
+    # docs/backend/features/AUTHENTICATION.md — example JSON with fake token
+    "d9fb6559cbc66f364e74173932088146bb3903e6",
+    # SESSION_SUMMARY.md (deleted) — example token in session notes
+    "ff803874ca50950abfe29fd6ddfea2baf45a8fe0",
+    # FINAL_COMPREHENSIVE_ASSESSMENT.md, QUICKSTART.md, VERIFICATION_CHECKLIST.md,
+    # HttpOnlyCookieAuthenticationTest.php — doc/test examples (all cleaned up)
+    "c9f08aa20fd2084e39fdf52e215fdcb4b56bb95f",
+  ]

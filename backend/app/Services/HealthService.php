@@ -192,6 +192,8 @@ class HealthService
 
     /**
      * Check database connectivity.
+     *
+     * @return array<string, mixed>
      */
     public function checkDatabase(): array
     {
@@ -216,6 +218,8 @@ class HealthService
 
     /**
      * Check cache connectivity.
+     *
+     * @return array<string, mixed>
      */
     public function checkCache(): array
     {
@@ -242,6 +246,8 @@ class HealthService
 
     /**
      * Check Redis connectivity.
+     *
+     * @return array<string, mixed>
      */
     public function checkRedis(): array
     {
@@ -271,6 +277,8 @@ class HealthService
 
     /**
      * Check storage writability.
+     *
+     * @return array<string, mixed>
      */
     public function checkStorage(): array
     {
@@ -294,6 +302,8 @@ class HealthService
 
     /**
      * Check queue connectivity.
+     *
+     * @return array<string, mixed>
      */
     public function checkQueue(): array
     {

@@ -137,7 +137,7 @@ class HealthService
 
         $degradedComponents = [];
         foreach (self::DEGRADED_COMPONENTS as $component) {
-            if (! $checks[$component]['healthy']) {
+            if (isset($checks[$component]) && ! $checks[$component]['healthy']) {
                 $degradedComponents[] = $component;
             }
         }

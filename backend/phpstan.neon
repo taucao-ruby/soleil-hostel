@@ -27,6 +27,7 @@ parameters:
     - '#Using nullsafe .+ on non-nullable type#'
     - '#on left side of \?\? always exists and is not nullable#'
     - '#Expression on left side of \?\? is not nullable#'
+    - '#in isset\(\) always exists and is not nullable#'
 
     # ====== Dead Code (common in DI/event-driven Laravel apps) ======
     - '#Property .+ is never read, only written#'

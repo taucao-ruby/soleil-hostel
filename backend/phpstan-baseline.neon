@@ -667,12 +667,6 @@ parameters:
 			path: app/Services/CancellationService.php
 
 		-
-			message: '#^Offset ''cache''\|''queue''\|''redis'' on array\{database\: array, cache\: array, redis\: array, storage\: array, queue\: array\} in isset\(\) always exists and is not nullable\.$#'
-			identifier: isset.offset
-			count: 1
-			path: app/Services/HealthService.php
-
-		-
 			message: '#^Property App\\Services\\HtmlPurifierService\:\:\$config \(HTMLPurifier_Config\|null\) is never assigned HTMLPurifier_Config so it can be removed from the property type\.$#'
 			identifier: property.unusedType
 			count: 1

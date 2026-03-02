@@ -3,21 +3,24 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import RegisterPage from './RegisterPage'
 
+// ── Hoisted mock state (must be declared before vi.mock factories run) ────
+const { mockNavigate, mockRegisterHttpOnly, mockClearError, mockAuthRef } = vi.hoisted(() => ({
+  mockNavigate: vi.fn(),
+  mockRegisterHttpOnly: vi.fn(),
+  mockClearError: vi.fn(),
+  mockAuthRef: { current: null as string | null },
+}))
+
 // Mock react-router-dom
-const mockNavigate = vi.fn()
 vi.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
 }))
 
 // Mock AuthContext
-const mockRegisterHttpOnly = vi.fn()
-const mockClearError = vi.fn()
-let mockAuthError: string | null = null
-
 vi.mock('./AuthContext', () => ({
   useAuth: () => ({
     registerHttpOnly: mockRegisterHttpOnly,
-    error: mockAuthError,
+    error: mockAuthRef.current,
     clearError: mockClearError,
   }),
 }))
@@ -25,7 +28,7 @@ vi.mock('./AuthContext', () => ({
 describe('RegisterPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAuthError = null
+    mockAuthRef.current = null
   })
 
   it('renders the registration form', () => {
@@ -162,7 +165,7 @@ describe('RegisterPage', () => {
   })
 
   it('displays auth error from context', () => {
-    mockAuthError = 'Email already taken'
+    mockAuthRef.current = 'Email already taken'
     render(<RegisterPage />)
 
     expect(screen.getByText('Email already taken')).toBeInTheDocument()

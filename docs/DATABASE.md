@@ -1,6 +1,6 @@
 # 🗄️ Database Schema & Indexes
 
-> Complete database design for Soleil Hostel (32 migrations, 16 tables)
+> Complete database design for Soleil Hostel (35 migrations, 16 tables)
 
 ## ER Diagram
 
@@ -131,19 +131,19 @@ CREATE TYPE user_role AS ENUM ('user', 'moderator', 'admin');
 
 ### rooms
 
-| Column       | Type             | Constraints              |
-| ------------ | ---------------- | ------------------------ |
-| id           | BIGSERIAL        | PRIMARY KEY              |
-| location_id  | BIGINT           | NOT NULL, FK → locations |
-| name         | VARCHAR(255)     | NOT NULL                 |
-| room_number  | VARCHAR(50)      | NULLABLE                 |
-| description  | TEXT             | NULLABLE                 |
-| price        | DECIMAL(10,2)    | NOT NULL                 |
-| max_guests   | INTEGER          | NOT NULL                 |
-| status       | VARCHAR          | DEFAULT 'available'      |
-| lock_version | BIGINT UNSIGNED  | NOT NULL, DEFAULT 1      |
-| created_at   | TIMESTAMP        |                          |
-| updated_at   | TIMESTAMP        |                          |
+| Column       | Type            | Constraints              |
+| ------------ | --------------- | ------------------------ |
+| id           | BIGSERIAL       | PRIMARY KEY              |
+| location_id  | BIGINT          | NOT NULL, FK → locations |
+| name         | VARCHAR(255)    | NOT NULL                 |
+| room_number  | VARCHAR(50)     | NULLABLE                 |
+| description  | TEXT            | NULLABLE                 |
+| price        | DECIMAL(10,2)   | NOT NULL                 |
+| max_guests   | INTEGER         | NOT NULL                 |
+| status       | VARCHAR         | DEFAULT 'available'      |
+| lock_version | BIGINT UNSIGNED | NOT NULL, DEFAULT 1      |
+| created_at   | TIMESTAMP       |                          |
+| updated_at   | TIMESTAMP       |                          |
 
 **room_status: VARCHAR** (intentional — not a PostgreSQL ENUM).
 Allowed values enforced at application layer (`App\Models\Room`, `App\Enums\RoomStatus` if present):
@@ -190,6 +190,7 @@ refund_failed   → Refund failed, awaiting retry or manual intervention
 ```
 
 State transitions (see `App\Enums\BookingStatus::canTransitionTo()`):
+
 - PENDING → CONFIRMED, REFUND_PENDING, CANCELLED
 - CONFIRMED → REFUND_PENDING, CANCELLED
 - REFUND_PENDING → CANCELLED, REFUND_FAILED
@@ -200,20 +201,20 @@ Enforcement: application layer only.
 
 ### reviews
 
-| Column      | Type         | Constraints                      |
-| ----------- | ------------ | -------------------------------- |
-| id          | BIGSERIAL    | PRIMARY KEY                      |
-| booking_id  | BIGINT       | NOT NULL, UNIQUE, FK → bookings  |
-| room_id     | BIGINT       | NOT NULL, INDEX                  |
-| user_id     | BIGINT       | NULLABLE, INDEX                  |
-| title       | VARCHAR(255) | NOT NULL (purified)              |
-| content     | TEXT         | NOT NULL (purified HTML)         |
-| guest_name  | VARCHAR(255) | NOT NULL (purified)              |
-| guest_email | VARCHAR(255) | NULLABLE                         |
-| rating      | TINYINT      | NOT NULL, CHECK (1-5)            |
-| approved    | BOOLEAN      | DEFAULT FALSE                    |
-| created_at  | TIMESTAMP    |                                  |
-| updated_at  | TIMESTAMP    |                                  |
+| Column      | Type         | Constraints                     |
+| ----------- | ------------ | ------------------------------- |
+| id          | BIGSERIAL    | PRIMARY KEY                     |
+| booking_id  | BIGINT       | NOT NULL, UNIQUE, FK → bookings |
+| room_id     | BIGINT       | NOT NULL, INDEX                 |
+| user_id     | BIGINT       | NULLABLE, INDEX                 |
+| title       | VARCHAR(255) | NOT NULL (purified)             |
+| content     | TEXT         | NOT NULL (purified HTML)        |
+| guest_name  | VARCHAR(255) | NOT NULL (purified)             |
+| guest_email | VARCHAR(255) | NULLABLE                        |
+| rating      | TINYINT      | NOT NULL, CHECK (1-5)           |
+| approved    | BOOLEAN      | DEFAULT FALSE                   |
+| created_at  | TIMESTAMP    |                                 |
+| updated_at  | TIMESTAMP    |                                 |
 
 ### personal_access_tokens
 
@@ -259,11 +260,11 @@ Enforcement: application layer only.
 
 ### cache / cache_locks
 
-| Column     | Type       | Constraints |
-| ---------- | ---------- | ----------- |
-| key        | VARCHAR    | PRIMARY KEY |
-| value      | TEXT       | NOT NULL    |
-| expiration | INTEGER    | NOT NULL    |
+| Column     | Type    | Constraints |
+| ---------- | ------- | ----------- |
+| key        | VARCHAR | PRIMARY KEY |
+| value      | TEXT    | NOT NULL    |
+| expiration | INTEGER | NOT NULL    |
 
 ### contact_messages
 
@@ -511,42 +512,42 @@ EXCLUDE USING gist (
 
 ### Migration History (32 files)
 
-| Migration                                               | Description                                    |
-| ------------------------------------------------------- | ---------------------------------------------- |
-| `0001_01_01_000000_create_users_table`                  | users, sessions, password_reset                |
-| `0001_01_01_000001_create_cache_table`                  | cache, cache_locks                             |
-| `0001_01_01_000002_create_jobs_table`                   | jobs, job_batches, failed_jobs                 |
-| `2025_05_08_create_personal_access_tokens_table`        | Sanctum base tokens                            |
-| `2025_05_09_000000_create_rooms_table`                  | rooms base                                     |
-| `2025_05_09_create_bookings_table`                      | bookings base                                  |
-| `2025_11_18_000000_add_user_id_to_bookings`             | user_id FK + indexes                           |
-| `2025_11_18_000001_add_is_admin_to_users`               | is_admin (deprecated)                          |
-| `2025_11_18_000002_add_booking_constraints`             | unique_room_dates constraint                   |
-| `2025_11_20_000100_add_token_expiration`                | revoked_at, type, device_id                    |
-| `2025_11_20_100000_add_pessimistic_locking_indexes`     | idx_room_active, idx_room_dates                |
-| `2025_11_21_add_token_security_columns`                 | token_identifier, token_hash                   |
-| `2025_11_24_create_reviews_table`                       | reviews table                                  |
-| `2025_12_05_add_nplusone_fix_indexes`                   | N+1 prevention indexes                         |
-| `2025_12_17_convert_role_to_enum`                       | ENUM user_role, drop is_admin                  |
-| `2025_12_18_000000_optimize_booking_indexes`            | idx_bookings_availability                      |
-| `2025_12_18_100000_add_soft_deletes_to_bookings`        | deleted_at, deleted_by                         |
-| `2025_12_18_200000_add_lock_version_to_rooms`           | Optimistic locking                             |
-| `2026_01_11_000001_add_payment_fields_to_bookings`      | Stripe payment fields                          |
-| `2026_01_12_add_booking_id_unique_to_reviews`           | booking_id unique on reviews                   |
-| `2026_02_09_000000_add_foreign_key_constraints`         | FK constraints                                 |
-| `2026_02_09_000001_create_locations_table`              | locations table                                |
-| `2026_02_09_000002_add_location_id_to_rooms_table`      | location_id on rooms                           |
-| `2026_02_09_000003_add_location_id_to_bookings_table`   | location_id on bookings                        |
-| `2026_02_09_000004_seed_initial_locations`              | Seed 5 locations                               |
-| `2026_02_09_000005_assign_rooms_to_locations`           | Assign rooms + backfill bookings               |
-| `2026_02_09_000006_add_booking_location_trigger`        | PostgreSQL trigger                             |
-| `2026_02_10_000001_create_contact_messages_table`       | contact_messages table                         |
-| `2026_02_10_000002_make_booking_id_non_nullable`        | booking_id non-nullable on reviews             |
-| `2026_02_10_add_cancellation_reason_to_bookings`        | cancellation_reason column                     |
-| `2026_02_11_reconcile_legacy_index_ordering`            | Idempotent index reconciliation                |
-| `2026_02_12_fix_overlapping_bookings_constraint`        | Exclusion constraint excludes soft deletes     |
+| Migration                                                 | Description                                       |
+| --------------------------------------------------------- | ------------------------------------------------- |
+| `0001_01_01_000000_create_users_table`                    | users, sessions, password_reset                   |
+| `0001_01_01_000001_create_cache_table`                    | cache, cache_locks                                |
+| `0001_01_01_000002_create_jobs_table`                     | jobs, job_batches, failed_jobs                    |
+| `2025_05_08_create_personal_access_tokens_table`          | Sanctum base tokens                               |
+| `2025_05_09_000000_create_rooms_table`                    | rooms base                                        |
+| `2025_05_09_create_bookings_table`                        | bookings base                                     |
+| `2025_11_18_000000_add_user_id_to_bookings`               | user_id FK + indexes                              |
+| `2025_11_18_000001_add_is_admin_to_users`                 | is_admin (deprecated)                             |
+| `2025_11_18_000002_add_booking_constraints`               | unique_room_dates constraint                      |
+| `2025_11_20_000100_add_token_expiration`                  | revoked_at, type, device_id                       |
+| `2025_11_20_100000_add_pessimistic_locking_indexes`       | idx_room_active, idx_room_dates                   |
+| `2025_11_21_add_token_security_columns`                   | token_identifier, token_hash                      |
+| `2025_11_24_create_reviews_table`                         | reviews table                                     |
+| `2025_12_05_add_nplusone_fix_indexes`                     | N+1 prevention indexes                            |
+| `2025_12_17_convert_role_to_enum`                         | ENUM user_role, drop is_admin                     |
+| `2025_12_18_000000_optimize_booking_indexes`              | idx_bookings_availability                         |
+| `2025_12_18_100000_add_soft_deletes_to_bookings`          | deleted_at, deleted_by                            |
+| `2025_12_18_200000_add_lock_version_to_rooms`             | Optimistic locking                                |
+| `2026_01_11_000001_add_payment_fields_to_bookings`        | Stripe payment fields                             |
+| `2026_01_12_add_booking_id_unique_to_reviews`             | booking_id unique on reviews                      |
+| `2026_02_09_000000_add_foreign_key_constraints`           | FK constraints                                    |
+| `2026_02_09_000001_create_locations_table`                | locations table                                   |
+| `2026_02_09_000002_add_location_id_to_rooms_table`        | location_id on rooms                              |
+| `2026_02_09_000003_add_location_id_to_bookings_table`     | location_id on bookings                           |
+| `2026_02_09_000004_seed_initial_locations`                | Seed 5 locations                                  |
+| `2026_02_09_000005_assign_rooms_to_locations`             | Assign rooms + backfill bookings                  |
+| `2026_02_09_000006_add_booking_location_trigger`          | PostgreSQL trigger                                |
+| `2026_02_10_000001_create_contact_messages_table`         | contact_messages table                            |
+| `2026_02_10_000002_make_booking_id_non_nullable`          | booking_id non-nullable on reviews                |
+| `2026_02_10_add_cancellation_reason_to_bookings`          | cancellation_reason column                        |
+| `2026_02_11_reconcile_legacy_index_ordering`              | Idempotent index reconciliation                   |
+| `2026_02_12_fix_overlapping_bookings_constraint`          | Exclusion constraint excludes soft deletes        |
 | `2026_02_22_add_check_constraints_bookings_reviews_rooms` | CHECK constraints: dates, rating, price (PG only) |
-| `2026_02_22_add_fk_reviews_booking_id`                  | FK reviews.booking_id → bookings.id (RESTRICT) |
+| `2026_02_22_add_fk_reviews_booking_id`                    | FK reviews.booking_id → bookings.id (RESTRICT)    |
 
 ### Commands
 
@@ -568,13 +569,13 @@ php artisan migrate:fresh --seed
 
 ## Seeders
 
-| Seeder             | Description                                      |
-| ------------------ | ------------------------------------------------ |
-| `DatabaseSeeder`   | Main seeder (calls LocationSeeder + RoomSeeder)  |
-| `LocationSeeder`   | 5 Soleil brand locations (Hue, Quang Dien)       |
-| `RoomSeeder`       | Sample rooms data                                |
-| `ReviewSeeder`     | Sample reviews                                   |
-| `RoomsTableSeeder` | Legacy rooms seeder                              |
+| Seeder             | Description                                     |
+| ------------------ | ----------------------------------------------- |
+| `DatabaseSeeder`   | Main seeder (calls LocationSeeder + RoomSeeder) |
+| `LocationSeeder`   | 5 Soleil brand locations (Hue, Quang Dien)      |
+| `RoomSeeder`       | Sample rooms data                               |
+| `ReviewSeeder`     | Sample reviews                                  |
+| `RoomsTableSeeder` | Legacy rooms seeder                             |
 
 ### Sample Data (RoomSeeder)
 

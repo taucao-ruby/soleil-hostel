@@ -3,11 +3,13 @@
 ## 1) Current Snapshot (keep under 12 lines)
 
 - Date updated: 2026-03-02
-- Current branch: `refactor/batch-3-backend-quality` (from `dev`)
-- Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (218 tests, 20 suites) — verified 2026-03-01
+- Current branch: `dev` (synced with `main`)
+- Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (226 tests, 21 suites) — verified 2026-03-02
 - Backend test baseline: `cd backend && php artisan test` (857 tests, 2430 assertions) — verified 2026-03-02
 - Pint baseline: `cd backend && vendor/bin/pint --test` (275 files, 0 violations) — verified 2026-03-02
-- Progress summary: OPS-001, PAY-001, I18N-001+TD-003, DevSecOps, Batch 2+3 Fixes, docs sync complete
+- PHPStan: Level 5 + Larastan installed, baseline 151 pre-existing errors
+- Progress summary: Batches 1–4 complete, docs sync complete
+- Open findings: F-21 (LoginPage English), F-22 (Indonesian string), F-23 (MD lint), F-24 (HasUuids conflict)
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
 ## 2) What matters (invariants / guardrails)
@@ -352,6 +354,7 @@ Gates: no app logic changed — regressions not expected; run locally to confirm
 ### PR-1: `infra/redis-caddy-docker-hardening` (branch: `infra/redis-caddy-docker-hardening`)
 
 #### Changed
+
 - `Caddyfile`: Added HSTS, CSP, Permissions-Policy, X-XSS-Protection headers; documented rate_limit module requirement
 - `redis.conf`: Added `protected-mode yes`
 - `backend/Dockerfile`: Non-root production stage (USER www-data); nginx listens on 8080
@@ -360,31 +363,38 @@ Gates: no app logic changed — regressions not expected; run locally to confirm
 - `docker-compose.prod.yml`: Backend healthcheck updated for port 8080; redis ulimits added
 
 #### Issues fixed
+
 C-03, H-12, H-13, M-22, M-23, M-24, M-25, L-12, L-13
 
 #### Gates
+
 - `docker compose config` PASS ✅
 - `docker compose -f docker-compose.prod.yml config` PASS ✅
 - Backend/frontend tests: no app code changed — [REQUIRES LOCAL VERIFICATION]
 
 #### Notes
+
 - Rate limiting blocked: standard `caddy:2-alpine` image lacks `caddy-ext/ratelimit` module. Requires custom Caddy build.
 - Backend nginx port changed from 80→8080 for non-root; all compose port mappings and Caddyfile updated accordingly.
 
 ### PR-2: `ci/gates-and-deploy-fix` (branch: `ci/gates-and-deploy-fix`)
 
 #### Changed
+
 - `.github/workflows/tests.yml`: Added `frontend-typecheck` job (tsc --noEmit); fixed hardcoded VITE_API_URL → `/api`
 - `.github/workflows/deploy.yml`: Fixed hardcoded VITE_API_URL → `vars.VITE_API_URL || '/api'`; pinned trivy-action@0.29.0; updated codeql-action to @v3; added SSH-based migration step (gated by DEPLOY_HOST secret); documented Trivy continue-on-error justification
 
 #### Issues fixed
+
 C-04, H-10, H-11, H-14, M-26, M-27, M-28
 
 #### Gates
+
 - `docker compose config` PASS ✅
 - CI workflows: YAML valid (no syntax errors) — [REQUIRES LOCAL VERIFICATION on GitHub Actions]
 
 #### Notes
+
 - No `scripts/deploy-forge.sh` exists — migration handled via deploy.yml SSH step instead
 - Trivy remains non-blocking (continue-on-error: true) with documented justification
 
@@ -393,12 +403,14 @@ C-04, H-10, H-11, H-14, M-26, M-27, M-28
 ### What changed
 
 #### PR-1: Fix Review FormRequest broken purify() calls (C-01, C-02)
+
 - **Root cause**: `StoreReviewRequest` and `UpdateReviewRequest` called `$this->purify()` which doesn't exist on `FormRequest` — the `Purifiable` trait is Model-only. This would crash at runtime with `BadMethodCallException`.
 - **Fix**: Replaced `$this->purify()` with `HtmlPurifierService::purify()` applied to each validated field.
 - **Tests**: 8 new tests in `tests/Unit/Requests/ReviewRequestPurificationTest.php` — validates no crash, XSS stripping, single-key access, rating bounds.
 - **Files**: `app/Http/Requests/StoreReviewRequest.php`, `app/Http/Requests/UpdateReviewRequest.php`, test file (new)
 
 #### PR-2: Add cancellation_reason to Booking $fillable (H-01)
+
 - **Root cause**: `Booking::$fillable` included `cancelled_at` and `cancelled_by` but NOT `cancellation_reason`. Mass assignment via `$booking->update(['cancellation_reason' => '...'])` silently dropped the field.
 - **Fix**: Added `'cancellation_reason'` to `$fillable` array.
 - **Tests**: 3 new tests in `tests/Unit/Models/BookingFillableTest.php` — validates field is fillable and persists via mass assignment.
@@ -406,6 +418,7 @@ C-04, H-10, H-11, H-14, M-26, M-27, M-28
 - **Files**: `app/Models/Booking.php`, `docs/FINDINGS_BACKLOG.md`, test file (new)
 
 #### PR-3: Implement Stripe webhook handlers (H-03)
+
 - **Root cause**: `handlePaymentIntentSucceeded()` and `handleChargeRefunded()` were TODO stubs that only logged.
 - **Fix**: Implemented full handler logic:
   - `handlePaymentIntentSucceeded`: finds booking by `payment_intent_id`, confirms via `BookingService::confirmBooking()`, idempotent for already-confirmed bookings
@@ -416,24 +429,28 @@ C-04, H-10, H-11, H-14, M-26, M-27, M-28
 - **Files**: `app/Http/Controllers/Payment/StripeWebhookController.php`, test file (new)
 
 ### Gates
+
 - `php artisan test`: 790 tests, 2245 assertions ✅ (was 769/2192)
 - `vendor/bin/pint --test`: 264 files, 0 violations ✅
 - Frontend: not touched — [SKIPPED]
 - `docker compose config`: not touched — [SKIPPED]
 
 ### Residual
+
 - F-24: Auth controllers use Query Builder for token creation; requires `HasUuids` fix before switching to Eloquent (see FINDINGS_BACKLOG.md)
 - M-06, M-07, L-06: Validation rules already meet standards (verified: `password min:8`, `guest_name min:2`, `max_guests integer|min:1`)
 
 ## 2026-03-02 — Batch 3: Backend Refactoring & Testing Coverage
 
 ### PR-1: refactor/health-service (M-01, M-12)
+
 - Extracted 464-line HealthController into HealthService + thin controller (~80 lines)
 - Service methods: basicCheck(), readinessCheck(), detailedCheck(), checkComponent()
 - Added 15 feature tests + 15 unit tests for health endpoints
 - Files: `app/Services/HealthService.php` (new), `app/Http/Controllers/HealthController.php`, `tests/Feature/Health/HealthEndpointTest.php` (new), `tests/Unit/Services/HealthServiceTest.php` (new)
 
 ### PR-2: refactor/controllers-formrequests (M-02..M-05, L-03)
+
 - Created 4 FormRequest classes: BulkRestoreBookingsRequest, StoreContactRequest, ShowLocationRequest, LocationAvailabilityRequest
 - Updated AdminBookingController, ContactController, LocationController to use FormRequests
 - StoreContactRequest includes HTML purification in validated() override
@@ -442,6 +459,7 @@ C-04, H-10, H-11, H-14, M-26, M-27, M-28
 - Files: 4 new FormRequests, 3 controllers modified, 1 test file (new)
 
 ### PR-3: cleanup/routes-cors-debug (M-08, M-09)
+
 - Removed debug /test route from web.php (M-09)
 - Removed custom Cors middleware from global stack; switched to Laravel's built-in HandleCors via config/cors.php (M-08)
 - Updated config/cors.php with explicit methods/headers matching prior behavior
@@ -450,6 +468,7 @@ C-04, H-10, H-11, H-14, M-26, M-27, M-28
 - Files: `routes/web.php`, `config/cors.php`, `bootstrap/app.php`, 2 test files
 
 ### PR-4: quality/static-analysis + tests (H-04, H-05)
+
 - Installed phpstan/phpstan ^2.1 + larastan/larastan ^3.9
 - Updated phpstan.neon with Larastan extension; generated baseline (151 errors)
 - Added 10 Contact endpoint tests (store, XSS, admin index/read)
@@ -457,11 +476,13 @@ C-04, H-10, H-11, H-14, M-26, M-27, M-28
 - H-06 (PostgreSQL test DB) DEFERRED: no documented process; needs Docker running
 
 ### PR-5: migrations-squash — BLOCKED
+
 - No documented migration-squash process in repo
 - Cannot prove deploy safety without coordination
 - Recommendation: use `php artisan schema:dump --prune` after verifying all environments are aligned
 
 ### Gates
+
 - `php artisan test`: 857 tests, 2430 assertions ✅ (was 790/2245)
 - `vendor/bin/pint --test`: 275 files, 0 violations ✅
 - `vendor/bin/phpstan analyse`: installed, baseline generated (151 pre-existing errors)
@@ -469,7 +490,40 @@ C-04, H-10, H-11, H-14, M-26, M-27, M-28
 - `docker compose config`: not touched — [SKIPPED]
 
 ### Residual
+
 - H-06: PostgreSQL test DB switch — needs documented process + Docker requirement
 - M-11: Migration squashing — needs schema:dump workflow + deploy coordination
 - L-01, L-02, L-04, L-05, L-07, L-08: Low-priority items without clear code evidence in current scan; may need specific issue descriptions to locate
 - Custom `app/Http/Middleware/Cors.php` file retained (not deleted) for reference; no longer registered in middleware stack
+
+## 2026-03-02 — Batch 4: Frontend Core Fixes & Vitest Constraints
+
+### PR-1: fix/fe-abortcontroller-cleanup (M-17)
+
+- Added AbortController cleanup to useEffect fetches in RoomList, LocationList, BookingForm
+- Added `signal` parameter to `getRooms()` and `getLocations()` API functions
+- Pattern follows existing `fetchMyBookings(signal?)` in booking.api.ts
+- Files: `room.api.ts`, `RoomList.tsx`, `location.api.ts`, `LocationList.tsx`, `BookingForm.tsx`
+- Gates: tsc 0 errors, vitest 218/218 pass
+
+### PR-2: test/fe-vitest-hoisted-auth-mocks (H-08, H-09)
+
+- Converted LoginPage.test.tsx and RegisterPage.test.tsx from module-level mock vars to `vi.hoisted()` pattern
+- Eliminates intermittent Vitest 2.x failures caused by hoisting order issues
+- Files: `LoginPage.test.tsx`, `RegisterPage.test.tsx`
+- Gates: tsc 0 errors, vitest 218/218 pass
+
+### PR-3: chore/fe-no-console-and-roomlist-tests (M-18, M-21, L-09, M-14)
+
+- Added `no-console` ESLint rule (`error` level, allow `console.warn`)
+- Removed `console.error` from 8 production files where error state is already set in UI
+- Guarded remaining console calls in ErrorBoundary, main.tsx, api.ts with `import.meta.env.DEV`
+- Added `RoomList.test.tsx` with 8 tests (loading, data, empty, error, prices, book button, statuses, images)
+- Files: 13 files (eslint.config.js, RoomList.test.tsx new, 11 production files modified)
+- Gates: tsc 0 errors, vitest 226/226 pass (21 suites), eslint 0 errors
+
+### Notes
+
+- All 3 branches pushed to origin; GitHub CLI not authenticated — create PRs manually or run `gh auth login`
+- Branches: `fix/fe-abortcontroller-cleanup`, `test/fe-vitest-hoisted-auth-mocks`, `chore/fe-no-console-and-roomlist-tests`
+- All target `dev` branch

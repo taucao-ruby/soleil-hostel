@@ -9,7 +9,7 @@ This guide documents the expansion from a single-location to multi-location arch
 ## Prerequisites
 
 - PostgreSQL 16+ (production) or SQLite (testing)
-- Laravel 11.x
+- Laravel 12.x
 - All existing migrations applied
 
 ## Migration Sequence

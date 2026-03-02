@@ -17,22 +17,22 @@ This playbook provides step-by-step procedures for handling operational events. 
 
 ## Quick Reference
 
-| Scenario                                                    | Severity | Page                                 |
-| ----------------------------------------------------------- | -------- | ------------------------------------ |
-| [Application Down](#application-down)                       | Critical | [Jump](#application-down)            |
-| [Database Connection Failure](#database-connection-failure) | Critical | [Jump](#database-connection-failure) |
-| [Redis Down](#redis-down)                                   | High     | [Jump](#redis-down)                  |
-| [High Error Rate](#high-error-rate)                         | High     | [Jump](#high-error-rate)             |
-| [Rate Limit Breach](#rate-limit-breach)                     | Medium   | [Jump](#rate-limit-breach)           |
-| [Email Delivery Failure](#email-delivery-failure)           | Medium   | [Jump](#email-delivery-failure)      |
-| [Queue Backlog](#queue-backlog)                             | Medium   | [Jump](#queue-backlog)               |
-| [Disk Space Full](#disk-space-full)                         | High     | [Jump](#disk-space-full)             |
-| [Memory Exhaustion](#memory-exhaustion)                     | High     | [Jump](#memory-exhaustion)           |
-| [Security Incident](#security-incident)                     | Critical | [Jump](#security-incident)           |
-| [Double Booking Reported](#double-booking-reported)         | High     | [Jump](#double-booking-reported)     |
-| [Slow Response Times](#slow-response-times)                 | Medium   | [Jump](#slow-response-times)         |
-| [Failed Deployment Rollback](#failed-deployment-rollback)   | High     | [Jump](#failed-deployment-rollback)  |
-| [HTTPS / TLS Setup](#https--tls-setup-self-hosted)          | Setup    | [Jump](#https--tls-setup-self-hosted)|
+| Scenario                                                    | Severity | Page                                  |
+| ----------------------------------------------------------- | -------- | ------------------------------------- |
+| [Application Down](#application-down)                       | Critical | [Jump](#application-down)             |
+| [Database Connection Failure](#database-connection-failure) | Critical | [Jump](#database-connection-failure)  |
+| [Redis Down](#redis-down)                                   | High     | [Jump](#redis-down)                   |
+| [High Error Rate](#high-error-rate)                         | High     | [Jump](#high-error-rate)              |
+| [Rate Limit Breach](#rate-limit-breach)                     | Medium   | [Jump](#rate-limit-breach)            |
+| [Email Delivery Failure](#email-delivery-failure)           | Medium   | [Jump](#email-delivery-failure)       |
+| [Queue Backlog](#queue-backlog)                             | Medium   | [Jump](#queue-backlog)                |
+| [Disk Space Full](#disk-space-full)                         | High     | [Jump](#disk-space-full)              |
+| [Memory Exhaustion](#memory-exhaustion)                     | High     | [Jump](#memory-exhaustion)            |
+| [Security Incident](#security-incident)                     | Critical | [Jump](#security-incident)            |
+| [Double Booking Reported](#double-booking-reported)         | High     | [Jump](#double-booking-reported)      |
+| [Slow Response Times](#slow-response-times)                 | Medium   | [Jump](#slow-response-times)          |
+| [Failed Deployment Rollback](#failed-deployment-rollback)   | High     | [Jump](#failed-deployment-rollback)   |
+| [HTTPS / TLS Setup](#https--tls-setup-self-hosted)          | Setup    | [Jump](#https--tls-setup-self-hosted) |
 
 ---
 
@@ -284,7 +284,6 @@ curl -s https://your-domain.com/api/health/ready | jq '.checks.redis'
    ```
 
 2. **Check Sentry for patterns**
-
    - Group by error type
    - Check if single endpoint or widespread
    - Look for common user actions
@@ -297,7 +296,6 @@ curl -s https://your-domain.com/api/health/ready | jq '.checks.redis'
    ```
 
 4. **Check external dependencies**
-
    - Database connectivity
    - Redis availability
    - Third-party APIs (Stripe, email)
@@ -337,7 +335,6 @@ Monitor error rate in Sentry/Grafana for 15 minutes after fix.
    ```
 
 2. **Check if legitimate or attack**
-
    - Single IP hammering? Likely attack
    - Multiple users affected? Configuration issue
    - API client bug? Contact developer
@@ -411,7 +408,6 @@ curl -H "Authorization: Bearer $TOKEN" https://api/bookings
    ```
 
 4. **Check mail provider dashboard**
-
    - SendGrid/Mailgun/SES
    - Look for bounces, complaints
    - Check API limits
@@ -593,7 +589,6 @@ df -h
    ```
 
 4. **Check for memory leaks**
-
    - Recent code changes?
    - Long-running processes?
    - Large file uploads being held in memory?
@@ -631,7 +626,6 @@ DB::cursor()->each(function ($row) {
 #### Immediate Actions
 
 1. **Assess scope**
-
    - Single user or multiple?
    - Data accessed?
    - Ongoing or past?
@@ -658,7 +652,6 @@ DB::cursor()->each(function ($row) {
    ```
 
 4. **Investigate**
-
    - Review access logs
    - Check for unauthorized data access
    - Trace attack vector
@@ -703,27 +696,24 @@ DB::cursor()->each(function ($row) {
    ```
 
 2. **Check creation timestamps**
-
    - Were they created at the same time?
    - Different transactions?
 
 3. **If genuine overlap**
-
    - Contact both guests immediately
    - Offer alternative room or compensation
    - Cancel one booking with full refund
 
 4. **Investigate root cause**
-
    - Check logs for the time window
    - Was locking bypassed?
    - Database constraint missing?
 
 5. **Add exclusion constraint** (if missing)
    ```sql
-   ALTER TABLE bookings ADD CONSTRAINT no_overlap
-   EXCLUDE USING gist (room_id WITH =, daterange(check_in, check_out) WITH &&)
-   WHERE (status != 'cancelled');
+   ALTER TABLE bookings ADD CONSTRAINT no_overlapping_bookings
+   EXCLUDE USING gist (room_id WITH =, daterange(check_in, check_out, '[)') WITH &&)
+   WHERE (status IN ('pending', 'confirmed') AND deleted_at IS NULL);
    ```
 
 ---
@@ -883,6 +873,7 @@ DOMAIN=soleilhotel.com docker compose -f docker-compose.prod.yml --profile proxy
 ```
 
 Caddy automatically:
+
 - Obtains and renews TLS certificates from Let's Encrypt
 - Redirects HTTP → HTTPS
 - Proxies `/api/*` → backend, everything else → frontend

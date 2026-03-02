@@ -4,6 +4,7 @@ Canonical database rules and invariants for backend and migration work.
 Source of truth: `backend/database/migrations/*` (not older docs).
 
 ## 1) Core Tables (authoritative)
+
 - `locations`: Physical hostel locations; includes operational metadata and `lock_version`.
 - `rooms`: Room inventory; each room belongs to one location (`rooms.location_id`).
 - `bookings`: Reservation records; owns stay dates, status, payment/refund, cancellation, soft-delete audit, and denormalized `location_id`.
@@ -14,6 +15,7 @@ Source of truth: `backend/database/migrations/*` (not older docs).
 Other framework tables exist (`sessions`, `cache`, `jobs`, etc.) but are out of scope for booking/auth invariants.
 
 ## 2) Invariants (must always hold)
+
 - Booking overlap invariant: treat date ranges as half-open intervals `[check_in, check_out)`.
   - Overlap predicate: `existing.check_in < new.check_out AND existing.check_out > new.check_in`.
   - Adjacent stays are valid: checkout on day `D` and new checkin on day `D` do not overlap.
@@ -42,6 +44,7 @@ Other framework tables exist (`sessions`, `cache`, `jobs`, etc.) but are out of 
   - [DB] soft-delete audit: `deleted_at`, `deleted_by`.
 
 ## 3) PostgreSQL Guarantees (defense in depth)
+
 - `btree_gist` extension is required before the exclusion constraint:
 
 ```sql
@@ -73,32 +76,40 @@ WHERE (status IN ('pending', 'confirmed') AND deleted_at IS NULL);
   - DB `CHECK (check_out > check_in)` on `bookings` (`chk_bookings_dates`).
   - DB `CHECK (rating BETWEEN 1 AND 5)` on `reviews` (`chk_reviews_rating`).
   - DB `CHECK (price >= 0)` on `rooms` (`chk_rooms_price`).
+  - Note: `chk_rooms_max_guests CHECK (max_guests > 0)` is documented in DATABASE.md but not present in migrations. Application-level validation only.
 
 ## 4) Index Strategy (names that matter)
+
 Bookings: availability and overlap
+
 - `idx_bookings_availability` on `(room_id, status, check_in, check_out)`.
 - `idx_bookings_active_overlap` on `(room_id, check_in, check_out)` partial (PostgreSQL only).
 - `no_overlapping_bookings` (constraint, not index) is the hard overlap guard.
 
 Bookings: user history and reports
+
 - `idx_bookings_user_history` on `(user_id, created_at)`.
 - `idx_bookings_status_period` on `(status, check_in)`.
 
 Bookings: location analytics
+
 - `idx_bookings_location_id` on `(location_id)`.
 - `idx_bookings_location_dates` on `(location_id, check_in, check_out)`.
 - `idx_bookings_location_status` on `(location_id, status)`.
 
 Bookings: payment/refund/cancellation
+
 - `idx_bookings_refund_status` on `(refund_status)`.
 - `idx_bookings_payment_intent` on `(payment_intent_id)`.
 - `idx_bookings_cancellation` on `(status, cancelled_at)`.
 
 Bookings: soft delete and audit
+
 - `idx_bookings_deleted_at` on `(deleted_at)`.
 - `idx_bookings_soft_delete_audit` on `(deleted_at, deleted_by)`.
 
 Locations and rooms
+
 - `idx_locations_active` on `(is_active)`.
 - `idx_locations_city_district` on `(city, district)`.
 - `idx_locations_coordinates` on `(latitude, longitude)` partial (PostgreSQL only).
@@ -109,10 +120,12 @@ Locations and rooms
 - `idx_rooms_location_room_number` unique partial on `(location_id, room_number)` where `room_number IS NOT NULL` (PostgreSQL only).
 
 Reviews and tokens
+
 - `reviews_booking_id_unique` unique constraint on `reviews(booking_id)`.
 - Token hardening indexes exist for `token_hash`, `expires_at`, `revoked_at`, `device_id`, and `(tokenable_id, tokenable_type, type)`; names are Laravel-generated (not explicitly named in migrations).
 
 Legacy index reconciliation (intentional, idempotent)
+
 - `bookings_room_id_index`
 - `bookings_user_id_index`
 - `bookings_status_index`
@@ -122,6 +135,7 @@ Legacy index reconciliation (intentional, idempotent)
 - `rooms_status_index`
 
 ## 5) Common Query Patterns (copy/paste ready)
+
 Availability overlap check (active, non-deleted bookings only):
 
 ```sql
@@ -176,18 +190,22 @@ WHERE payment_intent_id IS NOT NULL
 ```
 
 ## 6) Do / Dont for future migrations
+
 Do:
+
 - Use PostgreSQL exclusion constraints for overlap prevention.
 - Keep overlap filters aligned across DB and app (`status IN ('pending','confirmed')` and `deleted_at IS NULL`).
 - Keep multi-location denormalization consistent (`bookings.location_id` from `rooms.location_id`).
 - Use idempotent/index-reconciliation patterns when production may already have legacy index order/state.
 
 Dont:
+
 - Do not use `UNIQUE(room_id, check_in, check_out)` as overlap protection.
 - Do not rely on SQLite to enforce PostgreSQL-only invariants (exclusion constraints, PG triggers).
 - FK `reviews.booking_id → bookings.id` exists (migration `2026_02_22_000002`, ON DELETE RESTRICT, pgsql-only). ON DELETE RESTRICT is intentional — bookings use soft-delete.
 
 ## AI Rules for DB-Related Changes
+
 - Never use `UNIQUE(room_id, check_in, check_out)` as overlap prevention.
 - In PostgreSQL, prefer `EXCLUDE USING gist` with `daterange(check_in, check_out, '[)')` and filter:
   - `status IN ('pending','confirmed') AND deleted_at IS NULL`

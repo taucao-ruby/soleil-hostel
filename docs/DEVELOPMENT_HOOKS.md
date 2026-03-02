@@ -14,14 +14,15 @@ Hooks are designed to be:
 - Cross-platform (Windows Git Bash, WSL2, Linux, macOS)
 - Bypassable intentionally when needed
 
-## Project Baseline (Feb 11, 2026)
+## Project Baseline (Mar 2, 2026)
 
-- Branch status snapshot: `dev` was recorded as 8 commits ahead of `main`
+- Branch status snapshot: `dev` synced with `main`
 - Verified commands:
-  - `cd backend && php artisan test` (`737 tests`, `2071 assertions`)
+  - `cd backend && php artisan test` (`857 tests`, `2430 assertions`)
   - `cd frontend && npx tsc --noEmit`
-  - `cd frontend && npx vitest run` (`194 tests`)
+  - `cd frontend && npx vitest run` (`226 tests`)
   - `docker compose config`
+  - `cd backend && vendor/bin/pint --test` (`275 files`, 0 violations)
 - Known non-blocking warnings:
   - PHPUnit doc-comment metadata deprecation warnings
   - Vitest `act(...)` + non-boolean DOM attribute warnings

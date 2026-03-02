@@ -11,12 +11,12 @@
 
 **Verified stack:**
 
-| Layer | Technology |
-|-------|-----------|
-| Backend | Laravel 12 (`^12.0`), PHP `^8.2`, Sanctum + custom token columns |
-| Frontend | React 19, TypeScript `~5.7`, Vite 6, Vitest 2, TailwindCSS 3 |
-| Database | PostgreSQL 16 (production), SQLite in-memory (tests) |
-| Cache / Queue | Redis 7 |
+| Layer          | Technology                                                         |
+| -------------- | ------------------------------------------------------------------ |
+| Backend        | Laravel 12 (`^12.0`), PHP `^8.2`, Sanctum + custom token columns   |
+| Frontend       | React 19, TypeScript `~5.7`, Vite 6, Vitest 2, TailwindCSS 3       |
+| Database       | PostgreSQL 16 (production), SQLite in-memory (tests)               |
+| Cache / Queue  | Redis 7                                                            |
 | Infrastructure | Docker Compose (`docker-compose.yml`); CI via `.github/workflows/` |
 
 **Branching convention:**
@@ -28,14 +28,15 @@ feature/<name>  →  dev  →  main (--no-ff merge)
 - All PRs target `dev`. Human review required before merge to `main`.
 - Commit format enforced by hook — see §3.
 
-**Repo health baseline (verified 2026-02-25):**
+**Repo health baseline (verified 2026-03-02):**
 
-| Gate | Result |
-|------|--------|
-| `cd backend && php artisan test` | ✅ 737 tests, 2071 assertions |
-| `cd frontend && npx tsc --noEmit` | ✅ 0 errors |
-| `cd frontend && npx vitest run` | ✅ 194 tests, 19 files |
-| `docker compose config` | ✅ valid |
+| Gate                                   | Result                        |
+| -------------------------------------- | ----------------------------- |
+| `cd backend && php artisan test`       | ✅ 857 tests, 2430 assertions |
+| `cd frontend && npx tsc --noEmit`      | ✅ 0 errors                   |
+| `cd frontend && npx vitest run`        | ✅ 226 tests, 21 files        |
+| `docker compose config`                | ✅ valid                      |
+| `cd backend && vendor/bin/pint --test` | ✅ 275 files, 0 violations    |
 
 **Key directories (verified):**
 
@@ -67,6 +68,7 @@ feature/<name>  →  dev  →  main (--no-ff merge)
 ### Backend (do not reinvent — link to canonical docs)
 
 See [`docs/agents/ARCHITECTURE_FACTS.md`](./docs/agents/ARCHITECTURE_FACTS.md) for verified invariants:
+
 - Booking overlap: half-open `[check_in, check_out)` + PostgreSQL exclusion constraint
 - Auth: dual-mode Bearer + HttpOnly cookie; 8 custom token columns; rotation/revocation enforced
 - Concurrency: `lock_version` optimistic (rooms/locations) + `lockForUpdate()` pessimistic (booking flows)
@@ -153,38 +155,44 @@ Full governance framework: [`docs/AI_GOVERNANCE.md`](./docs/AI_GOVERNANCE.md)
 
 **High-risk areas — read the runbook before touching:**
 
-| Area | Must-read before changing |
-|------|--------------------------|
-| Booking overlap / date logic | `docs/DB_FACTS.md` + `skills/laravel/booking-overlap-skill.md` |
-| Auth / token / cookie flow | `docs/backend/features/AUTHENTICATION.md` + `skills/laravel/auth-tokens-skill.md` |
-| Migrations / constraints | `docs/DB_FACTS.md` + `skills/laravel/migrations-postgres-skill.md` |
-| Concurrency / locking | `docs/backend/features/OPTIMISTIC_LOCKING.md` + `skills/laravel/transactions-locking-skill.md` |
+| Area                         | Must-read before changing                                                                      |
+| ---------------------------- | ---------------------------------------------------------------------------------------------- |
+| Booking overlap / date logic | `docs/DB_FACTS.md` + `skills/laravel/booking-overlap-skill.md`                                 |
+| Auth / token / cookie flow   | `docs/backend/features/AUTHENTICATION.md` + `skills/laravel/auth-tokens-skill.md`              |
+| Migrations / constraints     | `docs/DB_FACTS.md` + `skills/laravel/migrations-postgres-skill.md`                             |
+| Concurrency / locking        | `docs/backend/features/OPTIMISTIC_LOCKING.md` + `skills/laravel/transactions-locking-skill.md` |
 
 ---
 
 ## 5. File-Specific Rules
 
 ### `src/features/booking/booking.api.ts`
+
 - Endpoints use `/v1/` prefix: `POST /v1/bookings`, `GET /v1/bookings`, `POST /v1/bookings/:id/cancel`
 - Legacy `/bookings` (no version) is deprecated — sunset July 2026. Never add new calls to it.
 
 ### `src/features/rooms/room.api.ts`
+
 - Endpoint: `GET /v1/rooms`. Legacy `/rooms` is deprecated — same sunset.
 
 ### `src/shared/lib/api.ts`
+
 - Do not modify the CSRF interceptor or refresh mutex without reading `docs/frontend/SERVICES_LAYER.md` first.
 - `withCredentials: true` must remain set.
 
 ### `src/app/router.tsx`
+
 - `/` route uses `PublicLayout` (HeaderMobile + BottomNav). All other routes use `Layout` (dark Header + Footer).
 - `/booking` and `/dashboard` are wrapped in `ProtectedRoute` + `Suspense`.
 - `DashboardPage` is lazy-loaded; role-based routing (`user.role === 'admin'`) happens inside it.
 
 ### `docs/COMPACT.md`
+
 - Append-compatible. Edit sections 1 and 3 in-place; add new dated block at bottom for history.
 - Keep section 1 under 12 lines. No secrets. Short lines only.
 
 ### `backend/` (general)
+
 - Controllers → thin HTTP layer only. Logic in Services. Data in Repositories.
 - Request validation in `*Request.php` classes, not controllers.
 - No `env()` in controllers/services — use `config()`.
@@ -195,17 +203,17 @@ Full governance framework: [`docs/AI_GOVERNANCE.md`](./docs/AI_GOVERNANCE.md)
 
 ### Skill Selection (pick 1–3 per task)
 
-| Task type | Skills to load |
-|-----------|---------------|
-| React component | `skills/react/component-quality-skill.md` + `skills/react/testing-vitest-skill.md` |
-| React form / booking UI | + `skills/react/forms-validation-skill.md` |
-| API client wiring | `skills/react/api-client-skill.md` |
-| Backend API endpoint | `skills/laravel/api-endpoints-skill.md` + `skills/laravel/testing-skill.md` |
-| Booking domain logic | + `skills/laravel/booking-overlap-skill.md` |
-| Auth / token changes | + `skills/laravel/auth-tokens-skill.md` |
-| Migration / schema | `skills/laravel/migrations-postgres-skill.md` |
-| Security | `skills/laravel/security-secrets-skill.md` or `skills/react/security-frontend-skill.md` |
-| CI / Docker | `skills/ops/ci-quality-gates-skill.md` + `skills/ops/docker-compose-skill.md` |
+| Task type               | Skills to load                                                                          |
+| ----------------------- | --------------------------------------------------------------------------------------- |
+| React component         | `skills/react/component-quality-skill.md` + `skills/react/testing-vitest-skill.md`      |
+| React form / booking UI | + `skills/react/forms-validation-skill.md`                                              |
+| API client wiring       | `skills/react/api-client-skill.md`                                                      |
+| Backend API endpoint    | `skills/laravel/api-endpoints-skill.md` + `skills/laravel/testing-skill.md`             |
+| Booking domain logic    | + `skills/laravel/booking-overlap-skill.md`                                             |
+| Auth / token changes    | + `skills/laravel/auth-tokens-skill.md`                                                 |
+| Migration / schema      | `skills/laravel/migrations-postgres-skill.md`                                           |
+| Security                | `skills/laravel/security-secrets-skill.md` or `skills/react/security-frontend-skill.md` |
+| CI / Docker             | `skills/ops/ci-quality-gates-skill.md` + `skills/ops/docker-compose-skill.md`           |
 
 Full skill index and canonical task prompt template: [`skills/README.md`](./skills/README.md)
 
@@ -238,6 +246,7 @@ Deliverables:
 ### Example Task Prompts
 
 **1. Add a new React feature component:**
+
 ```text
 Task: Add a LocationReviews component to src/features/locations/ that fetches
 and displays reviews for a location slug via GET /v1/locations/:slug/reviews.
@@ -246,6 +255,7 @@ Skills: skills/react/component-quality-skill.md, skills/react/api-client-skill.m
 ```
 
 **2. Fix a backend validation bug:**
+
 ```text
 Task: The BookingRequest does not validate that check_out > check_in at the HTTP
 layer. Add this validation to backend/app/Http/Requests/BookingRequest.php and
@@ -255,6 +265,7 @@ Skills: skills/laravel/api-endpoints-skill.md, skills/laravel/testing-skill.md,
 ```
 
 **3. Docs-only update:**
+
 ```text
 Task: Sync docs/frontend/FEATURES_LAYER.md to reflect the new admin/ feature.
 No app code changes. Update docs/COMPACT.md when done.
@@ -294,15 +305,15 @@ Stop and confirm with the user before proceeding if:
 
 ## Related Governance Docs
 
-| Doc | Purpose |
-|-----|---------|
-| [`AGENTS.md`](./AGENTS.md) | Root onboarding — read first |
-| [`docs/agents/CONTRACT.md`](./docs/agents/CONTRACT.md) | Definition of Done per task type |
-| [`docs/agents/ARCHITECTURE_FACTS.md`](./docs/agents/ARCHITECTURE_FACTS.md) | Verified domain invariants |
-| [`docs/agents/COMMANDS.md`](./docs/agents/COMMANDS.md) | Verified command reference |
-| [`docs/AI_GOVERNANCE.md`](./docs/AI_GOVERNANCE.md) | Full agent workflow + skill selection |
-| [`docs/COMPACT.md`](./docs/COMPACT.md) | Current session state + health baseline |
-| [`docs/HOOKS.md`](./docs/HOOKS.md) | Git hook behavior + bypass policy |
-| [`docs/MCP.md`](./docs/MCP.md) | MCP server setup + safety policy |
-| [`skills/README.md`](./skills/README.md) | Skill index + canonical task prompt template |
-| [`docs/FINDINGS_BACKLOG.md`](./docs/FINDINGS_BACKLOG.md) | Out-of-scope issues log |
+| Doc                                                                        | Purpose                                      |
+| -------------------------------------------------------------------------- | -------------------------------------------- |
+| [`AGENTS.md`](./AGENTS.md)                                                 | Root onboarding — read first                 |
+| [`docs/agents/CONTRACT.md`](./docs/agents/CONTRACT.md)                     | Definition of Done per task type             |
+| [`docs/agents/ARCHITECTURE_FACTS.md`](./docs/agents/ARCHITECTURE_FACTS.md) | Verified domain invariants                   |
+| [`docs/agents/COMMANDS.md`](./docs/agents/COMMANDS.md)                     | Verified command reference                   |
+| [`docs/AI_GOVERNANCE.md`](./docs/AI_GOVERNANCE.md)                         | Full agent workflow + skill selection        |
+| [`docs/COMPACT.md`](./docs/COMPACT.md)                                     | Current session state + health baseline      |
+| [`docs/HOOKS.md`](./docs/HOOKS.md)                                         | Git hook behavior + bypass policy            |
+| [`docs/MCP.md`](./docs/MCP.md)                                             | MCP server setup + safety policy             |
+| [`skills/README.md`](./skills/README.md)                                   | Skill index + canonical task prompt template |
+| [`docs/FINDINGS_BACKLOG.md`](./docs/FINDINGS_BACKLOG.md)                   | Out-of-scope issues log                      |

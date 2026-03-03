@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import axios from 'axios'
-import api from '@/shared/lib/api'
+import api, { isAxiosError } from '@/shared/lib/api'
 import { setCsrfToken, clearCsrfToken } from '@/shared/utils/csrf'
-import { User } from '@/types/api'
+import { User } from '@/shared/types/api'
 
 /**
  * Auth Context Type
@@ -182,7 +181,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } catch (err: unknown) {
         let message = 'Registration failed.'
-        if (axios.isAxiosError(err) && err.response?.data) {
+        if (isAxiosError(err) && err.response?.data) {
           const data = err.response.data as {
             message?: string
             errors?: Record<string, string[]>

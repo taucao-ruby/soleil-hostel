@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getLocations } from './location.api'
-import type { Location } from './location.types'
+import { getLocations } from '@/shared/lib/location.api'
+import type { Location } from '@/shared/types/location.types'
 import LocationCard from './LocationCard'
 import SkeletonCard from '@/shared/components/ui/SkeletonCard'
 

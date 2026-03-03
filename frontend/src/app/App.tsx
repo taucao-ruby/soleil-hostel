@@ -1,6 +1,6 @@
 import React from 'react'
 import ErrorBoundary from '@/shared/components/ErrorBoundary'
-import { ToastContainer } from '@/utils/toast'
+import { ToastContainer } from '@/shared/utils/toast'
 import Router from './router'
 
 /**

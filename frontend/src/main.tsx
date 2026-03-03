@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import '@/shared/styles/index.css'
 import 'react-toastify/dist/ReactToastify.css'
 import App from './app/App'
-import { initWebVitals } from './utils/webVitals'
+import { initWebVitals } from '@/shared/utils/webVitals'
 
 // Initialize Web Vitals monitoring for performance tracking
 if (import.meta.env.PROD) {

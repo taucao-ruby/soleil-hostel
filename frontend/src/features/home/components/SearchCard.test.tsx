@@ -13,12 +13,12 @@ vi.mock('react-router-dom', async () => {
   return { ...actual, useNavigate: () => mockNavigate }
 })
 
-vi.mock('@/features/locations/location.api', () => ({
+vi.mock('@/shared/lib/location.api', () => ({
   getLocations: vi.fn(),
 }))
 
-import { getLocations } from '@/features/locations/location.api'
-import type { Location } from '@/features/locations/location.types'
+import { getLocations } from '@/shared/lib/location.api'
+import type { Location } from '@/shared/types/location.types'
 
 const mockedGetLocations = vi.mocked(getLocations)
 

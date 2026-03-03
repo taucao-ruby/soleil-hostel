@@ -1,5 +1,5 @@
 import React from 'react'
-import type { Location } from './location.types'
+import type { Location } from '@/shared/types/location.types'
 import { amenityIcons } from './constants'
 
 interface LocationCardProps {

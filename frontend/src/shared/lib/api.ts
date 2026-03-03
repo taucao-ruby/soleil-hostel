@@ -179,4 +179,6 @@ api.interceptors.response.use(
   }
 )
 
+export { isAxiosError } from 'axios'
+
 export default api

@@ -1,5 +1,5 @@
 import React from 'react'
-import type { Location } from './location.types'
+import type { Location } from '@/shared/types/location.types'
 import { amenityIcons } from './constants'
 
 interface LocationCardProps {
@@ -82,17 +82,17 @@ const LocationCard: React.FC<LocationCardProps> = ({ location, onClick }) => {
               </span>
             ))}
             {location.amenities.length > 6 && (
-              <span className="text-sm text-gray-500">+{location.amenities.length - 6} more</span>
+              <span className="text-sm text-gray-500">+{location.amenities.length - 6} khác</span>
             )}
           </div>
         )}
 
         {/* Stats */}
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600">{location.stats.total_rooms} rooms</span>
+          <span className="text-gray-600">{location.stats.total_rooms} phòng</span>
           {location.stats.available_rooms !== undefined && (
             <span className="font-medium text-green-600">
-              {location.stats.available_rooms} available
+              {location.stats.available_rooms} còn trống
             </span>
           )}
         </div>

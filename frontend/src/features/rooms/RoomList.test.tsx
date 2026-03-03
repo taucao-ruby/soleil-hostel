@@ -78,7 +78,7 @@ describe('RoomList', () => {
     render(<RoomList />)
 
     await waitFor(() => {
-      expect(screen.getByText('No rooms available')).toBeInTheDocument()
+      expect(screen.getByText('Không có phòng trống')).toBeInTheDocument()
     })
   })
 
@@ -87,7 +87,9 @@ describe('RoomList', () => {
     render(<RoomList />)
 
     await waitFor(() => {
-      expect(screen.getByText('Failed to load rooms. Please try again later.')).toBeInTheDocument()
+      expect(
+        screen.getByText('Không thể tải danh sách phòng. Vui lòng thử lại sau.')
+      ).toBeInTheDocument()
     })
   })
 
@@ -104,7 +106,7 @@ describe('RoomList', () => {
     render(<RoomList />)
 
     await waitFor(() => {
-      const bookButtons = screen.getAllByRole('button', { name: 'Book Now' })
+      const bookButtons = screen.getAllByRole('button', { name: 'Đặt ngay' })
       expect(bookButtons).toHaveLength(1) // only Deluxe Room is available
     })
   })
@@ -113,9 +115,9 @@ describe('RoomList', () => {
     render(<RoomList />)
 
     await waitFor(() => {
-      expect(screen.getByText('available')).toBeInTheDocument()
-      expect(screen.getByText('booked')).toBeInTheDocument()
-      expect(screen.getByText('maintenance')).toBeInTheDocument()
+      expect(screen.getByText('Còn trống')).toBeInTheDocument()
+      expect(screen.getByText('Đã đặt')).toBeInTheDocument()
+      expect(screen.getByText('Bảo trì')).toBeInTheDocument()
     })
   })
 

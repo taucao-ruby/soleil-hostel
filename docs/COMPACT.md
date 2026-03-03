@@ -2,14 +2,14 @@
 
 ## 1) Current Snapshot (keep under 12 lines)
 
-- Date updated: 2026-03-02
-- Current branch: `dev` (synced with `main`)
-- Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (226 tests, 21 suites) — verified 2026-03-02
+- Date updated: 2026-03-03
+- Current branch: `refactor/fsd-imports-shared` (PR-2 of Batch 5)
+- Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (226 tests, 21 suites) — verified 2026-03-03
 - Backend test baseline: `cd backend && php artisan test` (857 tests, 2430 assertions) — verified 2026-03-02
 - Pint baseline: `cd backend && vendor/bin/pint --test` (275 files, 0 violations) — verified 2026-03-02
 - PHPStan: Level 5 + Larastan installed, baseline 151 pre-existing errors
-- Progress summary: Batches 1–4 complete, docs sync complete
-- Open findings: F-21 (LoginPage English), F-22 (Indonesian string), F-23 (MD lint), F-24 (HasUuids conflict)
+- Progress summary: Batches 1–5 complete (Batch 5: 2 PRs — Vietnamese UI + FSD refactor)
+- Open findings: F-22 (Indonesian string), F-23 (MD lint), F-24 (HasUuids conflict) — F-21 resolved by PR-1
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
 ## 2) What matters (invariants / guardrails)
@@ -31,15 +31,14 @@
 
 ### Now
 
-- `dev` and `main` synced; all March 1 work committed and pushed
-- GitHub CLI (`gh`) installed via winget (v2.87.3) — authenticate with `gh auth login` before use
-- Open findings: F-21 (LoginPage English), F-22 (Indonesian string), F-23 (MD lint), F-24 (HasUuids conflict)
+- Batch 5 complete: 2 PRs pushed (`feat/ui-vietnamese-copy-vnd`, `refactor/fsd-imports-shared`)
+- GitHub CLI (`gh`) not authenticated — create PRs manually or run `gh auth login`
+- Open findings: F-22 (Indonesian string), F-23 (MD lint), F-24 (HasUuids conflict) — F-21 resolved
 
 ### Next
 
 - PAY-001 Phase 2: Stripe checkout session + frontend payment UI
-- Frontend i18n (I18N-002): wire translation keys for frontend strings
-- F-21: Translate LoginPage + RegisterPage to Vietnamese
+- Frontend i18n (I18N-002): wire react-i18next for remaining hardcoded strings
 - F-24: Fix PersonalAccessToken HasUuids + integer PK conflict
 - E2E tests (Playwright): blocked on stable staging environment
 - Deployment: SSH-based deploy step + post-deploy health check
@@ -527,3 +526,36 @@ C-04, H-10, H-11, H-14, M-26, M-27, M-28
 - All 3 branches pushed to origin; GitHub CLI not authenticated — create PRs manually or run `gh auth login`
 - Branches: `fix/fe-abortcontroller-cleanup`, `test/fe-vitest-hoisted-auth-mocks`, `chore/fe-no-console-and-roomlist-tests`
 - All target `dev` branch
+
+## 2026-03-03 — Batch 5: Frontend UI Copy + FSD Architecture Fixes
+
+### PR-1: `feat/ui-vietnamese-copy-vnd` (commit: `4b20bfa`)
+
+- **H-07**: Translated all English UI strings to Vietnamese across LoginPage, RegisterPage, Header, NotFoundPage, LocationCard, RoomList, AuthContext error messages
+- **L-11**: Created `shared/lib/formatCurrency.ts` with VND formatter (`Intl.NumberFormat('vi-VN', { currency: 'VND' })`); replaced `$` prefixes in BookingForm and RoomList with `formatVND()`
+- Updated 7 test files to match Vietnamese strings
+- Files: 14 files (1 new, 13 modified)
+
+### PR-2: `refactor/fsd-imports-shared` (commit: `19f38cb`)
+
+- **M-20**: Moved `src/types/api.ts` → `src/shared/types/api.ts`
+- **M-13**: AuthContext.tsx `User` import → `@/shared/types/api`
+- **L-10**: Replaced direct `import axios` in AuthContext.tsx → shared `isAxiosError` re-export from `api.ts`
+- **M-19**: Moved `src/utils/{toast,webVitals}.ts` → `src/shared/utils/`; updated 5 consumers + 2 test mocks
+- **M-16**: Moved `booking.constants.ts` → `src/shared/lib/booking.utils.ts`; updated AdminDashboard, GuestDashboard, BookingDetailPanel
+- **M-15**: Moved `location.types.ts` → `src/shared/types/`; extracted `getLocations` → `src/shared/lib/location.api.ts`; updated SearchCard, LocationList, LocationCard, LocationDetail, index.ts, 3 test files
+- Files: 25 files (1 new, 6 moved, 18 modified)
+
+### Gates
+
+- `tsc --noEmit`: 0 errors ✅ (both PRs)
+- `vitest run`: 226/226 pass, 21 suites ✅ (both PRs)
+- `eslint` (lint-staged): 0 warnings ✅ (both PRs)
+- Pre-push hooks: passed ✅ (both PRs)
+- Backend: not touched — [SKIPPED]
+
+### Residual
+
+- F-21 (LoginPage English): RESOLVED by PR-1
+- SearchCard `act(...)` warnings in HomePage.test.tsx: pre-existing, non-blocking (see §5)
+- `gh` CLI not authenticated — PRs must be created manually

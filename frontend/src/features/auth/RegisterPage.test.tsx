@@ -33,114 +33,112 @@ describe('RegisterPage', () => {
 
   it('renders the registration form', () => {
     render(<RegisterPage />)
-    expect(screen.getByRole('heading', { name: 'Create Account' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Full Name')).toBeInTheDocument()
-    expect(screen.getByLabelText('Email Address')).toBeInTheDocument()
-    expect(screen.getByLabelText('Password')).toBeInTheDocument()
-    expect(screen.getByLabelText('Confirm Password')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Create Account' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Tạo tài khoản' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Họ và tên')).toBeInTheDocument()
+    expect(screen.getByLabelText('Địa chỉ email')).toBeInTheDocument()
+    expect(screen.getByLabelText('Mật khẩu')).toBeInTheDocument()
+    expect(screen.getByLabelText('Xác nhận mật khẩu')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Tạo tài khoản' })).toBeInTheDocument()
   })
 
   it('shows validation error when name is empty', async () => {
     const user = userEvent.setup()
     render(<RegisterPage />)
 
-    await user.click(screen.getByRole('button', { name: 'Create Account' }))
+    await user.click(screen.getByRole('button', { name: 'Tạo tài khoản' }))
 
-    expect(screen.getByText('Name is required')).toBeInTheDocument()
+    expect(screen.getByText('Vui lòng nhập họ tên')).toBeInTheDocument()
   })
 
   it('shows validation error when name is too short', async () => {
     const user = userEvent.setup()
     render(<RegisterPage />)
 
-    await user.type(screen.getByLabelText('Full Name'), 'A')
-    await user.click(screen.getByRole('button', { name: 'Create Account' }))
+    await user.type(screen.getByLabelText('Họ và tên'), 'A')
+    await user.click(screen.getByRole('button', { name: 'Tạo tài khoản' }))
 
-    expect(screen.getByText('Name must be at least 2 characters')).toBeInTheDocument()
+    expect(screen.getByText('Họ tên phải có ít nhất 2 ký tự')).toBeInTheDocument()
   })
 
   it('shows validation error when email is empty', async () => {
     const user = userEvent.setup()
     render(<RegisterPage />)
 
-    await user.type(screen.getByLabelText('Full Name'), 'John Doe')
-    await user.click(screen.getByRole('button', { name: 'Create Account' }))
+    await user.type(screen.getByLabelText('Họ và tên'), 'John Doe')
+    await user.click(screen.getByRole('button', { name: 'Tạo tài khoản' }))
 
-    expect(screen.getByText('Email is required')).toBeInTheDocument()
+    expect(screen.getByText('Vui lòng nhập email')).toBeInTheDocument()
   })
 
   it('shows validation error for invalid email format', async () => {
     const user = userEvent.setup()
     render(<RegisterPage />)
 
-    await user.type(screen.getByLabelText('Full Name'), 'John Doe')
-    await user.type(screen.getByLabelText('Email Address'), 'not-an-email')
-    await user.click(screen.getByRole('button', { name: 'Create Account' }))
+    await user.type(screen.getByLabelText('Họ và tên'), 'John Doe')
+    await user.type(screen.getByLabelText('Địa chỉ email'), 'not-an-email')
+    await user.click(screen.getByRole('button', { name: 'Tạo tài khoản' }))
 
-    expect(screen.getByText('Invalid email format')).toBeInTheDocument()
+    expect(screen.getByText('Email không hợp lệ')).toBeInTheDocument()
   })
 
   it('shows validation error when password is empty', async () => {
     const user = userEvent.setup()
     render(<RegisterPage />)
 
-    await user.type(screen.getByLabelText('Full Name'), 'John Doe')
-    await user.type(screen.getByLabelText('Email Address'), 'john@example.com')
-    await user.click(screen.getByRole('button', { name: 'Create Account' }))
+    await user.type(screen.getByLabelText('Họ và tên'), 'John Doe')
+    await user.type(screen.getByLabelText('Địa chỉ email'), 'john@example.com')
+    await user.click(screen.getByRole('button', { name: 'Tạo tài khoản' }))
 
-    expect(screen.getByText('Password is required')).toBeInTheDocument()
+    expect(screen.getByText('Vui lòng nhập mật khẩu')).toBeInTheDocument()
   })
 
   it('shows validation error when password is too short', async () => {
     const user = userEvent.setup()
     render(<RegisterPage />)
 
-    await user.type(screen.getByLabelText('Full Name'), 'John Doe')
-    await user.type(screen.getByLabelText('Email Address'), 'john@example.com')
-    await user.type(screen.getByLabelText('Password'), '12345')
-    await user.click(screen.getByRole('button', { name: 'Create Account' }))
+    await user.type(screen.getByLabelText('Họ và tên'), 'John Doe')
+    await user.type(screen.getByLabelText('Địa chỉ email'), 'john@example.com')
+    await user.type(screen.getByLabelText('Mật khẩu'), '12345')
+    await user.click(screen.getByRole('button', { name: 'Tạo tài khoản' }))
 
-    expect(screen.getByText('Password must be at least 8 characters')).toBeInTheDocument()
+    expect(screen.getByText('Mật khẩu phải có ít nhất 8 ký tự')).toBeInTheDocument()
   })
 
   it('shows validation error when password lacks complexity', async () => {
     const user = userEvent.setup()
     render(<RegisterPage />)
 
-    await user.type(screen.getByLabelText('Full Name'), 'John Doe')
-    await user.type(screen.getByLabelText('Email Address'), 'john@example.com')
-    await user.type(screen.getByLabelText('Password'), 'alllowercase')
-    await user.click(screen.getByRole('button', { name: 'Create Account' }))
+    await user.type(screen.getByLabelText('Họ và tên'), 'John Doe')
+    await user.type(screen.getByLabelText('Địa chỉ email'), 'john@example.com')
+    await user.type(screen.getByLabelText('Mật khẩu'), 'alllowercase')
+    await user.click(screen.getByRole('button', { name: 'Tạo tài khoản' }))
 
-    expect(
-      screen.getByText('Password must contain uppercase, lowercase, and number')
-    ).toBeInTheDocument()
+    expect(screen.getByText('Mật khẩu phải chứa chữ hoa, chữ thường và số')).toBeInTheDocument()
   })
 
   it('shows validation error when passwords do not match', async () => {
     const user = userEvent.setup()
     render(<RegisterPage />)
 
-    await user.type(screen.getByLabelText('Full Name'), 'John Doe')
-    await user.type(screen.getByLabelText('Email Address'), 'john@example.com')
-    await user.type(screen.getByLabelText('Password'), 'Password1')
-    await user.type(screen.getByLabelText('Confirm Password'), 'Password2')
-    await user.click(screen.getByRole('button', { name: 'Create Account' }))
+    await user.type(screen.getByLabelText('Họ và tên'), 'John Doe')
+    await user.type(screen.getByLabelText('Địa chỉ email'), 'john@example.com')
+    await user.type(screen.getByLabelText('Mật khẩu'), 'Password1')
+    await user.type(screen.getByLabelText('Xác nhận mật khẩu'), 'Password2')
+    await user.click(screen.getByRole('button', { name: 'Tạo tài khoản' }))
 
-    expect(screen.getByText('Passwords do not match')).toBeInTheDocument()
+    expect(screen.getByText('Mật khẩu không khớp')).toBeInTheDocument()
   })
 
   it('shows validation error when confirmation is empty', async () => {
     const user = userEvent.setup()
     render(<RegisterPage />)
 
-    await user.type(screen.getByLabelText('Full Name'), 'John Doe')
-    await user.type(screen.getByLabelText('Email Address'), 'john@example.com')
-    await user.type(screen.getByLabelText('Password'), 'Password1')
-    await user.click(screen.getByRole('button', { name: 'Create Account' }))
+    await user.type(screen.getByLabelText('Họ và tên'), 'John Doe')
+    await user.type(screen.getByLabelText('Địa chỉ email'), 'john@example.com')
+    await user.type(screen.getByLabelText('Mật khẩu'), 'Password1')
+    await user.click(screen.getByRole('button', { name: 'Tạo tài khoản' }))
 
-    expect(screen.getByText('Please confirm your password')).toBeInTheDocument()
+    expect(screen.getByText('Vui lòng xác nhận mật khẩu')).toBeInTheDocument()
   })
 
   it('calls registerHttpOnly with form data on valid submission', async () => {
@@ -148,11 +146,11 @@ describe('RegisterPage', () => {
     const user = userEvent.setup()
     render(<RegisterPage />)
 
-    await user.type(screen.getByLabelText('Full Name'), 'John Doe')
-    await user.type(screen.getByLabelText('Email Address'), 'john@example.com')
-    await user.type(screen.getByLabelText('Password'), 'Password1')
-    await user.type(screen.getByLabelText('Confirm Password'), 'Password1')
-    await user.click(screen.getByRole('button', { name: 'Create Account' }))
+    await user.type(screen.getByLabelText('Họ và tên'), 'John Doe')
+    await user.type(screen.getByLabelText('Địa chỉ email'), 'john@example.com')
+    await user.type(screen.getByLabelText('Mật khẩu'), 'Password1')
+    await user.type(screen.getByLabelText('Xác nhận mật khẩu'), 'Password1')
+    await user.click(screen.getByRole('button', { name: 'Tạo tài khoản' }))
 
     await waitFor(() => {
       expect(mockRegisterHttpOnly).toHaveBeenCalledWith(
@@ -173,14 +171,14 @@ describe('RegisterPage', () => {
 
   it('has a link to login page', () => {
     render(<RegisterPage />)
-    expect(screen.getByText('Sign in here')).toBeInTheDocument()
+    expect(screen.getByText('Đăng nhập tại đây')).toBeInTheDocument()
   })
 
   it('navigates to login when sign in link is clicked', async () => {
     const user = userEvent.setup()
     render(<RegisterPage />)
 
-    await user.click(screen.getByText('Sign in here'))
+    await user.click(screen.getByText('Đăng nhập tại đây'))
     expect(mockNavigate).toHaveBeenCalledWith('/login')
   })
 
@@ -188,7 +186,7 @@ describe('RegisterPage', () => {
     const user = userEvent.setup()
     render(<RegisterPage />)
 
-    await user.click(screen.getByText('← Back to home'))
+    await user.click(screen.getByText('← Về trang chủ'))
     expect(mockNavigate).toHaveBeenCalledWith('/')
   })
 
@@ -196,10 +194,10 @@ describe('RegisterPage', () => {
     const user = userEvent.setup()
     render(<RegisterPage />)
 
-    await user.click(screen.getByRole('button', { name: 'Create Account' }))
-    expect(screen.getByText('Name is required')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Tạo tài khoản' }))
+    expect(screen.getByText('Vui lòng nhập họ tên')).toBeInTheDocument()
 
-    await user.type(screen.getByLabelText('Full Name'), 'John')
-    expect(screen.queryByText('Name is required')).not.toBeInTheDocument()
+    await user.type(screen.getByLabelText('Họ và tên'), 'John')
+    expect(screen.queryByText('Vui lòng nhập họ tên')).not.toBeInTheDocument()
   })
 })

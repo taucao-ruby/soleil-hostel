@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getLocations } from '@/features/locations/location.api'
-import type { Location } from '@/features/locations/location.types'
+import { getLocations } from '@/shared/lib/location.api'
+import type { Location } from '@/shared/types/location.types'
 
 /**
  * SearchCard — THE only place "Tìm phòng trống" appears (FIX H-02).

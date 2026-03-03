@@ -34,7 +34,7 @@ vi.mock('./useMyBookings', () => ({
   useCancelBookingMutation: vi.fn(),
 }))
 
-vi.mock('@/utils/toast', () => ({
+vi.mock('@/shared/utils/toast', () => ({
   showToast: mockShowToast,
   getErrorMessage: (err: unknown) => (typeof err === 'string' ? err : 'Error'),
 }))

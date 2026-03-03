@@ -13,32 +13,30 @@ import HomePage from './HomePage'
 import BottomNav from '@/features/home/components/BottomNav'
 
 // SearchCard now fetches locations on mount — mock to prevent unhandled requests
-vi.mock('@/features/locations/location.api', () => ({
-  getLocations: vi
-    .fn()
-    .mockResolvedValue([
-      {
-        id: 1,
-        name: 'Soleil Phú Hội',
-        slug: 'soleil-phu-hoi',
-        address: {
-          full: '',
-          street: '',
-          ward: null,
-          district: null,
-          city: 'Huế',
-          postal_code: null,
-        },
-        coordinates: null,
-        contact: { phone: null, email: null },
-        description: null,
-        amenities: [],
-        images: [],
-        stats: { total_rooms: 10 },
-        is_active: true,
-        created_at: '',
+vi.mock('@/shared/lib/location.api', () => ({
+  getLocations: vi.fn().mockResolvedValue([
+    {
+      id: 1,
+      name: 'Soleil Phú Hội',
+      slug: 'soleil-phu-hoi',
+      address: {
+        full: '',
+        street: '',
+        ward: null,
+        district: null,
+        city: 'Huế',
+        postal_code: null,
       },
-    ]),
+      coordinates: null,
+      contact: { phone: null, email: null },
+      description: null,
+      amenities: [],
+      images: [],
+      stats: { total_rooms: 10 },
+      is_active: true,
+      created_at: '',
+    },
+  ]),
 }))
 
 // jsdom does not implement window.matchMedia — minimal stub

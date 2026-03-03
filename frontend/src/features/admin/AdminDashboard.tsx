@@ -7,15 +7,11 @@ import {
   forceDeleteBooking,
 } from './admin.api'
 import type { AdminBookingRaw, ContactMessageRaw, PaginationMeta } from './admin.types'
-import {
-  getStatusConfig,
-  formatDateRangeVN,
-  formatDateVN,
-} from '@/features/bookings/booking.constants'
+import { getStatusConfig, formatDateRangeVN, formatDateVN } from '@/shared/lib/booking.utils'
 import Skeleton from '@/shared/components/ui/Skeleton'
 import Button from '@/shared/components/ui/Button'
 import ConfirmDialog from '@/shared/components/ui/ConfirmDialog'
-import { showToast, getErrorMessage } from '@/utils/toast'
+import { showToast, getErrorMessage } from '@/shared/utils/toast'
 
 // ── Types ───────────────────────────────────────────────
 

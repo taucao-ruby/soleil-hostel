@@ -21,22 +21,22 @@ function renderHeader(initialRoute: string) {
 }
 
 describe('Locations nav link', () => {
-  it('renders "Locations" link in the nav', () => {
+  it('renders "Chi nhánh" link in the nav', () => {
     renderHeader('/')
-    const links = screen.getAllByRole('link', { name: 'Locations' })
+    const links = screen.getAllByRole('link', { name: 'Chi nhánh' })
     expect(links.length).toBeGreaterThanOrEqual(1)
     expect(links[0]).toHaveAttribute('href', '/locations')
   })
 
   it('has active style on /locations', () => {
     renderHeader('/locations')
-    const link = screen.getAllByRole('link', { name: 'Locations' })[0]
+    const link = screen.getAllByRole('link', { name: 'Chi nhánh' })[0]
     expect(link.className).toContain('text-blue-600')
   })
 
   it('has active style on /locations/:slug', () => {
     renderHeader('/locations/some-slug')
-    const link = screen.getAllByRole('link', { name: 'Locations' })[0]
+    const link = screen.getAllByRole('link', { name: 'Chi nhánh' })[0]
     expect(link.className).toContain('text-blue-600')
   })
 })

@@ -25,7 +25,7 @@ vi.mock('./admin.api', () => ({
   forceDeleteBooking: vi.fn(),
 }))
 
-vi.mock('@/utils/toast', () => ({
+vi.mock('@/shared/utils/toast', () => ({
   showToast: mockShowToast,
   getErrorMessage: (err: unknown) => (typeof err === 'string' ? err : 'Có lỗi xảy ra'),
 }))

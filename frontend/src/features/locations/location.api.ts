@@ -1,27 +1,14 @@
 import api from '@/shared/lib/api'
-import type {
-  Location,
-  LocationWithRooms,
-  LocationsResponse,
-  LocationResponse,
-} from './location.types'
+import type { LocationWithRooms, LocationResponse } from '@/shared/types/location.types'
 
 /**
  * Location API Service
  *
  * All location-related API calls using the shared api instance.
  * Endpoints are public (no authentication required).
- */
-
-/**
- * Get all active locations with room counts.
  *
- * GET /v1/locations
+ * Note: getLocations() lives in @/shared/lib/location.api (used cross-feature).
  */
-export async function getLocations(signal?: AbortSignal): Promise<Location[]> {
-  const response = await api.get<LocationsResponse>('/v1/locations', { signal })
-  return response.data.data
-}
 
 /**
  * Get a single location by slug with its rooms.

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getStatusConfig, formatDateVN, formatDateRangeVN } from './booking.constants'
+import { getStatusConfig, formatDateVN, formatDateRangeVN } from './booking.utils'
 
 describe('getStatusConfig', () => {
   it('returns Vietnamese label for known statuses', () => {

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { getLocationBySlug } from './location.api'
-import type { LocationWithRooms, LocationRoom } from './location.types'
+import type { LocationWithRooms, LocationRoom } from '@/shared/types/location.types'
 import { amenityIcons } from './constants'
 
 /**

@@ -145,7 +145,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setError(null)
       } catch (err: unknown) {
         const error = err as { response?: { data?: { message?: string } } }
-        const errorMessage = error?.response?.data?.message || 'Login failed'
+        const errorMessage = error?.response?.data?.message || 'Đăng nhập thất bại'
         setError(errorMessage)
         throw err
       } finally {
@@ -178,10 +178,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           await loginHttpOnly(email, password)
         } catch {
-          setError('Registered successfully but auto-login failed. Please login manually.')
+          setError(
+            'Đăng ký thành công nhưng tự động đăng nhập thất bại. Vui lòng đăng nhập thủ công.'
+          )
         }
       } catch (err: unknown) {
-        let message = 'Registration failed.'
+        let message = 'Đăng ký thất bại.'
         if (axios.isAxiosError(err) && err.response?.data) {
           const data = err.response.data as {
             message?: string

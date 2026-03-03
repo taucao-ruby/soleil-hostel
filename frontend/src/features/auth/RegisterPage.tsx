@@ -34,32 +34,32 @@ const RegisterPage: React.FC = () => {
 
     // Name validation
     if (!formData.name.trim()) {
-      newErrors.name = 'Name is required'
+      newErrors.name = 'Vui lòng nhập họ tên'
     } else if (formData.name.trim().length < 2) {
-      newErrors.name = 'Name must be at least 2 characters'
+      newErrors.name = 'Họ tên phải có ít nhất 2 ký tự'
     }
 
     // Email validation
     if (!formData.email.trim()) {
-      newErrors.email = 'Email is required'
+      newErrors.email = 'Vui lòng nhập email'
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Invalid email format'
+      newErrors.email = 'Email không hợp lệ'
     }
 
     // Password validation
     if (!formData.password) {
-      newErrors.password = 'Password is required'
+      newErrors.password = 'Vui lòng nhập mật khẩu'
     } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters'
+      newErrors.password = 'Mật khẩu phải có ít nhất 8 ký tự'
     } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
-      newErrors.password = 'Password must contain uppercase, lowercase, and number'
+      newErrors.password = 'Mật khẩu phải chứa chữ hoa, chữ thường và số'
     }
 
     // Password confirmation validation
     if (!formData.passwordConfirmation) {
-      newErrors.passwordConfirmation = 'Please confirm your password'
+      newErrors.passwordConfirmation = 'Vui lòng xác nhận mật khẩu'
     } else if (formData.password !== formData.passwordConfirmation) {
-      newErrors.passwordConfirmation = 'Passwords do not match'
+      newErrors.passwordConfirmation = 'Mật khẩu không khớp'
     }
 
     setErrors(newErrors)
@@ -119,8 +119,8 @@ const RegisterPage: React.FC = () => {
       <div className="max-w-md w-full">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Create Account</h1>
-          <p className="text-gray-600">Join Soleil Hostel community</p>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Tạo tài khoản</h1>
+          <p className="text-gray-600">Tham gia cộng đồng Soleil Hostel</p>
         </div>
 
         {/* Registration Form Card */}
@@ -130,7 +130,7 @@ const RegisterPage: React.FC = () => {
             {success && (
               <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
                 <p className="text-green-800 text-sm font-medium">
-                  ✓ Registration successful! Redirecting...
+                  ✓ Đăng ký thành công! Đang chuyển hướng...
                 </p>
               </div>
             )}
@@ -145,7 +145,7 @@ const RegisterPage: React.FC = () => {
             {/* Name Field */}
             <div className="mb-5">
               <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-2">
-                Full Name
+                Họ và tên
               </label>
               <input
                 type="text"
@@ -159,7 +159,7 @@ const RegisterPage: React.FC = () => {
                     ? 'border-red-300 focus:ring-red-500'
                     : 'border-gray-300 focus:ring-blue-500'
                 } ${loading ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}`}
-                placeholder="John Doe"
+                placeholder="Nguyễn Văn A"
                 aria-required="true"
                 aria-invalid={!!errors.name}
                 aria-describedby={errors.name ? 'name-error' : undefined}
@@ -174,7 +174,7 @@ const RegisterPage: React.FC = () => {
             {/* Email Field */}
             <div className="mb-5">
               <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
-                Email Address
+                Địa chỉ email
               </label>
               <input
                 type="email"
@@ -203,7 +203,7 @@ const RegisterPage: React.FC = () => {
             {/* Password Field */}
             <div className="mb-5">
               <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">
-                Password
+                Mật khẩu
               </label>
               <input
                 type="password"
@@ -230,7 +230,7 @@ const RegisterPage: React.FC = () => {
                 </p>
               )}
               <p id="password-help" className="mt-2 text-xs text-gray-500">
-                Must be 8+ characters with uppercase, lowercase, and number
+                Tối thiểu 8 ký tự, bao gồm chữ hoa, chữ thường và số
               </p>
             </div>
 
@@ -240,7 +240,7 @@ const RegisterPage: React.FC = () => {
                 htmlFor="passwordConfirmation"
                 className="block text-sm font-semibold text-gray-700 mb-2"
               >
-                Confirm Password
+                Xác nhận mật khẩu
               </label>
               <input
                 type="password"
@@ -302,10 +302,10 @@ const RegisterPage: React.FC = () => {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     ></path>
                   </svg>
-                  Creating account...
+                  Đang tạo tài khoản...
                 </span>
               ) : (
-                'Create Account'
+                'Tạo tài khoản'
               )}
             </button>
           </form>
@@ -313,12 +313,12 @@ const RegisterPage: React.FC = () => {
           {/* Login Link */}
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              Already have an account?{' '}
+              Đã có tài khoản?{' '}
               <button
                 onClick={() => navigate('/login')}
                 className="text-blue-600 font-semibold hover:text-blue-700 transition-colors"
               >
-                Sign in here
+                Đăng nhập tại đây
               </button>
             </p>
           </div>
@@ -330,7 +330,7 @@ const RegisterPage: React.FC = () => {
             onClick={() => navigate('/')}
             className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
           >
-            ← Back to home
+            ← Về trang chủ
           </button>
         </div>
       </div>

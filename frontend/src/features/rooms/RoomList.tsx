@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { getRooms } from './room.api'
 import { Room } from './room.types'
 import SkeletonCard from '@/shared/components/ui/SkeletonCard'
+import { formatVND } from '@/shared/lib/formatCurrency'
 
 /**
  * RoomList Component
@@ -38,7 +39,7 @@ const RoomList: React.FC = () => {
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return
         if (!controller.signal.aborted) {
-          setError('Failed to load rooms. Please try again later.')
+          setError('Không thể tải danh sách phòng. Vui lòng thử lại sau.')
         }
       } finally {
         if (!controller.signal.aborted) {
@@ -67,15 +68,26 @@ const RoomList: React.FC = () => {
     }
   }
 
+  const getStatusLabel = (status: Room['status']) => {
+    switch (status) {
+      case 'available':
+        return 'Còn trống'
+      case 'booked':
+        return 'Đã đặt'
+      case 'maintenance':
+        return 'Bảo trì'
+      default:
+        return status
+    }
+  }
+
   return (
     <section className="min-h-screen px-4 py-12 bg-gray-50">
       <div className="mx-auto max-w-7xl">
         {/* Header */}
         <div className="mb-12 text-center">
-          <h1 className="mb-4 text-4xl font-bold text-gray-900">Our Rooms</h1>
-          <p className="text-lg text-gray-600">
-            Choose from our selection of comfortable and affordable rooms
-          </p>
+          <h1 className="mb-4 text-4xl font-bold text-gray-900">Danh sách phòng</h1>
+          <p className="text-lg text-gray-600">Lựa chọn phòng thoải mái với giá cả phải chăng</p>
         </div>
 
         {/* Error State */}
@@ -153,15 +165,15 @@ const RoomList: React.FC = () => {
 
                   {/* Room Description */}
                   <p className="mb-4 text-sm text-gray-600 line-clamp-2">
-                    {room.description || 'Comfortable room with all amenities'}
+                    {room.description || 'Phòng thoải mái với đầy đủ tiện nghi'}
                   </p>
 
                   {/* Price and Status */}
                   <div className="flex items-center justify-between">
                     {/* Price */}
                     <div data-testid="room-price" className="text-2xl font-bold text-blue-600">
-                      ${room.price}
-                      <span className="text-sm font-normal text-gray-500">/night</span>
+                      {formatVND(room.price)}
+                      <span className="text-sm font-normal text-gray-500">/đêm</span>
                     </div>
 
                     {/* Status Badge */}
@@ -170,7 +182,7 @@ const RoomList: React.FC = () => {
                         room.status
                       )}`}
                     >
-                      {room.status}
+                      {getStatusLabel(room.status)}
                     </span>
                   </div>
 
@@ -180,7 +192,7 @@ const RoomList: React.FC = () => {
                       onClick={() => navigate(`/booking?room_id=${room.id}`)}
                       className="w-full px-4 py-2 mt-4 font-semibold text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
                     >
-                      Book Now
+                      Đặt ngay
                     </button>
                   )}
                 </div>
@@ -205,8 +217,8 @@ const RoomList: React.FC = () => {
                 d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
               />
             </svg>
-            <h3 className="mb-2 text-xl font-semibold text-gray-900">No rooms available</h3>
-            <p className="text-gray-600">Check back later for available rooms</p>
+            <h3 className="mb-2 text-xl font-semibold text-gray-900">Không có phòng trống</h3>
+            <p className="text-gray-600">Vui lòng quay lại sau</p>
           </div>
         )}
       </div>

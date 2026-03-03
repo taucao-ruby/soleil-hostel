@@ -32,11 +32,11 @@ const Header: React.FC = () => {
     path === '/' ? location.pathname === '/' : location.pathname.startsWith(path)
 
   const navLinks = [
-    { path: '/', label: 'Home' },
-    { path: '/rooms', label: 'Rooms' },
-    { path: '/locations', label: 'Locations' },
-    ...(isAuthenticated ? [{ path: '/booking', label: 'Book Now' }] : []),
-    ...(isAuthenticated ? [{ path: '/dashboard', label: 'Dashboard' }] : []),
+    { path: '/', label: 'Trang chủ' },
+    { path: '/rooms', label: 'Phòng' },
+    { path: '/locations', label: 'Chi nhánh' },
+    ...(isAuthenticated ? [{ path: '/booking', label: 'Đặt phòng' }] : []),
+    ...(isAuthenticated ? [{ path: '/dashboard', label: 'Bảng điều khiển' }] : []),
   ]
 
   return (
@@ -86,18 +86,18 @@ const Header: React.FC = () => {
           <div className="items-center hidden space-x-4 md:flex">
             {isAuthenticated ? (
               <>
-                <span className="text-sm text-gray-600">Hi, {user?.name}</span>
+                <span className="text-sm text-gray-600">Xin chào, {user?.name}</span>
                 <Button variant="outline" size="sm" onClick={handleLogout}>
-                  Logout
+                  Đăng xuất
                 </Button>
               </>
             ) : (
               <>
                 <Button variant="ghost" size="sm" onClick={() => navigate('/login')}>
-                  Login
+                  Đăng nhập
                 </Button>
                 <Button variant="primary" size="sm" onClick={() => navigate('/register')}>
-                  Register
+                  Đăng ký
                 </Button>
               </>
             )}
@@ -107,7 +107,7 @@ const Header: React.FC = () => {
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="p-2 text-gray-700 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            aria-label="Toggle menu"
+            aria-label="Mở menu"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {mobileMenuOpen ? (
@@ -150,7 +150,7 @@ const Header: React.FC = () => {
               <div className="pt-3 mt-3 border-t border-gray-200">
                 {isAuthenticated ? (
                   <>
-                    <div className="px-4 py-2 text-sm text-gray-600">Hi, {user?.name}</div>
+                    <div className="px-4 py-2 text-sm text-gray-600">Xin chào, {user?.name}</div>
                     <button
                       onClick={() => {
                         handleLogout()
@@ -158,7 +158,7 @@ const Header: React.FC = () => {
                       }}
                       className="w-full px-4 py-2 text-base font-medium text-left text-gray-700 transition-colors rounded-lg hover:bg-gray-100"
                     >
-                      Logout
+                      Đăng xuất
                     </button>
                   </>
                 ) : (
@@ -170,7 +170,7 @@ const Header: React.FC = () => {
                       }}
                       className="w-full px-4 py-2 text-base font-medium text-left text-gray-700 transition-colors rounded-lg hover:bg-gray-100"
                     >
-                      Login
+                      Đăng nhập
                     </button>
                     <button
                       onClick={() => {
@@ -179,7 +179,7 @@ const Header: React.FC = () => {
                       }}
                       className="w-full px-4 py-2 mt-2 text-base font-medium text-left text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
                     >
-                      Register
+                      Đăng ký
                     </button>
                   </>
                 )}

@@ -10,6 +10,7 @@ import {
   getMinCheckOutDate,
   calculateNights,
 } from './booking.validation'
+import { formatVND } from '@/shared/lib/formatCurrency'
 
 /**
  * BookingForm Component
@@ -227,7 +228,7 @@ const BookingForm: React.FC = () => {
                   <option value="">Chọn phòng...</option>
                   {rooms.map(room => (
                     <option key={room.id} value={room.id}>
-                      {room.name} - ${room.price}/night
+                      {room.name} - {formatVND(room.price)}/đêm
                     </option>
                   ))}
                 </select>
@@ -431,11 +432,11 @@ const BookingForm: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">
-                      {nights} đêm × ${selectedRoom?.price}
+                      {nights} đêm × {formatVND(selectedRoom?.price ?? 0)}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-2xl font-bold text-blue-600">${totalPrice}</p>
+                    <p className="text-2xl font-bold text-blue-600">{formatVND(totalPrice)}</p>
                     <p className="text-xs text-gray-500">Tổng giá</p>
                   </div>
                 </div>

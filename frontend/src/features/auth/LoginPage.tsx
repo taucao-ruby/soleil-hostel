@@ -33,15 +33,15 @@ const LoginPage: React.FC = () => {
     const newErrors: Record<string, string> = {}
 
     if (!formData.email.trim()) {
-      newErrors.email = 'Email is required'
+      newErrors.email = 'Vui lòng nhập email'
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Invalid email format'
+      newErrors.email = 'Email không hợp lệ'
     }
 
     if (!formData.password) {
-      newErrors.password = 'Password is required'
+      newErrors.password = 'Vui lòng nhập mật khẩu'
     } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters'
+      newErrors.password = 'Mật khẩu phải có ít nhất 8 ký tự'
     }
 
     setErrors(newErrors)
@@ -96,8 +96,8 @@ const LoginPage: React.FC = () => {
       <div className="max-w-md w-full">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-          <p className="text-gray-600">Sign in to your Soleil Hostel account</p>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Chào mừng trở lại</h1>
+          <p className="text-gray-600">Đăng nhập vào tài khoản Soleil Hostel</p>
         </div>
 
         {/* Login Form Card */}
@@ -107,7 +107,7 @@ const LoginPage: React.FC = () => {
             {success && (
               <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
                 <p className="text-green-800 text-sm font-medium">
-                  ✓ Login successful! Redirecting...
+                  ✓ Đăng nhập thành công! Đang chuyển hướng...
                 </p>
               </div>
             )}
@@ -122,7 +122,7 @@ const LoginPage: React.FC = () => {
             {/* Email Field */}
             <div className="mb-6">
               <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
-                Email Address
+                Địa chỉ email
               </label>
               <input
                 type="email"
@@ -151,7 +151,7 @@ const LoginPage: React.FC = () => {
             {/* Password Field */}
             <div className="mb-6">
               <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">
-                Password
+                Mật khẩu
               </label>
               <input
                 type="password"
@@ -189,7 +189,7 @@ const LoginPage: React.FC = () => {
                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
               />
               <label htmlFor="rememberMe" className="ml-2 text-sm text-gray-700">
-                Remember me for 30 days
+                Ghi nhớ đăng nhập trong 30 ngày
               </label>
             </div>
 
@@ -227,10 +227,10 @@ const LoginPage: React.FC = () => {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     ></path>
                   </svg>
-                  Signing in...
+                  Đang đăng nhập...
                 </span>
               ) : (
-                'Sign In'
+                'Đăng nhập'
               )}
             </button>
           </form>
@@ -238,12 +238,12 @@ const LoginPage: React.FC = () => {
           {/* Register Link */}
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              Don't have an account?{' '}
+              Chưa có tài khoản?{' '}
               <button
                 onClick={() => navigate('/register')}
                 className="text-blue-600 font-semibold hover:text-blue-700 transition-colors"
               >
-                Register here
+                Đăng ký tại đây
               </button>
             </p>
           </div>
@@ -255,7 +255,7 @@ const LoginPage: React.FC = () => {
             onClick={() => navigate('/')}
             className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
           >
-            ← Back to home
+            ← Về trang chủ
           </button>
         </div>
       </div>

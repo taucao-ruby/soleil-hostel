@@ -46,50 +46,50 @@ describe('LoginPage', () => {
 
   it('renders the login form', () => {
     renderLoginPage()
-    expect(screen.getByText('Welcome Back')).toBeInTheDocument()
-    expect(screen.getByLabelText('Email Address')).toBeInTheDocument()
-    expect(screen.getByLabelText('Password')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Sign In' })).toBeInTheDocument()
+    expect(screen.getByText('Chào mừng trở lại')).toBeInTheDocument()
+    expect(screen.getByLabelText('Địa chỉ email')).toBeInTheDocument()
+    expect(screen.getByLabelText('Mật khẩu')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Đăng nhập' })).toBeInTheDocument()
   })
 
   it('shows validation error when email is empty', async () => {
     const user = userEvent.setup()
     renderLoginPage()
 
-    await user.click(screen.getByRole('button', { name: 'Sign In' }))
+    await user.click(screen.getByRole('button', { name: 'Đăng nhập' }))
 
-    expect(screen.getByText('Email is required')).toBeInTheDocument()
+    expect(screen.getByText('Vui lòng nhập email')).toBeInTheDocument()
   })
 
   it('shows validation error for invalid email format', async () => {
     const user = userEvent.setup()
     renderLoginPage()
 
-    await user.type(screen.getByLabelText('Email Address'), 'invalid-email')
-    await user.click(screen.getByRole('button', { name: 'Sign In' }))
+    await user.type(screen.getByLabelText('Địa chỉ email'), 'invalid-email')
+    await user.click(screen.getByRole('button', { name: 'Đăng nhập' }))
 
-    expect(screen.getByText('Invalid email format')).toBeInTheDocument()
+    expect(screen.getByText('Email không hợp lệ')).toBeInTheDocument()
   })
 
   it('shows validation error when password is empty', async () => {
     const user = userEvent.setup()
     renderLoginPage()
 
-    await user.type(screen.getByLabelText('Email Address'), 'user@example.com')
-    await user.click(screen.getByRole('button', { name: 'Sign In' }))
+    await user.type(screen.getByLabelText('Địa chỉ email'), 'user@example.com')
+    await user.click(screen.getByRole('button', { name: 'Đăng nhập' }))
 
-    expect(screen.getByText('Password is required')).toBeInTheDocument()
+    expect(screen.getByText('Vui lòng nhập mật khẩu')).toBeInTheDocument()
   })
 
   it('shows validation error when password is too short', async () => {
     const user = userEvent.setup()
     renderLoginPage()
 
-    await user.type(screen.getByLabelText('Email Address'), 'user@example.com')
-    await user.type(screen.getByLabelText('Password'), '12345')
-    await user.click(screen.getByRole('button', { name: 'Sign In' }))
+    await user.type(screen.getByLabelText('Địa chỉ email'), 'user@example.com')
+    await user.type(screen.getByLabelText('Mật khẩu'), '12345')
+    await user.click(screen.getByRole('button', { name: 'Đăng nhập' }))
 
-    expect(screen.getByText('Password must be at least 8 characters')).toBeInTheDocument()
+    expect(screen.getByText('Mật khẩu phải có ít nhất 8 ký tự')).toBeInTheDocument()
   })
 
   it('calls loginHttpOnly with form data on valid submission', async () => {
@@ -97,9 +97,9 @@ describe('LoginPage', () => {
     const user = userEvent.setup()
     renderLoginPage()
 
-    await user.type(screen.getByLabelText('Email Address'), 'user@example.com')
-    await user.type(screen.getByLabelText('Password'), 'password123')
-    await user.click(screen.getByRole('button', { name: 'Sign In' }))
+    await user.type(screen.getByLabelText('Địa chỉ email'), 'user@example.com')
+    await user.type(screen.getByLabelText('Mật khẩu'), 'password123')
+    await user.click(screen.getByRole('button', { name: 'Đăng nhập' }))
 
     await waitFor(() => {
       expect(mockLoginHttpOnly).toHaveBeenCalledWith('user@example.com', 'password123', false)
@@ -115,14 +115,14 @@ describe('LoginPage', () => {
 
   it('has a link to registration page', () => {
     renderLoginPage()
-    expect(screen.getByText('Register here')).toBeInTheDocument()
+    expect(screen.getByText('Đăng ký tại đây')).toBeInTheDocument()
   })
 
   it('navigates to register when register link is clicked', async () => {
     const user = userEvent.setup()
     renderLoginPage()
 
-    await user.click(screen.getByText('Register here'))
+    await user.click(screen.getByText('Đăng ký tại đây'))
     expect(mockNavigate).toHaveBeenCalledWith('/register')
   })
 })

@@ -82,12 +82,12 @@ describe('BookingForm', () => {
     render(<BookingForm />)
 
     await waitFor(() => {
-      expect(screen.getByText('Deluxe Room - $150/night')).toBeInTheDocument()
-      expect(screen.getByText('Suite Room - $250/night')).toBeInTheDocument()
+      expect(screen.getByText(/Deluxe Room.*\/đêm/)).toBeInTheDocument()
+      expect(screen.getByText(/Suite Room.*\/đêm/)).toBeInTheDocument()
     })
 
     // Maintenance room should be filtered out
-    expect(screen.queryByText('Maintenance Room - $100/night')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Maintenance Room.*\/đêm/)).not.toBeInTheDocument()
   })
 
   it('shows loading state while fetching rooms', () => {

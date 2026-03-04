@@ -5,11 +5,12 @@
 - Date updated: 2026-03-04
 - Current branch: `dev`
 - Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (226 tests, 21 suites) — verified 2026-03-03
-- Backend test baseline: `cd backend && php artisan test` (857 tests, 2430 assertions) — verified 2026-03-02
-- Pint baseline: `cd backend && vendor/bin/pint --test` (275 files, 0 violations) — verified 2026-03-02
+- Backend test baseline: `cd backend && php artisan test` (871 tests, 2449 assertions) — verified 2026-03-04
+- Pint baseline: `cd backend && vendor/bin/pint --test` (280 files, 2 pre-existing violations) — verified 2026-03-04
 - PHPStan: Level 5 + Larastan installed, baseline 151 pre-existing errors
-- Progress summary: Batches 1–8 complete (Batch 8: Backend architecture — validation, null-safety, service/repository extraction)
-- Open findings: F-22 (Indonesian string), F-23 (MD lint), F-24 (HasUuids conflict) — F-21 resolved by PR-1
+- Psalm: `vimeo/psalm ^6.15` installed, Level 1 with suppression config
+- Progress summary: Batches 1–9 complete (Batch 9: Backend cleanup — static analysis, routes, CORS, env-gating)
+- Open findings: F-23 (MD lint), F-24 (HasUuids conflict) — F-22 resolved (Indonesian→Vietnamese)
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
 ## 2) What matters (invariants / guardrails)
@@ -31,17 +32,15 @@
 
 ### Now
 
-- Batch 5 complete: 2 PRs pushed (`feat/ui-vietnamese-copy-vnd`, `refactor/fsd-imports-shared`)
-- GitHub CLI (`gh`) not authenticated — create PRs manually or run `gh auth login`
-- Open findings: F-22 (Indonesian string), F-23 (MD lint), F-24 (HasUuids conflict) — F-21 resolved
+- Batch 9 complete: 3 PR groups executed (static-analysis, routes-cors, test-env)
+- M-11 (migration squash) BLOCKED — no squash protocol in governance; requires human approval
+- H-06 (PG test DB) partially addressed — `phpunit.pgsql.xml` opt-in config created
 
 ### Next
 
+- M-11: Migration squash — needs human-approved `php artisan schema:dump --prune` process
+- H-06: Full PG test switch — needs CI PostgreSQL service alignment
 - PAY-001 Phase 2: Stripe checkout session + frontend payment UI
-- Frontend i18n (I18N-002): wire react-i18next for remaining hardcoded strings
-- F-24: Fix PersonalAccessToken HasUuids + integer PK conflict
-- E2E tests (Playwright): blocked on stable staging environment
-- Deployment: SSH-based deploy step + post-deploy health check
 
 ## 4) Verification checklist (copy/paste)
 
@@ -737,3 +736,68 @@ Chose **Option B**: Added top-level canonical redirect banner to `docs/DEVELOPME
 - M-05: Response shape UNCHANGED — same success() wrapper and translation keys
 - New IoC binding added for ContactMessageRepositoryInterface in AppServiceProvider — revert if rolling back PR-3
 - BookingService does not yet inject BookingRepositoryInterface (uses static Booking:: calls) — existing tech debt, out of scope
+
+## 2026-03-04 — Batch 9: Backend Cleanup, Tests & Configs
+
+### Issues Addressed
+
+| Issue | Status      | Summary                                                                                 |
+| ----- | ----------- | --------------------------------------------------------------------------------------- |
+| H-04  | ✅ RESOLVED | Installed `vimeo/psalm ^6.15` as composer dev dependency                                |
+| L-01  | ✅ RESOLVED | Replaced 4x `config('app.env') === 'production'` → `app()->isProduction()`              |
+| L-02  | ✅ RESOLVED | Translated Indonesian strings to Vietnamese in HttpOnlyTokenController                  |
+| L-07  | ✅ RESOLVED | Clarified `@deprecated` tag on RateLimitService (dead code documentation)               |
+| M-08  | ✅ RESOLVED | Deleted dead `app/Http/Middleware/Cors.php` (not registered; Laravel HandleCors active) |
+| M-10  | ✅ RESOLVED | Named all 25 v1 API routes with `v1.*` convention                                       |
+| L-08  | ✅ RESOLVED | Env-gated v2 skeleton routes: hidden in production, visible in dev/testing              |
+| M-12  | ✅ RESOLVED | Added 6 CspViolationReportController tests (dedicated test file)                        |
+| H-06  | ⚠️ PARTIAL  | Created `phpunit.pgsql.xml` for opt-in PostgreSQL testing; SQLite remains default       |
+| M-11  | 🛑 BLOCKED  | No squash protocol exists in governance; SQUASH PLAN documented below                   |
+
+### Files Changed
+
+- `backend/composer.json` — added `vimeo/psalm ^6.15`
+- `backend/composer.lock` — updated with psalm + dependencies
+- `backend/app/Http/Controllers/Auth/HttpOnlyTokenController.php` — L-01 + L-02
+- `backend/app/Http/Controllers/Auth/UnifiedAuthController.php` — L-01
+- `backend/app/Services/RateLimitService.php` — L-07 (docblock clarification)
+- `backend/app/Http/Middleware/Cors.php` — DELETED (M-08)
+- `backend/routes/api/v1.php` — M-10 (route names)
+- `backend/routes/api/v2.php` — L-08 (env-gating)
+- `backend/phpunit.pgsql.xml` — NEW (H-06 opt-in PG config)
+- `backend/tests/Feature/Security/CspViolationReportControllerTest.php` — NEW (M-12)
+- `docs/COMPACT.md` — this update
+
+### Gates
+
+- `php artisan test`: 871 tests, 2449 assertions ✅
+- `vendor/bin/pint --test`: 280 files, 2 pre-existing violations ✅ (not from this batch)
+- `vendor/bin/psalm --version`: 6.15.1 ✅ installed
+- `docker compose config`: valid ✅
+- `php artisan route:list --path=api/v1`: 25 routes, all named ✅
+
+### M-11 SQUASH PLAN (REQUIRES HUMAN APPROVAL)
+
+**Current state:** 35 migration files in `backend/database/migrations/`
+
+**Recommended approach:**
+
+1. Ensure ALL deployed environments (staging, production) are fully migrated
+2. Run `php artisan schema:dump --prune` to create a SQL dump and remove old files
+3. Verify the schema dump includes PostgreSQL-specific features (EXCLUDE constraints, triggers, ENUMs)
+4. Test fresh install with dump: `php artisan migrate:fresh --seed`
+5. Keep the dump committed as the new baseline migration
+
+**Prerequisites:**
+
+- Confirm no environment is mid-migration
+- Coordinate with deployment team
+- Test rollback strategy (dump file cannot be rolled back individually)
+
+**Risk:** Medium — irreversible once deployed; requires all environments synchronized first.
+
+### Rollback Notes
+
+- PR-1: Revert composer.json/lock (remove psalm), restore old strings/config checks
+- PR-2: Restore Cors.php from git, remove ->name() from routes, remove env-gate from v2
+- PR-3: Delete phpunit.pgsql.xml, delete CspViolationReportControllerTest.php

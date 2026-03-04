@@ -22,8 +22,9 @@ use stdClass;
  * - Per-user, per-IP, per-room, per-endpoint limiting
  * - Prometheus metrics + structured logging
  *
- * @deprecated This service may not be actively used. Used by AdvancedRateLimitMiddleware.
- *             Consider consolidating rate limiting logic if not needed.
+ * @deprecated Not registered in middleware stack. Used only by AdvancedRateLimitMiddleware
+ *             which is also not registered. Both are dead code retained for reference.
+ *             Remove both files when ready to clean up. See FINDINGS_BACKLOG.md.
  */
 class RateLimitService
 {

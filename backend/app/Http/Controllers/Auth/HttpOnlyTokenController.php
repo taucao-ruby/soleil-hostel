@@ -133,7 +133,7 @@ class HttpOnlyTokenController extends Controller
             $expiresInMinutes,  // cookie() 3rd param expects minutes — pass $expiresInMinutes directly
             '/',  // path
             config('session.domain'),  // domain
-            config('app.env') === 'production',  // secure (HTTPS only in production)
+            app()->isProduction(),  // secure (HTTPS only in production)
             true,  // httpOnly (⚡ XSS cannot steal via JavaScript)
             false,  // raw
             'strict'  // sameSite (⚡ CSRF protected, no cross-site sending)
@@ -162,7 +162,7 @@ class HttpOnlyTokenController extends Controller
         $oldToken = $request->attributes->get('token');
 
         if (! $oldToken) {
-            throw new AuthenticationException('Token cookie tidak ditemukan.');
+            throw new AuthenticationException('Không tìm thấy token cookie.');
         }
 
         // ========== Validate Token ==========
@@ -232,7 +232,7 @@ class HttpOnlyTokenController extends Controller
             $expiresInMinutes,  // cookie() 3rd param expects minutes — pass $expiresInMinutes directly
             '/',  // path
             config('session.domain'),  // domain
-            config('app.env') === 'production',  // secure
+            app()->isProduction(),  // secure
             true,  // httpOnly
             false,  // raw
             'strict'  // sameSite
@@ -267,7 +267,7 @@ class HttpOnlyTokenController extends Controller
             -1,  // minutes (expire immediately)
             '/',  // path
             config('session.domain'),  // domain
-            config('app.env') === 'production',  // secure
+            app()->isProduction(),  // secure
             true,  // httpOnly
             false,  // raw
             'strict'  // sameSite
@@ -287,7 +287,7 @@ class HttpOnlyTokenController extends Controller
         $token = $request->attributes->get('token');
 
         if (! $token) {
-            throw new AuthenticationException('Token cookie không ditemukan.');
+            throw new AuthenticationException('Không tìm thấy token cookie.');
         }
 
         $user = $token->tokenable;

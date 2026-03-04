@@ -98,7 +98,7 @@ Dự án được xây dựng như một hệ thống có thể sống lâu dài
   - Repository Pattern
 - Authentication: **Laravel Sanctum**
 - RESTful API
-- **737 automated tests** (Feature + Unit) + **145 frontend tests**
+- **857 automated tests** (Feature + Unit) + **226 frontend tests**
 - Security & performance-focused design
 
 ---
@@ -143,9 +143,10 @@ soleil-hostel/
 │   ├── resources/                    # Views & Assets
 │   ├── routes/                       # API Routes
 │   ├── storage/                      # File Storage
-│   ├── tests/                        # 737 Automated Tests
+│   ├── tests/                        # 857 Automated Tests
 │   │   ├── Feature/                  # Feature Tests
 │   │   └── Unit/                     # Unit Tests
+
 │   ├── composer.json                 # PHP Dependencies
 │   ├── phpunit.xml                   # Test Configuration
 │   └── artisan                       # Laravel CLI
@@ -274,7 +275,7 @@ Sau đó mở Pull Request trên GitHub.
 - Core booking flow with pessimistic locking
 - Customer management
 - CI/CD with GitHub Actions
-- Full test suite (737 backend tests, 2071 assertions + 145 frontend tests)
+- Full test suite (857 backend tests, 2430 assertions + 226 frontend tests)
 - Documentation consolidation & cleanup
 - Frontend documentation restructured into 12 modular files (January 2, 2026)
 - Backend documentation fully organized
@@ -361,7 +362,7 @@ Sau đó mở Pull Request trên GitHub.
 │                                                                 │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
 │  │   PHPUnit       │  │   PHPStan       │  │    Psalm        │ │
-│  │   737 Tests     │  │   Static Analysis│  │  Code Quality  │ │
+│  │   857 Tests     │  │   Static Analysis│  │  Code Quality  │ │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
                                     │
@@ -408,12 +409,12 @@ Sau đó mở Pull Request trên GitHub.
 
 ## 🧪 Test Suite Summary
 
-Dự án hiện có **737 backend tests** + **145 frontend tests**, bao gồm Feature Tests, Unit Tests, và UI tests.
+Dự án hiện có **857 backend tests** + **226 frontend tests**, bao gồm Feature Tests, Unit Tests, và UI tests.
 
 | Nhóm Test       | Số lượng | Mô tả                           |
 | --------------- | -------- | ------------------------------- |
-| Backend Tests   | 737      | Feature + Unit (2071 assertions) |
-| Frontend Tests  | 145      | Vitest (13 test files)           |
+| Backend Tests   | 857      | Feature + Unit (2430 assertions) |
+| Frontend Tests  | 226      | Vitest (21 test files)           |
 | Auth Tests      | 44       | Xác thực & token management     |
 | Booking Tests   | 60       | Đặt phòng, overlap, soft delete |
 | Room Tests      | 151      | CRUD + Optimistic locking       |

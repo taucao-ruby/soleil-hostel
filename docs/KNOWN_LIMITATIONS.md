@@ -18,13 +18,13 @@ This document tracks known limitations in the Soleil Hostel system. Each limitat
 | ID                                                   | Limitation                                  | Impact | Status    |
 | ---------------------------------------------------- | ------------------------------------------- | ------ | --------- |
 | [LIM-001](#lim-001-single-database-region)           | Single database region                      | Medium | Accepted  |
-| [LIM-002](#lim-002-no-payment-integration)           | No payment integration                      | High   | Planned   |
+| [LIM-002](#lim-002-payment-integration-in-progress)  | Payment integration (in progress)           | High   | In Progress |
 | [LIM-003](#lim-003-synchronous-refund-processing)    | Synchronous refund processing               | Medium | Accepted  |
 | [LIM-004](#lim-004-no-multi-tenancy)                 | No multi-tenancy support                    | Low    | Accepted  |
 | [LIM-005](#lim-005-redis-required-for-rate-limiting) | Redis required for advanced rate limiting   | Medium | Mitigated |
 | [LIM-006](#lim-006-no-webhook-retry-mechanism)       | No webhook retry mechanism                  | Medium | Planned   |
 | [LIM-007](#lim-007-email-delivery-not-guaranteed)    | Email delivery not guaranteed               | Medium | Accepted  |
-| [LIM-008](#lim-008-no-internationalization)          | No internationalization (i18n)              | Low    | Planned   |
+| [LIM-008](#lim-008-partial-internationalization)     | Partial internationalization (backend done) | Low    | Partially Resolved |
 | [LIM-009](#lim-009-session-based-rate-limits)        | Session-based rate limits (not distributed) | Medium | Mitigated |
 | [LIM-010](#lim-010-no-audit-log-retention-policy)    | No audit log retention policy               | Low    | Planned   |
 
@@ -95,38 +95,34 @@ if (!$this->redisAvailable()) {
 
 ## Payment & Billing
 
-### LIM-002: No Payment Integration
+### LIM-002: Payment Integration (In Progress)
 
-**Impact**: High  
-**Status**: Planned  
+**Impact**: High
+**Status**: In Progress
 **Affected**: Booking flow, refunds
 
 #### Description
 
-Payment processing is **stubbed**. No actual Stripe/PayPal integration.
+Payment processing is partially integrated. Laravel Cashier `^16.3` is installed with Stripe webhook handlers, but the checkout session and frontend payment UI are not yet complete.
 
-#### Consequences
+#### Completed (March 2026)
 
-- Cannot collect real payments
-- Refund logic exists but doesn't process real refunds
-- `CancellationService` assumes successful refunds
+- Laravel Cashier installed with `Billable` trait on User model
+- Cashier migration (stripe_id, pm_type, pm_last_four, trial_ends_at)
+- `POST /api/webhooks/stripe` endpoint with signature verification
+- Webhook handlers: `payment_intent.succeeded`, `charge.refunded`, `payment_intent.payment_failed`
+- 14 tests (4 webhook signature + 10 handler tests)
 
-#### Current Behavior
+#### Remaining
 
-```php
-// CancellationService.php
-private function processRefund(Booking $booking): RefundResult
-{
-    // Planned (Issue: TBD-STRIPE-01): Integrate with Stripe
-    // Currently returns mock success
-    return new RefundResult(success: true, amount: $booking->amount);
-}
-```
+- Checkout session creation (`POST /v1/bookings` → Payment Intent)
+- Frontend payment form UI
+- Automatic refund on cancellation via Stripe
+- `processRefund()` in `CancellationService` still returns mock success
 
 #### Planned Resolution
 
-- **Phase 1**: Stripe integration for payments
-- **Phase 2**: Webhook handling for payment events
+- **Phase 2**: Checkout session + payment UI (next)
 - **Phase 3**: Refund automation
 
 ---
@@ -281,10 +277,10 @@ Email sending is fire-and-forget. No delivery confirmation or retry on failure.
 
 ## Internationalization
 
-### LIM-008: No Internationalization (i18n)
+### LIM-008: Partial Internationalization (backend done) {#lim-008-partial-internationalization}
 
-**Impact**: Low  
-**Status**: Partially Resolved  
+**Impact**: Low
+**Status**: Partially Resolved
 **Affected**: UI, emails, error messages
 
 #### Description

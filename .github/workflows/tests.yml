@@ -264,7 +264,7 @@ jobs:
           DB_PASSWORD: password
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: 6379
-          REDIS_PASSWORD: "null"
+          REDIS_PASSWORD: ""
       - name: Run concurrent booking stress test
         run: |
           sleep 3
@@ -279,7 +279,7 @@ jobs:
           DB_PASSWORD: password
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: 6379
-          REDIS_PASSWORD: "null"
+          REDIS_PASSWORD: ""
 
   # ========== N+1 QUERY DETECTION (merged from nplusone-detection.yml) ==========
   nplusone-detection:

@@ -40,6 +40,14 @@ echo "--- Gate 3: vitest run ---"
     || fail "Frontend unit tests"
 
 echo ""
+
+# Gate 4: Docker compose config
+echo "--- Gate 4: docker compose config ---"
+(cd "$REPO_ROOT" && docker compose -f docker-compose.yml config > /dev/null) \
+    && pass "Docker compose config" \
+    || fail "Docker compose config"
+
+echo ""
 echo "================================="
 echo "✅  READY TO SHIP"
 echo "================================="

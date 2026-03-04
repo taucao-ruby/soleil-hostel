@@ -49,7 +49,7 @@ services:
           exec redis-server /usr/local/etc/redis/redis.conf;
         fi'
     environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required in production}
     healthcheck:
       test: ["CMD-SHELL", "if [ -n \"$$REDIS_PASSWORD\" ]; then redis-cli -a \"$$REDIS_PASSWORD\" ping; else redis-cli ping; fi"]
       interval: 10s
@@ -80,7 +80,7 @@ services:
       DB_PORT: 5432
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required in production}
     healthcheck:
       test: ["CMD-SHELL", "php -r \"exit(file_get_contents('http://localhost:8080/api/health') === false ? 1 : 0);\""]
       interval: 30s

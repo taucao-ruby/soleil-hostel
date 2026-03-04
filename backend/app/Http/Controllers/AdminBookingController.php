@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\BulkRestoreBookingsRequest;
 use App\Http\Resources\BookingResource;
-use App\Models\Booking;
+use App\Repositories\Contracts\BookingRepositoryInterface;
 use App\Services\BookingService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -24,7 +24,8 @@ class AdminBookingController extends Controller
     use ApiResponse;
 
     public function __construct(
-        private BookingService $bookingService
+        private BookingService $bookingService,
+        private BookingRepositoryInterface $bookingRepository
     ) {}
 
     /**
@@ -36,14 +37,11 @@ class AdminBookingController extends Controller
      */
     public function index(): JsonResponse
     {
-        $bookings = Booking::withTrashed()
-            ->with([
-                'room' => fn ($q) => $q->select(['id', 'name', 'price', 'created_at', 'updated_at']),
-                'user' => fn ($q) => $q->select(['id', 'name', 'email', 'role', 'created_at', 'updated_at']),
-                'deletedBy' => fn ($q) => $q->select(['id', 'name', 'email', 'role', 'created_at', 'updated_at']),
-            ])
-            ->orderBy('created_at', 'desc')
-            ->paginate(50);
+        $bookings = $this->bookingRepository->getAllWithTrashedPaginated([
+            'room' => fn ($q) => $q->select(['id', 'name', 'price', 'created_at', 'updated_at']),
+            'user' => fn ($q) => $q->select(['id', 'name', 'email', 'role', 'created_at', 'updated_at']),
+            'deletedBy' => fn ($q) => $q->select(['id', 'name', 'email', 'role', 'created_at', 'updated_at']),
+        ]);
 
         return $this->success([
             'bookings' => BookingResource::collection($bookings),
@@ -108,12 +106,12 @@ class AdminBookingController extends Controller
         }
 
         // Check for overlapping active bookings before restoring
-        $hasOverlap = Booking::overlappingBookings(
+        $hasOverlap = $this->bookingRepository->hasOverlappingBookings(
             roomId: $booking->room_id,
             checkIn: $booking->check_in,
             checkOut: $booking->check_out,
             excludeBookingId: $booking->id
-        )->exists();
+        );
 
         if ($hasOverlap) {
             return $this->error(__('booking.restore_conflict'), 422);
@@ -181,12 +179,12 @@ class AdminBookingController extends Controller
             }
 
             // Check for overlapping bookings
-            $hasOverlap = Booking::overlappingBookings(
+            $hasOverlap = $this->bookingRepository->hasOverlappingBookings(
                 roomId: $booking->room_id,
                 checkIn: $booking->check_in,
                 checkOut: $booking->check_out,
                 excludeBookingId: $booking->id
-            )->exists();
+            );
 
             if ($hasOverlap) {
                 $failed[] = ['id' => $id, 'reason' => __('booking.bulk_date_conflict')];

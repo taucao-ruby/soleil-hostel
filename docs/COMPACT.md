@@ -8,7 +8,7 @@
 - Backend test baseline: `cd backend && php artisan test` (857 tests, 2430 assertions) — verified 2026-03-02
 - Pint baseline: `cd backend && vendor/bin/pint --test` (275 files, 0 violations) — verified 2026-03-02
 - PHPStan: Level 5 + Larastan installed, baseline 151 pre-existing errors
-- Progress summary: Batches 1–7 complete (Batch 7: DevOps/CI hardening v2 — 2 PRs on branches)
+- Progress summary: Batches 1–8 complete (Batch 8: Backend architecture — validation, null-safety, service/repository extraction)
 - Open findings: F-22 (Indonesian string), F-23 (MD lint), F-24 (HasUuids conflict) — F-21 resolved by PR-1
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
@@ -568,14 +568,14 @@ C-04, H-10, H-11, H-14, M-26, M-27, M-28
 
 ### Facts synchronized
 
-| Fact | Old value | New value | Source |
-|------|-----------|-----------|--------|
-| Backend tests (README) | 737 / 2071 assertions | 857 / 2430 assertions | COMPACT.md verified Mar 2 |
-| Frontend tests (README) | 145 / 13 files | 226 / 21 files | COMPACT.md verified Mar 3 |
-| Migrations (DATABASE.md) | 32 files | 35 files | ls migrations/ wc -l |
-| LIM-002 status | Planned | In Progress | Cashier bootstrap done Mar 1 |
-| LIM-008 summary status | Planned | Partially Resolved | Backend i18n done Mar 1 |
-| Findings open count | 4 open (F-21–F-24) | 3 open (F-22–F-24) | F-21 resolved by Batch 5 PR-1 |
+| Fact                     | Old value             | New value             | Source                        |
+| ------------------------ | --------------------- | --------------------- | ----------------------------- |
+| Backend tests (README)   | 737 / 2071 assertions | 857 / 2430 assertions | COMPACT.md verified Mar 2     |
+| Frontend tests (README)  | 145 / 13 files        | 226 / 21 files        | COMPACT.md verified Mar 3     |
+| Migrations (DATABASE.md) | 32 files              | 35 files              | ls migrations/ wc -l          |
+| LIM-002 status           | Planned               | In Progress           | Cashier bootstrap done Mar 1  |
+| LIM-008 summary status   | Planned               | Partially Resolved    | Backend i18n done Mar 1       |
+| Findings open count      | 4 open (F-21–F-24)    | 3 open (F-22–F-24)    | F-21 resolved by Batch 5 PR-1 |
 
 ### Files changed
 
@@ -682,3 +682,58 @@ Chose **Option B**: Added top-level canonical redirect banner to `docs/DEVELOPME
 
 - All changes are config/script-only — `git revert <sha>` is safe for both PRs
 - H-13 port change must be reverted atomically across Dockerfile + compose + Caddyfile + nginx.conf
+
+---
+
+## 2026-03-04 — Batch 8: Backend Architecture — Validation, Null-Safety, Service/Repository Extraction
+
+### PR-1: fix/auth-login-validation (M-07)
+
+- M-07: Auth\LoginRequest password rule now enforces `min:8` (matching RegisterRequest and v2 LoginRequest)
+- H-02 DEFERRED: DB::table insertGetId blocked by F-24 (HasUuids conflict)
+- L-04 VERIFIED: detectAuthMode() is actively used (3 call-sites), no change needed
+
+**Files changed:** LoginRequest.php, +LoginRequestValidationTest.php
+
+### PR-2: fix/booking-room-validation-null-safety (M-06, L-05, L-06)
+
+- M-06: UpdateBookingRequest guest_name now requires min:2; room_id changed to `sometimes` (updates don't change room)
+- L-05: EloquentRoomRepository::hasOverlappingConfirmedBookings() now uses findOrFail() instead of find()
+- L-06: Room model $casts now includes `'max_guests' => 'integer'`
+- L-03: Already resolved in Batch 3 — verified, no change needed
+
+**Files changed:** UpdateBookingRequest.php, Room.php, RoomRepositoryInterface.php, EloquentRoomRepository.php, EloquentRoomRepositoryTest.php, +UpdateBookingRequestValidationTest.php
+
+### PR-3: refactor/admin-booking-and-contact-service (M-02, M-05)
+
+- M-02: AdminBookingController thinned — index() now uses BookingRepositoryInterface::getAllWithTrashedPaginated(); restore()/restoreBulk() overlap checks use BookingRepositoryInterface::hasOverlappingBookings() instead of direct Booking:: scope calls
+- M-05: ContactController fully refactored — all 3 methods now delegate through ContactMessageService -> EloquentContactMessageRepository. StoreContactRequest already existed (no change). Audit logging moved to service layer.
+
+**Files created:**
+
+- backend/app/Repositories/Contracts/ContactMessageRepositoryInterface.php
+- backend/app/Repositories/EloquentContactMessageRepository.php
+- backend/app/Services/ContactMessageService.php
+
+**Files modified:**
+
+- backend/app/Http/Controllers/AdminBookingController.php
+- backend/app/Http/Controllers/ContactController.php
+- backend/app/Providers/AppServiceProvider.php (added ContactMessageRepository binding)
+- backend/app/Repositories/Contracts/BookingRepositoryInterface.php (added getAllWithTrashedPaginated)
+- backend/app/Repositories/EloquentBookingRepository.php (added getAllWithTrashedPaginated impl)
+- backend/app/Services/BookingService.php (added cache TTL constant)
+
+### Gates Passed
+
+- [x] php artisan test — 857 passed, 2430 assertions
+- [x] vendor/bin/pint --test — 278 files, 0 violations
+- [x] php -l syntax checks — all files clean
+- [ ] Frontend tsc + vitest: no frontend changes in this batch
+
+### Risks & Notes
+
+- M-02: Response shape UNCHANGED — same BookingResource, same meta structure
+- M-05: Response shape UNCHANGED — same success() wrapper and translation keys
+- New IoC binding added for ContactMessageRepositoryInterface in AppServiceProvider — revert if rolling back PR-3
+- BookingService does not yet inject BookingRepositoryInterface (uses static Booking:: calls) — existing tech debt, out of scope

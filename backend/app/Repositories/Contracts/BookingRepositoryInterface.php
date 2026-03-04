@@ -262,6 +262,17 @@ interface BookingRepositoryInterface
     public function getAllWithTrashed(array $relations = []): Collection;
 
     /**
+     * Get all bookings including trashed, paginated (for admin listing).
+     *
+     * Derived from: AdminBookingController::index()
+     *   Booking::withTrashed()->with([...])->orderBy(...)->paginate()
+     *
+     * @param  array  $relations  Relations to eager load
+     * @param  int  $perPage  Items per page
+     */
+    public function getAllWithTrashedPaginated(array $relations = [], int $perPage = 50): \Illuminate\Contracts\Pagination\LengthAwarePaginator;
+
+    /**
      * Get bookings with common relations loaded (room, user).
      * Uses optimized column selection to prevent N+1.
      *

@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreContactRequest;
-use App\Models\ContactMessage;
+use App\Services\ContactMessageService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,6 +11,10 @@ use Illuminate\Http\Request;
 class ContactController extends Controller
 {
     use ApiResponse;
+
+    public function __construct(
+        private readonly ContactMessageService $contactMessageService
+    ) {}
 
     /**
      * Store a contact message in storage.
@@ -22,17 +26,7 @@ class ContactController extends Controller
      */
     public function store(StoreContactRequest $request): JsonResponse
     {
-        $validated = $request->validated();
-
-        $contactMessage = ContactMessage::create($validated);
-
-        // Log as additional audit trail with masked email
-        \Log::info('Contact message received', [
-            'id' => $contactMessage->id,
-            'name' => $validated['name'],
-            'email' => \Illuminate\Support\Str::mask($validated['email'], '*', 3),
-            'subject' => $validated['subject'] ?? '',
-        ]);
+        $contactMessage = $this->contactMessageService->store($request->validated());
 
         return $this->success($contactMessage, __('messages.contact_received'), 201);
     }
@@ -44,17 +38,9 @@ class ContactController extends Controller
     public function index(Request $request): JsonResponse
     {
         $perPage = $request->input('per_page', 15);
-        $status = $request->input('status'); // 'read', 'unread', or null for all
+        $status = $request->input('status');
 
-        $query = ContactMessage::query()->orderBy('created_at', 'desc');
-
-        if ($status === 'unread') {
-            $query->unread();
-        } elseif ($status === 'read') {
-            $query->read();
-        }
-
-        $messages = $query->paginate(min($perPage, 100));
+        $messages = $this->contactMessageService->getPaginated($perPage, $status);
 
         return $this->success($messages, __('messages.contacts_retrieved'));
     }
@@ -64,8 +50,7 @@ class ContactController extends Controller
      */
     public function markAsRead(int $id): JsonResponse
     {
-        $message = ContactMessage::findOrFail($id);
-        $message->markAsRead();
+        $message = $this->contactMessageService->markAsRead($id);
 
         return $this->success($message, __('messages.contact_marked_read'));
     }

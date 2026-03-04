@@ -11,8 +11,10 @@ use App\Observers\BookingObserver;
 use App\Policies\BookingPolicy;
 use App\Policies\RoomPolicy;
 use App\Repositories\Contracts\BookingRepositoryInterface;
+use App\Repositories\Contracts\ContactMessageRepositoryInterface;
 use App\Repositories\Contracts\RoomRepositoryInterface;
 use App\Repositories\EloquentBookingRepository;
+use App\Repositories\EloquentContactMessageRepository;
 use App\Repositories\EloquentRoomRepository;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Sanctum\Sanctum;
@@ -41,6 +43,13 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             RoomRepositoryInterface::class,
             EloquentRoomRepository::class
+        );
+
+        // Bind ContactMessageRepositoryInterface to EloquentContactMessageRepository
+        // This enables dependency injection of the repository in ContactMessageService
+        $this->app->bind(
+            ContactMessageRepositoryInterface::class,
+            EloquentContactMessageRepository::class
         );
     }
 

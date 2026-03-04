@@ -46,8 +46,8 @@ services:
         fi'
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      REDIS_REPL_DISKLESS_SYNC: "yes"
-      REDIS_MAX_CLIENTS: 50000
+      # Note: REDIS_REPL_DISKLESS_SYNC and REDIS_MAX_CLIENTS removed — Redis does not
+      # read these as environment variables. Use redis.conf directives instead.
     ulimits:
       nofile:
         soft: 262144
@@ -71,8 +71,10 @@ services:
     ports:
       - "127.0.0.1:8000:8080"
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     deploy:
       resources:
         limits:

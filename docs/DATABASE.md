@@ -510,7 +510,7 @@ EXCLUDE USING gist (
 
 ## Migrations
 
-### Migration History (32 files)
+### Migration History (35 files)
 
 | Migration                                                 | Description                                       |
 | --------------------------------------------------------- | ------------------------------------------------- |
@@ -548,6 +548,7 @@ EXCLUDE USING gist (
 | `2026_02_12_fix_overlapping_bookings_constraint`          | Exclusion constraint excludes soft deletes        |
 | `2026_02_22_add_check_constraints_bookings_reviews_rooms` | CHECK constraints: dates, rating, price (PG only) |
 | `2026_02_22_add_fk_reviews_booking_id`                    | FK reviews.booking_id → bookings.id (RESTRICT)    |
+| `2026_02_28_add_cashier_columns_to_users_table`           | Cashier: stripe_id, pm_type, pm_last_four, trial  |
 
 ### Commands
 

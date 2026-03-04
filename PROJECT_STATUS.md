@@ -207,7 +207,7 @@ Playwright remains scaffolded; app runtime required for execution
 | -------------------------------------------------------------- | ------------------------------------------------ |
 | [docs/README.md](./docs/README.md)                             | Documentation entry point                        |
 | [docs/AUDIT_2026_02_21.md](./docs/AUDIT_2026_02_21.md)         | Latest audit (v3) findings                       |
-| [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md)         | Code issues backlog (24 items, 20 fixed, 4 open) |
+| [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md)         | Code issues backlog (24 items, 21 fixed, 3 open) |
 | [docs/COMMANDS_AND_GATES.md](./docs/COMMANDS_AND_GATES.md)     | Verified commands + CI gates                     |
 | [docs/AI_GOVERNANCE.md](./docs/AI_GOVERNANCE.md)               | AI agent workflow                                |
 | [docs/agents/](./docs/agents/)                                 | Agent framework                                  |
@@ -247,5 +247,5 @@ docker compose config
 ## Status Note
 
 Audit v1 (61/61), v2 (98/98), v3 (14/14), v4 (6/6), and Phase 5 clean-up are complete in repository history.
-Findings F-01 through F-20 resolved. F-21 through F-24 open (3 low/medium, 1 high deferred).
+Findings F-01 through F-21 resolved. F-22 through F-24 open (2 low/medium, 1 high deferred).
 Findings backlog: [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md)

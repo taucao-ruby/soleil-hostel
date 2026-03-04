@@ -2,13 +2,13 @@
 
 ## 1) Current Snapshot (keep under 12 lines)
 
-- Date updated: 2026-03-03
-- Current branch: `refactor/fsd-imports-shared` (PR-2 of Batch 5)
+- Date updated: 2026-03-04
+- Current branch: `dev`
 - Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (226 tests, 21 suites) — verified 2026-03-03
 - Backend test baseline: `cd backend && php artisan test` (857 tests, 2430 assertions) — verified 2026-03-02
 - Pint baseline: `cd backend && vendor/bin/pint --test` (275 files, 0 violations) — verified 2026-03-02
 - PHPStan: Level 5 + Larastan installed, baseline 151 pre-existing errors
-- Progress summary: Batches 1–5 complete (Batch 5: 2 PRs — Vietnamese UI + FSD refactor)
+- Progress summary: Batches 1–6 complete (Batch 6: docs synchronization — source of truth)
 - Open findings: F-22 (Indonesian string), F-23 (MD lint), F-24 (HasUuids conflict) — F-21 resolved by PR-1
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
@@ -559,3 +559,59 @@ C-04, H-10, H-11, H-14, M-26, M-27, M-28
 - F-21 (LoginPage English): RESOLVED by PR-1
 - SearchCard `act(...)` warnings in HomePage.test.tsx: pre-existing, non-blocking (see §5)
 - `gh` CLI not authenticated — PRs must be created manually
+
+## 2026-03-04 — Batch 6: Documentation Synchronization (Source of Truth)
+
+**Model:** Claude Opus 4.6
+**Issues addressed:** D-01 through D-18
+**Files modified:** 6 doc files + COMPACT.md
+
+### Facts synchronized
+
+| Fact | Old value | New value | Source |
+|------|-----------|-----------|--------|
+| Backend tests (README) | 737 / 2071 assertions | 857 / 2430 assertions | COMPACT.md verified Mar 2 |
+| Frontend tests (README) | 145 / 13 files | 226 / 21 files | COMPACT.md verified Mar 3 |
+| Migrations (DATABASE.md) | 32 files | 35 files | ls migrations/ wc -l |
+| LIM-002 status | Planned | In Progress | Cashier bootstrap done Mar 1 |
+| LIM-008 summary status | Planned | Partially Resolved | Backend i18n done Mar 1 |
+| Findings open count | 4 open (F-21–F-24) | 3 open (F-22–F-24) | F-21 resolved by Batch 5 PR-1 |
+
+### Files changed
+
+- `README.md` — D-03: updated test counts 737→857, 145→226, 2071→2430, 13→21
+- `PROJECT_STATUS.md` — D-06: findings count 4→3 open, F-21 marked resolved
+- `docs/KNOWN_LIMITATIONS.md` — D-10 (LIM-008 Planned→Partially Resolved), D-12 (LIM-002 Planned→In Progress with Cashier details)
+- `docs/DATABASE.md` — D-13: migration count 32→35, added Cashier migration to table
+- `docs/DEVELOPMENT_HOOKS.md` — D-18: added canonical redirect banner + [→ HOOKS.md] annotations
+- `docs/COMPACT.md` — updated snapshot + appended this entry
+
+### Issues with no drift found
+
+- D-01 (AGENTS.md §9): already 857/226 — no change needed
+- D-02 (CLAUDE.md): already 857/226 — no change needed
+- D-04 (DEVELOPMENT_HOOKS.md): already 857/226 — no change needed
+- D-05 (COMMANDS_AND_GATES.md): frontend commands already use pnpm — no change needed
+- D-07 (PRODUCT_GOAL.md): already 857/226 — no change needed
+- D-08 (BACKLOG.md): historical per-completion counts are correct — no change needed
+- D-09 (WORKLOG.md): Feb 27-28 entries exist, counts are historical — no change needed
+- D-11 (KNOWN_LIMITATIONS TD-001/002): already marked Resolved — no change needed
+- D-14 (DB_FACTS.md): already correctly notes chk_rooms_max_guests NOT in migrations — no change needed
+- D-15 (MIGRATION_GUIDE.md): already says Laravel 12.x — no change needed
+- D-16 (OPERATIONAL_PLAYBOOK.md): WHERE predicate already correct — no change needed
+- D-17 (AGENTS.md §3): already uses pnpm — no change needed
+
+### D-NEW items for next batch
+
+- D-NEW-01: `docs/agents/COMMANDS.md` has npm references for frontend commands (lines 32, 45-46, 63, 82) — should be pnpm. File not in Batch 6 allowlist.
+
+### D-18 Consolidation decision
+
+Chose **Option B**: Added top-level canonical redirect banner to `docs/DEVELOPMENT_HOOKS.md` pointing to `docs/HOOKS.md`. Annotated duplicated section headings with `[→ HOOKS.md]`. Headings preserved for anchor compatibility. Unique sections (Purpose, Project Baseline, Hook Policy Source) kept intact.
+
+### Governance
+
+- No non-doc files modified ✓
+- No hook bypass flags used ✓
+- All patches applied via Edit tool with targeted diffs ✓
+- chk_rooms_max_guests verified NOT PRESENT in migration 2026_02_22_000001 ✓

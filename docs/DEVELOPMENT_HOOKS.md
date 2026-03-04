@@ -1,5 +1,7 @@
 # Development Hooks
 
+> **Canonical hook definitions:** [`docs/HOOKS.md`](./HOOKS.md) is the authoritative source for hook behavior, installation, bypass policy, and troubleshooting. This file provides additional context (project baseline, hook policy source) and summarizes hook behavior for developer onboarding. Sections marked **[→ HOOKS.md]** are maintained canonically in HOOKS.md.
+
 ## Purpose
 
 Git hooks in this repository provide fast local guardrails for:
@@ -29,7 +31,7 @@ Hooks are designed to be:
 
 Hooks fail on non-zero exit status, not warning text.
 
-## Install / Enable
+## Install / Enable [→ HOOKS.md]
 
 From repository root:
 
@@ -52,7 +54,7 @@ Policy defines:
 - Max staged file size limit (2MB)
 - Verification targets and exact commands
 
-## Hook Behavior
+## Hook Behavior [→ HOOKS.md]
 
 ### pre-commit (fast)
 
@@ -100,7 +102,7 @@ Dry-run preview:
 
 - `node tools/hooks/pre-push.mjs --dry-run`
 
-## Bypass (intentional only)
+## Bypass (intentional only) [→ HOOKS.md]
 
 - One-off bypass:
   - `git commit --no-verify`
@@ -111,7 +113,7 @@ Dry-run preview:
 
 Use bypass only when risk is understood and intentional.
 
-## Troubleshooting
+## Troubleshooting [→ HOOKS.md]
 
 ### Hooks do not run
 

@@ -8,7 +8,7 @@
 - Backend test baseline: `cd backend && php artisan test` (857 tests, 2430 assertions) — verified 2026-03-02
 - Pint baseline: `cd backend && vendor/bin/pint --test` (275 files, 0 violations) — verified 2026-03-02
 - PHPStan: Level 5 + Larastan installed, baseline 151 pre-existing errors
-- Progress summary: Batches 1–6 complete (Batch 6: docs synchronization — source of truth)
+- Progress summary: Batches 1–7 complete (Batch 7: DevOps/CI hardening v2 — 2 PRs on branches)
 - Open findings: F-22 (Indonesian string), F-23 (MD lint), F-24 (HasUuids conflict) — F-21 resolved by PR-1
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
@@ -615,3 +615,70 @@ Chose **Option B**: Added top-level canonical redirect banner to `docs/DEVELOPME
 - No hook bypass flags used ✓
 - All patches applied via Edit tool with targeted diffs ✓
 - chk_rooms_max_guests verified NOT PRESENT in migration 2026_02_22_000001 ✓
+
+## 2026-03-04 — Batch 7: DevOps/CI Hardening v2 (10 issues)
+
+### PR-1: `infra/compose-proxy-hardening-v2` (branch: `infra/compose-proxy-hardening-v2`)
+
+#### Issues Fixed
+
+- C-03: docker-compose.prod.yml Redis password now required via `${REDIS_PASSWORD:?...}` (redis service + backend env)
+- M-22: docker-compose.yml backend depends_on upgraded to `condition: service_healthy` (db + redis)
+- M-23: Removed ineffective REDIS_REPL_DISKLESS_SYNC / REDIS_MAX_CLIENTS env vars from docker-compose.yml
+- M-25: Caddy rate limiting kept commented; existing plugin requirement documentation sufficient
+- L-14: frontend/nginx.conf security headers added (X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy)
+
+#### Files Changed
+
+- `docker-compose.yml` — M-22 (service_healthy), M-23 (removed ineffective env vars)
+- `docker-compose.prod.yml` — C-03 (REDIS_PASSWORD fail-fast)
+- `frontend/nginx.conf` — L-14 (security headers)
+
+#### Gates
+
+- [x] `docker compose -f docker-compose.yml config` PASS
+- [x] `docker compose -f docker-compose.prod.yml config` PASS (with REDIS_PASSWORD + DB_PASSWORD set)
+- [x] Fail-fast verified: prod compose fails without REDIS_PASSWORD (intended)
+
+### PR-2: `ci/deploy-scripts-hardening-v2` (branch: `ci/deploy-scripts-hardening-v2`)
+
+#### Issues Fixed
+
+- C-04: deploy.yml now runs `tsc --noEmit` + `pnpm run test:unit` as blocking gates before build
+- M-26: tests.yml REDIS_PASSWORD fixed from literal `"null"` to `""` (CI redis has no auth)
+- M-28: ship.sh Gate 4 added — `docker compose config` validates before ship
+- H-13: frontend Dockerfile prod stage switched to `nginxinc/nginx-unprivileged:1.27-alpine` (non-root, port 8080); compose port mapping + Caddyfile updated
+- H-14: deploy-forge.sh `run_migrations()` fully implemented (SSH + Docker exec paths, timestamps, error handling, `--force --no-interaction`)
+
+#### Files Changed
+
+- `.github/workflows/deploy.yml` — C-04 (tsc + vitest gates)
+- `.github/workflows/tests.yml` — M-26 (REDIS_PASSWORD fix)
+- `scripts/ship.sh` — M-28 (Gate 4 compose config)
+- `frontend/Dockerfile` — H-13 (non-root nginx-unprivileged)
+- `frontend/nginx.conf` — H-13 (listen 8080)
+- `docker-compose.prod.yml` — H-13 (port mapping 80:8080, healthcheck port)
+- `Caddyfile` — H-13 (frontend proxy target 8080)
+- `deploy-forge.sh` — H-14 (run_migrations implementation)
+
+#### Gates
+
+- [x] `bash -n scripts/ship.sh` PASS
+- [x] `bash -n deploy-forge.sh` PASS
+- [x] `docker compose -f docker-compose.yml config` PASS
+- [x] `docker compose -f docker-compose.prod.yml config` PASS
+- [ ] YAML syntax (tests.yml, deploy.yml): [REQUIRES LOCAL VERIFICATION — Python not available]
+- [ ] Frontend tsc + vitest: [REQUIRES LOCAL VERIFICATION — no app code changed]
+
+### Risks & Notes
+
+- H-13 nginx port 80→8080: docker-compose.prod.yml port mapping, Caddyfile, and healthcheck all updated atomically. Validate in staging.
+- C-03 fail-fast: REDIS_PASSWORD must be set in production env before deploying PR-1. Intentional startup failure if unset.
+- H-14: Laravel migrations are idempotent forward but NOT automatically reversible. Manual `php artisan migrate:rollback` required if schema change breaks.
+- M-25: Caddy rate limiting remains disabled (requires custom Caddy build with xcaddy + caddy-ratelimit plugin).
+- Previous Batch 1 (2026-03-01) branches exist but were never merged to dev; this batch supersedes them.
+
+### Rollback
+
+- All changes are config/script-only — `git revert <sha>` is safe for both PRs
+- H-13 port change must be reverted atomically across Dockerfile + compose + Caddyfile + nginx.conf

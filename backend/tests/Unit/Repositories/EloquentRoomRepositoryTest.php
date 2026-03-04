@@ -347,7 +347,7 @@ class EloquentRoomRepositoryTest extends TestCase
         };
 
         $mockModel = Mockery::mock('alias:'.Room::class);
-        $mockModel->shouldReceive('find')
+        $mockModel->shouldReceive('findOrFail')
             ->once()
             ->with($roomId)
             ->andReturn($mockRoom);
@@ -407,7 +407,7 @@ class EloquentRoomRepositoryTest extends TestCase
         };
 
         $mockModel = Mockery::mock('alias:'.Room::class);
-        $mockModel->shouldReceive('find')
+        $mockModel->shouldReceive('findOrFail')
             ->once()
             ->with($roomId)
             ->andReturn($mockRoom);

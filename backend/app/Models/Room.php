@@ -52,7 +52,8 @@ class Room extends Model
 
     protected $casts = [
         'price' => 'decimal:2',
-        'lock_version' => 'integer', // Ensure version is always an integer
+        'max_guests' => 'integer',
+        'lock_version' => 'integer',
     ];
 
     /**

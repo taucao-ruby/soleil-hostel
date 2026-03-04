@@ -223,13 +223,26 @@ backup_database() {
 
 # ========== RUN MIGRATIONS ==========
 run_migrations() {
-    log_info "🔄 Running database migrations..."
+    local service="${BACKEND_SERVICE:-backend}"
+    local compose_file="${COMPOSE_FILE:-docker-compose.prod.yml}"
 
-    # This is typically done via SSH or a scheduled task
-    # For Forge, you might trigger this via a webhook or SSH command
+    log_info "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Running database migrations on service: ${service}"
 
-    log_info "📍 Migrations command: php artisan migrate --force"
-    # Actual execution would be done on the server
+    if [ -n "${FORGE_SSH_HOST:-}" ]; then
+        # Method 1: SSH to Forge server (preferred for Forge deployments)
+        ssh -o ConnectTimeout=10 "${FORGE_SSH_USER:-forge}@${FORGE_SSH_HOST}" \
+            "cd ${FORGE_SITE_PATH:-/home/forge/soleilhotel.com} && php artisan migrate --force --no-interaction" \
+            || { log_error "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Migrations failed via SSH — aborting deploy"; exit 1; }
+    else
+        # Method 2: Docker compose exec (for self-hosted Docker deployments)
+        docker compose -f "${compose_file}" \
+            exec -T "${service}" \
+            php artisan migrate --force --no-interaction \
+            || { log_error "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Migrations failed — aborting deploy"; exit 1; }
+    fi
+
+    log_success "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Migrations completed successfully"
+    # Note: Laravel migrations are idempotent. For rollback: php artisan migrate:rollback
 }
 
 # ========== WARM UP CACHE ==========

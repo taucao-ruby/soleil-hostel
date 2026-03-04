@@ -114,6 +114,12 @@ jobs:
       - name: Install dependencies
         working-directory: ./frontend
         run: pnpm install --frozen-lockfile
+      - name: Frontend — Type check (blocking gate)
+        working-directory: ./frontend
+        run: npx tsc --noEmit
+      - name: Frontend — Unit tests (blocking gate)
+        working-directory: ./frontend
+        run: pnpm run test:unit
       - name: Build
         working-directory: ./frontend
         env:

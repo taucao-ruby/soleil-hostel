@@ -19,52 +19,52 @@ use Illuminate\Support\Facades\Route;
 
 // ========== LOCATION ENDPOINTS (v1) ==========
 // Public read-only
-Route::get('/locations', [LocationController::class, 'index']);
-Route::get('/locations/{slug}', [LocationController::class, 'show']);
-Route::get('/locations/{slug}/availability', [LocationController::class, 'availability']);
+Route::get('/locations', [LocationController::class, 'index'])->name('v1.locations.index');
+Route::get('/locations/{slug}', [LocationController::class, 'show'])->name('v1.locations.show');
+Route::get('/locations/{slug}/availability', [LocationController::class, 'availability'])->name('v1.locations.availability');
 
 // ========== ROOM ENDPOINTS (v1) ==========
 // Public read-only (now supports ?location_id= filter)
-Route::get('/rooms', [RoomController::class, 'index']);
-Route::get('/rooms/{room}', [RoomController::class, 'show']);
+Route::get('/rooms', [RoomController::class, 'index'])->name('v1.rooms.index');
+Route::get('/rooms/{room}', [RoomController::class, 'show'])->name('v1.rooms.show');
 
 // Protected room management (Admin only)
 Route::middleware(['check_token_valid'])->group(function () {
-    Route::post('/rooms', [RoomController::class, 'store']);
-    Route::put('/rooms/{room}', [RoomController::class, 'update']);
-    Route::patch('/rooms/{room}', [RoomController::class, 'update']);
-    Route::delete('/rooms/{room}', [RoomController::class, 'destroy']);
+    Route::post('/rooms', [RoomController::class, 'store'])->name('v1.rooms.store');
+    Route::put('/rooms/{room}', [RoomController::class, 'update'])->name('v1.rooms.update');
+    Route::patch('/rooms/{room}', [RoomController::class, 'update'])->name('v1.rooms.patch');
+    Route::delete('/rooms/{room}', [RoomController::class, 'destroy'])->name('v1.rooms.destroy');
 });
 
 // ========== BOOKING ENDPOINTS (v1) ==========
 // All booking endpoints require authenticated + verified email
 Route::middleware(['check_token_valid', 'verified'])->group(function () {
-    Route::post('/bookings', [BookingController::class, 'store'])->middleware('throttle:10,1');
-    Route::get('/bookings', [BookingController::class, 'index']);
-    Route::get('/bookings/{booking}', [BookingController::class, 'show']);
-    Route::put('/bookings/{booking}', [BookingController::class, 'update'])->middleware('throttle:10,1');
-    Route::patch('/bookings/{booking}', [BookingController::class, 'update'])->middleware('throttle:10,1');
-    Route::delete('/bookings/{booking}', [BookingController::class, 'destroy'])->middleware('throttle:10,1');
+    Route::post('/bookings', [BookingController::class, 'store'])->middleware('throttle:10,1')->name('v1.bookings.store');
+    Route::get('/bookings', [BookingController::class, 'index'])->name('v1.bookings.index');
+    Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('v1.bookings.show');
+    Route::put('/bookings/{booking}', [BookingController::class, 'update'])->middleware('throttle:10,1')->name('v1.bookings.update');
+    Route::patch('/bookings/{booking}', [BookingController::class, 'update'])->middleware('throttle:10,1')->name('v1.bookings.patch');
+    Route::delete('/bookings/{booking}', [BookingController::class, 'destroy'])->middleware('throttle:10,1')->name('v1.bookings.destroy');
 
     // Booking status change endpoints
     Route::post('/bookings/{booking}/confirm', [BookingController::class, 'confirm'])
-        ->middleware(['role:admin', 'throttle:10,1']);
+        ->middleware(['role:admin', 'throttle:10,1'])->name('v1.bookings.confirm');
     Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])
-        ->middleware('throttle:10,1');
+        ->middleware('throttle:10,1')->name('v1.bookings.cancel');
 
     // ========== ADMIN BOOKING ENDPOINTS (v1) ==========
     Route::prefix('admin/bookings')->middleware('role:admin')->group(function () {
-        Route::get('/', [AdminBookingController::class, 'index']);
-        Route::get('/trashed', [AdminBookingController::class, 'trashed']);
-        Route::get('/trashed/{id}', [AdminBookingController::class, 'showTrashed']);
-        Route::post('/{id}/restore', [AdminBookingController::class, 'restore']);
-        Route::post('/restore-bulk', [AdminBookingController::class, 'restoreBulk']);
-        Route::delete('/{id}/force', [AdminBookingController::class, 'forceDelete']);
+        Route::get('/', [AdminBookingController::class, 'index'])->name('v1.admin.bookings.index');
+        Route::get('/trashed', [AdminBookingController::class, 'trashed'])->name('v1.admin.bookings.trashed');
+        Route::get('/trashed/{id}', [AdminBookingController::class, 'showTrashed'])->name('v1.admin.bookings.showTrashed');
+        Route::post('/{id}/restore', [AdminBookingController::class, 'restore'])->name('v1.admin.bookings.restore');
+        Route::post('/restore-bulk', [AdminBookingController::class, 'restoreBulk'])->name('v1.admin.bookings.restoreBulk');
+        Route::delete('/{id}/force', [AdminBookingController::class, 'forceDelete'])->name('v1.admin.bookings.forceDelete');
     });
 
     // ========== ADMIN CONTACT MESSAGE ENDPOINTS (v1) ==========
     Route::prefix('admin/contact-messages')->middleware('role:admin')->group(function () {
-        Route::get('/', [ContactController::class, 'index']);
-        Route::patch('/{id}/read', [ContactController::class, 'markAsRead']);
+        Route::get('/', [ContactController::class, 'index'])->name('v1.admin.contactMessages.index');
+        Route::patch('/{id}/read', [ContactController::class, 'markAsRead'])->name('v1.admin.contactMessages.markAsRead');
     });
 });

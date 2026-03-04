@@ -45,11 +45,9 @@ interface RoomRepositoryInterface
     /**
      * Check if overlapping confirmed bookings exist for a room.
      *
-     * Mirrors: Room::find($roomId)->bookings()->where(...)->exists()
-     *
      * @return bool True if overlapping bookings exist
      *
-     * @throws \Error If room does not exist (mirrors original behavior of calling method on null)
+     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException If room does not exist
      */
     public function hasOverlappingConfirmedBookings(int $roomId, string $checkIn, string $checkOut): bool;
 

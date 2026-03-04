@@ -71,26 +71,13 @@ class EloquentRoomRepository implements RoomRepositoryInterface
     /**
      * Check if overlapping confirmed bookings exist for a room.
      *
-     * Reproduces: Room::find($roomId)
-     *     ->bookings()
-     *     ->where('status', 'confirmed')
-     *     ->where('check_in', '<', $checkOut)
-     *     ->where('check_out', '>', $checkIn)
-     *     ->exists()
-     *
-     * IMPORTANT: If room does not exist, this will throw an Error (call to member
-     * function on null) - this preserves the original behavior exactly.
-     *
      * @return bool True if overlapping bookings exist
      *
-     * @throws \Error If room does not exist
+     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException If room does not exist
      */
     public function hasOverlappingConfirmedBookings(int $roomId, string $checkIn, string $checkOut): bool
     {
-        // Intentionally not checking for null - matches original behavior
-        // Original: Room::find($roomId)->bookings()->...
-        // If room is null, this throws Error (same as original)
-        return Room::find($roomId)
+        return Room::findOrFail($roomId)
             ->bookings()
             ->where('status', 'confirmed')
             ->where('check_in', '<', $checkOut)

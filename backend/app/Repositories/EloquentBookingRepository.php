@@ -254,6 +254,20 @@ class EloquentBookingRepository implements BookingRepositoryInterface
 
     /**
      * {@inheritDoc}
+     */
+    public function getAllWithTrashedPaginated(array $relations = [], int $perPage = 50): \Illuminate\Contracts\Pagination\LengthAwarePaginator
+    {
+        $query = Booking::withTrashed();
+
+        if (! empty($relations)) {
+            $query->with($relations);
+        }
+
+        return $query->orderBy('created_at', 'desc')->paginate($perPage);
+    }
+
+    /**
+     * {@inheritDoc}
      *
      * NOTE: Relies on existing Booking::withCommonRelations() scope
      * defined in App\Models\Booking (lines 71-82).

@@ -16,6 +16,8 @@ class BookingService
 {
     use HasCacheTagSupport;
 
+    private const CACHE_TTL_ADMIN_BOOKINGS = 120;  // 2 minutes (admin views)
+
     private const CACHE_TTL_USER_BOOKINGS = 300;  // 5 minutes
 
     private const CACHE_TTL_BOOKING = 600;        // 10 minutes

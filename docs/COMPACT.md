@@ -9,7 +9,7 @@
 - Pint baseline: `cd backend && vendor/bin/pint --test` (280 files, 0 style issues) — verified 2026-03-05
 - PHPStan: Level 5 + Larastan installed, baseline 151 pre-existing errors
 - Psalm: `vimeo/psalm ^6.15` installed, Level 1 with suppression config, 0 blocking errors in routes/api/v1.php
-- Progress summary: Batches 1–9 complete (Batch 9: Backend cleanup — static analysis, routes, CORS, env-gating)
+- Progress summary: Batches 1–10 complete (Batch 10: Frontend cleanup — Vietnamese copy, FSD import fix, console.error gating, VND test fixtures, pnpm script)
 - Open findings: F-23 (MD lint), F-24 (HasUuids conflict) — F-22 resolved (Indonesian→Vietnamese)
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
@@ -866,3 +866,50 @@ Files changed:
 - `PossiblyInvalidMethodCall` is not globally suppressed in psalm.xml, unlike sibling
   `Possibly*` issues — consider adding to issueHandlers if more instances appear
 - PR-3: Delete phpunit.pgsql.xml, delete CspViolationReportControllerTest.php
+
+## 2026-03-05 — Batch 10: Frontend Cleanup (H-07, M-16, M-18, L-11, L-13)
+
+### PR-1: fix/fe-batch10-ui-fsd-console-vnd
+
+#### Issues Fixed
+
+- H-07: Translated all English UI strings to Vietnamese in LocationList.tsx (heading, subtitle, error, filter label, empty states)
+- M-16: Moved `BookingApiRaw` type to `shared/types/booking.types.ts`; `admin.types.ts` now imports from shared instead of cross-feature `@/features/booking/`; original `booking.types.ts` re-exports for backward compatibility
+- M-18: Dev-gated `console.error` in `main.tsx` with `import.meta.env.DEV` (ErrorBoundary and api.ts were already gated)
+- L-11: Replaced `$` USD-formatted fixtures with VND format in `BookingDetailPanel.test.tsx` (`$200.00`→`200.000 ₫`, `$150.00`→`150.000 ₫`) and `bookingViewModel.test.ts` (`$50.00`→`50.000 ₫`)
+
+#### Files Changed
+
+- `frontend/src/features/locations/LocationList.tsx` — H-07: 5 English strings → Vietnamese
+- `frontend/src/shared/types/booking.types.ts` — NEW: shared `BookingApiRaw` type
+- `frontend/src/features/booking/booking.types.ts` — M-16: replaced `BookingApiRaw` definition with re-export from shared
+- `frontend/src/features/admin/admin.types.ts` — M-16: import path changed to `@/shared/types/booking.types`
+- `frontend/src/main.tsx` — M-18: added `import.meta.env.DEV` guard around `console.error`
+- `frontend/src/features/bookings/BookingDetailPanel.test.tsx` — L-11: `$200.00`→`200.000 ₫`, `$150.00`→`150.000 ₫`
+- `frontend/src/features/bookings/bookingViewModel.test.ts` — L-11: `$50.00`→`50.000 ₫`
+
+#### Gates
+
+- `tsc --noEmit`: 0 errors ✅
+- `vitest run`: 226 pass, 21 suites ✅
+- `eslint`: 0 errors ✅
+
+#### Notes / Residual
+
+- `dev:frontend` script in root `package.json` still uses `npm` — out of scope per L-13 (only `scripts.dev` specified)
+- D-NEW-01 from Batch 6: `docs/agents/COMMANDS.md` npm references remain (docs scope, not frontend)
+
+### PR-2: chore/fe-batch10-root-pnpm-dev
+
+#### Issues Fixed
+
+- L-13: root `package.json` `scripts.dev` changed from `cd frontend && npm run dev -- --host` to `cd frontend && pnpm run dev -- --host`
+
+#### Files Changed
+
+- `package.json` — scripts.dev updated
+
+#### Gates
+
+- Root script verified: `concurrently "cd backend && php artisan serve ..." "cd frontend && pnpm run dev -- --host"` ✅
+- pnpm-lock.yaml: unchanged ✅

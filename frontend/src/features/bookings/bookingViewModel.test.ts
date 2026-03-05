@@ -53,8 +53,8 @@ describe('toBookingViewModel', () => {
   })
 
   it('includes amount_formatted when present', () => {
-    const vm = toBookingViewModel(makeRaw({ amount: 5000, amount_formatted: '$50.00' }))
-    expect(vm.amountFormatted).toBe('$50.00')
+    const vm = toBookingViewModel(makeRaw({ amount: 5000, amount_formatted: '50.000 ₫' }))
+    expect(vm.amountFormatted).toBe('50.000 ₫')
   })
 
   it('leaves amountFormatted undefined when not present', () => {

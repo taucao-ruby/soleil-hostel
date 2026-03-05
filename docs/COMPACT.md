@@ -2,7 +2,7 @@
 
 ## 1) Current Snapshot (keep under 12 lines)
 
-- Date updated: 2026-03-04
+- Date updated: 2026-03-05
 - Current branch: `dev`
 - Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (226 tests, 21 suites) — verified 2026-03-03
 - Backend test baseline: `cd backend && php artisan test` (871 tests, 2449 assertions) — verified 2026-03-04
@@ -238,6 +238,21 @@ See `docs/FINDINGS_BACKLOG.md` (14 items):
 - Frontend i18n: wire react-i18next or equivalent for frontend strings
 - H-06: Switch test DB to PostgreSQL (blocked: no documented process, needs Docker for all devs)
 - M-11: Migration squashing (blocked: no documented squash process, deploy risk)
+
+### Completed (2026-03-05) — Fix composer.lock PHP version mismatch
+
+- Root cause: `composer.lock` pinned Symfony 8.x packages (event-dispatcher v8.0.4, options-resolver v8.0.0, string v8.0.6, filesystem v8.0.6) requiring PHP ≥ 8.4, but runtime/CI/Dockerfile all target PHP 8.3. Lock file was generated on a PHP 8.4 machine with no platform constraint.
+- Strategy B applied: Downgraded Symfony packages to 7.4.x (compatible with PHP 8.3)
+- Fix 1: Added `"config.platform.php": "8.3.30"` to `backend/composer.json` to prevent future resolution of PHP 8.4-only packages
+- Fix 2: Ran targeted `composer update` on 5 Symfony packages — resolved to v7.4.x
+- Packages changed in `composer.lock`:
+  - symfony/event-dispatcher v8.0.4 → v7.4.4
+  - symfony/options-resolver v8.0.0 → v7.4.0
+  - symfony/string v8.0.6 → v7.4.6
+  - symfony/filesystem v8.0.6 → v7.4.6
+- Files changed: `backend/composer.json`, `backend/composer.lock`, `docs/COMPACT.md`
+- Gates: `composer validate --strict` PASS, `composer install` PASS, `php artisan test` 871/871 (2449 assertions) PASS, `docker compose config` PASS
+- Residual risk: None — all targets (CI, Dockerfile, local) remain PHP 8.3; platform constraint prevents recurrence
 - F-24: Fix PersonalAccessToken HasUuids + integer PK conflict
 - Dashboard Phase 5+: Booking detail panel enhancements
 

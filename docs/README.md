@@ -1,6 +1,6 @@
 ﻿# Soleil Hostel Documentation
 
-> **Last Updated:** March 2, 2026 | **Tests:** 857 backend tests (2430 assertions) + 226 frontend unit tests | **Status:** Phases 0-5 Complete + DevSecOps + Quality Hardening
+> **Last Updated:** March 5, 2026 | **Tests:** 871 backend tests (2449 assertions) + 226 frontend unit tests | **Status:** Phases 0-5 Complete + DevSecOps + Quality Hardening
 
 ## Quick Navigation
 
@@ -17,7 +17,7 @@
 | **Frontend documentation**            | [Frontend Docs](./frontend/README.md)                               |
 | **Set up development environment**    | [Setup Guide](./backend/guides/ENVIRONMENT_SETUP.md)                |
 | **Run tests**                         | [Testing Guide](./backend/guides/TESTING.md)                        |
-| **Set up Git hooks**                  | [Development Hooks](./DEVELOPMENT_HOOKS.md)                         |
+| **Set up Git hooks**                  | [Git Hooks](./HOOKS.md)                                             |
 | **Migrate to unified auth endpoints** | [Auth Migration Guide](./backend/guides/AUTH_MIGRATION.md)          |
 | **Migrate from API v1 to v2**         | [API v1â†’v2 Migration](./backend/guides/API_MIGRATION_V1_TO_V2.md) |
 | **Browse interactive API docs**       | [API Reference (Redoc)](./api/index.html)                           |
@@ -175,7 +175,7 @@ docs/
 | Stripe/Cashier        | ✅ Bootstrap          | 14 tests      |
 | Backend i18n          | ✅ Complete           | 9 tests       |
 | PHPStan/Larastan      | ✅ Installed          | Baseline 151  |
-| **Backend Total**     | **✅ All 17 systems** | **857 tests** |
+| **Backend Total**     | **✅ All 17 systems** | **871 tests** |
 | Frontend (Phase 0-5)  | ✅ Complete           | 226 tests     |
 
 ## Tech Stack
@@ -343,7 +343,7 @@ docs/
 | [OPERATIONAL_PLAYBOOK.md](./OPERATIONAL_PLAYBOOK.md) | Incident runbooks              |
 | [PERFORMANCE_BASELINE.md](./PERFORMANCE_BASELINE.md) | Performance benchmarks         |
 | [API_DEPRECATION.md](./API_DEPRECATION.md)           | API versioning & deprecation   |
-| [DEVELOPMENT_HOOKS.md](./DEVELOPMENT_HOOKS.md)       | Detailed hook behavior         |
+| [DEVELOPMENT_HOOKS.md](./DEVELOPMENT_HOOKS.md)       | Redirect to HOOKS.md           |
 | [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md)           | Migration guide                |
 
 ### Agent & Governance

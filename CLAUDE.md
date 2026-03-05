@@ -28,15 +28,15 @@ feature/<name>  →  dev  →  main (--no-ff merge)
 - All PRs target `dev`. Human review required before merge to `main`.
 - Commit format enforced by hook — see §3.
 
-**Repo health baseline (verified 2026-03-02):**
+**Repo health baseline (verified 2026-03-05):**
 
 | Gate                                   | Result                        |
 | -------------------------------------- | ----------------------------- |
-| `cd backend && php artisan test`       | ✅ 857 tests, 2430 assertions |
+| `cd backend && php artisan test`       | ✅ 871 tests, 2449 assertions |
 | `cd frontend && npx tsc --noEmit`      | ✅ 0 errors                   |
 | `cd frontend && npx vitest run`        | ✅ 226 tests, 21 files        |
 | `docker compose config`                | ✅ valid                      |
-| `cd backend && vendor/bin/pint --test` | ✅ 275 files, 0 violations    |
+| `cd backend && vendor/bin/pint --test` | ✅ 280 files, 0 violations    |
 
 **Key directories (verified):**
 

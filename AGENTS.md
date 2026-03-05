@@ -163,12 +163,12 @@ From `./PROJECT_STATUS.md`:
 
 - Branch context: `dev` (synced with `main` as of March 2, 2026).
 - Audit history: v1–v4 marked complete; current repo health marked green.
-- Verified results (Mar 2, 2026):
-  - Backend: `857 tests`, `2430 assertions` via `cd backend && php artisan test`.
+- Verified results (Mar 5, 2026):
+  - Backend: `871 tests`, `2449 assertions` via `cd backend && php artisan test`.
   - Frontend typecheck: pass via `cd frontend && npx tsc --noEmit`.
   - Frontend unit tests: `226 tests` in `21 files` via `cd frontend && npx vitest run`.
   - Docker compose config validation: pass via `docker compose config`.
-  - Pint style: `275 files`, 0 violations via `cd backend && vendor/bin/pint --test`.
+  - Pint style: `280 files`, 0 violations via `cd backend && vendor/bin/pint --test`.
   - PHPStan Level 5 with Larastan installed (baseline: 151 pre-existing errors).
 - Security/dev fixes recorded as completed:
   - No plaintext Redis secrets
@@ -210,4 +210,4 @@ Before finishing:
 
 Unknown / verify in repo:
 
-- CI branch policy vs `dev` naming alignment (`develop` appears in workflows). Verify expected branch mapping before workflow changes.
+- _(F-04 resolved: CI workflows now use `dev` branch, not `develop`. Verified 2026-02-22.)_

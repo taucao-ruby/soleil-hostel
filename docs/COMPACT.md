@@ -9,8 +9,8 @@
 - Pint baseline: `cd backend && vendor/bin/pint --test` (280 files, 0 style issues) — verified 2026-03-05
 - PHPStan: Level 5 + Larastan installed, baseline 151 pre-existing errors
 - Psalm: `vimeo/psalm ^6.15` installed, Level 1 with suppression config, 0 blocking errors in routes/api/v1.php
-- Progress summary: Batches 1–10 complete (Batch 10: Frontend cleanup — Vietnamese copy, FSD import fix, console.error gating, VND test fixtures, pnpm script)
-- Open findings: F-23 (MD lint), F-24 (HasUuids conflict) — F-22 resolved (Indonesian→Vietnamese)
+- Progress summary: Batches 1–12 complete (Batch 12: Full docs health check + sync — all metrics verified 2026-03-05)
+- Open findings: F-23 (MD lint), F-24 (HasUuids conflict) — F-21 (auth pages Vietnamese) and F-22 (Indonesian→Vietnamese) both resolved
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
 ## 2) What matters (invariants / guardrails)
@@ -945,3 +945,132 @@ Option 1: Added `import type { BookingApiRaw } from '@/shared/types/booking.type
 ### Residual Risk
 
 None — all 17 errors resolved, no type assertions added, no fields invented.
+
+## 2026-03-05 — Batch 11: Docs Sync (D-01, D-02, D-03, D-04, D-07, D-14, D-18)
+
+### Facts synchronized
+
+| Fact                            | Old value                | New value  | Source                            |
+| ------------------------------- | ------------------------ | ---------- | --------------------------------- |
+| Backend tests (AGENTS.md)       | 857 / 2430               | 871 / 2449 | COMPACT.md §1 verified 2026-03-05 |
+| Backend tests (CLAUDE.md)       | 857 / 2430               | 871 / 2449 | COMPACT.md §1 verified 2026-03-05 |
+| Backend tests (README.md)       | 857 / 2430 (6 locations) | 871 / 2449 | COMPACT.md §1 verified 2026-03-05 |
+| Backend tests (PRODUCT_GOAL.md) | 857                      | 871        | COMPACT.md §1 verified 2026-03-05 |
+| Pint files (AGENTS.md)          | 275                      | 280        | COMPACT.md §1 verified 2026-03-05 |
+| Pint files (CLAUDE.md)          | 275                      | 280        | COMPACT.md §1 verified 2026-03-05 |
+| Verified date (AGENTS.md)       | Mar 2                    | Mar 5      | Batch 9 gate results              |
+| Verified date (CLAUDE.md)       | 2026-03-02               | 2026-03-05 | Batch 9 gate results              |
+
+### D-14 outcome
+
+- chk_rooms_max_guests: NOT in migrations (confirmed via grep + reading migration 2026_02_22_000001)
+- DB_FACTS.md: already correct — no change needed
+- DATABASE.md: removed chk_rooms_max_guests from CHECK constraints SQL block; added note clarifying it is app-layer only
+
+### D-18 outcome
+
+- Canonical file: docs/HOOKS.md (confirmed)
+- Merged unique sections from DEVELOPMENT_HOOKS.md into HOOKS.md: Purpose, Hook Policy Source (with `<!-- merged from DEVELOPMENT_HOOKS.md 2026-03-05 -->` comment)
+- DEVELOPMENT_HOOKS.md: reduced to redirect stub (3 lines)
+- docs/README.md: Quick Navigation link updated to point to HOOKS.md; all-docs index entry updated to "Redirect to HOOKS.md"
+- docs/HOOKS.md: removed cross-reference to DEVELOPMENT_HOOKS.md
+
+### Files changed
+
+- `AGENTS.md` — D-01: stats 857→871, 2430→2449, 275→280, date Mar 2→Mar 5
+- `CLAUDE.md` — D-02: stats 857→871, 2430→2449, 275→280, date 2026-03-02→2026-03-05
+- `README.md` — D-03: stats 857→871, 2430→2449 (6 locations)
+- `PRODUCT_GOAL.md` — D-07: stats 857→871
+- `docs/DATABASE.md` — D-14: removed chk_rooms_max_guests from SQL, added app-layer note
+- `docs/HOOKS.md` — D-18: merged Purpose + Hook Policy Source sections
+- `docs/DEVELOPMENT_HOOKS.md` — D-18: replaced with redirect stub (D-04 stats update made moot)
+- `docs/README.md` — D-18: updated Quick Navigation + all-docs index links
+
+### Verification
+
+- Stats sweep: CLEAN — 0 matches for 857/2430 in target files
+- New values confirmed: 9 matches for 871/2449 in target files
+- Dangling links: CLEAN — no active DEVELOPMENT_HOOKS.md links remain (only historical refs in AUDIT_REPORT, WORKLOG, FINDINGS_BACKLOG)
+- DB constraint: present in both DB docs with consistent "not in migrations" note ✅
+- Markdown lint: NOT FOUND — no markdownlint config or CI gate
+
+### D-NEW items (out of scope — log only)
+
+- D-NEW-02: `docs/README.md:3` has stale "857 tests (2430 assertions)" — not in D-01..D-07 scope
+- D-NEW-03: `PROJECT_STATUS.md:22-24` has stale "857/2430/275" — not in D-01..D-07 scope
+
+### Issues with no change needed
+
+- D-04 (DEVELOPMENT_HOOKS.md stats): file replaced with redirect stub by D-18; stale stats eliminated by consolidation
+
+## 2026-03-05 — BATCH_AUDIT_2026-03-05: Full Project Health Check + All Docs Sync
+
+**Model:** Claude Opus 4.6
+**Issues addressed:** D-1..D-20 drift items across 8 doc files + 2 findings status updates
+**Files modified:** 9 doc files + COMPACT.md
+
+### Facts synchronized
+
+| Fact                                | Old value                        | New value                          | Source                                                 |
+| ----------------------------------- | -------------------------------- | ---------------------------------- | ------------------------------------------------------ |
+| Backend tests (PROJECT_STATUS)      | 857 / 2430                       | 871 / 2449                         | E1: `php artisan test` verified 2026-03-05             |
+| Pint file count (PROJECT_STATUS)    | 275                              | 280                                | E2: `pint --test` verified 2026-03-05                  |
+| PHPStan baseline (PROJECT_STATUS)   | 151                              | 150                                | E15: phpstan-baseline.neon sum of counts               |
+| Backend tests (docs/README)         | 857 / 2430                       | 871 / 2449                         | E1, E12                                                |
+| Date (PROJECT_STATUS)               | March 2, 2026                    | March 5, 2026                      | E14: git log                                           |
+| Date (docs/README)                  | March 2, 2026                    | March 5, 2026                      | E14                                                    |
+| Date (PRODUCT_GOAL)                 | 2026-03-02                       | 2026-03-05                         | E14                                                    |
+| Date (BACKLOG)                      | 2026-03-02                       | 2026-03-05                         | E14                                                    |
+| Frontend commands (agents/COMMANDS) | npm run lint/format/install/dev  | pnpm lint/format/install/dev       | E10: pnpm-lock.yaml present                            |
+| AGENTS.md "Unknown" note            | "`develop` appears in workflows" | F-04 resolved note                 | E13: FINDINGS_BACKLOG F-04 Fixed                       |
+| README.md tech stack                | "React Query, Zustand, Axios"    | "Axios" (RQ/Zustand not installed) | E9: not in package.json                                |
+| F-21 status                         | Open                             | Fixed                              | Code verified: LoginPage + RegisterPage now Vietnamese |
+| F-22 status                         | Open                             | Fixed                              | Code verified: "ditemukan" → "Không tìm thấy"          |
+| Open findings count                 | 4                                | 2                                  | F-21 + F-22 now Fixed; F-23 + F-24 remain Open         |
+
+### Gate snapshot (verified 2026-03-05)
+
+- Backend: 871 tests, 2449 assertions — PASS
+- Frontend: 226 pass, 21 suites — PASS
+- TypeScript: 0 errors — PASS
+- Pint: 280 files, 0 violations — PASS
+- PHPStan: Level 5, 150 baseline errors
+- Docker Compose: PASS (prod config requires REDIS_PASSWORD env — expected)
+
+### Hooks / D-18 outcome
+
+- Canonical hooks file: docs/HOOKS.md (no change needed — already complete from Batch 11)
+- DEVELOPMENT_HOOKS.md: redirect stub (no change needed)
+- Referrers: all correct
+
+### Files changed
+
+- `PROJECT_STATUS.md` — full update: date, test counts (857→871, 2430→2449, 275→280), added March 5 batch, open findings section, PHPStan 151→150
+- `PRODUCT_GOAL.md` — dates updated (2026-03-02→2026-03-05)
+- `BACKLOG.md` — date updated (2026-03-02→2026-03-05)
+- `AGENTS.md` — "Unknown/verify" section: stale `develop` note → F-04 resolved note
+- `README.md` — removed React Query + Zustand from tech stack (not installed)
+- `docs/README.md` — test counts (857→871, 2430→2449), date updated
+- `docs/agents/COMMANDS.md` — frontend npm→pnpm (lint, format, install, dev)
+- `docs/FINDINGS_BACKLOG.md` — F-21 + F-22 marked Fixed (verified in code)
+- `docs/COMPACT.md` — §1 updated + this batch appended
+
+### New findings discovered (deferred to separate batch)
+
+- NEW-FINDING-1: `package.json:9` — `dev:frontend` uses `npm run dev` but should use `pnpm dev` (inconsistent with line 6 which correctly uses pnpm). Risk: LOW. Recommended: next code batch.
+
+### Issues with no change needed
+
+- CLAUDE.md: metrics already correct (871/2449/226/280) — no edit needed
+- docs/DATABASE.md: migration count 35 correct, chk_rooms_max_guests note present — no edit needed
+- docs/DB_FACTS.md: constraint docs accurate — no edit needed
+- docs/HOOKS.md: already has merged content from Batch 11 — no edit needed
+- docs/DEVELOPMENT_HOOKS.md: already redirect stub — no edit needed
+- docs/OPERATIONAL_PLAYBOOK.md: daterange + deleted_at IS NULL correct — no edit needed
+- docs/COMMANDS_AND_GATES.md: root npm commands correct (root pkg uses npm); frontend pnpm refs OK — no edit needed
+- docs/KNOWN_LIMITATIONS.md: LIM statuses match current state — no edit needed
+
+### Open Questions / TBDs
+
+- PHPStan baseline: phpstan-baseline.neon sums to 150 but COMPACT/docs historically say 151 — updated to 150 in PROJECT_STATUS.md; remaining docs left at 151 where they're historical references. Net difference is 1 error.
+- ESLint: 3 warnings from `coverage/` generated files (not source code) — ESLint config should exclude `coverage/`. Not a docs issue.

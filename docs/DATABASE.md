@@ -453,16 +453,13 @@ ALTER TABLE rooms
 ADD CONSTRAINT chk_rooms_price
 CHECK (price >= 0);
 
--- Max guests must be positive
-ALTER TABLE rooms
-ADD CONSTRAINT chk_rooms_max_guests
-CHECK (max_guests > 0);
-
 -- Rating must be 1-5
 ALTER TABLE reviews
 ADD CONSTRAINT chk_reviews_rating
 CHECK (rating >= 1 AND rating <= 5);
 ```
+
+> **Note:** `chk_rooms_max_guests CHECK (max_guests > 0)` is **not present in migrations**. This rule is enforced at the application layer only (see `StoreRoomRequest`, `UpdateRoomRequest`). To add it at the DB level, apply manually via `psql` or add a new migration.
 
 ---
 

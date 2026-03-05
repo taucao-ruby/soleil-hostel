@@ -14,7 +14,7 @@ class LoginRequestValidationTest extends TestCase
 {
     private function rules(): array
     {
-        return (new LoginRequest())->rules();
+        return (new LoginRequest)->rules();
     }
 
     public function test_password_requires_minimum_8_characters(): void

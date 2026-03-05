@@ -15,7 +15,7 @@ class UpdateBookingRequestValidationTest extends TestCase
 {
     private function rules(): array
     {
-        return (new UpdateBookingRequest())->rules();
+        return (new UpdateBookingRequest)->rules();
     }
 
     public function test_guest_name_requires_minimum_2_characters(): void

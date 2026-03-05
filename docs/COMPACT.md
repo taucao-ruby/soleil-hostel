@@ -6,7 +6,7 @@
 - Current branch: `dev`
 - Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (226 tests, 21 suites) — verified 2026-03-03
 - Backend test baseline: `cd backend && php artisan test` (871 tests, 2449 assertions) — verified 2026-03-04
-- Pint baseline: `cd backend && vendor/bin/pint --test` (280 files, 2 pre-existing violations) — verified 2026-03-04
+- Pint baseline: `cd backend && vendor/bin/pint --test` (280 files, 0 style issues) — verified 2026-03-05
 - PHPStan: Level 5 + Larastan installed, baseline 151 pre-existing errors
 - Psalm: `vimeo/psalm ^6.15` installed, Level 1 with suppression config
 - Progress summary: Batches 1–9 complete (Batch 9: Backend cleanup — static analysis, routes, CORS, env-gating)
@@ -253,6 +253,19 @@ See `docs/FINDINGS_BACKLOG.md` (14 items):
 - Files changed: `backend/composer.json`, `backend/composer.lock`, `docs/COMPACT.md`
 - Gates: `composer validate --strict` PASS, `composer install` PASS, `php artisan test` 871/871 (2449 assertions) PASS, `docker compose config` PASS
 - Residual risk: None — all targets (CI, Dockerfile, local) remain PHP 8.3; platform constraint prevents recurrence
+
+### Completed (2026-03-05) — Fix Pint new_with_parentheses + Psalm JIT fatal
+
+- Pint: 2 test files had `new ClassName()` with parentheses; Laravel preset enforces bare `new ClassName`. Auto-fixed by Pint.
+  - `tests/Unit/Requests/Auth/LoginRequestValidationTest.php` — `new LoginRequest()` → `new LoginRequest`
+  - `tests/Unit/Requests/UpdateBookingRequestValidationTest.php` — `new UpdateBookingRequest()` → `new UpdateBookingRequest`
+- Psalm: Fatal crash (exit 255) — `Cannot declare class Psalm\Internal\ErrorHandler, name already in use`. Root cause: PHP JIT (`opcache.enable_cli=1` default from shivammathur/setup-php) preloads ErrorHandler before Psalm's bootstrap → double-declaration.
+  - Fix: Added `-d opcache.enable_cli=0 -d opcache.jit=0 -d opcache.jit_buffer_size=0` to Psalm CI step in `.github/workflows/tests.yml`
+  - Also switched from global `psalm` to `vendor/bin/psalm` for version determinism
+- Files changed: 2 test files, `.github/workflows/tests.yml`, `docs/COMPACT.md`
+- Gates: `pint --test` PASS (280 files, 0 issues), `artisan test` 871/871 PASS, `docker compose config` PASS
+- Residual risk: Psalm type errors (if any surface after JIT fix) are tracked separately — Psalm job has `continue-on-error: true`
+
 - F-24: Fix PersonalAccessToken HasUuids + integer PK conflict
 - Dashboard Phase 5+: Booking detail panel enhancements
 

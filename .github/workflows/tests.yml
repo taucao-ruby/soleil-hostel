@@ -410,7 +410,11 @@ jobs:
           key: backend-vendor-${{ needs.setup.outputs.composer-hash }}
       - name: Psalm analysis
         working-directory: ./backend
-        run: psalm --output-format=github
+        run: |
+          php -d opcache.enable_cli=0 \
+            -d opcache.jit=0 \
+            -d opcache.jit_buffer_size=0 \
+            vendor/bin/psalm --output-format=github
 
   # ========== CODE STYLE: Laravel Pint ==========
   pint:

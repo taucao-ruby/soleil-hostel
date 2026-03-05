@@ -8,7 +8,7 @@
 - Backend test baseline: `cd backend && php artisan test` (871 tests, 2449 assertions) — verified 2026-03-04
 - Pint baseline: `cd backend && vendor/bin/pint --test` (280 files, 0 style issues) — verified 2026-03-05
 - PHPStan: Level 5 + Larastan installed, baseline 151 pre-existing errors
-- Psalm: `vimeo/psalm ^6.15` installed, Level 1 with suppression config
+- Psalm: `vimeo/psalm ^6.15` installed, Level 1 with suppression config, 0 blocking errors in routes/api/v1.php
 - Progress summary: Batches 1–9 complete (Batch 9: Backend cleanup — static analysis, routes, CORS, env-gating)
 - Open findings: F-23 (MD lint), F-24 (HasUuids conflict) — F-22 resolved (Indonesian→Vietnamese)
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
@@ -828,4 +828,41 @@ Chose **Option B**: Added top-level canonical redirect banner to `docs/DEVELOPME
 
 - PR-1: Revert composer.json/lock (remove psalm), restore old strings/config checks
 - PR-2: Restore Cors.php from git, remove ->name() from routes, remove env-gate from v2
+
+## 2026-03-05 — fix/psalm-v1-routes-typing
+
+### Problem
+
+Psalm gate (exit code 2) — 6× `PossiblyInvalidMethodCall` in `routes/api/v1.php`:
+lines 42, 45, 46, 47 (booking CRUD) and lines 51, 53 (confirm/cancel).
+All caused by chaining `->name()` after `->middleware()` on a `Route` instance.
+
+### Root Cause
+
+`Route::middleware()` returns `static|array` — with args it returns `$this`, without args
+it returns the middleware list. Psalm sees the union and flags `->name()` as invalid on
+`array<array-key, mixed>`. No Psalm Laravel plugin is installed to narrow the type.
+
+### Fix Applied
+
+Swapped chain order from `->middleware(...)->name(...)` to `->name(...)->middleware(...)`.
+`Route::name()` always returns `static`, so chaining is safe. `->middleware()` at end of
+chain has its `static|array` return unused — no `PossiblyInvalidMethodCall`.
+
+Files changed:
+
+- `backend/routes/api/v1.php` — 6 chain order swaps (zero runtime behavior change)
+
+### Gate Results
+
+- `psalm --output-format=github`: exit 0, 0 v1.php errors
+- `artisan route:list --path=api/v1`: 25 routes OK
+- `artisan test`: 871 passed (2449 assertions)
+- `vendor/bin/pint --test routes/api/v1.php`: PASS
+
+### Residual Risk
+
+- 399 other Psalm issues remain (suppressed or info-level) — tracked separately
+- `PossiblyInvalidMethodCall` is not globally suppressed in psalm.xml, unlike sibling
+  `Possibly*` issues — consider adding to issueHandlers if more instances appear
 - PR-3: Delete phpunit.pgsql.xml, delete CspViolationReportControllerTest.php

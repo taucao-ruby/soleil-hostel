@@ -39,18 +39,18 @@ Route::middleware(['check_token_valid'])->group(function () {
 // ========== BOOKING ENDPOINTS (v1) ==========
 // All booking endpoints require authenticated + verified email
 Route::middleware(['check_token_valid', 'verified'])->group(function () {
-    Route::post('/bookings', [BookingController::class, 'store'])->middleware('throttle:10,1')->name('v1.bookings.store');
+    Route::post('/bookings', [BookingController::class, 'store'])->name('v1.bookings.store')->middleware('throttle:10,1');
     Route::get('/bookings', [BookingController::class, 'index'])->name('v1.bookings.index');
     Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('v1.bookings.show');
-    Route::put('/bookings/{booking}', [BookingController::class, 'update'])->middleware('throttle:10,1')->name('v1.bookings.update');
-    Route::patch('/bookings/{booking}', [BookingController::class, 'update'])->middleware('throttle:10,1')->name('v1.bookings.patch');
-    Route::delete('/bookings/{booking}', [BookingController::class, 'destroy'])->middleware('throttle:10,1')->name('v1.bookings.destroy');
+    Route::put('/bookings/{booking}', [BookingController::class, 'update'])->name('v1.bookings.update')->middleware('throttle:10,1');
+    Route::patch('/bookings/{booking}', [BookingController::class, 'update'])->name('v1.bookings.patch')->middleware('throttle:10,1');
+    Route::delete('/bookings/{booking}', [BookingController::class, 'destroy'])->name('v1.bookings.destroy')->middleware('throttle:10,1');
 
     // Booking status change endpoints
     Route::post('/bookings/{booking}/confirm', [BookingController::class, 'confirm'])
-        ->middleware(['role:admin', 'throttle:10,1'])->name('v1.bookings.confirm');
+        ->name('v1.bookings.confirm')->middleware(['role:admin', 'throttle:10,1']);
     Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])
-        ->middleware('throttle:10,1')->name('v1.bookings.cancel');
+        ->name('v1.bookings.cancel')->middleware('throttle:10,1');
 
     // ========== ADMIN BOOKING ENDPOINTS (v1) ==========
     Route::prefix('admin/bookings')->middleware('role:admin')->group(function () {

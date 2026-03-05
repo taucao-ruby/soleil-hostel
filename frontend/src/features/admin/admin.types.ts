@@ -5,7 +5,7 @@
  * BookingApiRaw with trashed/refund fields from BookingResource.
  */
 
-import type { BookingApiRaw } from '@/features/booking/booking.types'
+import type { BookingApiRaw } from '@/shared/types/booking.types'
 
 /**
  * Admin booking — extends BookingApiRaw with optional trashed/refund fields.

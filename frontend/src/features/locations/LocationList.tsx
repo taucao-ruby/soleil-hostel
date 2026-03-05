@@ -39,7 +39,7 @@ const LocationList: React.FC = () => {
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return
         if (!controller.signal.aborted) {
-          setError('Failed to load locations. Please try again later.')
+          setError('Không thể tải danh sách cơ sở. Vui lòng thử lại sau.')
         }
       } finally {
         if (!controller.signal.aborted) {
@@ -70,10 +70,8 @@ const LocationList: React.FC = () => {
       <div className="mx-auto max-w-7xl">
         {/* Header */}
         <div className="mb-12 text-center">
-          <h1 className="mb-4 text-4xl font-bold text-gray-900">Our Locations</h1>
-          <p className="text-lg text-gray-600">
-            Discover our collection of unique stays across Hue City
-          </p>
+          <h1 className="mb-4 text-4xl font-bold text-gray-900">Danh sách cơ sở</h1>
+          <p className="text-lg text-gray-600">Khám phá các cơ sở lưu trú độc đáo tại Huế</p>
         </div>
 
         {/* City Filter */}
@@ -81,7 +79,7 @@ const LocationList: React.FC = () => {
           <div className="flex justify-center mb-8">
             <div>
               <label htmlFor="city-filter" className="block mb-2 text-sm font-medium text-gray-700">
-                Filter by City
+                Lọc theo thành phố
               </label>
               <select
                 id="city-filter"
@@ -89,7 +87,7 @@ const LocationList: React.FC = () => {
                 onChange={e => setSelectedCity(e.target.value)}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="">All Cities</option>
+                <option value="">Tất cả thành phố</option>
                 {cities.map(city => (
                   <option key={city} value={city}>
                     {city}
@@ -160,11 +158,11 @@ const LocationList: React.FC = () => {
                 d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
               />
             </svg>
-            <h3 className="mb-2 text-xl font-semibold text-gray-700">No locations found</h3>
+            <h3 className="mb-2 text-xl font-semibold text-gray-700">Không có cơ sở nào</h3>
             <p className="text-gray-500">
               {selectedCity
-                ? `No locations in ${selectedCity}. Try selecting a different city.`
-                : 'No locations available at the moment.'}
+                ? `Không có cơ sở tại ${selectedCity}. Vui lòng chọn thành phố khác.`
+                : 'Hiện không có cơ sở nào.'}
             </p>
           </div>
         )}

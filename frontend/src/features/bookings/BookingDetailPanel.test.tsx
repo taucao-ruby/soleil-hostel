@@ -27,7 +27,7 @@ function makeDetail(overrides: Partial<BookingDetailRaw> = {}): BookingDetailRaw
     status: 'pending',
     status_label: 'Chờ xác nhận',
     nights: 2,
-    amount_formatted: '$200.00',
+    amount_formatted: '200.000 ₫',
     created_at: '2026-05-20T10:00:00+00:00',
     updated_at: '2026-05-20T10:00:00+00:00',
     room: {
@@ -86,7 +86,7 @@ describe('BookingDetailPanel', () => {
     await waitFor(() => {
       expect(screen.getByText('Phòng Deluxe (#101)')).toBeInTheDocument()
       expect(screen.getByText('Chờ xác nhận')).toBeInTheDocument()
-      expect(screen.getByText('$200.00')).toBeInTheDocument()
+      expect(screen.getByText('200.000 ₫')).toBeInTheDocument()
       expect(screen.getByText('Nguyễn Văn A')).toBeInTheDocument()
       expect(screen.getByText('guest@example.com')).toBeInTheDocument()
       expect(screen.getByText('2 đêm')).toBeInTheDocument()
@@ -185,13 +185,13 @@ describe('BookingDetailPanel', () => {
       makeDetail({
         status: 'cancelled',
         status_label: 'Đã hủy',
-        refund_amount_formatted: '$150.00',
+        refund_amount_formatted: '150.000 ₫',
       })
     )
     renderPanel()
 
     await waitFor(() => {
-      expect(screen.getByText('$150.00')).toBeInTheDocument()
+      expect(screen.getByText('150.000 ₫')).toBeInTheDocument()
       expect(screen.getByText('Hoàn tiền')).toBeInTheDocument()
     })
   })

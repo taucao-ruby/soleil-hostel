@@ -22,14 +22,14 @@ docker compose config
 
 If using MCP server, these are the allowlisted verify targets:
 
-| Target | Equivalent command |
-|--------|-------------------|
-| `backend_tests` | `cd backend && php artisan test` |
-| `frontend_typecheck` | `cd frontend && npx tsc --noEmit` |
-| `frontend_unit_tests` | `cd frontend && npx vitest run` |
-| `docker_compose_config` | `docker compose config` |
-| `backend_lint` | `cd backend && vendor/bin/pint --test` |
-| `frontend_lint` | `cd frontend && npm run lint` |
+| Target                  | Equivalent command                     |
+| ----------------------- | -------------------------------------- |
+| `backend_tests`         | `cd backend && php artisan test`       |
+| `frontend_typecheck`    | `cd frontend && npx tsc --noEmit`      |
+| `frontend_unit_tests`   | `cd frontend && npx vitest run`        |
+| `docker_compose_config` | `docker compose config`                |
+| `backend_lint`          | `cd backend && vendor/bin/pint --test` |
+| `frontend_lint`         | `cd frontend && pnpm lint`             |
 
 ## Additional Checks (useful but not blocking)
 
@@ -42,8 +42,8 @@ cd backend && vendor/bin/psalm                 # Level 1
 cd backend && vendor/bin/pint --test
 
 # Frontend lint + format
-cd frontend && npm run lint
-cd frontend && npm run format
+cd frontend && pnpm lint
+cd frontend && pnpm format
 
 # Security audits
 cd backend && composer audit
@@ -60,7 +60,7 @@ cd backend && php artisan key:generate
 cd backend && php artisan migrate:fresh --seed
 
 # Frontend
-cd frontend && npm install
+cd frontend && pnpm install
 
 # Hooks
 npm install && npm run hooks:install
@@ -79,7 +79,7 @@ npm run dev
 cd backend && php artisan serve --host=127.0.0.1 --port=8000
 
 # Frontend only
-cd frontend && npm run dev
+cd frontend && pnpm dev
 # → http://localhost:5173
 
 # Docker stack

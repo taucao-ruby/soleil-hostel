@@ -1,7 +1,7 @@
 # BACKLOG.md — Soleil Hostel
 
 > **Product backlog — prioritized by implementation order**
-> Last updated: 2026-03-02 | Source: COMPACT.md + KNOWN_LIMITATIONS.md + FINDINGS_BACKLOG.md
+> Last updated: 2026-03-05 | Source: COMPACT.md + KNOWN_LIMITATIONS.md + FINDINGS_BACKLOG.md
 
 ---
 

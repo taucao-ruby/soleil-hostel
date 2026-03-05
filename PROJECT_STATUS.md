@@ -1,7 +1,8 @@
 # Soleil Hostel - Project Status
 
-**Last Updated:** March 2, 2026
-**Current Branch:** `dev` (synced with `main`)
+**Last Updated:** March 5, 2026
+**Current Branch:** `dev`
+**Latest Commit:** `a6fa840` — fix(frontend): add local import for BookingApiRaw in booking.types.ts
 
 ## Current Status: Full Quality Pass Complete, Repo Health Green
 
@@ -14,15 +15,20 @@
 > Phase 5 (Friday clean-up) completed February 28, 2026: TD-002, rollup CVE fix, ship script.
 > March 1, 2026: DevSecOps Batch 1 (Docker/Redis/Caddy hardening, CI gates), Batch 2 backend fixes (review purification, booking fillable, Stripe webhooks), i18n test fix, minimatch CVE fix, Cashier bootstrap, i18n translations.
 > March 2, 2026: Batch 3 backend quality (HealthService extraction, FormRequests, PHPStan/Larastan install, Contact+Review tests), Batch 4 frontend quality (AbortController cleanup, vi.hoisted auth mocks, no-console ESLint, RoomList tests).
+> March 5, 2026: Fix composer.lock PHP version mismatch (Symfony 8→7.4), fix Pint style + Psalm JIT fatal in CI.
 
-Verified on March 2, 2026:
+Gates (verified March 5, 2026):
 
-- Backend tests PASS: **857 tests**, **2430 assertions** (`cd backend && php artisan test`)
-- Frontend typecheck PASS (`cd frontend && npx tsc --noEmit`)
+- Backend tests PASS: **871 tests**, **2449 assertions** (`cd backend && php artisan test`)
+- Frontend typecheck PASS: 0 errors (`cd frontend && npx tsc --noEmit`)
 - Frontend unit tests PASS: **21 files**, **226 tests** (`cd frontend && npx vitest run`)
 - Compose config PASS (`docker compose config`)
-- Pint style PASS: **275 files**, 0 violations (`cd backend && vendor/bin/pint --test`)
-- PHPStan Level 5 installed with Larastan (baseline: 151 pre-existing errors)
+- Pint style PASS: **280 files**, 0 violations (`cd backend && vendor/bin/pint --test`)
+- PHPStan Level 5 installed with Larastan (baseline: 150 pre-existing errors)
+- Psalm: 0 blocking errors (v1 routes)
+
+Open Findings: 2 (F-23, F-24)
+Blocked Items: M-11 (migration squash), H-06 (PG test DB)
 
 Latest audit report: [AUDIT_REPORT.md](./AUDIT_REPORT.md)
 Findings backlog: [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md)
@@ -148,6 +154,17 @@ Two major quality batches across backend refactoring and frontend test/lint impr
 
 **Test counts:** Backend 790 → 857 (+67 tests), Frontend 218 → 226 (+8 tests, +1 suite)
 
+### March 5 Summary — Stabilization + Docs Health Check
+
+| Item          | Description                                                                      | Status  |
+| ------------- | -------------------------------------------------------------------------------- | ------- |
+| **Composer**  | Fix composer.lock PHP version mismatch — Symfony 8.x (PHP 8.4) → 7.4.x (PHP 8.3) | ✅ Done |
+| **Pint**      | Fix `new_with_parentheses` violations in 2 test files                            | ✅ Done |
+| **Psalm CI**  | Fix JIT fatal — disable opcache.enable_cli in Psalm CI step                      | ✅ Done |
+| **Docs sync** | Full project health check — all docs synchronized to 871/2449 baseline           | ✅ Done |
+
+**Test counts:** Backend 857 → 871 (+14 tests), Pint 275 → 280 (+5 files)
+
 ---
 
 ### Previous Audit History
@@ -173,16 +190,16 @@ Two major quality batches across backend refactoring and frontend test/lint impr
 ### Backend (PHPUnit/Pest)
 
 ```text
-857 tests passed
-2430 assertions
-Duration: ~60s (verified March 2, 2026)
+871 tests passed
+2449 assertions
+Duration: ~60s (verified March 5, 2026)
 ```
 
 ### Frontend (Vitest)
 
 ```text
 226 tests passed (21 test files)
-Duration: ~29s (verified March 2, 2026)
+Duration: ~25s (verified March 5, 2026)
 ```
 
 ### E2E (Playwright)

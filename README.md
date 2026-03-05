@@ -84,7 +84,7 @@ Dự án được xây dựng như một hệ thống có thể sống lâu dài
 - **ReactJS + TypeScript**
 - Mobile-first, tối ưu **Core Web Vitals**
 - **TailwindCSS**
-- React Query, Zustand, Axios
+- Axios
 - UI/UX tối giản, tập trung vào **chủ homestay**
 
 ---
@@ -98,7 +98,7 @@ Dự án được xây dựng như một hệ thống có thể sống lâu dài
   - Repository Pattern
 - Authentication: **Laravel Sanctum**
 - RESTful API
-- **857 automated tests** (Feature + Unit) + **226 frontend tests**
+- **871 automated tests** (Feature + Unit) + **226 frontend tests**
 - Security & performance-focused design
 
 ---
@@ -143,7 +143,7 @@ soleil-hostel/
 │   ├── resources/                    # Views & Assets
 │   ├── routes/                       # API Routes
 │   ├── storage/                      # File Storage
-│   ├── tests/                        # 857 Automated Tests
+│   ├── tests/                        # 871 Automated Tests
 │   │   ├── Feature/                  # Feature Tests
 │   │   └── Unit/                     # Unit Tests
 
@@ -275,7 +275,7 @@ Sau đó mở Pull Request trên GitHub.
 - Core booking flow with pessimistic locking
 - Customer management
 - CI/CD with GitHub Actions
-- Full test suite (857 backend tests, 2430 assertions + 226 frontend tests)
+- Full test suite (871 backend tests, 2449 assertions + 226 frontend tests)
 - Documentation consolidation & cleanup
 - Frontend documentation restructured into 12 modular files (January 2, 2026)
 - Backend documentation fully organized
@@ -322,8 +322,8 @@ Sau đó mở Pull Request trên GitHub.
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
 │                                                                 │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
-│  │  React Query    │  │   Zustand       │  │    Axios        │ │
-│  │  Data Fetching  │  │  State Mgmt     │  │   HTTP Client   │ │
+│  │  Vitest         │  │   Axios         │  │  Feature-Sliced │ │
+│  │  Unit Tests     │  │   HTTP Client   │  │   Architecture  │ │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
 │                                                                 │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
@@ -362,7 +362,7 @@ Sau đó mở Pull Request trên GitHub.
 │                                                                 │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
 │  │   PHPUnit       │  │   PHPStan       │  │    Psalm        │ │
-│  │   857 Tests     │  │   Static Analysis│  │  Code Quality  │ │
+│  │   871 Tests     │  │   Static Analysis│  │  Code Quality  │ │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
                                     │
@@ -409,18 +409,18 @@ Sau đó mở Pull Request trên GitHub.
 
 ## 🧪 Test Suite Summary
 
-Dự án hiện có **857 backend tests** + **226 frontend tests**, bao gồm Feature Tests, Unit Tests, và UI tests.
+Dự án hiện có **871 backend tests** + **226 frontend tests**, bao gồm Feature Tests, Unit Tests, và UI tests.
 
-| Nhóm Test       | Số lượng | Mô tả                           |
-| --------------- | -------- | ------------------------------- |
-| Backend Tests   | 857      | Feature + Unit (2430 assertions) |
-| Frontend Tests  | 226      | Vitest (21 test files)           |
-| Auth Tests      | 44       | Xác thực & token management     |
-| Booking Tests   | 60       | Đặt phòng, overlap, soft delete |
-| Room Tests      | 151      | CRUD + Optimistic locking       |
-| RBAC Tests      | 47       | Role-based access control       |
-| Security Tests  | 91       | Headers, XSS, Rate limiting     |
-| Cache Tests     | 6        | Redis cache layer               |
+| Nhóm Test      | Số lượng | Mô tả                            |
+| -------------- | -------- | -------------------------------- |
+| Backend Tests  | 871      | Feature + Unit (2449 assertions) |
+| Frontend Tests | 226      | Vitest (21 test files)           |
+| Auth Tests     | 44       | Xác thực & token management      |
+| Booking Tests  | 60       | Đặt phòng, overlap, soft delete  |
+| Room Tests     | 151      | CRUD + Optimistic locking        |
+| RBAC Tests     | 47       | Role-based access control        |
+| Security Tests | 91       | Headers, XSS, Rate limiting      |
+| Cache Tests    | 6        | Redis cache layer                |
 
 ✔️ CI chạy test tự động cho mỗi Pull Request  
 ✔️ Không merge code lỗi vào `main`

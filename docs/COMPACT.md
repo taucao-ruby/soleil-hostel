@@ -913,3 +913,35 @@ Files changed:
 
 - Root script verified: `concurrently "cd backend && php artisan serve ..." "cd frontend && pnpm run dev -- --host"` ✅
 - pnpm-lock.yaml: unchanged ✅
+
+## 2026-03-05 — fix/frontend-booking-type-alignment
+
+### Problem
+
+`pnpm run build` (`tsc -b && vite build`) failed with 17 TypeScript errors across 3 files:
+
+- `src/features/booking/booking.types.ts` — 3× TS2304 Cannot find name 'BookingApiRaw'
+- `src/features/bookings/BookingDetailPanel.tsx` — 11× TS2339 property missing on BookingDetailRaw
+- `src/features/bookings/BookingDetailPanel.test.tsx` — 4× TS2353 invalid keys in mock objects
+
+### Root Cause
+
+`booking.types.ts` line 38 used `export type { BookingApiRaw } from '@/shared/types/booking.types'` — a re-export that does NOT create a local binding. The same file referenced `BookingApiRaw` locally at lines 42, 48, and 66 (`BookingDetailRaw extends BookingApiRaw`). Since the extends clause failed, `BookingDetailRaw` lost all inherited fields from `BookingApiRaw`, causing cascade failures in `BookingDetailPanel.tsx` (11 errors) and its test file (4 errors).
+
+### Strategy Applied
+
+Option 1: Added `import type { BookingApiRaw } from '@/shared/types/booking.types'` alongside the existing re-export. Single-line fix resolves all 17 errors.
+
+### Files Changed
+
+- `frontend/src/features/booking/booking.types.ts` — added local import for `BookingApiRaw`
+
+### Gate Results
+
+- `tsc --noEmit`: PASS — 0 errors
+- `vitest run`: PASS — 226 tests passed, 21 suites
+- `pnpm run build`: PASS — built in 6.79s
+
+### Residual Risk
+
+None — all 17 errors resolved, no type assertions added, no fields invented.

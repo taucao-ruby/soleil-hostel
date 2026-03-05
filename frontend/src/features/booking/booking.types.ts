@@ -34,7 +34,8 @@ export interface BookingResponse {
   message?: string
 }
 
-// Re-export from shared — BookingApiRaw is used across features (admin, bookings)
+// Import for local use + re-export for other features (admin, bookings)
+import type { BookingApiRaw } from '@/shared/types/booking.types'
 export type { BookingApiRaw } from '@/shared/types/booking.types'
 
 export interface BookingsListResponse {

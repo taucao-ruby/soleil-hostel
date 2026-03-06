@@ -202,10 +202,11 @@ local refill_rate = tonumber(ARGV[3])
 local cost = tonumber(ARGV[4])
 local ttl = tonumber(ARGV[5])
 
--- Get current state
-local state = redis.call('HGETALL', key)
-local tokens = tonumber(state[2]) or capacity
-local last_refill = tonumber(state[4]) or now
+-- Get current state using explicit field access (HGETALL order is not guaranteed)
+local tokens_str = redis.call('HGET', key, 'tokens')
+local last_refill_str = redis.call('HGET', key, 'last_refill')
+local tokens = tonumber(tokens_str) or capacity
+local last_refill = tonumber(last_refill_str) or now
 
 -- Calculate tokens to add
 local elapsed = math.max(0, now - last_refill)

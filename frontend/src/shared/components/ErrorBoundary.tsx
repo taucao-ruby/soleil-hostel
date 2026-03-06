@@ -10,7 +10,7 @@ import React from 'react'
  * - Prevents app crashes from component errors
  * - Beautiful fallback UI with Tailwind CSS
  * - Shows stack trace in development mode
- * - "Try Again" and "Go Home" action buttons
+ * - "Thử lại" và "Về trang chủ" action buttons
  */
 
 interface ErrorBoundaryProps {
@@ -104,26 +104,24 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
             </div>
 
             {/* Error Title */}
-            <h1 className="mb-4 text-3xl font-bold text-center text-gray-900">
-              Oops! Something went wrong
-            </h1>
+            <h1 className="mb-4 text-3xl font-bold text-center text-gray-900">Ôi! Đã xảy ra lỗi</h1>
 
             {/* Error Description */}
             <p className="mb-8 text-center text-gray-600">
-              We encountered an unexpected error. Don't worry, it's not your fault!
+              Đã có lỗi không mong muốn xảy ra. Đừng lo, đây không phải lỗi của bạn!
             </p>
 
             {/* Error Details (Development Mode) */}
             {import.meta.env.DEV && this.state.error && (
               <div className="p-4 mb-8 border border-gray-200 rounded-lg bg-gray-50">
-                <h2 className="mb-2 text-sm font-semibold text-gray-700">Error Details:</h2>
+                <h2 className="mb-2 text-sm font-semibold text-gray-700">Chi tiết lỗi:</h2>
                 <pre className="overflow-x-auto text-xs text-red-600 break-words whitespace-pre-wrap">
                   {this.state.error.toString()}
                 </pre>
                 {this.state.errorInfo && (
                   <details className="mt-4">
                     <summary className="text-sm font-semibold text-gray-700 cursor-pointer hover:text-gray-900">
-                      Component Stack Trace
+                      Stack gọi component
                     </summary>
                     <pre className="mt-2 overflow-x-auto text-xs text-gray-600 whitespace-pre-wrap">
                       {this.state.errorInfo.componentStack}
@@ -139,13 +137,13 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
                 onClick={this.handleReset}
                 className="px-6 py-3 font-semibold text-white transition-colors bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 hover:shadow-lg"
               >
-                Try Again
+                Thử lại
               </button>
               <button
                 onClick={this.handleGoHome}
                 className="px-6 py-3 font-semibold text-gray-800 transition-colors bg-gray-200 rounded-lg hover:bg-gray-300"
               >
-                Go to Homepage
+                Về trang chủ
               </button>
             </div>
           </div>

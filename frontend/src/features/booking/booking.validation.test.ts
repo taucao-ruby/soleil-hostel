@@ -38,51 +38,51 @@ describe('Booking Validation', () => {
     // Room selection
     it('requires a room selection', () => {
       const errors = validateBookingForm({ ...validData, room_id: null })
-      expect(errors.room_id).toBe('Please select a room')
+      expect(errors.room_id).toBe('Vui lòng chọn phòng')
     })
 
     it('rejects room_id of 0', () => {
       const errors = validateBookingForm({ ...validData, room_id: 0 })
-      expect(errors.room_id).toBe('Please select a room')
+      expect(errors.room_id).toBe('Vui lòng chọn phòng')
     })
 
     // Guest name
     it('requires guest name', () => {
       const errors = validateBookingForm({ ...validData, guest_name: '' })
-      expect(errors.guest_name).toBe('Guest name is required')
+      expect(errors.guest_name).toBe('Vui lòng nhập tên khách')
     })
 
     it('requires guest name at least 2 characters', () => {
       const errors = validateBookingForm({ ...validData, guest_name: 'A' })
-      expect(errors.guest_name).toBe('Guest name must be at least 2 characters')
+      expect(errors.guest_name).toBe('Tên khách phải có ít nhất 2 ký tự')
     })
 
     // Guest email
     it('requires guest email', () => {
       const errors = validateBookingForm({ ...validData, guest_email: '' })
-      expect(errors.guest_email).toBe('Email is required')
+      expect(errors.guest_email).toBe('Vui lòng nhập email')
     })
 
     it('validates email format', () => {
       const errors = validateBookingForm({ ...validData, guest_email: 'not-an-email' })
-      expect(errors.guest_email).toBe('Invalid email format')
+      expect(errors.guest_email).toBe('Email không hợp lệ')
     })
 
     // Check-in date
     it('requires check-in date', () => {
       const errors = validateBookingForm({ ...validData, check_in: '' })
-      expect(errors.check_in).toBe('Check-in date is required')
+      expect(errors.check_in).toBe('Vui lòng chọn ngày nhận phòng')
     })
 
     it('rejects check-in date in the past', () => {
       const errors = validateBookingForm({ ...validData, check_in: getPastDateStr(2) })
-      expect(errors.check_in).toBe('Check-in date cannot be in the past')
+      expect(errors.check_in).toBe('Ngày nhận phòng không thể là ngày đã qua')
     })
 
     // Check-out date
     it('requires check-out date', () => {
       const errors = validateBookingForm({ ...validData, check_out: '' })
-      expect(errors.check_out).toBe('Check-out date is required')
+      expect(errors.check_out).toBe('Vui lòng chọn ngày trả phòng')
     })
 
     it('rejects check-out before check-in', () => {
@@ -91,7 +91,7 @@ describe('Booking Validation', () => {
         check_in: getFutureDateStr(5),
         check_out: getFutureDateStr(3),
       })
-      expect(errors.check_out).toBe('Check-out must be after check-in')
+      expect(errors.check_out).toBe('Ngày trả phòng phải sau ngày nhận phòng')
     })
 
     it('rejects stay longer than 30 days', () => {
@@ -100,18 +100,18 @@ describe('Booking Validation', () => {
         check_in: getFutureDateStr(1),
         check_out: getFutureDateStr(35),
       })
-      expect(errors.check_out).toBe('Maximum stay is 30 days')
+      expect(errors.check_out).toBe('Thời gian lưu trú tối đa là 30 ngày')
     })
 
     // Number of guests
     it('requires at least 1 guest', () => {
       const errors = validateBookingForm({ ...validData, number_of_guests: 0 })
-      expect(errors.number_of_guests).toBe('At least 1 guest is required')
+      expect(errors.number_of_guests).toBe('Phải có ít nhất 1 khách')
     })
 
     it('rejects more than 10 guests', () => {
       const errors = validateBookingForm({ ...validData, number_of_guests: 11 })
-      expect(errors.number_of_guests).toBe('Maximum 10 guests per room')
+      expect(errors.number_of_guests).toBe('Tối đa 10 khách mỗi phòng')
     })
   })
 

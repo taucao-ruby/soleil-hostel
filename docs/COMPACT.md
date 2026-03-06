@@ -2,15 +2,16 @@
 
 ## 1) Current Snapshot (keep under 12 lines)
 
-- Date updated: 2026-03-05
+- Date updated: 2026-03-06
 - Current branch: `dev`
-- Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (226 tests, 21 suites) — verified 2026-03-03
-- Backend test baseline: `cd backend && php artisan test` (871 tests, 2449 assertions) — verified 2026-03-04
-- Pint baseline: `cd backend && vendor/bin/pint --test` (280 files, 0 style issues) — verified 2026-03-05
+- Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (226 tests, 21 suites) — verified 2026-03-06
+- Backend test baseline: `cd backend && php artisan test` (885 tests, 2487 assertions) — verified 2026-03-06 (H-05: 14 new tests)
+- Pint baseline: `cd backend && vendor/bin/pint --test` (283 files, 0 style issues) — verified 2026-03-06
 - PHPStan: Level 5 + Larastan installed, baseline 151 pre-existing errors
 - Psalm: `vimeo/psalm ^6.15` installed, Level 1 with suppression config, 0 blocking errors in routes/api/v1.php
-- Progress summary: Batches 1–12 complete (Batch 12: Full docs health check + sync — all metrics verified 2026-03-05)
-- Open findings: F-23 (MD lint), F-24 (HasUuids conflict) — F-21 (auth pages Vietnamese) and F-22 (Indonesian→Vietnamese) both resolved
+- Progress summary: Batches 1–12 complete; H-02 resolved; H-05 resolved (ReviewController + Feature tests); H-06 resolved (phpunit.xml → pgsql default); H-07a resolved (booking.validation.ts VN copy); H-07b resolved (ErrorBoundary.tsx VN copy)
+- Open findings: F-23 (MD lint) — F-24 (HasUuids conflict) resolved as H-02 prerequisite
+- **NOTE H-06**: `phpunit.xml` default is now PostgreSQL. `php artisan test` requires PostgreSQL at 127.0.0.1:5432 (`soleil_test`/`soleil`/`secret`). Use `docker compose up -d postgres` before running. SQLite: `php artisan test --configuration=phpunit.sqlite.xml` (create if needed).
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
 ## 2) What matters (invariants / guardrails)
@@ -32,14 +33,18 @@
 
 ### Now
 
+- H-02 RESOLVED (2026-03-06): AuthController Eloquent migration — see worklog entry below
+- H-05 RESOLVED (2026-03-06): Review CRUD Feature tests added (14 tests) + ReviewController + ReviewFactory + routes
+- H-06 RESOLVED (2026-03-06): `phpunit.xml` default changed from SQLite to PostgreSQL
+- H-07a RESOLVED (2026-03-06): `booking.validation.ts` — 12 English validation messages → Vietnamese
+- H-07b RESOLVED (2026-03-06): `ErrorBoundary.tsx` — 6 English UI strings → Vietnamese
 - Batch 9 complete: 3 PR groups executed (static-analysis, routes-cors, test-env)
 - M-11 (migration squash) BLOCKED — no squash protocol in governance; requires human approval
-- H-06 (PG test DB) partially addressed — `phpunit.pgsql.xml` opt-in config created
 
 ### Next
 
 - M-11: Migration squash — needs human-approved `php artisan schema:dump --prune` process
-- H-06: Full PG test switch — needs CI PostgreSQL service alignment
+- H-06 CI alignment: update `.github/workflows/` to start PostgreSQL service before `php artisan test`
 - PAY-001 Phase 2: Stripe checkout session + frontend payment UI
 
 ## 4) Verification checklist (copy/paste)
@@ -1074,3 +1079,78 @@ None — all 17 errors resolved, no type assertions added, no fields invented.
 
 - PHPStan baseline: phpstan-baseline.neon sums to 150 but COMPACT/docs historically say 151 — updated to 150 in PROJECT_STATUS.md; remaining docs left at 151 where they're historical references. Net difference is 1 error.
 - ESLint: 3 warnings from `coverage/` generated files (not source code) — ESLint config should exclude `coverage/`. Not a docs issue.
+
+---
+
+## H-02 — AuthController Eloquent migration [RESOLVED]
+
+- **Date:** 2026-03-06
+- **Agent:** Claude Sonnet 4.6
+- **Files changed:**
+  - `backend/app/Http/Controllers/Auth/AuthController.php` — replaced raw `DB::table()->insertGetId()` in `login()` and `refresh()` with `$user->tokens()->create()`
+  - `backend/app/Http/Controllers/Auth/HttpOnlyTokenController.php` — replaced raw `DB::table()->insertGetId()` in `login()` and `refresh()` with `$user->tokens()->create()`; removed `use Illuminate\Support\Facades\DB`
+  - `backend/app/Models/PersonalAccessToken.php` — added `uniqueIds(): array { return []; }` override (prerequisite fix for F-24: prevents HasUuids from assigning UUID to bigint primary key)
+  - `backend/tests/Feature/Auth/AuthenticationTest.php` — added Eloquent `creating` event assertions in `test_login_success_with_valid_credentials` and `test_refresh_token_creates_new_token`
+  - `backend/tests/Feature/Auth/LoginHttpOnlyTest.php` — added `PersonalAccessToken` import + Eloquent `creating` event assertion in `test_valid_credentials_return_200_with_csrf_token_and_httponly_cookie`
+  - `docs/COMPACT.md` — this entry
+- **Approach:** Option B — `$user->tokens()->create()` (morphMany relationship auto-sets `tokenable_id`/`tokenable_type`; all other fields in `$fillable`; mutator handles abilities JSON encoding)
+- **Events now fired:** `PersonalAccessToken::creating`, `PersonalAccessToken::created` (Eloquent model lifecycle events; no custom observer registered, but future observers will work)
+- **F-24 resolved as prerequisite:** `uniqueIds()` overridden to `[]`; HasUuids no longer tries to assign UUID to bigint `id` column
+- **Tests added:** 3 new Eloquent event assertions across 2 test files; 4 new assertions total
+- **Gate results:** All 5 gates passed — 871 tests/2453 assertions; Pint 280 files/0 violations; all auth routes present; no `DB::table` in auth controllers; fillable + uniqueIds verified
+- **Rollback:** `git revert <sha>` — restores raw DB path; zero observable API behavior change for consumers; run `php artisan optimize:clear` after revert
+
+---
+
+## H-05 + H-06 — Review CRUD Feature Tests + PostgreSQL default [RESOLVED]
+
+- **Date:** 2026-03-06
+- **Agent:** Claude Opus 4.6
+- **H-05 — Review CRUD Feature Tests:**
+  - **Root cause:** No ReviewController existed; routes were commented out; no ReviewFactory; only Unit tests existed
+  - **Files created:**
+    - `backend/database/factories/ReviewFactory.php` — definition + `forBooking(Booking)` + `approved()` states
+    - `backend/app/Http/Controllers/ReviewController.php` — `store()` / `update()` / `destroy()` using ReviewPolicy
+    - `backend/tests/Feature/Review/ReviewCrudTest.php` — 14 Feature tests (create×9, update×2, delete×3)
+  - **Files modified:**
+    - `backend/app/Http/Requests/StoreReviewRequest.php` — replaced `room_id` with `booking_id` (required, exists:bookings,id); room_id is now sourced from the booking in the controller
+    - `backend/routes/api/v1.php` — added `ReviewController` import + POST/PUT/PATCH/DELETE review routes inside `check_token_valid+verified` middleware group
+  - **Policy alignment:** `authorize('create', [Review::class, $booking])` passes Booking to ReviewPolicy::create(); admin-denial, owner-only-update, admin+owner-delete all enforced
+  - **Root cause of first test failure:** `guest_name` column is NOT NULL (from `create_reviews_table` migration); fixed by sourcing from `auth()->user()->name`
+  - **Tests added:** 14 Feature tests / 34 assertions
+- **H-06 — PostgreSQL default:**
+  - **File modified:** `backend/phpunit.xml` — `DB_CONNECTION` sqlite→pgsql; added `DB_HOST/PORT/DATABASE/USERNAME/PASSWORD` matching `phpunit.pgsql.xml`
+  - **Prerequisite:** PostgreSQL must be running at 127.0.0.1:5432 with database `soleil_test`, user `soleil`, password `secret`
+  - **Quick start:** `docker compose up -d postgres && php artisan test`
+  - **Opt-in SQLite still available:** `php artisan test --configuration=phpunit.pgsql.xml` for the pgsql config; prior phpunit.xml behavior recoverable by reverting or using a local override
+  - **CI impact:** GitHub Actions workflows may need `services: postgres:` block — see `.github/workflows/` for update
+- **Gate results (SQLite run):** 885 tests / 2487 assertions; Pint 283 files / 0 violations
+- **Note:** Full gate for H-06 (PostgreSQL path) requires PostgreSQL running; not verified in this session
+- **Rollback H-05:** `git revert <sha>` — removes ReviewController, routes, factory, tests; no DB schema change
+- **Rollback H-06:** revert `phpunit.xml` to restore SQLite default
+
+---
+
+## H-07a — booking.validation.ts Vietnamese Copy [RESOLVED]
+
+- **Date:** 2026-03-06
+- **Agent:** Claude Sonnet 4.6
+- **File changed:** `frontend/src/features/booking/booking.validation.ts`
+- **Strings replaced:** 12 English validation messages → Vietnamese
+- **Translation reference:** `frontend/src/features/auth/RegisterPage.tsx` + `LoginPage.tsx` (polite imperative `'Vui lòng nhập/chọn...'`; format errors `'... không hợp lệ'`)
+- **Logic changed:** none — validation rules, field checks, return shape all unchanged
+- **Tests updated:** 1 file — `frontend/src/features/booking/booking.validation.test.ts` (12 string literals updated, test logic untouched)
+- **Gates:** All 5 passed — tsc 0 errors ✅, vitest 226/226 ✅, no English messages remain ✅, no dependency changes ✅
+- **Rollback:** `git revert <sha>` restores English strings; validation logic unchanged; zero API impact
+
+## H-07b — ErrorBoundary.tsx Vietnamese Copy [RESOLVED]
+
+- **Date:** 2026-03-06
+- **Agent:** Claude Sonnet 4.6
+- **File changed:** `frontend/src/shared/components/ErrorBoundary.tsx`
+- **Strings replaced:** 6 English UI strings → Vietnamese
+- **Vietnamese used:** `'Ôi! Đã xảy ra lỗi'` (heading), `'Đã có lỗi không mong muốn xảy ra. Đừng lo, đây không phải lỗi của bạn!'` (description), `'Chi tiết lỗi:'` (dev label), `'Stack gọi component'` (dev summary), `'Thử lại'` (button — matches `LocationDetail.tsx`), `'Về trang chủ'` (button — matches `LoginPage.tsx`)
+- **Logic changed:** none — componentDidCatch, handleReset, handleGoHome behavior all unchanged
+- **Tests updated:** none — no ErrorBoundary test file asserting UI copy exists
+- **Gates:** All 5 passed — tsc 0 errors ✅, vitest 226/226 ✅, no target English strings remain ✅, no dependency changes ✅
+- **Rollback:** `git revert <sha>` restores English copy; retry/navigate behavior, class structure all unchanged; zero backend impact

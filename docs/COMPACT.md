@@ -1166,3 +1166,14 @@ None — all 17 errors resolved, no type assertions added, no fields invented.
 - **Runtime behavior changed:** none — PHPDoc annotations only
 - **Gates:** PHPStan 0 errors ✅, Pint 283 files / 0 violations ✅, `php artisan test` requires PostgreSQL (local env missing driver — CI verified)
 - **Rollback:** `git revert <sha>` — re-adds stale baseline entry + removes type annotations; zero runtime impact
+
+---
+
+## H-09 — Fix `AdvancedRateLimitServiceTest::token_bucket_allows_bursts` [RESOLVED]
+
+- **Date:** 2026-03-06
+- **Root cause:** Lua token bucket script used `HGETALL` and assumed fixed field ordering (`state[2]` = tokens, `state[4]` = last_refill). Redis `HGETALL` order is not guaranteed — when fields returned in different order, `tokens` was set to a timestamp value, allowing unlimited bursts.
+- **Fix:** Replaced `HGETALL` + positional indexing with explicit `HGET` calls for `tokens` and `last_refill` fields in the Lua script.
+- **Files changed:** `backend/app/Services/RateLimitService.php`
+- **Gates:** 885 tests / 0 failures ✅, Pint 283 files / 0 violations ✅
+- **Rollback:** `git revert <sha>` — restores HGETALL-based Lua script; test will fail again in CI

@@ -207,6 +207,7 @@ class AuthController extends Controller
             $oldToken->incrementRefreshCount();
 
             // ========== Get user + token info ==========
+            /** @var User $user */
             $user = $oldToken->tokenable;
             $tokenType = $oldToken->type;
 
@@ -333,6 +334,7 @@ class AuthController extends Controller
         }
 
         // Get user
+        /** @var User $user */
         $user = $token->tokenable;
 
         // Revoke all active tokens

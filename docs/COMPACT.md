@@ -1154,3 +1154,15 @@ None — all 17 errors resolved, no type assertions added, no fields invented.
 - **Tests updated:** none — no ErrorBoundary test file asserting UI copy exists
 - **Gates:** All 5 passed — tsc 0 errors ✅, vitest 226/226 ✅, no target English strings remain ✅, no dependency changes ✅
 - **Rollback:** `git revert <sha>` restores English copy; retry/navigate behavior, class structure all unchanged; zero backend impact
+
+---
+
+## H-08 — PHPStan AuthController `Model::tokens()` Fix [RESOLVED]
+
+- **Date:** 2026-03-06
+- **Root cause:** `$oldToken->tokenable` / `$token->tokenable` returns `Illuminate\Database\Eloquent\Model` via morphTo. PHPStan baseline expected 1 `tokens()` error but 2 call sites existed (refresh + logoutAll).
+- **Fix:** Added `/** @var User $user */` annotations at both `tokenable` assignment sites in `AuthController.php`. Removed stale `tokens()` baseline entry; removed resolved `$email`/`$name` entries; reduced `$id` count (2→1). Added new baseline entry for `MorphMany::notRevoked()` (pre-existing scope resolution issue unmasked by fix).
+- **Files changed:** `backend/app/Http/Controllers/Auth/AuthController.php`, `backend/phpstan-baseline.neon`
+- **Runtime behavior changed:** none — PHPDoc annotations only
+- **Gates:** PHPStan 0 errors ✅, Pint 283 files / 0 violations ✅, `php artisan test` requires PostgreSQL (local env missing driver — CI verified)
+- **Rollback:** `git revert <sha>` — re-adds stale baseline entry + removes type annotations; zero runtime impact

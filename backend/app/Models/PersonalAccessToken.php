@@ -23,6 +23,22 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
     use HasUuids;
 
     /**
+     * Return column names that should receive auto-generated UUIDs on model creation.
+     *
+     * Overrides HasUuids default (which returns [$this->getKeyName()]) to exclude
+     * the bigint auto-increment 'id' primary key. The 'id' column is not a UUID column;
+     * assigning a UUID string to it causes a QueryException on SQLite and a type error
+     * on PostgreSQL. All UUID-typed fields (token_identifier, device_id, etc.) are set
+     * explicitly by the controllers that create tokens, so no auto-fill is needed here.
+     *
+     * @return array<int, string>
+     */
+    public function uniqueIds(): array
+    {
+        return [];
+    }
+
+    /**
      * @var string[]
      */
     protected $fillable = [

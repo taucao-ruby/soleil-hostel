@@ -8,7 +8,6 @@ use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -89,21 +88,19 @@ class HttpOnlyTokenController extends Controller
         $deviceFingerprint = $this->generateDeviceFingerprint($request);
 
         // ========== Create Token in DB ==========
-        $tokenId = DB::table('personal_access_tokens')->insertGetId([
+        // Create via Eloquent relationship so model events fire (HasUuids, future observers, etc.)
+        // The morphMany relation auto-sets tokenable_id + tokenable_type; mutator handles abilities encoding.
+        $user->tokens()->create([
             'name' => 'httponly-web-cookie',
-            'token' => $tokenHash,  // Hashed identifier
-            'token_identifier' => $tokenIdentifier,  // Plain UUID stored in the cookie
-            'token_hash' => $tokenHash,  // Indexed for fast lookup
-            'abilities' => json_encode(['*']),
-            'tokenable_id' => $user->id,
-            'tokenable_type' => 'App\\Models\\User',
-            'expires_at' => $expiresAt->toDateTimeString(),
+            'token' => $tokenHash,
+            'token_identifier' => $tokenIdentifier,
+            'token_hash' => $tokenHash,
+            'abilities' => ['*'],
+            'expires_at' => $expiresAt,
             'type' => $tokenType,
             'device_id' => $request->header('X-Device-ID') ?? Str::uuid()->toString(),
             'device_fingerprint' => $deviceFingerprint,
             'refresh_count' => 0,
-            'created_at' => now()->toDateTimeString(),
-            'updated_at' => now()->toDateTimeString(),
         ]);
 
         // ========== Build Response ==========
@@ -196,22 +193,20 @@ class HttpOnlyTokenController extends Controller
         $newTokenIdentifier = Str::uuid()->toString();
         $newTokenHash = hash('sha256', $newTokenIdentifier);
 
-        $newTokenId = DB::table('personal_access_tokens')->insertGetId([
+        // Create new token via Eloquent relationship so model events fire.
+        // Accessor returns abilities as array; mutator handles encoding.
+        $user->tokens()->create([
             'name' => $oldToken->name,
             'token' => $newTokenHash,
             'token_identifier' => $newTokenIdentifier,
             'token_hash' => $newTokenHash,
-            'abilities' => json_encode($oldToken->abilities ?? ['*']),
-            'tokenable_id' => $user->id,
-            'tokenable_type' => 'App\\Models\\User',
-            'expires_at' => $expiresAt->toDateTimeString(),
+            'abilities' => $oldToken->abilities ?? ['*'],
+            'expires_at' => $expiresAt,
             'type' => $tokenType,
             'device_id' => $oldToken->device_id,
             'device_fingerprint' => $oldToken->device_fingerprint,
-            'refresh_count' => $oldToken->refresh_count,  // Carry over refresh count to track total refreshes
-            'last_rotated_at' => now()->toDateTimeString(),
-            'created_at' => now()->toDateTimeString(),
-            'updated_at' => now()->toDateTimeString(),
+            'refresh_count' => $oldToken->refresh_count,
+            'last_rotated_at' => now(),
         ]);
 
         // Revoke old token

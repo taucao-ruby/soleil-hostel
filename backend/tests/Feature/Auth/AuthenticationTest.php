@@ -46,6 +46,12 @@ class AuthenticationTest extends TestCase
      */
     public function test_login_success_with_valid_credentials(): void
     {
+        // Verify token is created via Eloquent (H-02: not via raw DB::table insert)
+        $eloquentEventFired = false;
+        PersonalAccessToken::creating(function () use (&$eloquentEventFired) {
+            $eloquentEventFired = true;
+        });
+
         $response = $this->postJson('/api/auth/login-v2', [
             'email' => 'user@example.com',
             'password' => 'password123',
@@ -81,6 +87,9 @@ class AuthenticationTest extends TestCase
         $this->assertNull($token->revoked_at); // Token should not be revoked
         $this->assertNotNull($token->expires_at);
         $this->assertTrue($token->expires_at->isFuture());
+
+        // H-02: Eloquent creating event must have fired (proves raw DB::table bypass is fixed)
+        $this->assertTrue($eloquentEventFired, 'PersonalAccessToken::creating event must fire — token must be created via Eloquent, not raw DB::table()');
     }
 
     /**
@@ -201,6 +210,12 @@ class AuthenticationTest extends TestCase
      */
     public function test_refresh_token_creates_new_token(): void
     {
+        // H-02: track Eloquent creating events; login fires one, refresh fires a second
+        $eloquentCreateCount = 0;
+        PersonalAccessToken::creating(function () use (&$eloquentCreateCount) {
+            $eloquentCreateCount++;
+        });
+
         // Login first
         $loginResponse = $this->postJson('/api/auth/login-v2', [
             'email' => 'user@example.com',
@@ -236,6 +251,9 @@ class AuthenticationTest extends TestCase
         $this->withHeader('Authorization', "Bearer {$newToken}")
             ->getJson('/api/auth/me-v2')
             ->assertStatus(200);
+
+        // H-02: login + refresh must each have fired a creating event (2 total)
+        $this->assertGreaterThanOrEqual(2, $eloquentCreateCount, 'Both login and refresh must create tokens via Eloquent (H-02)');
     }
 
     /**

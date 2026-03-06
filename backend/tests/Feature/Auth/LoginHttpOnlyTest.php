@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\PersonalAccessToken;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -52,6 +53,12 @@ class LoginHttpOnlyTest extends TestCase
      */
     public function test_valid_credentials_return_200_with_csrf_token_and_httponly_cookie(): void
     {
+        // H-02: verify token is created via Eloquent, not raw DB::table insert
+        $eloquentEventFired = false;
+        PersonalAccessToken::creating(function () use (&$eloquentEventFired) {
+            $eloquentEventFired = true;
+        });
+
         $response = $this->postJson('/api/auth/login-httponly', [
             'email' => 'login-test@example.com',
             'password' => 'secret123',
@@ -78,6 +85,9 @@ class LoginHttpOnlyTest extends TestCase
             $response->headers->all('set-cookie'),
             'Set-Cookie header must be present'
         );
+
+        // H-02: Eloquent creating event must have fired (proves raw DB::table bypass is fixed)
+        $this->assertTrue($eloquentEventFired, 'PersonalAccessToken::creating event must fire — token must be created via Eloquent (H-02)');
     }
 
     /**

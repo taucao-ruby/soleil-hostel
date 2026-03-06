@@ -22,16 +22,18 @@ class StoreReviewRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'booking_id' => 'required|integer|exists:bookings,id',
             'title' => 'required|string|max:255',
             'content' => 'required|string|max:5000',
             'rating' => 'required|integer|min:1|max:5',
-            'room_id' => 'required|integer|exists:rooms,id',
         ];
     }
 
     public function messages(): array
     {
         return [
+            'booking_id.required' => 'Booking ID is required.',
+            'booking_id.exists' => 'Invalid booking selected.',
             'title.required' => 'Review title is required.',
             'title.max' => 'Title cannot exceed 255 characters.',
             'content.required' => 'Review content cannot be empty.',
@@ -39,8 +41,6 @@ class StoreReviewRequest extends FormRequest
             'rating.required' => 'Please provide a rating.',
             'rating.min' => 'Rating must be between 1-5.',
             'rating.max' => 'Rating must be between 1-5.',
-            'room_id.required' => 'Room ID is required.',
-            'room_id.exists' => 'Invalid room selected.',
         ];
     }
 

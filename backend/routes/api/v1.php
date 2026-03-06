@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminBookingController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\LocationController;
+use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\RoomController;
 use Illuminate\Support\Facades\Route;
 
@@ -67,4 +68,10 @@ Route::middleware(['check_token_valid', 'verified'])->group(function () {
         Route::get('/', [ContactController::class, 'index'])->name('v1.admin.contactMessages.index');
         Route::patch('/{id}/read', [ContactController::class, 'markAsRead'])->name('v1.admin.contactMessages.markAsRead');
     });
+
+    // ========== REVIEW ENDPOINTS (v1) ==========
+    Route::post('/reviews', [ReviewController::class, 'store'])->name('v1.reviews.store');
+    Route::put('/reviews/{review}', [ReviewController::class, 'update'])->name('v1.reviews.update');
+    Route::patch('/reviews/{review}', [ReviewController::class, 'update'])->name('v1.reviews.patch');
+    Route::delete('/reviews/{review}', [ReviewController::class, 'destroy'])->name('v1.reviews.destroy');
 });

@@ -106,28 +106,22 @@ class AuthController extends Controller
         $tokenName = $request->getDeviceName();
 
         // Generate plain text token
-        $plainTextToken = \Illuminate\Support\Str::random(40);
+        $plainTextToken = Str::random(40);
 
         // Hash token (Sanctum stores hashed token in DB)
         $hashedToken = hash('sha256', $plainTextToken);
 
-        // Manually create token model using raw SQL to avoid Eloquent ability casting issues
-        $tokenModel = DB::table('personal_access_tokens')->insertGetId([
+        // Create token via Eloquent relationship so model events fire (HasUuids, future observers, etc.)
+        // The morphMany relation auto-sets tokenable_id + tokenable_type; mutator handles abilities encoding.
+        $user->tokens()->create([
             'name' => $tokenName,
             'token' => $hashedToken,
-            'abilities' => '["*"]',  // Store as literal JSON string
-            'expires_at' => $expiresAt->toDateTimeString(),
+            'abilities' => ['*'],
+            'expires_at' => $expiresAt,
             'type' => $tokenType,
             'device_id' => $deviceId,
             'refresh_count' => 0,
-            'tokenable_id' => $user->id,
-            'tokenable_type' => 'App\\Models\\User',
-            'created_at' => now()->toDateTimeString(),
-            'updated_at' => now()->toDateTimeString(),
         ]);
-
-        // Retrieve the created model
-        $tokenModel = PersonalAccessToken::find($tokenModel);
 
         // ========== Response ==========
         return $this->success([
@@ -226,28 +220,22 @@ class AuthController extends Controller
             }
 
             // ========== Create new token ==========
-            $newPlainTextToken = \Illuminate\Support\Str::random(40);
+            $newPlainTextToken = Str::random(40);
             $newHashedToken = hash('sha256', $newPlainTextToken);
 
-            // Manually create new token using raw SQL
-            $newTokenId = DB::table('personal_access_tokens')->insertGetId([
-                'name' => $oldToken->name, // Preserve device name from old token
+            // Create new token via Eloquent relationship so model events fire.
+            // The morphMany relation auto-sets tokenable_id + tokenable_type;
+            // accessor returns abilities as array; mutator handles encoding.
+            $user->tokens()->create([
+                'name' => $oldToken->name,
                 'token' => $newHashedToken,
-                'abilities' => is_array($oldToken->abilities)
-                    ? json_encode($oldToken->abilities)
-                    : $oldToken->attributes['abilities'], // Get raw from DB
-                'expires_at' => $expiresAt->toDateTimeString(),
+                'abilities' => $oldToken->abilities,
+                'expires_at' => $expiresAt,
                 'type' => $tokenType,
                 'device_id' => $oldToken->device_id,
                 'remember_token_id' => $oldToken->remember_token_id,
-                'refresh_count' => $oldToken->refresh_count, // Copy refresh count to track token chain
-                'tokenable_id' => $user->id,
-                'tokenable_type' => 'App\\Models\\User',
-                'created_at' => now()->toDateTimeString(),
-                'updated_at' => now()->toDateTimeString(),
+                'refresh_count' => $oldToken->refresh_count,
             ]);
-
-            $newTokenModel = PersonalAccessToken::find($newTokenId);
 
             // ========== Revoke old token (inside transaction) ==========
             // CRITICAL: Refresh token rotation with pessimistic lock

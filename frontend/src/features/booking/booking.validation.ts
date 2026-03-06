@@ -30,45 +30,45 @@ export function validateBookingForm(data: {
 
   // Room selection
   if (!data.room_id || data.room_id <= 0) {
-    errors.room_id = 'Please select a room'
+    errors.room_id = 'Vui lòng chọn phòng'
   }
 
   // Guest name
   if (!data.guest_name.trim()) {
-    errors.guest_name = 'Guest name is required'
+    errors.guest_name = 'Vui lòng nhập tên khách'
   } else if (data.guest_name.trim().length < 2) {
-    errors.guest_name = 'Guest name must be at least 2 characters'
+    errors.guest_name = 'Tên khách phải có ít nhất 2 ký tự'
   }
 
   // Guest email
   if (!data.guest_email.trim()) {
-    errors.guest_email = 'Email is required'
+    errors.guest_email = 'Vui lòng nhập email'
   } else if (!isValidEmail(data.guest_email)) {
-    errors.guest_email = 'Invalid email format'
+    errors.guest_email = 'Email không hợp lệ'
   }
 
   // Check-in date
   if (!data.check_in) {
-    errors.check_in = 'Check-in date is required'
+    errors.check_in = 'Vui lòng chọn ngày nhận phòng'
   } else {
     const checkInDate = new Date(data.check_in)
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
     if (checkInDate < today) {
-      errors.check_in = 'Check-in date cannot be in the past'
+      errors.check_in = 'Ngày nhận phòng không thể là ngày đã qua'
     }
   }
 
   // Check-out date
   if (!data.check_out) {
-    errors.check_out = 'Check-out date is required'
+    errors.check_out = 'Vui lòng chọn ngày trả phòng'
   } else if (data.check_in) {
     const checkInDate = new Date(data.check_in)
     const checkOutDate = new Date(data.check_out)
 
     if (checkOutDate <= checkInDate) {
-      errors.check_out = 'Check-out must be after check-in'
+      errors.check_out = 'Ngày trả phòng phải sau ngày nhận phòng'
     } else {
       // Maximum stay validation (e.g., 30 days)
       const diffDays = Math.ceil(
@@ -76,16 +76,16 @@ export function validateBookingForm(data: {
       )
 
       if (diffDays > 30) {
-        errors.check_out = 'Maximum stay is 30 days'
+        errors.check_out = 'Thời gian lưu trú tối đa là 30 ngày'
       }
     }
   }
 
   // Number of guests
   if (!data.number_of_guests || data.number_of_guests < 1) {
-    errors.number_of_guests = 'At least 1 guest is required'
+    errors.number_of_guests = 'Phải có ít nhất 1 khách'
   } else if (data.number_of_guests > 10) {
-    errors.number_of_guests = 'Maximum 10 guests per room'
+    errors.number_of_guests = 'Tối đa 10 khách mỗi phòng'
   }
 
   return errors

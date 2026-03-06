@@ -25,19 +25,7 @@ parameters:
 			path: app/Database/IdempotencyGuard.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Auth/AuthController.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/Auth/AuthController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Http/Controllers/Auth/AuthController.php
@@ -55,7 +43,7 @@ parameters:
 			path: app/Http/Controllers/Auth/AuthController.php
 
 		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:tokens\(\)\.$#'
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\MorphMany\<Laravel\\Sanctum\\PersonalAccessToken, App\\Models\\User\>\:\:notRevoked\(\)\.$#'
 			identifier: method.notFound
 			count: 1
 			path: app/Http/Controllers/Auth/AuthController.php

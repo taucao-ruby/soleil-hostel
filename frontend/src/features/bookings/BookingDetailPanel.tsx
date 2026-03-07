@@ -153,14 +153,16 @@ const BookingDetailPanel: React.FC<BookingDetailPanelProps> = ({ bookingId, open
 
     getBookingById(bookingId, controller.signal)
       .then(data => {
-        if (mountedRef.current) {
+        if (mountedRef.current && !controller.signal.aborted) {
           setBooking(data)
           setIsLoading(false)
         }
       })
       .catch(err => {
-        if (err instanceof DOMException && err.name === 'AbortError') return
-        if (mountedRef.current) {
+        if (err instanceof Error && (err.name === 'AbortError' || err.name === 'CanceledError')) {
+          return
+        }
+        if (mountedRef.current && !controller.signal.aborted) {
           setIsError(true)
           setIsLoading(false)
         }

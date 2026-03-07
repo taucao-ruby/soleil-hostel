@@ -68,38 +68,65 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    * 6. If 401: Token expired/invalid → user stays null
    */
   useEffect(() => {
+    const controller = new AbortController()
+
     const validateToken = async () => {
       // Only validate if we have a csrf token (indicates previous login session)
       const csrfToken = sessionStorage.getItem('csrf_token')
 
       if (!csrfToken) {
         // No csrf token = user never logged in
-        setLoading(false)
+        if (!controller.signal.aborted) {
+          setLoading(false)
+        }
         return
       }
 
       try {
         const response = await api.get<{ success: boolean; data: { user: User } }>(
-          '/auth/me-httponly'
+          '/auth/me-httponly',
+          { signal: controller.signal }
         )
-        setUser(response.data.data.user)
-        setError(null)
-      } catch (err: unknown) {
-        // No valid token - user not authenticated
-        setUser(null)
-        const error = err as { response?: { status?: number } }
-        // Only log if it's not a 401 (401 is expected when token expired)
-        if (error?.response?.status !== 401) {
-          console.warn('Token validation failed:', error?.response?.status)
+        if (!controller.signal.aborted) {
+          setUser(response.data.data.user)
+          setError(null)
         }
-        // Clear invalid csrf token
-        sessionStorage.removeItem('csrf_token')
+      } catch (err: unknown) {
+        if (err instanceof Error && (err.name === 'AbortError' || err.name === 'CanceledError')) {
+          return
+        }
+        // No valid token - user not authenticated
+        if (!controller.signal.aborted) {
+          setUser(null)
+          const status =
+            err &&
+            typeof err === 'object' &&
+            'response' in err &&
+            err.response &&
+            typeof err.response === 'object' &&
+            'status' in err.response &&
+            typeof err.response.status === 'number'
+              ? err.response.status
+              : undefined
+          // Only log if it's not a 401 (401 is expected when token expired)
+          if (status !== 401) {
+            console.warn('Token validation failed:', status)
+          }
+          // Clear invalid csrf token
+          sessionStorage.removeItem('csrf_token')
+        }
       } finally {
-        setLoading(false)
+        if (!controller.signal.aborted) {
+          setLoading(false)
+        }
       }
     }
 
-    validateToken()
+    void validateToken()
+
+    return () => {
+      controller.abort()
+    }
   }, [])
 
   /**

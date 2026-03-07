@@ -1177,3 +1177,44 @@ None — all 17 errors resolved, no type assertions added, no fields invented.
 - **Files changed:** `backend/app/Services/RateLimitService.php`
 - **Gates:** 885 tests / 0 failures ✅, Pint 283 files / 0 violations ✅
 - **Rollback:** `git revert <sha>` — restores HGETALL-based Lua script; test will fail again in CI
+
+---
+
+## 2026-03-07 — Batch 1 Frontend Quick Wins
+
+### Issues fixed
+- **M-17** — Added async cleanup in 4 frontend `useEffect` paths
+  - `LocationDetail.tsx` — SAFE pattern, signal propagated via `getLocationBySlug`
+  - `SearchCard.tsx` — SAFE pattern, signal propagated via existing `getLocations(signal?)`
+  - `AuthContext.tsx` — SAFE pattern, signal propagated to the mount-time Axios request
+  - `BookingDetailPanel.tsx` — SAFE pattern, existing signal path retained; Axios cancel handling tightened
+- **NEW-01** — Verified `console.error` in `main.tsx` is already gated behind `import.meta.env.DEV`; no code change needed
+- **L-13** — Switched `dev:frontend` from `npm` to `pnpm` in root `package.json`
+
+### Files changed
+- `frontend/src/features/locations/LocationDetail.tsx` (+23 -6)
+- `frontend/src/features/locations/location.api.ts` (+3 -1)
+- `frontend/src/features/home/components/SearchCard.tsx` (+24 -9)
+- `frontend/src/features/auth/AuthContext.tsx` (+40 -13)
+- `frontend/src/features/auth/AuthContext.test.tsx` (+6 -1)
+- `frontend/src/features/bookings/BookingDetailPanel.tsx` (+5 -3)
+- `package.json` (+1 -1)
+
+### Gates
+- `tsc --noEmit`: PASS
+- `vitest run`: PASS — 226 tests in 21 files
+- `pnpm build`: PASS
+
+### Behavioral contract
+- Zero intended behavior change in production rendering
+- Async cleanup is now safe for the targeted effects
+- `main.tsx` production logging remains correctly DEV-gated
+- `dev:frontend` now uses the same pnpm invocation style as the root `dev` script
+- No new dependencies introduced
+- Dependency arrays unchanged
+
+### Notes
+- `vitest run` still emits existing React `act(...)` warnings from `SearchCard` and `BookingForm` tests, but the suite passes with no failures
+
+### Rollback
+- Revert individual files with `git checkout HEAD -- <path>`

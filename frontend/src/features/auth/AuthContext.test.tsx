@@ -10,6 +10,8 @@ vi.mock('@/shared/lib/api', () => ({
     get: vi.fn(),
     post: vi.fn(),
   },
+  isAxiosError: (error: unknown) =>
+    Boolean(error && typeof error === 'object' && 'response' in error),
 }))
 
 // Mock csrf utils
@@ -89,7 +91,10 @@ describe('AuthContext', () => {
     })
 
     expect(screen.getByTestId('authenticated').textContent).toBe('true')
-    expect(mockGet).toHaveBeenCalledWith('/auth/me-httponly')
+    expect(mockGet).toHaveBeenCalledWith(
+      '/auth/me-httponly',
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    )
   })
 
   it('clears user on failed token validation', async () => {

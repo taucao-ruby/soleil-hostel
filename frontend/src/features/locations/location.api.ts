@@ -24,10 +24,12 @@ export async function getLocationBySlug(
     check_in?: string
     check_out?: string
     guests?: number
-  }
+  },
+  signal?: AbortSignal
 ): Promise<LocationWithRooms> {
   const response = await api.get<LocationResponse>(`/v1/locations/${slug}`, {
     params,
+    signal,
   })
   return response.data.data
 }

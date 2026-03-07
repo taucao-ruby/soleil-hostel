@@ -6,7 +6,7 @@
     "dev": "concurrently \"cd backend && php artisan serve --host=127.0.0.1 --port=8000\" \"cd frontend && pnpm run dev -- --host\"",
     "dev:docker": "docker compose up --build frontend",
     "dev:backend": "cd backend && php artisan serve --host=127.0.0.1 --port=8000",
-    "dev:frontend": "cd frontend && npm run dev -- --host",
+    "dev:frontend": "cd frontend && pnpm run dev -- --host",
     "start:docker": "docker compose up --build",
     "prepare": "husky",
     "hooks:install": "husky",

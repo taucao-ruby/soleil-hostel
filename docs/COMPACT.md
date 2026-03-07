@@ -2,7 +2,7 @@
 
 ## 1) Current Snapshot (keep under 12 lines)
 
-- Date updated: 2026-03-06
+- Date updated: 2026-03-07
 - Current branch: `dev`
 - Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (226 tests, 21 suites) — verified 2026-03-06
 - Backend test baseline: `cd backend && php artisan test` (885 tests, 2487 assertions) — verified 2026-03-06 (H-05: 14 new tests)
@@ -1218,3 +1218,37 @@ None — all 17 errors resolved, no type assertions added, no fields invented.
 
 ### Rollback
 - Revert individual files with `git checkout HEAD -- <path>`
+
+---
+
+## 2026-03-07 — Security: Remediate CVE-2026-30838 (league/commonmark)
+
+### Vulnerability fixed
+
+- **CVE-2026-30838** / PKSA-2cx9-ynrq-qdk3
+- Package: `league/commonmark` (<= 2.8.0)
+- Severity: medium
+- Title: DisallowedRawHtml extension bypass via whitespace in HTML tag names
+
+### Remediation
+
+- Dependency type: transitive (owned by: `laravel/framework ^12.0` which requires `^2.7`)
+- Fix: targeted `composer update league/commonmark` — no broad update
+- Constraint change: no (parent constraint `^2.7` already covers 2.8.1)
+- Packages changed in lockfile: 1 total
+  - `league/commonmark`: 2.8.0 → 2.8.1
+- No direct CommonMark API usage found in `backend/app/`
+
+### Files changed
+
+- `backend/composer.lock` (regenerated, 1 package updated)
+
+### Gates
+
+- `composer audit`: PASS — no advisories
+- `composer validate --strict`: PASS
+- `php artisan test`: PASS (885 tests, 2487 assertions)
+
+### Rollback
+
+- `git checkout HEAD -- backend/composer.lock && cd backend && composer install`

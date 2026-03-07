@@ -28,33 +28,50 @@ const LocationDetail: React.FC = () => {
   const [guests, setGuests] = useState(Number(searchParams.get('guests')) || 1)
 
   const fetchLocation = useCallback(
-    async (params?: { check_in?: string; check_out?: string; guests?: number }) => {
+    async (
+      params?: { check_in?: string; check_out?: string; guests?: number },
+      signal?: AbortSignal
+    ) => {
       if (!slug) return
       try {
         setLoading(true)
         setError(null)
-        const data = await getLocationBySlug(slug, params)
-        setLocation(data)
+        const data = await getLocationBySlug(slug, params, signal)
+        if (!signal?.aborted) {
+          setLocation(data)
+        }
       } catch (err: unknown) {
+        if (err instanceof Error && (err.name === 'AbortError' || err.name === 'CanceledError')) {
+          return
+        }
         const message =
           err && typeof err === 'object' && 'response' in err
             ? 'Không tìm thấy chi nhánh'
             : 'Không thể tải thông tin chi nhánh. Vui lòng thử lại sau.'
-        setError(message)
+        if (!signal?.aborted) {
+          setError(message)
+        }
       } finally {
-        setLoading(false)
+        if (!signal?.aborted) {
+          setLoading(false)
+        }
       }
     },
     [slug]
   )
 
   useEffect(() => {
+    const controller = new AbortController()
     const params: Record<string, string | number> = {}
     if (searchParams.get('check_in')) params.check_in = searchParams.get('check_in')!
     if (searchParams.get('check_out')) params.check_out = searchParams.get('check_out')!
     if (searchParams.get('guests')) params.guests = Number(searchParams.get('guests'))
 
-    fetchLocation(Object.keys(params).length > 0 ? params : undefined)
+    void fetchLocation(Object.keys(params).length > 0 ? params : undefined, controller.signal)
+
+    return () => {
+      controller.abort()
+    }
   }, [fetchLocation, searchParams])
 
   const handleSearch = (e: React.FormEvent) => {

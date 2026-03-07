@@ -24,24 +24,39 @@ const SearchCard: React.FC = () => {
   const [checkOut, setCheckOut] = useState(tomorrow)
   const [validationError, setValidationError] = useState<string | null>(null)
 
-  const fetchLocationsData = useCallback(async () => {
+  const fetchLocationsData = useCallback(async (signal?: AbortSignal) => {
     setLocationsLoading(true)
     setLocationsError(false)
     try {
-      const data = await getLocations()
-      setLocations(data)
-      if (data.length > 0) {
+      const data = await getLocations(signal)
+      if (!signal?.aborted) {
+        setLocations(data)
+      }
+      if (!signal?.aborted && data.length > 0) {
         setSelectedSlug(data[0].slug)
       }
-    } catch {
-      setLocationsError(true)
+    } catch (err: unknown) {
+      if (err instanceof Error && (err.name === 'AbortError' || err.name === 'CanceledError')) {
+        return
+      }
+      if (!signal?.aborted) {
+        setLocationsError(true)
+      }
     } finally {
-      setLocationsLoading(false)
+      if (!signal?.aborted) {
+        setLocationsLoading(false)
+      }
     }
   }, [])
 
   useEffect(() => {
-    fetchLocationsData()
+    const controller = new AbortController()
+
+    void fetchLocationsData(controller.signal)
+
+    return () => {
+      controller.abort()
+    }
   }, [fetchLocationsData])
 
   const handleSearch = (e: React.FormEvent) => {
@@ -96,7 +111,7 @@ const SearchCard: React.FC = () => {
           ) : locationsError ? (
             <button
               type="button"
-              onClick={fetchLocationsData}
+              onClick={() => void fetchLocationsData()}
               className={`${inputClass} text-red-600 text-left`}
             >
               Lỗi — Thử lại

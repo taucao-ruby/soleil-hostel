@@ -2,32 +2,22 @@
 
 ## 1) Current Snapshot (keep under 12 lines)
 
-- Date updated: 2026-03-07
+- Date updated: 2026-03-08
 - Current branch: `dev`
 - Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (226 tests, 21 suites) — verified 2026-03-06
 - Backend test baseline: `cd backend && php artisan test` (885 tests, 2487 assertions) — verified 2026-03-06 (H-05: 14 new tests)
 - Pint baseline: `cd backend && vendor/bin/pint --test` (283 files, 0 style issues) — verified 2026-03-06
 - PHPStan: Level 5 + Larastan installed, baseline 151 pre-existing errors
 - Psalm: `vimeo/psalm ^6.15` installed, Level 1 with suppression config, 0 blocking errors in routes/api/v1.php
-- Progress summary: Batches 1–12 complete; H-02 resolved; H-05 resolved (ReviewController + Feature tests); H-06 resolved (phpunit.xml → pgsql default); H-07a resolved (booking.validation.ts VN copy); H-07b resolved (ErrorBoundary.tsx VN copy)
+- Progress summary: Batches 1–12 complete; L-14 resolved (nginx security headers); H-02 resolved; H-05 resolved (ReviewController + Feature tests); H-06 resolved (phpunit.xml → pgsql default); H-07a resolved (booking.validation.ts VN copy); H-07b resolved (ErrorBoundary.tsx VN copy)
 - Open findings: F-23 (MD lint) — F-24 (HasUuids conflict) resolved as H-02 prerequisite
 - **NOTE H-06**: `phpunit.xml` default is now PostgreSQL. `php artisan test` requires PostgreSQL at 127.0.0.1:5432 (`soleil_test`/`soleil`/`secret`). Use `docker compose up -d postgres` before running. SQLite: `php artisan test --configuration=phpunit.sqlite.xml` (create if needed).
 - Deployment status: Not asserted here; validate pipeline/runbook status before release
 
-## 2) What matters (invariants / guardrails)
+## 2) Invariants
 
-- Booking overlap must remain half-open: `[check_in, check_out)`.
-- Active overlap statuses are only `pending` and `confirmed`.
-- Production invariant: PostgreSQL exclusion constraint uses `daterange(check_in, check_out, '[)')` with `deleted_at IS NULL`.
-- Keep application overlap logic aligned with production constraint behavior.
-- Test baseline runs on SQLite in-memory (`backend/phpunit.xml`); verify Postgres-only behavior against PostgreSQL before merge.
-- Booking soft delete audit fields must be preserved: `deleted_at`, `deleted_by`.
-- Cancellation audit fields must be preserved: `cancelled_at`, `cancelled_by`, `cancellation_reason`.
-- Auth uses Sanctum plus custom token columns: `token_identifier`, `token_hash`, `device_id`, `device_fingerprint`, `expires_at`, `revoked_at`, `refresh_count`, `last_rotated_at`.
-- HttpOnly cookie path must resolve `token_identifier` to DB `token_hash`, and must enforce expiry/revocation/refresh-abuse checks.
-- Concurrency guardrails: optimistic locking via `lock_version` for rooms; pessimistic locking via `SELECT ... FOR UPDATE` for booking conflict/cancel flows.
-- Never commit or paste secrets (`APP_KEY`, tokens, passwords, sensitive stack values).
-- Keep runtime security/config reads through `config()`, not ad hoc `env()` usage in app logic.
+Canonical detail: `docs/agents/ARCHITECTURE_FACTS.md` (auto-loaded via CLAUDE.md).
+This section intentionally left as a pointer — do not duplicate invariants here.
 
 ## 3) Active work (Now / Next)
 
@@ -47,26 +37,9 @@
 - H-06 CI alignment: update `.github/workflows/` to start PostgreSQL service before `php artisan test`
 - PAY-001 Phase 2: Stripe checkout session + frontend payment UI
 
-## 4) Verification checklist (copy/paste)
+## 4) Verification commands
 
-Required baseline:
-
-```bash
-cd backend && php artisan test
-cd frontend && npx tsc --noEmit
-cd frontend && npx vitest run
-docker compose config
-```
-
-Useful lint/format/static checks:
-
-```bash
-cd frontend && pnpm lint
-cd frontend && pnpm format
-cd backend && vendor/bin/pint --test
-cd backend && vendor/bin/phpstan analyse
-cd backend && vendor/bin/psalm
-```
+See `docs/agents/COMMANDS.md` for full command catalog.
 
 ## 5) Known warnings / noise (non-blocking)
 

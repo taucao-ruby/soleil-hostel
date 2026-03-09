@@ -1,6 +1,6 @@
 # Commands and Quality Gates
 
-Verified against code on 2026-03-02. Source: `composer.json`, `frontend/package.json`, root `package.json`, `.github/workflows/*.yml`, `tools/hooks/`, `mcp/soleil-mcp/policy.json`.
+Verified against code on 2026-03-06. Source: `composer.json`, `frontend/package.json`, root `package.json`, `.github/workflows/*.yml`, `tools/hooks/`, `mcp/soleil-mcp/policy.json`.
 
 ## Backend Commands
 
@@ -94,7 +94,7 @@ Expected: `Found 0 errors.` (implicit — no output means pass)
 cd frontend && npx vitest run
 ```
 
-Expected: 226 tests passed, 0 failed (as of 2026-03-02).
+Expected: 226 tests passed, 0 failed (as of 2026-03-06).
 
 CI variant:
 

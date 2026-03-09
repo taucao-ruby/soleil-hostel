@@ -170,6 +170,23 @@ If your client supports working directory config, set it to repo root for predic
 - Relative path handling normalizes both `\` and `/` separators.
 - Works on Windows, WSL2, Linux, and macOS if required binaries are installed.
 
+## Trust Boundary
+
+MCP is a **tool boundary**, not a memory or policy layer.
+
+| Capability | Tools | Access Level |
+|------------|-------|-------------|
+| Read-only | `repo_overview`, `read_file`, `search`, `project_invariants` | Safe read within repo; blocked paths/patterns enforced |
+| Allowlisted execution | `run_verify` | Runs only commands defined in `policy.json`; no arbitrary execution |
+| Write | — | **No write tools exist.** MCP cannot modify files, git state, or infrastructure |
+
+**Out of scope for MCP:**
+- File creation, editing, or deletion
+- Git operations (commit, push, branch)
+- Database access or migration execution
+- Outbound network requests
+- Storing or retrieving session memory (use `docs/COMPACT.md` and Claude Code auto-memory instead)
+
 ## Security Notes
 
 - Do not add credentials to `policy.json` or command args.

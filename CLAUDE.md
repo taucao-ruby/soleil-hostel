@@ -17,9 +17,10 @@ Infrastructure: Docker Compose. CI: `.github/workflows/`.
 
 Read on demand (not auto-loaded):
 - `docs/agents/COMMANDS.md` — command catalog, setup, dev servers
-- `docs/COMPACT.md` — volatile session handoff log
+- `docs/COMPACT.md` — volatile session handoff log (see lifecycle policy inside)
 - `skills/README.md` — skill index for task-specific guardrails
 - `docs/FINDINGS_BACKLOG.md` — out-of-scope issues log
+- `.claude/output-styles/` — Execution and Audit response formats (use via `/output-style`)
 
 ## Non-Negotiable Invariants (summary)
 

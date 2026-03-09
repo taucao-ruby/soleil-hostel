@@ -16,6 +16,7 @@
 | [CONFIGURATION.md](./CONFIGURATION.md)                 | Build config - Vite, TypeScript, Tailwind, ESLint  |
 | [TESTING.md](./TESTING.md)                             | Testing - Vitest unit + Playwright E2E             |
 | [PERFORMANCE_SECURITY.md](./PERFORMANCE_SECURITY.md)   | Performance & security practices                   |
+| [RBAC.md](./RBAC.md)                                   | Frontend role-based access control model           |
 | [DEPLOYMENT.md](./DEPLOYMENT.md)                       | Deployment & DevOps - Docker, CI/CD                |
 
 ---

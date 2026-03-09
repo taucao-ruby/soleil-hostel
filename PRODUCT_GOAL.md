@@ -1,7 +1,7 @@
 # PRODUCT_GOAL.md — Soleil Hostel
 
 > **Product goals and strategic direction**
-> Last updated: 2026-03-05
+> Last updated: 2026-03-09
 
 ---
 
@@ -62,7 +62,7 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 | Repository Layer                                     | ✅ Complete       | 53 tests      |
 | Email Verification                                   | ✅ Complete       | 26 tests      |
 | PHPStan/Larastan (Level 5)                           | ✅ Installed      | Baseline 151  |
-| **Backend total**                                    | **✅ 17 systems** | **871 tests** |
+| **Backend total**                                    | **✅ 17 systems** | **885 tests** |
 
 ### Frontend (React 19 + TypeScript) — 96% complete
 
@@ -77,7 +77,7 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 | Quality  | AbortController cleanup, vi.hoisted mocks, no-console ESLint, RoomList tests | ✅ Complete |
 | Phase 5+ | Payment UI, i18n, PWA                                                        | 🔄 Next     |
 
-**Frontend tests:** 226 tests across 21 suites (verified March 5, 2026)
+**Frontend tests:** 226 tests across 21 suites (verified March 6, 2026)
 
 ### Multi-Location Architecture
 
@@ -93,7 +93,7 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 | -------------- | -------------------------------------------------------------- |
 | Frontend       | React 19, TypeScript 5.7, Vite 6, TailwindCSS 3, Vitest 2      |
 | Backend        | Laravel 12, PHP 8.2+, Sanctum (custom token columns)           |
-| Database       | PostgreSQL 16 (production), SQLite in-memory (tests)           |
+| Database       | PostgreSQL 16 (production + tests default), SQLite opt-in      |
 | Cache / Queue  | Redis 7                                                        |
 | Infrastructure | Docker Compose, GitHub Actions CI                              |
 | API Spec       | OpenAPI 3.1 (Redoc interactive docs)                           |

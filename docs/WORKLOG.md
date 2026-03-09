@@ -1,5 +1,23 @@
 ﻿# WORKLOG — Soleil Hostel (Append-only)
 
+## 2026-03-09
+
+- Change: Audit v5 — repo-wide truth-alignment pass. Refresh PROJECT_STATUS, PRODUCT_GOAL, BACKLOG, COMPACT; archive COMPACT history; fix stale test counts across 5 files; mark F-24 resolved.
+- Why: Test counts drifted (871→885 backend, 2449→2487 assertions, 280→283 Pint). F-24 resolved but still marked Open. COMPACT at 1234 lines, violating archive policy.
+- Files: PROJECT_STATUS.md, PRODUCT_GOAL.md, BACKLOG.md, docs/FINDINGS_BACKLOG.md, docs/COMPACT.md, docs/WORKLOG.md, docs/README.md, docs/COMMANDS_AND_GATES.md.
+
+## 2026-03-06
+
+- Change: Batches 9–12 + H-02 (Eloquent token creation) + H-05 (ReviewController + 14 tests) + H-06 (phpunit.xml → PostgreSQL default) + H-07a/b (Vietnamese copy).
+- Why: Resolve high/medium findings from audit backlog.
+- Verification: `php artisan test` 885/2487 ✅, `tsc --noEmit` 0 errors ✅, `vitest run` 226/21 ✅, `pint --test` 283 files ✅.
+
+## 2026-03-05
+
+- Change: Fix composer.lock PHP version mismatch (Symfony 8.x→7.4.x), fix Pint new_with_parentheses, fix Psalm JIT fatal in CI.
+- Why: Stabilize CI — Symfony 8.x required PHP 8.4 but runtime targets PHP 8.3.
+- Verification: `php artisan test` 871/2449 ✅, `pint --test` 280 files ✅, `docker compose config` ✅.
+
 ## 2026-03-02
 
 - Change: Batch 3 backend quality + Batch 4 frontend hardening + full docs sync.
@@ -55,10 +73,27 @@
 - Docs updated: `docs/README.md`, `docs/COMPACT.md`, `docs/WORKLOG.md`, `docs/DEVELOPMENT_HOOKS.md`, `docs/frontend/README.md`, `docs/frontend/ARCHITECTURE.md`, `docs/frontend/APP_LAYER.md`, `docs/frontend/FEATURES_LAYER.md`, `docs/frontend/SERVICES_LAYER.md`, `docs/frontend/TESTING.md`.
 - Git: committed on dev → pushed → merged --no-ff to main → pushed. All pre-push hooks passed.
 
+## 2026-02-26
+
+- Change: Auth redirect loop fix (AuthContext response shape), EncryptCookies soleil_token exclusion fix, rollup CVE override.
+- Why: Fix 401 on all cookie-auth requests (encrypted cookie → hash mismatch), fix auth context extraction path.
+- Verification: `php artisan test` 737/737 ✅, `vitest run` 194/194 ✅.
+
+## 2026-02-23
+
+- Change: Audit v4 remediation (4 batches: CI hardening, env cleanup, frontend cleanup, docs sync) + Dashboard Phase 0-1 (lazy DashboardPage, GuestDashboard with booking list/filter/cancel).
+- Why: Resolve 6 audit v4 findings + deliver guest dashboard MVP.
+- Verification: `tsc --noEmit` 0 errors ✅, `vitest run` 157/157 ✅.
+
+## 2026-02-21
+
+- Change: Repo-wide docs audit (v3) — created agent framework (CONTRACT, ARCHITECTURE_FACTS, COMMANDS), governance docs (AI_GOVERNANCE, MCP, HOOKS, COMMANDS_AND_GATES), logged 14 findings to FINDINGS_BACKLOG.
+- Why: Establish structured governance for AI agents.
+- Files: 10+ new/updated docs in `docs/agents/`, `docs/`.
+
 ## 2026-02-12
 
 - Change: Added COMPACT memory snapshot and append-only WORKLOG; linked memory docs from docs index.
 - Why: Preserve high-signal context across long AI sessions with low maintenance cost.
 - Files: `docs/COMPACT.md`, `docs/WORKLOG.md`, `docs/README.md`.
 - Verification: Confirmed target paths/invariants from repository docs and code references.
-- Notes/Risks: Snapshot uses latest verified command results recorded on 2026-02-11; refresh after next verification run.

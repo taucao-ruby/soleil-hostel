@@ -1,7 +1,7 @@
 # BACKLOG.md — Soleil Hostel
 
 > **Product backlog — prioritized by implementation order**
-> Last updated: 2026-03-05 | Source: COMPACT.md + KNOWN_LIMITATIONS.md + FINDINGS_BACKLOG.md
+> Last updated: 2026-03-09 | Source: COMPACT.md + KNOWN_LIMITATIONS.md + FINDINGS_BACKLOG.md
 
 ---
 
@@ -377,21 +377,15 @@ FEAT-002 (Group Booking) → requires a new ADR before coding
 
 ---
 
-## Current Sprint (Q1-2026)
+## Current Sprint (Q2-2026)
 
-| Item                                                          | Assignee | Status                                   |
-| ------------------------------------------------------------- | -------- | ---------------------------------------- |
-| FE-001 Booking Detail Panel                                   | —        | ✅ Done (2026-02-27)                     |
-| FE-002 Admin Restore/Force-Delete                             | —        | ✅ Done (2026-02-27)                     |
-| FE-003 Admin Pagination                                       | —        | ✅ Done (2026-02-27)                     |
-| TD-001 Error Response Format                                  | —        | ✅ Done (2026-02-27)                     |
-| TD-002 Standardize Comments                                   | —        | ✅ Done (2026-02-28)                     |
-| TD-003 Test Factory Completeness                              | —        | ✅ Done (2026-03-01)                     |
-| I18N-001 Backend i18n                                         | —        | ✅ Done (2026-03-01)                     |
-| PAY-001 Stripe Bootstrap + Webhooks                           | —        | ✅ Bootstrap Done (2026-03-01)           |
-| Batch 3 Backend Quality (H-04, H-05, M-01..M-09, M-12)        | —        | ✅ Done (2026-03-02)                     |
-| Batch 4 Frontend Quality (H-08, H-09, M-14, M-17, M-18, M-21) | —        | ✅ Done (2026-03-02)                     |
-| OPS-001 Deploy Pipeline                                       | —        | 🟠 60% (infra done, deploy step pending) |
+| Item                            | Assignee | Status                                    |
+| ------------------------------- | -------- | ----------------------------------------- |
+| PAY-001 Stripe Checkout + UI    | —        | 🟠 Phase 2 pending (bootstrap done)       |
+| OPS-001 Deploy Pipeline         | —        | 🟠 60% (infra done, deploy step pending)  |
+| FE-004 Booking History          | —        | 🟡 Next                                   |
+| I18N-002 Frontend i18n          | —        | 🟢 When time permits                      |
+| TD-004 Audit Log Retention      | —        | 🟡 Next                                   |
 
 ---
 

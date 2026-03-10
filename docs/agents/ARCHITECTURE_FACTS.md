@@ -121,6 +121,12 @@ Critical indexes:
 - `idx_bookings_deleted_at`, `idx_bookings_soft_delete_audit`
 - Token indexes: `token_hash`, `device_id`, `expires_at`, `revoked_at` (Laravel-generated names)
 
+## RBAC Permission Baseline
+
+Canonical permission matrix: [docs/PERMISSION_MATRIX.md](../PERMISSION_MATRIX.md)
+
+Current enforcement status: PASS WITH FOLLOW-UPS. Room CUD and admin booking endpoints use defense-in-depth (route middleware + controller-level gate/policy). Moderator role is DEFINED-BUT-LATENT — no distinct moderator capability is CURRENT at Tier 1. Open follow-ups: 5 — see PERMISSION_MATRIX.md.
+
 ## Missing DB Constraints (Backlog)
 
 These are documented in `DB_FACTS.md` as absent:

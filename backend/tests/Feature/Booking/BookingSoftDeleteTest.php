@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Booking;
 
+use App\Enums\UserRole;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
@@ -37,6 +38,8 @@ class BookingSoftDeleteTest extends TestCase
 
     protected User $admin;
 
+    protected User $moderator;
+
     protected Room $room;
 
     protected Booking $booking;
@@ -52,6 +55,12 @@ class BookingSoftDeleteTest extends TestCase
 
         $this->admin = User::factory()->admin()->create([
             'email' => 'admin@example.com',
+            'password' => bcrypt('password123'),
+        ]);
+
+        $this->moderator = User::factory()->create([
+            'role' => UserRole::MODERATOR,
+            'email' => 'moderator@example.com',
             'password' => bcrypt('password123'),
         ]);
 
@@ -441,5 +450,75 @@ class BookingSoftDeleteTest extends TestCase
         $this->assertNotNull($booking->deletedBy);
         $this->assertEquals($this->admin->id, $booking->deletedBy->id);
         $this->assertEquals($this->admin->email, $booking->deletedBy->email);
+    }
+
+    // ===== MODERATOR DENIAL TESTS (admin-only endpoints) =====
+
+    public function test_moderator_cannot_view_admin_bookings_index(): void
+    {
+        $response = $this->actingAs($this->moderator, 'sanctum')
+            ->getJson('/api/v1/admin/bookings');
+
+        $response->assertStatus(403);
+    }
+
+    public function test_moderator_cannot_view_trashed(): void
+    {
+        $this->booking->softDeleteWithAudit($this->user->id);
+
+        $response = $this->actingAs($this->moderator, 'sanctum')
+            ->getJson('/api/v1/admin/bookings/trashed');
+
+        $response->assertStatus(403);
+    }
+
+    public function test_moderator_cannot_restore(): void
+    {
+        $this->booking->softDeleteWithAudit($this->user->id);
+
+        $response = $this->actingAs($this->moderator, 'sanctum')
+            ->postJson("/api/v1/admin/bookings/{$this->booking->id}/restore");
+
+        $response->assertStatus(403);
+    }
+
+    public function test_moderator_cannot_force_delete(): void
+    {
+        $this->booking->softDeleteWithAudit($this->user->id);
+
+        $response = $this->actingAs($this->moderator, 'sanctum')
+            ->deleteJson("/api/v1/admin/bookings/{$this->booking->id}/force");
+
+        $response->assertStatus(403);
+    }
+
+    // ===== V1 ADMIN ENDPOINT PIN TESTS =====
+
+    public function test_v1_admin_can_view_all_bookings(): void
+    {
+        $response = $this->actingAs($this->admin, 'sanctum')
+            ->getJson('/api/v1/admin/bookings');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('success', true);
+    }
+
+    public function test_v1_admin_can_view_trashed(): void
+    {
+        $this->booking->softDeleteWithAudit($this->user->id);
+
+        $response = $this->actingAs($this->admin, 'sanctum')
+            ->getJson('/api/v1/admin/bookings/trashed');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('success', true);
+    }
+
+    public function test_v1_regular_user_cannot_access_admin_bookings(): void
+    {
+        $response = $this->actingAs($this->user, 'sanctum')
+            ->getJson('/api/v1/admin/bookings');
+
+        $response->assertStatus(403);
     }
 }

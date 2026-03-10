@@ -29,8 +29,8 @@ Route::get('/locations/{slug}/availability', [LocationController::class, 'availa
 Route::get('/rooms', [RoomController::class, 'index'])->name('v1.rooms.index');
 Route::get('/rooms/{room}', [RoomController::class, 'show'])->name('v1.rooms.show');
 
-// Protected room management (Admin only)
-Route::middleware(['check_token_valid'])->group(function () {
+// Protected room management (Admin only — defense-in-depth: middleware + policy)
+Route::middleware(['check_token_valid', 'role:admin'])->group(function () {
     Route::post('/rooms', [RoomController::class, 'store'])->name('v1.rooms.store');
     Route::put('/rooms/{room}', [RoomController::class, 'update'])->name('v1.rooms.update');
     Route::patch('/rooms/{room}', [RoomController::class, 'update'])->name('v1.rooms.patch');

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Enums\BookingStatus;
+use App\Enums\UserRole;
 use App\Events\BookingCancelled;
 use App\Models\Booking;
 use App\Models\Room;
@@ -235,6 +236,104 @@ class BookingCancellationTest extends TestCase
             ->create();
 
         $response = $this->postJson("/api/bookings/{$booking->id}/cancel");
+
+        $response->assertUnauthorized();
+    }
+
+    // ===== MODERATOR AUTHORIZATION TESTS =====
+
+    public function test_moderator_can_cancel_own_booking(): void
+    {
+        $moderator = User::factory()->create(['role' => UserRole::MODERATOR]);
+
+        $booking = Booking::factory()
+            ->for($moderator)
+            ->for($this->room)
+            ->confirmed()
+            ->create([
+                'check_in' => now()->addDays(10),
+                'check_out' => now()->addDays(12),
+            ]);
+
+        $response = $this->actingAs($moderator)
+            ->postJson("/api/v1/bookings/{$booking->id}/cancel");
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.status', BookingStatus::CANCELLED->value);
+    }
+
+    public function test_moderator_cannot_cancel_others_booking(): void
+    {
+        $moderator = User::factory()->create(['role' => UserRole::MODERATOR]);
+
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($this->room)
+            ->confirmed()
+            ->create([
+                'check_in' => now()->addDays(10),
+                'check_out' => now()->addDays(12),
+            ]);
+
+        $response = $this->actingAs($moderator)
+            ->postJson("/api/v1/bookings/{$booking->id}/cancel");
+
+        $response->assertForbidden();
+
+        $this->assertDatabaseHas('bookings', [
+            'id' => $booking->id,
+            'status' => BookingStatus::CONFIRMED->value,
+        ]);
+    }
+
+    // ===== CANONICAL V1 PATH TESTS =====
+
+    public function test_v1_user_can_cancel_own_booking(): void
+    {
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($this->room)
+            ->confirmed()
+            ->create([
+                'check_in' => now()->addDays(10),
+                'check_out' => now()->addDays(12),
+            ]);
+
+        $response = $this->actingAs($this->user)
+            ->postJson("/api/v1/bookings/{$booking->id}/cancel");
+
+        $response->assertOk()
+            ->assertJsonPath('data.status', BookingStatus::CANCELLED->value);
+    }
+
+    public function test_v1_admin_can_cancel_any_booking(): void
+    {
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($this->room)
+            ->confirmed()
+            ->create([
+                'check_in' => now()->addDays(10),
+                'check_out' => now()->addDays(12),
+            ]);
+
+        $response = $this->actingAs($this->admin)
+            ->postJson("/api/v1/bookings/{$booking->id}/cancel");
+
+        $response->assertOk()
+            ->assertJsonPath('data.status', BookingStatus::CANCELLED->value);
+    }
+
+    public function test_v1_unauthenticated_cannot_cancel(): void
+    {
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($this->room)
+            ->confirmed()
+            ->create();
+
+        $response = $this->postJson("/api/v1/bookings/{$booking->id}/cancel");
 
         $response->assertUnauthorized();
     }

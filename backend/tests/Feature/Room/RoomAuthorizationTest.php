@@ -189,6 +189,50 @@ class RoomAuthorizationTest extends TestCase
         $response->assertStatus(200);
     }
 
+    // ========== PATCH ACCESS (ADMIN ONLY) ==========
+
+    public function test_guest_cannot_patch_room(): void
+    {
+        $room = Room::factory()->create();
+
+        $response = $this->patchJson("/api/v1/rooms/{$room->id}", $this->getValidRoomData());
+
+        $response->assertStatus(401);
+    }
+
+    public function test_user_cannot_patch_room(): void
+    {
+        $room = Room::factory()->create();
+
+        $response = $this->actingAs($this->user, 'sanctum')
+            ->patchJson("/api/v1/rooms/{$room->id}", $this->getValidRoomData());
+
+        $response->assertStatus(403);
+    }
+
+    public function test_moderator_cannot_patch_room(): void
+    {
+        $room = Room::factory()->create();
+
+        $response = $this->actingAs($this->moderator, 'sanctum')
+            ->patchJson("/api/v1/rooms/{$room->id}", $this->getValidRoomData());
+
+        $response->assertStatus(403);
+    }
+
+    public function test_admin_can_patch_room(): void
+    {
+        $room = Room::factory()->create();
+
+        $response = $this->actingAs($this->admin, 'sanctum')
+            ->patchJson("/api/v1/rooms/{$room->id}", array_merge(
+                $this->getValidRoomData(),
+                ['lock_version' => $room->lock_version]
+            ));
+
+        $response->assertStatus(200);
+    }
+
     // ========== DELETE ACCESS (ADMIN ONLY) ==========
 
     public function test_guest_cannot_delete_room(): void

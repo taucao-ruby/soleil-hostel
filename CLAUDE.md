@@ -16,6 +16,7 @@ Infrastructure: Docker Compose. CI: `.github/workflows/`.
 @docs/agents/CONTRACT.md
 
 Read on demand (not auto-loaded):
+- `docs/PERMISSION_MATRIX.md` — canonical RBAC permission baseline (single source of truth)
 - `docs/agents/COMMANDS.md` — command catalog, setup, dev servers
 - `docs/COMPACT.md` — volatile session handoff log (see lifecycle policy inside)
 - `skills/README.md` — skill index for task-specific guardrails

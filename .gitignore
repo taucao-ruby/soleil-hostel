@@ -47,3 +47,5 @@ database.sqlite
 
 # Dev/debug scripts that must not be committed
 backend/storage/check_pw.php
+
+test_run.txt

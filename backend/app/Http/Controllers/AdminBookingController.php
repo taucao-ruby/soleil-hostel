@@ -8,6 +8,7 @@ use App\Repositories\Contracts\BookingRepositoryInterface;
 use App\Services\BookingService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * AdminBookingController - Admin-only booking management
@@ -37,6 +38,8 @@ class AdminBookingController extends Controller
      */
     public function index(): JsonResponse
     {
+        Gate::authorize('admin');
+
         $bookings = $this->bookingRepository->getAllWithTrashedPaginated([
             'room' => fn ($q) => $q->select(['id', 'name', 'price', 'created_at', 'updated_at']),
             'user' => fn ($q) => $q->select(['id', 'name', 'email', 'role', 'created_at', 'updated_at']),
@@ -63,6 +66,8 @@ class AdminBookingController extends Controller
      */
     public function trashed(): JsonResponse
     {
+        Gate::authorize('admin');
+
         $bookings = $this->bookingService->getTrashedBookings();
 
         return $this->success([
@@ -80,6 +85,8 @@ class AdminBookingController extends Controller
      */
     public function showTrashed(int $id): JsonResponse
     {
+        Gate::authorize('admin');
+
         $booking = $this->bookingService->getTrashedBookingById($id);
 
         if (! $booking) {
@@ -99,6 +106,8 @@ class AdminBookingController extends Controller
      */
     public function restore(int $id): JsonResponse
     {
+        Gate::authorize('admin');
+
         $booking = $this->bookingService->getTrashedBookingById($id);
 
         if (! $booking) {
@@ -140,6 +149,8 @@ class AdminBookingController extends Controller
      */
     public function forceDelete(int $id): JsonResponse
     {
+        Gate::authorize('admin');
+
         $booking = $this->bookingService->getTrashedBookingById($id);
 
         if (! $booking) {
@@ -164,6 +175,8 @@ class AdminBookingController extends Controller
      */
     public function restoreBulk(BulkRestoreBookingsRequest $request): JsonResponse
     {
+        Gate::authorize('admin');
+
         $ids = $request->validated('ids');
 
         $restored = 0;

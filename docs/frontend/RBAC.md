@@ -1,5 +1,9 @@
 # Frontend RBAC — Soleil Hostel
 
+> **FRONTEND VISIBILITY — Tier 5 only.**
+> This document describes what the frontend shows based on role. It does NOT define backend authorization.
+> For backend enforcement truth, see: [docs/PERMISSION_MATRIX.md](../PERMISSION_MATRIX.md)
+>
 > Role-Based Access Control as implemented in the React 19 frontend.
 > Grounded in repo truth as of 2026-03-09. All claims verified against source unless marked otherwise.
 
@@ -36,6 +40,7 @@ This document serves frontend engineers, reviewers, UX contributors, and auditor
 
 | Knowledge Type | Canonical Owner | Notes |
 |---|---|---|
+| Backend permission matrix | `docs/PERMISSION_MATRIX.md` | Single source of truth for actor-to-permission mapping |
 | Backend role definitions and gates | `docs/backend/features/RBAC.md` | Do not duplicate here |
 | Frontend role type | `frontend/src/shared/types/api.ts` | String union on `User.role` |
 | Frontend route access rules | This document + `router.tsx` | Route tree is implementation; this doc is the spec |
@@ -449,7 +454,7 @@ grep -rn "role.*admin" frontend/src/ --include="*.tsx" --include="*.ts"
 
 | Risk | Why It Remains | Recommended Follow-Up |
 |---|---|---|
-| Moderator role is a no-op in frontend | Backend defines capabilities; frontend ignores them. If moderator users exist, they have no access to their intended features via UI. | Implement moderator dashboard or at minimum show "view all bookings" for moderators |
+| Moderator role is a no-op in frontend | Backend moderator status is DEFINED-BUT-LATENT (see [PERMISSION_MATRIX.md](../PERMISSION_MATRIX.md) Table C). No Tier 1 moderator-specific capability is CURRENT. Frontend correctly reflects this by treating moderator same as user. | Re-evaluate if/when moderator capabilities are activated at backend Tier 1 |
 | No 403 error boundary | A malicious or misconfigured client hitting admin endpoints gets raw error instead of graceful UX | Add 403 interceptor in `api.ts` that shows a toast or redirects |
 | Brief admin UI flash for non-admins | Client-side role mutation could show AdminDashboard skeleton before API calls fail with 403 | Add role guard at router level or in ProtectedRoute |
 | Admin loses self-service booking view | Admin users who also book rooms cannot manage their own bookings | Add "My Bookings" tab to AdminDashboard or allow role-based dashboard toggle |

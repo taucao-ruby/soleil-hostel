@@ -115,21 +115,25 @@ class BookingPolicy
 
 ### Authorization Matrix
 
-| Action       | User | Moderator | Admin |
-| ------------ | ---- | --------- | ----- |
-| view (own)   | ✅   | ✅        | ✅    |
-| view (any)   | ❌   | ✅        | ✅    |
-| update (own) | ✅   | ✅        | ✅    |
-| update (any) | ❌   | ❌        | ✅    |
-| delete (own) | ✅   | ✅        | ✅    |
-| delete (any) | ❌   | ❌        | ✅    |
-| confirm      | ❌   | ❌        | ✅    |
-| cancel (own) | ✅   | ✅        | ✅    |
-| cancel (any) | ❌   | ❌        | ✅    |
-| forceCancel  | ❌   | ❌        | ✅    |
-| viewTrashed  | ❌   | ❌        | ✅    |
-| restore      | ❌   | ❌        | ✅    |
-| forceDelete  | ❌   | ❌        | ✅    |
+> **For the canonical enforced permission matrix (route + gate + policy combined), see [docs/PERMISSION_MATRIX.md](../../PERMISSION_MATRIX.md).**
+> The table below shows policy-level grants only. Some grants (e.g., `viewAny` for moderator) are LATENT-SHADOWED by route middleware and do not represent enforced permissions.
+
+| Action       | User | Moderator | Admin | Notes |
+| ------------ | ---- | --------- | ----- | ----- |
+| view (own)   | ✅   | ✅        | ✅    | |
+| view (any)   | ❌   | ✅        | ✅    | |
+| update (own) | ✅   | ✅        | ✅    | |
+| update (any) | ❌   | ❌        | ✅    | |
+| delete (own) | ✅   | ✅        | ✅    | |
+| delete (any) | ❌   | ❌        | ✅    | |
+| confirm      | ❌   | ❌        | ✅    | |
+| cancel (own) | ✅   | ✅        | ✅    | Subject to BR-1, BR-2, BR-3 business rules |
+| cancel (any) | ❌   | ❌        | ✅    | |
+| forceCancel  | ❌   | ❌        | ✅    | |
+| viewAny      | ❌   | ✅        | ✅    | **LATENT-SHADOWED** — route `role:admin` + `Gate::authorize('admin')` fire first |
+| viewTrashed  | ❌   | ❌        | ✅    | |
+| restore      | ❌   | ❌        | ✅    | |
+| forceDelete  | ❌   | ❌        | ✅    | |
 
 ---
 
@@ -247,6 +251,7 @@ Policies are auto-discovered by Laravel, but explicitly registered for clarity:
 
 protected $policies = [
     Booking::class => BookingPolicy::class,
+    Review::class => ReviewPolicy::class,
     Room::class => RoomPolicy::class,
 ];
 ```
@@ -263,16 +268,17 @@ protected $policies = [
 
 ### Existing Gates
 
-```php
-// AuthServiceProvider.php
+7 gates defined in `AuthServiceProvider.php`. For invocation status (CURRENT vs LATENT-UNUSED), see [docs/PERMISSION_MATRIX.md](../../PERMISSION_MATRIX.md).
 
-Gate::define('manage-rooms', fn($u) => $u->isAdmin());
-Gate::define('manage-bookings', fn($u) => $u->isAtLeast(UserRole::MODERATOR));
-Gate::define('view-admin-dashboard', fn($u) => $u->isAtLeast(UserRole::MODERATOR));
-Gate::define('manage-users', fn($u) => $u->isAdmin());
-Gate::define('view-reports', fn($u) => $u->isAtLeast(UserRole::MODERATOR));
-Gate::define('manage-settings', fn($u) => $u->isAdmin());
-```
+| Gate | Check | Level |
+|------|-------|-------|
+| `admin` | `$user->isAdmin()` | EXACT-MATCH |
+| `moderator` | `$user->isModerator()` | HIERARCHY |
+| `manage-users` | `$user->isAdmin()` | EXACT-MATCH |
+| `moderate-content` | `$user->isModerator()` | HIERARCHY |
+| `view-all-bookings` | `$user->isModerator()` | HIERARCHY |
+| `manage-rooms` | `$user->isAdmin()` | EXACT-MATCH |
+| `view-queue-monitoring` | `$user->isAdmin()` | EXACT-MATCH |
 
 ---
 

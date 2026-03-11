@@ -1,7 +1,7 @@
 # PRODUCT_GOAL.md — Soleil Hostel
 
 > **Product goals and strategic direction**
-> Last updated: 2026-03-09
+> Last updated: 2026-03-11
 
 ---
 
@@ -52,7 +52,7 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 | Stripe/Cashier integration                           | ✅ Bootstrap      | 14 tests      |
 | Backend i18n (en + vi)                               | ✅ Complete       | 9 tests       |
 | Room management (optimistic locking, status)         | ✅ Complete       | 151 tests     |
-| RBAC (3 roles: user / moderator / admin)             | ✅ Complete       | 47 tests      |
+| RBAC (3 roles: user / moderator / admin)             | ✅ Complete       | 63 tests      |
 | Security headers (CSP, HSTS, XSS)                    | ✅ Complete       | 14 tests      |
 | XSS Protection (HTML Purifier)                       | ✅ Complete       | 48 tests      |
 | Rate Limiting (multi-tier)                           | ✅ Complete       | 29 tests      |
@@ -62,7 +62,7 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 | Repository Layer                                     | ✅ Complete       | 53 tests      |
 | Email Verification                                   | ✅ Complete       | 26 tests      |
 | PHPStan/Larastan (Level 5)                           | ✅ Installed      | Baseline 151  |
-| **Backend total**                                    | **✅ 17 systems** | **885 tests** |
+| **Backend total**                                    | **✅ 17 systems** | **901 tests** |
 
 ### Frontend (React 19 + TypeScript) — 96% complete
 
@@ -77,7 +77,7 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 | Quality  | AbortController cleanup, vi.hoisted mocks, no-console ESLint, RoomList tests | ✅ Complete |
 | Phase 5+ | Payment UI, i18n, PWA                                                        | 🔄 Next     |
 
-**Frontend tests:** 226 tests across 21 suites (verified March 6, 2026)
+**Frontend tests:** 226 tests across 21 suites (verified March 11, 2026)
 
 ### Multi-Location Architecture
 

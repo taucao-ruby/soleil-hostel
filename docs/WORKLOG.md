@@ -1,5 +1,19 @@
 ﻿# WORKLOG — Soleil Hostel (Append-only)
 
+## 2026-03-11
+
+- Change: Docs sync v6 — truth-alignment pass after RBAC hardening (commit `012ce40`, Mar 10).
+- Why: Backend tests grew from 885→901 (+16 RBAC tests, 2487→2510 assertions). PERMISSION_MATRIX.md created with 5 open follow-ups (FU-1..FU-5). PROJECT_STATUS, PRODUCT_GOAL, BACKLOG, COMPACT, WORKLOG, README all needed refresh.
+- Files: PROJECT_STATUS.md, PRODUCT_GOAL.md, BACKLOG.md, docs/COMPACT.md, docs/WORKLOG.md, docs/README.md.
+- Verification: `php artisan test` 901/2510 PASS, `tsc --noEmit` 0 errors, `vitest run` 226/21 PASS, `pint --test` 283 files PASS — all verified 2026-03-11.
+
+## 2026-03-10
+
+- Change: RBAC hardening — defense-in-depth for admin booking + room CUD routes.
+- Why: Add Gate::authorize('admin') to AdminBookingController methods, add `role:admin` middleware to v1 room CUD routes. Create PERMISSION_MATRIX.md as canonical RBAC source of truth.
+- Files: AdminBookingController.php, v1.php, BookingSoftDeleteTest.php (+new), BookingCancellationTest.php (+new), RoomAuthorizationTest.php (+new), docs/PERMISSION_MATRIX.md (+new), ARCHITECTURE_FACTS.md, POLICIES.md, backend RBAC.md, frontend RBAC.md, CLAUDE.md, .gitignore.
+- Verification: 901 backend tests PASS (pre-push hook).
+
 ## 2026-03-09
 
 - Change: Audit v5 — repo-wide truth-alignment pass. Refresh PROJECT_STATUS, PRODUCT_GOAL, BACKLOG, COMPACT; archive COMPACT history; fix stale test counts across 5 files; mark F-24 resolved.

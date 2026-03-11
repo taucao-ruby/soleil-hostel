@@ -452,24 +452,26 @@ class BookingSoftDeleteTest extends TestCase
         $this->assertEquals($this->admin->email, $booking->deletedBy->email);
     }
 
-    // ===== MODERATOR DENIAL TESTS (admin-only endpoints) =====
+    // ===== MODERATOR ACCESS TESTS =====
+    // Read endpoints: moderator allowed (Phase 3 activation)
+    // Write endpoints: moderator denied (admin-only)
 
-    public function test_moderator_cannot_view_admin_bookings_index(): void
+    public function test_moderator_can_view_admin_bookings_index(): void
     {
         $response = $this->actingAs($this->moderator, 'sanctum')
             ->getJson('/api/v1/admin/bookings');
 
-        $response->assertStatus(403);
+        $response->assertStatus(200);
     }
 
-    public function test_moderator_cannot_view_trashed(): void
+    public function test_moderator_can_view_trashed(): void
     {
         $this->booking->softDeleteWithAudit($this->user->id);
 
         $response = $this->actingAs($this->moderator, 'sanctum')
             ->getJson('/api/v1/admin/bookings/trashed');
 
-        $response->assertStatus(403);
+        $response->assertStatus(200);
     }
 
     public function test_moderator_cannot_restore(): void

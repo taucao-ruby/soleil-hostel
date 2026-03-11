@@ -7,6 +7,7 @@ use App\Services\ContactMessageService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class ContactController extends Controller
 {
@@ -32,11 +33,13 @@ class ContactController extends Controller
     }
 
     /**
-     * List all contact messages (admin only).
+     * List all contact messages (moderator+).
      * Paginated, sorted by newest first.
      */
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize('moderate-content');
+
         $perPage = $request->input('per_page', 15);
         $status = $request->input('status');
 
@@ -46,10 +49,12 @@ class ContactController extends Controller
     }
 
     /**
-     * Mark a contact message as read (admin only).
+     * Mark a contact message as read (moderator+).
      */
     public function markAsRead(int $id): JsonResponse
     {
+        Gate::authorize('moderate-content');
+
         $message = $this->contactMessageService->markAsRead($id);
 
         return $this->success($message, __('messages.contact_marked_read'));

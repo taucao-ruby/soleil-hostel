@@ -37,6 +37,9 @@ class BookingController extends Controller
      */
     public function index(): JsonResponse
     {
+        // No policy guard needed: getUserBookings() filters by auth()->id(),
+        // ensuring users can only see their own bookings. The viewAny policy
+        // is semantically "view ALL bookings" (moderator+), not "view own".
         $bookings = $this->bookingService->getUserBookings(auth()->id());
 
         return response()->json([

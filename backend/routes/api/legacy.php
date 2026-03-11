@@ -31,8 +31,8 @@ Route::get('/rooms', [RoomController::class, 'index'])
 Route::get('/rooms/{room}', [RoomController::class, 'show'])
     ->middleware('deprecated:2026-07-01,/api/v1/rooms/{room}');
 
-// Protected room management (Admin only)
-Route::middleware(['check_token_valid'])->group(function () {
+// Protected room management (Admin only — defense-in-depth: middleware + policy)
+Route::middleware(['check_token_valid', 'role:admin'])->group(function () {
     Route::post('/rooms', [RoomController::class, 'store'])
         ->middleware('deprecated:2026-07-01,/api/v1/rooms');
     Route::put('/rooms/{room}', [RoomController::class, 'update'])
@@ -66,13 +66,18 @@ Route::middleware(['check_token_valid', 'verified'])->group(function () {
         ->middleware(['throttle:10,1', 'deprecated:2026-07-01,/api/v1/bookings/{booking}/cancel']);
 
     // ========== LEGACY ADMIN BOOKING ENDPOINTS ==========
-    Route::prefix('admin/bookings')->middleware('role:admin')->group(function () {
+    // Read-only: moderator+
+    Route::prefix('admin/bookings')->middleware('role:moderator')->group(function () {
         Route::get('/', [AdminBookingController::class, 'index'])
             ->middleware('deprecated:2026-07-01,/api/v1/admin/bookings');
         Route::get('/trashed', [AdminBookingController::class, 'trashed'])
             ->middleware('deprecated:2026-07-01,/api/v1/admin/bookings/trashed');
         Route::get('/trashed/{id}', [AdminBookingController::class, 'showTrashed'])
             ->middleware('deprecated:2026-07-01,/api/v1/admin/bookings/trashed/{id}');
+    });
+
+    // Destructive: admin only
+    Route::prefix('admin/bookings')->middleware('role:admin')->group(function () {
         Route::post('/{id}/restore', [AdminBookingController::class, 'restore'])
             ->middleware('deprecated:2026-07-01,/api/v1/admin/bookings/{id}/restore');
         Route::post('/restore-bulk', [AdminBookingController::class, 'restoreBulk'])

@@ -54,17 +54,23 @@ Route::middleware(['check_token_valid', 'verified'])->group(function () {
         ->name('v1.bookings.cancel')->middleware('throttle:10,1');
 
     // ========== ADMIN BOOKING ENDPOINTS (v1) ==========
-    Route::prefix('admin/bookings')->middleware('role:admin')->group(function () {
+    // Read-only endpoints: moderator+ (view bookings, view trashed)
+    Route::prefix('admin/bookings')->middleware('role:moderator')->group(function () {
         Route::get('/', [AdminBookingController::class, 'index'])->name('v1.admin.bookings.index');
         Route::get('/trashed', [AdminBookingController::class, 'trashed'])->name('v1.admin.bookings.trashed');
         Route::get('/trashed/{id}', [AdminBookingController::class, 'showTrashed'])->name('v1.admin.bookings.showTrashed');
+    });
+
+    // Destructive endpoints: admin only (restore, force-delete)
+    Route::prefix('admin/bookings')->middleware('role:admin')->group(function () {
         Route::post('/{id}/restore', [AdminBookingController::class, 'restore'])->name('v1.admin.bookings.restore');
         Route::post('/restore-bulk', [AdminBookingController::class, 'restoreBulk'])->name('v1.admin.bookings.restoreBulk');
         Route::delete('/{id}/force', [AdminBookingController::class, 'forceDelete'])->name('v1.admin.bookings.forceDelete');
     });
 
     // ========== ADMIN CONTACT MESSAGE ENDPOINTS (v1) ==========
-    Route::prefix('admin/contact-messages')->middleware('role:admin')->group(function () {
+    // Moderator+ can view and manage contact messages
+    Route::prefix('admin/contact-messages')->middleware('role:moderator')->group(function () {
         Route::get('/', [ContactController::class, 'index'])->name('v1.admin.contactMessages.index');
         Route::patch('/{id}/read', [ContactController::class, 'markAsRead'])->name('v1.admin.contactMessages.markAsRead');
     });

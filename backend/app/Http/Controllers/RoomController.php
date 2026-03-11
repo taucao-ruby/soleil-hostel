@@ -6,6 +6,7 @@ use App\Http\Requests\ListRoomsRequest;
 use App\Http\Requests\RoomRequest;
 use App\Http\Resources\RoomResource;
 use App\Models\Room;
+use App\Services\AdminAuditService;
 use App\Services\RoomService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,7 +25,8 @@ use Illuminate\Http\Request;
 class RoomController extends Controller
 {
     public function __construct(
-        private RoomService $roomService
+        private RoomService $roomService,
+        private AdminAuditService $auditService
     ) {}
 
     /**
@@ -89,6 +91,11 @@ class RoomController extends Controller
 
         $room = $this->roomService->createRoom($request->validated());
 
+        $this->auditService->log('room.create', 'room', $room->id, [
+            'name' => $room->name,
+            'location_id' => $room->location_id,
+        ]);
+
         return response()->json([
             'success' => true,
             'message' => __('messages.room_created'),
@@ -137,6 +144,10 @@ class RoomController extends Controller
             $lockVersion
         );
 
+        $this->auditService->log('room.update', 'room', $room->id, [
+            'changed_fields' => array_keys($data),
+        ]);
+
         return response()->json([
             'success' => true,
             'message' => __('messages.room_updated'),
@@ -161,7 +172,16 @@ class RoomController extends Controller
             ? (int) $request->input('lock_version')
             : null;
 
+        $roomId = $room->id;
+        $roomName = $room->name;
+        $locationId = $room->location_id;
+
         $this->roomService->deleteWithOptimisticLock($room, $lockVersion);
+
+        $this->auditService->log('room.delete', 'room', $roomId, [
+            'name' => $roomName,
+            'location_id' => $locationId,
+        ]);
 
         return response()->json([
             'success' => true,

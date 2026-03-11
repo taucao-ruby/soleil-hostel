@@ -1,8 +1,8 @@
 # Soleil Hostel - Project Status
 
-**Last Updated:** March 9, 2026
+**Last Updated:** March 11, 2026
 **Current Branch:** `dev`
-**Latest Commit:** `99cb0a3` — chore(docs): condense CLAUDE.md + AGENTS.md to leaner constitution; add nginx baseline security headers
+**Latest Commit:** `012ce40` — feat(backend): RBAC hardening with defense-in-depth and permission matrix
 
 ## Current Status: Repo Health Green
 
@@ -10,9 +10,9 @@
 > Batches 1–12 + DevSecOps + quality hardening complete.
 > See [AUDIT_REPORT.md](./AUDIT_REPORT.md) for detailed audit history.
 
-Gates (verified March 6, 2026):
+Gates (verified March 11, 2026):
 
-- Backend tests PASS: **885 tests**, **2487 assertions** (`cd backend && php artisan test`)
+- Backend tests PASS: **901 tests**, **2510 assertions** (`cd backend && php artisan test`)
 - Frontend typecheck PASS: 0 errors (`cd frontend && npx tsc --noEmit`)
 - Frontend unit tests PASS: **21 files**, **226 tests** (`cd frontend && npx vitest run`)
 - Compose config PASS (`docker compose config`)
@@ -51,16 +51,16 @@ Total Progress     ████████████████████�
 ### Backend (PHPUnit/Pest)
 
 ```text
-885 tests passed
-2487 assertions
-Duration: ~60s (verified March 6, 2026)
+901 tests passed
+2510 assertions
+Duration: ~200s (verified March 11, 2026)
 ```
 
 ### Frontend (Vitest)
 
 ```text
 226 tests passed (21 test files)
-Duration: ~25s (verified March 6, 2026)
+Duration: ~30s (verified March 11, 2026)
 ```
 
 ### E2E (Playwright)
@@ -112,8 +112,10 @@ docker compose config
 | Feature                         | Priority | Notes                                                                                |
 | ------------------------------- | -------- | ------------------------------------------------------------------------------------ |
 | **Stripe Payment Integration**  | High     | Cashier bootstrapped, webhooks implemented; checkout session + payment UI pending    |
+| **RBAC Hardening**              | ✅ Done  | Defense-in-depth (route + gate), PERMISSION_MATRIX.md, +16 tests (Mar 10)            |
 | **Booking Detail Panel**        | ✅ Done  | Guest read-only panel with 14 tests (Feb 27)                                         |
 | **Admin Pagination**            | ✅ Done  | All 3 tabs paginated with Trước/Sau controls (Feb 27)                                |
+| **RBAC Follow-ups (FU-1..5)**   | Medium   | Legacy test migration, coverage gaps, config verification — see PERMISSION_MATRIX.md |
 | **E2E Test Suite (Playwright)** | Medium   | Scaffolded; blocked on stable staging environment                                    |
 | **2FA (TOTP)**                  | Low      | Force-logout-all on 2FA enable already wired in `logoutAll()`; TOTP issuance pending |
 | **Deployment Pipeline**         | Low      | Docker Compose validated; cloud target TBD                                           |
@@ -134,10 +136,13 @@ All audit and batch details are preserved in [AUDIT_REPORT.md](./AUDIT_REPORT.md
 | Mar 2, 2026 | Batch 3 (backend) + Batch 4 (frontend) | +67 backend, +8 frontend tests |
 | Mar 5, 2026 | Stabilization | Composer/Pint/Psalm CI fixes, +14 backend tests |
 | Mar 6, 2026 | Batch 9–12 + H-02/H-05/H-06/H-07 | +14 backend tests, PG test default |
+| Mar 9, 2026 | Docs sync v5 + RBAC UX audit | COMPACT archived, frontend RBAC.md + RBAC_UX_AUDIT.md |
+| Mar 10, 2026 | RBAC hardening (defense-in-depth) | +16 backend tests, PERMISSION_MATRIX.md, Gate::authorize in AdminBookingController |
 
 ---
 
 ## Status Note
 
 Audits v1 (61/61), v2 (98/98), v3 (14/14), v4 (6/6) complete. Findings F-01 through F-22 and F-24 resolved. F-23 open (low — MD lint).
+RBAC hardening (Mar 10): defense-in-depth verified, PERMISSION_MATRIX.md created, 5 follow-ups open (FU-1..FU-5).
 Findings backlog: [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md)

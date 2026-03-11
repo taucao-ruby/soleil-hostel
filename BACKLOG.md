@@ -1,7 +1,7 @@
 # BACKLOG.md — Soleil Hostel
 
 > **Product backlog — prioritized by implementation order**
-> Last updated: 2026-03-09 | Source: COMPACT.md + KNOWN_LIMITATIONS.md + FINDINGS_BACKLOG.md
+> Last updated: 2026-03-11 | Source: COMPACT.md + KNOWN_LIMITATIONS.md + FINDINGS_BACKLOG.md + PERMISSION_MATRIX.md
 
 ---
 
@@ -250,6 +250,29 @@
 
 ---
 
+### TD-005 🟡 RBAC Follow-Ups (FU-1..FU-5) — from PERMISSION_MATRIX.md
+
+**Source:** `docs/PERMISSION_MATRIX.md` Open Follow-Ups (Mar 10, 2026)
+
+**Description:** 5 follow-up items identified during RBAC hardening. All relate to test coverage gaps and config verification.
+
+**Items:**
+
+- [ ] **FU-1**: Migrate legacy cancellation tests from `/api/bookings/` to `/api/v1/bookings/{id}/cancel`
+- [ ] **FU-2**: Add moderator-denial test for `restore-bulk`; add v1 pin test for `trashed/{id}`
+- [ ] **FU-3**: Verify `config('booking.cancellation.allow_after_checkin')` source file and production value
+- [ ] **FU-4**: Re-inspect `RoomController` post-hardening to confirm policy layer intact
+- [ ] **FU-5**: Migrate room CREATE/PUT/DELETE auth tests from `/api/rooms/*` to `/api/v1/rooms/*`
+
+**Acceptance Criteria:**
+
+- [ ] All legacy test paths migrated to v1
+- [ ] Moderator-denial coverage for all admin endpoints
+- [ ] Config source verified and documented
+- [ ] No TEST-SURFACE DRIFT remaining in PERMISSION_MATRIX.md
+
+---
+
 ### TD-004 🟡 Audit Log Retention Policy
 
 **Source:** LIM-010 from KNOWN_LIMITATIONS.md
@@ -383,6 +406,7 @@ FEAT-002 (Group Booking) → requires a new ADR before coding
 | ------------------------------- | -------- | ----------------------------------------- |
 | PAY-001 Stripe Checkout + UI    | —        | 🟠 Phase 2 pending (bootstrap done)       |
 | OPS-001 Deploy Pipeline         | —        | 🟠 60% (infra done, deploy step pending)  |
+| TD-005 RBAC Follow-ups (FU-1..5)| —        | 🟡 Next (test migration + config verify)  |
 | FE-004 Booking History          | —        | 🟡 Next                                   |
 | I18N-002 Frontend i18n          | —        | 🟢 When time permits                      |
 | TD-004 Audit Log Retention      | —        | 🟡 Next                                   |
@@ -423,6 +447,8 @@ FEAT-002 (Group Booking) → requires a new ADR before coding
 | ✅ minimatch CVE fix (GHSA-7r86, GHSA-23c5)                                                   | Mar 1, 2026       | —         |
 | ✅ Batch 3: HealthService extraction, FormRequests, PHPStan/Larastan, Contact+Review tests    | Mar 2, 2026       | 67 tests  |
 | ✅ Batch 4: AbortController cleanup, vi.hoisted auth mocks, no-console ESLint, RoomList tests | Mar 2, 2026       | 8 tests   |
+| ✅ Docs sync v5 + RBAC UX audit (frontend RBAC.md + RBAC_UX_AUDIT.md)                         | Mar 9, 2026       | —         |
+| ✅ RBAC Hardening: defense-in-depth (route+gate), PERMISSION_MATRIX.md, moderator denial tests | Mar 10, 2026      | 16 tests  |
 
 ---
 

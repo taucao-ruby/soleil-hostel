@@ -6,7 +6,9 @@ use App\Http\Requests\StoreReviewRequest;
 use App\Http\Requests\UpdateReviewRequest;
 use App\Models\Booking;
 use App\Models\Review;
+use App\Services\AdminAuditService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
  * ReviewController — CRUD for guest reviews.
@@ -18,6 +20,10 @@ use Illuminate\Http\JsonResponse;
  */
 class ReviewController extends Controller
 {
+    public function __construct(
+        private AdminAuditService $auditService
+    ) {}
+
     /**
      * POST /api/v1/reviews
      *
@@ -82,11 +88,22 @@ class ReviewController extends Controller
      *
      * Delete a review. Owner or admin (policy before() bypass).
      */
-    public function destroy(Review $review): JsonResponse
+    public function destroy(Request $request, Review $review): JsonResponse
     {
         $this->authorize('delete', $review);
 
+        $isAdminDelete = auth()->user()->isAdmin() && $review->user_id !== auth()->id();
+
+        $reviewId = $review->id;
         $review->delete();
+
+        if ($isAdminDelete) {
+            $this->auditService->log('review.admin_delete', 'review', $reviewId, [
+                'review_owner_id' => $review->user_id,
+                'booking_id' => $review->booking_id,
+                'reason' => $request->input('reason'),
+            ]);
+        }
 
         return response()->json([
             'success' => true,

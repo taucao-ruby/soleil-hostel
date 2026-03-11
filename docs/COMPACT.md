@@ -9,11 +9,12 @@
 
 ## 1) Current Snapshot (keep under 12 lines)
 
-- Date updated: 2026-03-09
+- Date updated: 2026-03-11
 - Current branch: `dev`
-- Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (226 tests, 21 suites) — verified 2026-03-06
-- Backend test baseline: `cd backend && php artisan test` (885 tests, 2487 assertions) — verified 2026-03-06
-- Pint baseline: `cd backend && vendor/bin/pint --test` (283 files, 0 style issues) — verified 2026-03-06
+- Latest commit: `012ce40` — feat(backend): RBAC hardening with defense-in-depth and permission matrix
+- Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (226 tests, 21 suites) — verified 2026-03-11
+- Backend test baseline: `cd backend && php artisan test` (901 tests, 2510 assertions) — verified 2026-03-11
+- Pint baseline: `cd backend && vendor/bin/pint --test` (283 files, 0 style issues) — verified 2026-03-11
 - PHPStan: Level 5 + Larastan installed, baseline 151 pre-existing errors
 - Psalm: `vimeo/psalm ^6.15` installed, Level 1 with suppression config, 0 blocking errors
 - Open findings: F-23 (MD lint — low). All others resolved (F-01–F-22, F-24).
@@ -30,12 +31,14 @@ This section intentionally left as a pointer — do not duplicate invariants her
 ### Now
 
 - M-11 (migration squash) BLOCKED — no squash protocol in governance; requires human approval
+- TD-005 RBAC Follow-ups (FU-1..FU-5) — legacy test migration, coverage gaps, config verification (see `docs/PERMISSION_MATRIX.md`)
 
 ### Next
 
 - M-11: Migration squash — needs human-approved `php artisan schema:dump --prune` process
 - H-06 CI alignment: update `.github/workflows/` to start PostgreSQL service before `php artisan test`
 - PAY-001 Phase 2: Stripe checkout session + frontend payment UI
+- TD-005: FU-1 (cancellation test migration), FU-2 (moderator-denial + v1 pin), FU-3 (config verify), FU-4 (RoomController re-verify), FU-5 (room test migration)
 
 ## 4) Verification commands
 

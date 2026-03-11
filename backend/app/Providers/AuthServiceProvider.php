@@ -43,44 +43,26 @@ class AuthServiceProvider extends ServiceProvider
         });
 
         /**
-         * Moderator gate - includes moderators AND admins
-         * Use for: Content moderation, viewing all resources, approving content
+         * Moderator gate - includes moderators AND admins (hierarchy-based)
+         * Use for: Route middleware defense-in-depth on moderator+ endpoints
          */
-        Gate::define('moderator', function (User $user): bool {
-            return $user->isModerator();
-        });
+        Gate::define('moderator', fn (User $user): bool => $user->isModerator());
 
         /**
-         * Manage users gate - admin only
-         * Use for: CRUD operations on user accounts
+         * View all bookings gate - moderator+ (CURRENT)
+         * Use for: Admin booking index, trashed list, trashed show (read-only)
          */
-        Gate::define('manage-users', function (User $user): bool {
-            return $user->isAdmin();
-        });
+        Gate::define('view-all-bookings', fn (User $user): bool => $user->isModerator());
 
         /**
-         * Moderate content gate - moderator level
-         * Use for: Approving reviews, managing bookings, content oversight
+         * Moderate content gate - moderator+ (CURRENT)
+         * Use for: Contact message viewing and management
          */
-        Gate::define('moderate-content', function (User $user): bool {
-            return $user->isModerator();
-        });
+        Gate::define('moderate-content', fn (User $user): bool => $user->isModerator());
 
-        /**
-         * View all bookings gate - moderator level
-         * Use for: Admin dashboard, reports, booking oversight
-         */
-        Gate::define('view-all-bookings', function (User $user): bool {
-            return $user->isModerator();
-        });
-
-        /**
-         * Manage rooms gate - admin only
-         * Use for: Creating, updating, deleting rooms
-         */
-        Gate::define('manage-rooms', function (User $user): bool {
-            return $user->isAdmin();
-        });
+        // ========== RESERVED GATES (not yet invoked) ==========
+        Gate::define('manage-users', fn (User $user): bool => $user->isAdmin());
+        Gate::define('manage-rooms', fn (User $user): bool => $user->isAdmin());
 
         /**
          * View queue monitoring gate - admin only

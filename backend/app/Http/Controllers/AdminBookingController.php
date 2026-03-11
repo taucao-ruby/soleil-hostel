@@ -5,20 +5,18 @@ namespace App\Http\Controllers;
 use App\Http\Requests\BulkRestoreBookingsRequest;
 use App\Http\Resources\BookingResource;
 use App\Repositories\Contracts\BookingRepositoryInterface;
+use App\Services\AdminAuditService;
 use App\Services\BookingService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
 /**
- * AdminBookingController - Admin-only booking management
+ * AdminBookingController - Backoffice booking management
  *
- * Handles soft delete recovery and audit operations:
- * - View trashed (soft deleted) bookings
- * - Restore accidentally deleted bookings
- * - Permanently delete for GDPR "right to be forgotten"
- *
- * All endpoints require ADMIN role via middleware.
+ * Read operations (index, trashed, showTrashed): moderator+ via route + gate
+ * Write operations (restore, forceDelete, restoreBulk): admin-only via route + gate
  */
 class AdminBookingController extends Controller
 {
@@ -26,7 +24,8 @@ class AdminBookingController extends Controller
 
     public function __construct(
         private BookingService $bookingService,
-        private BookingRepositoryInterface $bookingRepository
+        private BookingRepositoryInterface $bookingRepository,
+        private AdminAuditService $auditService
     ) {}
 
     /**
@@ -38,7 +37,7 @@ class AdminBookingController extends Controller
      */
     public function index(): JsonResponse
     {
-        Gate::authorize('admin');
+        Gate::authorize('view-all-bookings');
 
         $bookings = $this->bookingRepository->getAllWithTrashedPaginated([
             'room' => fn ($q) => $q->select(['id', 'name', 'price', 'created_at', 'updated_at']),
@@ -66,7 +65,7 @@ class AdminBookingController extends Controller
      */
     public function trashed(): JsonResponse
     {
-        Gate::authorize('admin');
+        Gate::authorize('view-all-bookings');
 
         $bookings = $this->bookingService->getTrashedBookings();
 
@@ -85,7 +84,7 @@ class AdminBookingController extends Controller
      */
     public function showTrashed(int $id): JsonResponse
     {
-        Gate::authorize('admin');
+        Gate::authorize('view-all-bookings');
 
         $booking = $this->bookingService->getTrashedBookingById($id);
 
@@ -129,6 +128,12 @@ class AdminBookingController extends Controller
         $result = $this->bookingService->restore($booking);
 
         if ($result) {
+            $this->auditService->log('booking.restore', 'booking', $id, [
+                'room_id' => $booking->room_id,
+                'check_in' => $booking->check_in->toDateString(),
+                'check_out' => $booking->check_out->toDateString(),
+            ]);
+
             return $this->success(
                 new BookingResource($booking->fresh(['room', 'user'])),
                 __('booking.restored')
@@ -147,7 +152,7 @@ class AdminBookingController extends Controller
      * Use only for GDPR "right to be forgotten" requests or after retention period.
      * This action is IRREVERSIBLE.
      */
-    public function forceDelete(int $id): JsonResponse
+    public function forceDelete(Request $request, int $id): JsonResponse
     {
         Gate::authorize('admin');
 
@@ -157,9 +162,22 @@ class AdminBookingController extends Controller
             return $this->error(__('booking.trashed_not_found_force'), 404);
         }
 
+        // Capture audit snapshot before permanent deletion destroys the record
+        $auditSnapshot = [
+            'user_id' => $booking->user_id,
+            'room_id' => $booking->room_id,
+            'check_in' => $booking->check_in->toDateString(),
+            'check_out' => $booking->check_out->toDateString(),
+            'status' => $booking->status->value ?? $booking->status,
+            'guest_name' => $booking->guest_name,
+            'reason' => $request->input('reason'),
+        ];
+
         $result = $this->bookingService->forceDelete($booking);
 
         if ($result) {
+            $this->auditService->log('booking.force_delete', 'booking', $id, $auditSnapshot);
+
             return $this->success(null, __('booking.permanently_deleted'));
         }
 
@@ -207,6 +225,10 @@ class AdminBookingController extends Controller
 
             if ($this->bookingService->restore($booking)) {
                 $restored++;
+                $this->auditService->log('booking.restore', 'booking', $id, [
+                    'room_id' => $booking->room_id,
+                    'bulk' => true,
+                ]);
             } else {
                 $failed[] = ['id' => $id, 'reason' => __('booking.bulk_restore_failed')];
             }

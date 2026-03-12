@@ -1,0 +1,24 @@
+name: "CI: Repo Hygiene"
+
+# Hard gate for artifact, lockfile, and config hygiene.
+# Runs the same script available locally via: sh scripts/check-hygiene.sh
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [main, dev]
+
+concurrency:
+  group: hygiene-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hygiene:
+    name: Hygiene Checks (H-01..H-05)
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run hygiene checks
+        run: sh scripts/check-hygiene.sh

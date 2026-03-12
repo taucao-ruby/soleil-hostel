@@ -3,8 +3,8 @@
 namespace App\Services;
 
 use App\Models\Booking;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class CustomerService
 {
@@ -28,12 +28,12 @@ class CustomerService
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('guest_name', 'ilike', '%' . $search . '%')
-                  ->orWhere('guest_email', 'ilike', '%' . $search . '%');
+                $q->where('guest_name', 'ilike', '%'.$search.'%')
+                    ->orWhere('guest_email', 'ilike', '%'.$search.'%');
             });
         }
 
-        // We use paginate() directly on query builder. 
+        // We use paginate() directly on query builder.
         // Note: For large datasets, a dedicated users table or materialized view is better.
         return $query->orderBy('last_visit', 'desc')->paginate($perPage);
     }
@@ -62,7 +62,7 @@ class CustomerService
                 ->groupBy('guest_email')
                 ->first();
 
-            if (!$stats) {
+            if (! $stats) {
                 return null;
             }
 
@@ -94,9 +94,9 @@ class CustomerService
     public function getCustomerBookings(string $email)
     {
         return Booking::with(['room' => function ($q) {
-                // Select specific columns to reduce data transfer payload size
-                $q->select('id', 'name', 'room_number', 'location_id')->with('location:id,name');
-            }])
+            // Select specific columns to reduce data transfer payload size
+            $q->select('id', 'name', 'room_number', 'location_id')->with('location:id,name');
+        }])
             ->where('guest_email', $email)
             ->orderBy('check_in', 'desc')
             ->get();

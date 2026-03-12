@@ -1,9 +1,9 @@
 <?php
 
+use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\AdminBookingController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ContactController;
-use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\RoomController;

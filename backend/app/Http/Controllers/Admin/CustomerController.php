@@ -27,7 +27,7 @@ class CustomerController extends Controller
                 'current_page' => $customers->currentPage(),
                 'last_page' => $customers->lastPage(),
                 'total' => $customers->total(),
-            ]
+            ],
         ]);
     }
 
@@ -38,16 +38,16 @@ class CustomerController extends Controller
     {
         $profile = $this->customerService->getCustomerProfile($email);
 
-        if (!$profile) {
+        if (! $profile) {
             return response()->json([
                 'success' => false,
-                'message' => 'Customer not found.'
+                'message' => 'Customer not found.',
             ], 404);
         }
 
         return response()->json([
             'success' => true,
-            'data' => $profile
+            'data' => $profile,
         ]);
     }
 
@@ -60,7 +60,7 @@ class CustomerController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $bookings
+            'data' => $bookings,
         ]);
     }
 
@@ -73,7 +73,7 @@ class CustomerController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $stats
+            'data' => $stats,
         ]);
     }
 }

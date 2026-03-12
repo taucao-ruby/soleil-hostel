@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import type { BookingApiRaw } from './booking.types'
-import * as toast from '@/utils/toast'
+import * as toast from '@/shared/utils/toast'
 import { cancelBooking } from './booking.api'
 
 interface BookingCancelDialogProps {

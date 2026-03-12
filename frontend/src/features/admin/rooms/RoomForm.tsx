@@ -6,9 +6,7 @@ import type { CreateRoomData, UpdateRoomData } from './adminRoom.types'
 import api from '@/shared/lib/api'
 import LoadingSpinner from '@/shared/components/feedback/LoadingSpinner'
 
-// We need a toast system, so we'll mock it if not available,
-// according to instructions we should use assumed @/utils/toast
-import * as toast from '@/utils/toast'
+import * as toast from '@/shared/utils/toast'
 
 const RoomForm: React.FC = () => {
   const { id } = useParams<{ id: string }>()

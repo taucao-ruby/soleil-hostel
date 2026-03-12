@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import type { BookingDetailRaw } from '@/features/booking/booking.types'
 import { getStatusConfig } from '@/shared/lib/booking.utils'
 import { confirmBooking, adminCancelBooking } from './adminBooking.api'
-import * as toast from '@/utils/toast'
+import * as toast from '@/shared/utils/toast'
 
 interface AdminBookingTableProps {
   bookings: BookingDetailRaw[]

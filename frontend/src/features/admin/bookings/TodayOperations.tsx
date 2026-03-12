@@ -4,7 +4,7 @@ import { getTodayArrivals, getTodayDepartures } from './adminBooking.api'
 import type { BookingDetailRaw } from '@/features/booking/booking.types'
 import api from '@/shared/lib/api'
 import LoadingSpinner from '@/shared/components/feedback/LoadingSpinner'
-import * as toast from '@/utils/toast'
+import * as toast from '@/shared/utils/toast'
 
 const TodayOperations: React.FC = () => {
   const [locations, setLocations] = useState<{ id: number; name: string }[]>([])

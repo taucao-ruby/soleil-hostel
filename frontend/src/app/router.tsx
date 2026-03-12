@@ -17,9 +17,22 @@ const LoginPage = lazy(() => import('@/features/auth/LoginPage'))
 const RegisterPage = lazy(() => import('@/features/auth/RegisterPage'))
 const RoomList = lazy(() => import('@/features/rooms/RoomList'))
 const BookingForm = lazy(() => import('@/features/booking/BookingForm'))
+const BookingList = lazy(() => import('@/features/booking/BookingList'))
+const BookingDetailPage = lazy(() => import('@/features/bookings/BookingDetailPage'))
 const LocationList = lazy(() => import('@/features/locations/LocationList'))
 const LocationDetail = lazy(() => import('@/features/locations/LocationDetail'))
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
+
+// Admin lazy-loaded components
+const AdminLayout = lazy(() => import('@/features/admin/AdminLayout'))
+const AdminDashboard = lazy(() => import('@/features/admin/AdminDashboard'))
+const AdminRoomDashboard = lazy(() => import('@/features/admin/rooms/AdminRoomDashboard'))
+const RoomForm = lazy(() => import('@/features/admin/rooms/RoomForm'))
+const AdminBookingDashboard = lazy(() => import('@/features/admin/bookings/AdminBookingDashboard'))
+const BookingCalendar = lazy(() => import('@/features/admin/bookings/BookingCalendar'))
+const TodayOperations = lazy(() => import('@/features/admin/bookings/TodayOperations'))
+const CustomerList = lazy(() => import('@/features/admin/customers/CustomerList'))
+const CustomerProfile = lazy(() => import('@/features/admin/customers/CustomerProfile'))
 
 /**
  * NavigationSetter - Registers React Router's navigate function
@@ -138,6 +151,26 @@ export const router = createBrowserRouter([
             ),
           },
           {
+            path: 'my-bookings',
+            element: (
+              <ProtectedRoute>
+                <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Loading..." />}>
+                  <BookingList />
+                </Suspense>
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: 'my-bookings/:id',
+            element: (
+              <ProtectedRoute>
+                <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Loading..." />}>
+                  <BookingDetailPage />
+                </Suspense>
+              </ProtectedRoute>
+            ),
+          },
+          {
             path: 'dashboard',
             element: (
               <ProtectedRoute>
@@ -151,6 +184,60 @@ export const router = createBrowserRouter([
             path: '*',
             element: <NotFoundPage />,
           },
+        ],
+      },
+      // Admin routes — Uses AdminLayout (Sidebar + content area)
+      {
+        path: '/admin',
+        element: (
+          <ProtectedRoute>
+            <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Loading Admin..." />}>
+              <AdminLayout />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+        children: [
+          {
+            index: true,
+            element: withSuspense(AdminDashboard),
+          },
+          {
+            path: 'rooms',
+            element: withSuspense(AdminRoomDashboard),
+          },
+          {
+            path: 'rooms/new',
+            element: withSuspense(RoomForm),
+          },
+          {
+            path: 'rooms/:id/edit',
+            element: withSuspense(RoomForm),
+          },
+          {
+            path: 'bookings',
+            element: withSuspense(AdminBookingDashboard),
+          },
+          {
+            path: 'bookings/calendar',
+            element: withSuspense(BookingCalendar),
+          },
+          {
+            path: 'bookings/today',
+            element: withSuspense(TodayOperations),
+          },
+          {
+            path: 'bookings/:id',
+            element: withSuspense(BookingDetailPage),
+          },
+          {
+            path: 'customers',
+            element: withSuspense(CustomerList),
+          },
+          {
+            path: 'customers/:email',
+            element: withSuspense(CustomerProfile),
+          },
+          // More admin routes will be added here
         ],
       },
     ],

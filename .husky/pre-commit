@@ -1,2 +1,4 @@
 #!/usr/bin/env sh
+# Repo hygiene checks (fast, <1s) — runs before heavier Node hook
+sh scripts/check-hygiene.sh || exit 1
 node tools/hooks/pre-commit.mjs

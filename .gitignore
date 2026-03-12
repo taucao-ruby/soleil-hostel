@@ -49,3 +49,29 @@ database.sqlite
 backend/storage/check_pw.php
 
 test_run.txt
+
+# === PR-1: Security + Hygiene Sweep (2026-03-12) ===
+# F-14 — env variant file (template renamed to .example; block original)
+backend/.env.httponly-cookie
+# F-01 — parallel test SQLite databases
+backend/storage/testing.sqlite_test_*
+# F-01 — test runner and composer output artifacts
+backend/test_output.txt
+backend/test_results.txt
+backend/composer_output.txt
+# F-01 — backend smoke-test run logs
+backend/run-logs/
+# F-06 — local dev server run logs (root level)
+run-logs/
+# F-09 — TypeScript incremental build cache
+*.tsbuildinfo
+
+# === PR-2: Frontend Toolchain Normalization (2026-03-12) ===
+# F-02 — npm lockfile (canonical package manager is pnpm)
+frontend/package-lock.json
+# F-03 — legacy ESLint configs (canonical: eslint.config.js flat config)
+frontend/.eslintrc.cjs
+frontend/.eslintrc.json
+# F-03 — duplicate Vite configs (canonical: vite.config.ts)
+frontend/vite.config.js
+frontend/vite.config.d.ts

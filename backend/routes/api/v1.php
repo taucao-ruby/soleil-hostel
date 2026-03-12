@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\AdminBookingController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ContactController;
@@ -73,6 +74,14 @@ Route::middleware(['check_token_valid', 'verified'])->group(function () {
     Route::prefix('admin/contact-messages')->middleware('role:moderator')->group(function () {
         Route::get('/', [ContactController::class, 'index'])->name('v1.admin.contactMessages.index');
         Route::patch('/{id}/read', [ContactController::class, 'markAsRead'])->name('v1.admin.contactMessages.markAsRead');
+    });
+
+    // ========== ADMIN CUSTOMER ENDPOINTS (v1) ==========
+    Route::prefix('admin/customers')->middleware('role:moderator')->group(function () {
+        Route::get('/stats', [CustomerController::class, 'stats'])->name('v1.admin.customers.stats');
+        Route::get('/', [CustomerController::class, 'index'])->name('v1.admin.customers.index');
+        Route::get('/{email}', [CustomerController::class, 'show'])->name('v1.admin.customers.show');
+        Route::get('/{email}/bookings', [CustomerController::class, 'bookings'])->name('v1.admin.customers.bookings');
     });
 
     // ========== REVIEW ENDPOINTS (v1) ==========

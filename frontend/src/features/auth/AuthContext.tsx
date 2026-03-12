@@ -110,7 +110,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               : undefined
           // Only log if it's not a 401 (401 is expected when token expired)
           if (status !== 401) {
-            console.warn('Token validation failed:', status)
+            if (import.meta.env.DEV) {
+              console.warn('Token validation failed:', status)
+            }
           }
           // Clear invalid csrf token
           sessionStorage.removeItem('csrf_token')

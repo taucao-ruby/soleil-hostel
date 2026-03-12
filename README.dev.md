@@ -1,205 +1,161 @@
-# Development README — Running frontend + backend
+# Development README - Soleil Hostel
 
-This file documents how to run the project locally (Windows-optimized) and with Docker Compose. It also lists common troubleshooting steps.
+This file documents the day-to-day development workflow for the monorepo. It reflects the current repo scripts, package managers, Docker services, and health endpoints.
 
-## Summary
+## Environment Files
 
-- Frontend: `frontend/` — React + TypeScript + Vite
-- Backend: `backend/` — Laravel 11 (PHP 8.3)
-- DB: PostgreSQL (optional when using Docker)
+Use the right env template for the right layer:
 
-Two main approaches:
+- Root `.env.example`: Docker Compose variables for `docker-compose.yml` and `docker-compose.prod.yml`
+- `backend/.env.example`: Laravel application configuration
+- `frontend/.env.example`: Vite environment variables
 
-- Local (no Docker): install PHP/Composer/PostgreSQL locally and run both servers
-- Docker Compose: single command to start DB, backend and frontend
+Do not copy the root `.env.example` into `backend/` or `frontend/`. Each layer has its own contract.
 
----
+## Prerequisites
 
-## Prerequisites (Windows)
+- Node.js 20+
+- npm for root tooling
+- pnpm for the frontend workspace
+- PHP 8.2+ (platform pinned to 8.3 in composer.json)
+- Composer 2.x
+- PostgreSQL 16+ for local backend work
+- Redis 7+ if you want the local stack to match production more closely
+- Docker Desktop if you prefer the Compose workflow
 
-- Node.js (16+/18+/20+)
-- npm (comes with Node.js) or yarn
-- PHP 8.x and Composer (unless using Docker)
-- PostgreSQL (unless using Docker)
-- (Optional but recommended) WSL2
-- (If using Docker) Docker Desktop with WSL2 integration
+## Local Development
 
----
+### 1. Install root tooling
 
-## 1) Quick local setup (no Docker)
+From the repository root:
 
-### Backend
+```powershell
+npm install
+```
+
+This installs root tooling such as Husky and the `npm run dev` orchestration script.
+
+### 2. Backend setup
 
 ```powershell
 cd backend
 composer install
-copy .env.example .env  # or copy on Windows PowerShell: Copy-Item .env.example .env
+Copy-Item .env.example .env
 php artisan key:generate
-# ensure DB settings in .env are correct and PostgreSQL database exists
 php artisan migrate
 php artisan serve --host=127.0.0.1 --port=8000
 ```
 
-### Frontend
+Notes:
+
+- `backend/.env.example` defaults to PostgreSQL on `127.0.0.1:5432`.
+- Tests and health checks also assume Redis is available on `127.0.0.1:6379` when you want a closer CI-like setup.
+- Backend health endpoints live under `/api/health/*`, including `/api/health/live` and `/api/health/ready`.
+
+### 3. Frontend setup
 
 ```powershell
 cd frontend
-npm install
-npm run dev -- --host
-# or with yarn
-# yarn
-# yarn dev --host
+pnpm install
+Copy-Item .env.example .env
+pnpm dev
 ```
 
-Access frontend (Vite) at `http://localhost:5173` and backend at `http://localhost:8000`.
+Notes:
 
----
+- In local development, `VITE_API_URL` can stay empty.
+- Vite proxies `/api` requests to `http://127.0.0.1:8000` via `frontend/vite.config.ts`.
+- `VITE_API_URL` is required for production builds, but not for normal local development.
 
-## 2) Run both with one command (concurrently)
-
-From repo root:
+### 4. Run both apps from the repo root
 
 ```powershell
-npm install --save-dev concurrently
 npm run dev
 ```
 
-`npm run dev` uses the root `package.json` script and will run both the Laravel dev server and Vite.
+This starts the Laravel development server from `backend/` and the Vite development server from `frontend/`.
 
----
+## Docker Compose Development
 
-## 3) Docker Compose (recommended if you want a reproducible environment)
-
-From repo root:
+Use the root env template when working with Docker Compose:
 
 ```powershell
+Copy-Item .env.example .env
 docker compose up --build
 ```
 
-This starts PostgreSQL, Redis, backend and frontend. Backend listens on `8000`, frontend on `5173`.
+This starts the current development stack:
 
-Note about Dockerfiles and networking:
+- `db` - PostgreSQL on `127.0.0.1:5432`
+- `redis` - Redis on `127.0.0.1:6379`
+- `backend` - Laravel app on `127.0.0.1:8000`
+- `frontend` - Vite app on `127.0.0.1:5173`
 
-- This repository includes simple development `Dockerfile`s for `backend` and `frontend`. Compose is configured to build those images and mount your local source so you get live edits during development.
-- When running the frontend inside Docker on Windows, `host.docker.internal` is the easiest way for the frontend container to contact a service running on the host (for example if you run Laravel with `php artisan serve` locally). We set `VITE_API_URL` in `frontend/.env` to `http://host.docker.internal:8000/api` by default. If you run the backend as a Compose service, use `http://backend:8000/api` instead.
-- **Note:** `host.docker.internal` is Windows/Mac Docker-specific and won't work in Linux Docker without extra config (`--add-host`).
+Useful commands:
 
----
+```powershell
+docker compose ps
+docker compose logs backend
+docker compose exec backend php artisan migrate
+docker compose config
+```
 
-## 4) Common troubleshooting
+## Verification Commands
 
-### 404 on `/api/rooms`
+These are the repo-aligned checks worth running before shipping changes:
 
-- Ensure backend server is running: `php artisan serve --host=127.0.0.1 --port=8000`
-- Check `php artisan route:list` from `backend/` and look for `api/rooms`.
-- Confirm `backend/routes/api.php` contains the resource route and `RoomController` exists under `app/Http/Controllers` with namespace `App\Http\Controllers`.
+```powershell
+cd backend
+php artisan route:list --path=health
 
-### CORS errors
+cd ..\frontend
+npx tsc --noEmit
+pnpm run test:unit
+pnpm run build
+pnpm run lint
 
-- Update `backend/config/cors.php` allowed origins to include `http://localhost:5173`.
+cd ..
+docker compose config
+```
 
-### Port conflicts
+## Troubleshooting
 
-- Find the PID using the port: `netstat -ano | Select-String ":8000"` and then `Stop-Process -Id <PID> -Force`.
+### API requests fail in local development
 
-### php/composer not found
+- Make sure Laravel is running on `http://127.0.0.1:8000`.
+- Confirm the frontend is calling `/api`, not a stale hard-coded host.
+- Check `frontend/src/shared/lib/api.ts` and confirm `VITE_API_URL` is empty or correct for your environment.
 
-- Add PHP and Composer to PATH or use WSL2 or Docker.
+### Docker stack uses the wrong database settings
 
----
+- The root `.env` controls Docker Compose only.
+- The Laravel app inside `backend/` still reads `backend/.env` when you run Artisan locally outside Compose.
+- If Compose resolves to unexpected values, run `docker compose config` and inspect the expanded environment.
 
-## Detailed troubleshooting checklist
+### Health endpoints do not respond
 
-If you're still stuck, follow this checklist in order — it covers the common root causes for 404/CORS/port issues on Windows + Laravel + Vite setups.
+- Run `cd backend && php artisan route:list --path=health` to confirm the routes are registered.
+- Check `/api/health/live` first, then `/api/health/ready`.
+- If readiness fails, verify PostgreSQL and Redis are reachable.
 
-1. Confirm servers are running and ports
-   - Backend (Laravel dev server):
+### PowerShell blocks pnpm or npx
 
-     ```powershell
-     cd backend
-     php artisan serve --host=127.0.0.1 --port=8000
-     ```
+- If PowerShell blocks `pnpm` or `npx` with an execution-policy error, use `pnpm.cmd` or `npx.cmd` instead.
+- You can also adjust your execution policy if that matches your machine policy.
 
-     Open `http://127.0.0.1:8000` in the browser — you should see the Laravel welcome page.
+### Port conflicts on Windows
 
-   - Frontend (Vite):
-     ```powershell
-     cd frontend
-     npm run dev -- --host
-     ```
-     Vite usually serves at `http://localhost:5173`.
+```powershell
+netstat -ano | Select-String ":8000"
+netstat -ano | Select-String ":5173"
+Stop-Process -Id <PID> -Force
+```
 
-2. If API returns 404 for `http://127.0.0.1:8000/api/rooms`
-   - Run `php artisan route:list` from `backend/` and look for `api/rooms`.
-   - If the route is missing:
-     - Open `backend/routes/api.php` and confirm you have the route registration, for example:
+## Related Files
 
-     ```php
-     use App\Http\Controllers\RoomController;
-     Route::apiResource('rooms', RoomController::class);
-     ```
-
-     - Confirm `backend/app/Http/Controllers/RoomController.php` exists and the namespace at top is `namespace App\Http\Controllers;`.
-     - If controller was added recently, run `composer dump-autoload`.
-
-3. Clear caches (very common fix for route/controller issues)
-
-   ```powershell
-   cd backend
-   php artisan config:clear
-   php artisan route:clear
-   php artisan cache:clear
-   composer dump-autoload
-   php artisan route:list
-   ```
-
-4. Check Laravel logs for exceptions
-   - `backend/storage/logs/laravel.log`
-   - If there are permission issues on Windows with mounted volumes, ensure files are writable by the PHP process (when using Docker)
-
-5. Port conflicts on Windows
-   - Find who uses the port (example for 8000):
-     ```powershell
-     netstat -ano | Select-String ":8000"
-     ```
-   - Kill the blocking PID if it's safe:
-     ```powershell
-     Stop-Process -Id <PID> -Force
-     ```
-
-6. CORS from browser
-   - If the browser console shows CORS, temporarily allow origins in `config/cors.php` during development:
-     ```php
-     'paths' => ['api/*'],
-     'allowed_methods' => ['*'],
-     'allowed_origins' => ['http://localhost:5173'],
-     'allowed_headers' => ['*'],
-     'supports_credentials' => false,
-     ```
-   - After changing config, run `php artisan config:clear`.
-
-7. Vite + API base URL mismatch
-   - Ensure `frontend/.env` or Vite environment has `VITE_API_URL` set (ex: `VITE_API_URL=http://localhost:8000/api`).
-   - We updated `frontend/src/services/api.ts` to read `import.meta.env.VITE_API_URL` with a fallback. If you change `.env`, restart Vite.
-
-8. Using Docker — container troubleshooting
-   - `docker compose ps` to see containers
-   - `docker compose logs backend` to see Laravel output
-   - If migrations fail in container startup, run them manually inside the container:
-     ```powershell
-     docker compose exec backend bash
-     php artisan migrate
-     ```
-
-9. If all else fails
-   - Try reproducing the exact request with `curl` or Postman to isolate browser/CORS vs server 404.
-   - Share `php artisan route:list` output and the top 50 lines of `storage/logs/laravel.log` and I can help pinpoint the issue.
-
----
-
-## 5) Project resources
-
-- Full audit report: [AUDIT_REPORT.md](./AUDIT_REPORT.md)
-- Project status: [PROJECT_STATUS.md](./PROJECT_STATUS.md)
-- Documentation index: [docs/README.md](./docs/README.md)
-- API documentation (Redoc): [docs/api/index.html](./docs/api/index.html)
+- `package.json`
+- `frontend/package.json`
+- `backend/.env.example`
+- `frontend/.env.example`
+- `docker-compose.yml`
+- `docker-compose.prod.yml`

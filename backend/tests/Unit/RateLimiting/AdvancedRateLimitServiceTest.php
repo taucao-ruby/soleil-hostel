@@ -16,8 +16,12 @@ class AdvancedRateLimitServiceTest extends UnitTestCase
     {
         parent::setUp();
 
-        // Create fresh service for each test (uses memory fallback if Redis unavailable)
+        // Create fresh service and force in-memory fallback for deterministic unit tests.
+        // Redis token bucket refills tokens over elapsed time, causing flaky failures
+        // when the test loop spans a second boundary (common in CI with ParaTest).
         $this->service = new RateLimitService;
+        $ref = new \ReflectionProperty(RateLimitService::class, 'redisHealthy');
+        $ref->setValue($this->service, false);
         // Generate unique test ID to avoid key collisions in parallel runs
         $this->testId = uniqid('unit_'.getmypid().'_', true);
     }

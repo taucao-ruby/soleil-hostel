@@ -93,6 +93,9 @@
         <PossiblyNullReference errorLevel="suppress" />
         <PossiblyNullArgument errorLevel="suppress" />
 
+        <!-- Route::middleware() returns RouteRegistrar but Psalm infers array|RouteRegistrar -->
+        <PossiblyInvalidMethodCall errorLevel="suppress" />
+
         <!-- Eloquent property array type variance -->
         <NonInvariantDocblockPropertyType errorLevel="suppress" />
 

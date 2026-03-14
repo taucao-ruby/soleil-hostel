@@ -48,9 +48,9 @@ describe('DashboardPage', () => {
     expect(skeletons.length).toBeGreaterThanOrEqual(1)
   })
 
-  it('renders GuestDashboard for guest user', () => {
+  it('renders GuestDashboard for regular user', () => {
     mockUseAuth.mockReturnValue({
-      user: { id: 1, name: 'Alice', email: 'a@b.com', role: 'guest' },
+      user: { id: 1, name: 'Alice', email: 'a@b.com', role: 'user' },
       loading: false,
       isAuthenticated: true,
     })
@@ -74,9 +74,9 @@ describe('DashboardPage', () => {
     expect(screen.getByText('Bảng điều khiển quản trị')).toBeInTheDocument()
   })
 
-  it('renders GuestDashboard for staff user (not admin)', () => {
+  it('renders GuestDashboard for moderator (not admin)', () => {
     mockUseAuth.mockReturnValue({
-      user: { id: 1, name: 'Staff', email: 'staff@b.com', role: 'staff' },
+      user: { id: 1, name: 'Moderator', email: 'mod@b.com', role: 'moderator' },
       loading: false,
       isAuthenticated: true,
     })

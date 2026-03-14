@@ -9,17 +9,16 @@
 
 ## 1) Current Snapshot (keep under 12 lines)
 
-- Date updated: 2026-03-11
-- Current branch: `dev`
-- Latest commit: `012ce40` — feat(backend): RBAC hardening with defense-in-depth and permission matrix
-- Latest verified commands: `cd frontend && npx tsc --noEmit` (0 errors), `cd frontend && npx vitest run` (226 tests, 21 suites) — verified 2026-03-11
-- Backend test baseline: `cd backend && php artisan test` (901 tests, 2510 assertions) — verified 2026-03-11
-- Pint baseline: `cd backend && vendor/bin/pint --test` (283 files, 0 style issues) — verified 2026-03-11
-- PHPStan: Level 5 + Larastan installed, baseline 151 pre-existing errors
-- Psalm: `vimeo/psalm ^6.15` installed, Level 1 with suppression config, 0 blocking errors
+- Date updated: 2026-03-14
+- Current branch: `claude/strange-raman` (worktree; targets `dev`)
+- Latest commit: `29300ef` — test(backend): update EmailVerificationTest to use complex password
+- Backend test baseline: 901 tests, 2510 assertions — verified 2026-03-11
+- Frontend test baseline: 226 tests, 21 suites — verified 2026-03-11
+- Pint: 283 files, 0 style issues. PHPStan: Level 5, 151 pre-existing. Psalm: Level 1, 0 blocking.
 - Open findings: F-23 (MD lint — low). All others resolved (F-01–F-22, F-24).
-- **NOTE H-06**: `phpunit.xml` default is now PostgreSQL. `php artisan test` requires PostgreSQL at 127.0.0.1:5432 (`soleil_test`/`soleil`/`secret`). Use `docker compose up -d postgres` before running.
-- Deployment status: Not asserted here; validate pipeline/runbook status before release
+- **Logout-401 (2026-03-14) RESOLVED**: No code bug — stale `soleil_token` cookie from old test users. Curl + browser confirm 200 on login→me→logout. Minor non-critical: `csrf_token()` null on API routes; `api.ts` refresh CSRF path wrong (`data.csrf_token` → should be `data.data.csrf_token`).
+- Test accounts (soleil_test DB): user@soleil.test / admin@soleil.test / moderator@soleil.test — `P@ssworD123`
+- **H-06**: `phpunit.xml` defaults to PostgreSQL; run `docker compose up -d db` before `php artisan test`.
 
 ## 2) Invariants
 

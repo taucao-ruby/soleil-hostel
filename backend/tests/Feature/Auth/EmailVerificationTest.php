@@ -424,8 +424,8 @@ class EmailVerificationTest extends TestCase
         $response = $this->postJson('/api/auth/register', [
             'name' => 'Test User',
             'email' => 'newuser@example.com',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
+            'password' => 'P@ssworD123',
+            'password_confirmation' => 'P@ssworD123',
         ]);
 
         // Assert: Registration successful

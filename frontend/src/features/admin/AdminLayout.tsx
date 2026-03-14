@@ -5,17 +5,17 @@ import AdminSidebar from './AdminSidebar'
 const AdminLayout: React.FC = () => {
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
-      {/* Sidebar - fixed width on desktop, hidden/drawer on mobile (future) */}
+      {/* Sidebar — desktop: static column; mobile: hamburger + slide-over drawer */}
       <AdminSidebar />
 
       {/* Main Content Area */}
       <div className="flex flex-col flex-1 w-0 overflow-hidden">
-        {/* Top Header - simple for now */}
+        {/* Top Header */}
         <header className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200">
           <div className="flex items-center">
-            <h1 className="text-xl font-semibold text-gray-800 hidden md:block">
-              Quản trị hệ thống
-            </h1>
+            {/* Spacer for mobile hamburger button (40px + 12px left) */}
+            <div className="w-10 md:hidden" aria-hidden="true" />
+            <h1 className="text-xl font-semibold text-gray-800">Quản trị hệ thống</h1>
           </div>
           <div className="flex items-center space-x-4">
             {/* Profile placeholder */}

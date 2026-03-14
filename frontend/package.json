@@ -28,7 +28,9 @@
   "pnpm": {
     "overrides": {
       "minimatch": ">=10.2.3",
-      "rollup": ">=4.59.0"
+      "rollup": ">=4.59.0",
+      "flatted": ">=3.4.0",
+      "undici": ">=7.24.0"
     }
   },
   "devDependencies": {

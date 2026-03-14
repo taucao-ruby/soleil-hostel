@@ -1,7 +1,7 @@
 # PRODUCT_GOAL.md — Soleil Hostel
 
 > **Product goals and strategic direction**
-> Last updated: 2026-03-11
+> Last updated: 2026-03-14
 
 ---
 
@@ -62,7 +62,10 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 | Repository Layer                                     | ✅ Complete       | 53 tests      |
 | Email Verification                                   | ✅ Complete       | 26 tests      |
 | PHPStan/Larastan (Level 5)                           | ✅ Installed      | Baseline 151  |
-| **Backend total**                                    | **✅ 17 systems** | **901 tests** |
+| Admin Audit Log (append-only; actor, IP, metadata)  | ✅ Complete       | —             |
+| Customer management (admin guest view + StayJournal) | ✅ Complete       | —             |
+| Password complexity enforcement (registration)       | ✅ Complete       | —             |
+| **Backend total**                                    | **✅ 20 systems** | **901+ tests** |
 
 ### Frontend (React 19 + TypeScript) — 96% complete
 
@@ -75,6 +78,7 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 | Phase 4  | BookingForm: URL param pre-fill, Vietnamese UI, v1 endpoints                 | ✅ Complete |
 | Phase 5  | Booking detail panel, admin restore/force-delete, pagination                 | ✅ Complete |
 | Quality  | AbortController cleanup, vi.hoisted mocks, no-console ESLint, RoomList tests | ✅ Complete |
+| Phase 5+ | Admin panel expansion (AdminLayout, sidebar, room/booking/customer mgmt), RBAC mobile route guard | ✅ Complete |
 | Phase 5+ | Payment UI, i18n, PWA                                                        | 🔄 Next     |
 
 **Frontend tests:** 226 tests across 21 suites (verified March 11, 2026)

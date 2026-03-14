@@ -109,7 +109,7 @@ Application-level values: `available`, `occupied`, `maintenance` (verify in mode
 - One review per booking: `reviews_booking_id_unique` constraint
 - `booking_id` is NOT NULL (migration `2026_02_10_000002`)
 - `approved` column defaults to `false`
-- **Note**: FK `reviews.booking_id → bookings.id` not found at DB level (app-level only)
+- FK `reviews.booking_id → bookings.id` added via migration (F-09 fix, PR-3 2026-02-21)
 
 ## Key Indexes
 
@@ -121,16 +121,24 @@ Critical indexes:
 - `idx_bookings_deleted_at`, `idx_bookings_soft_delete_audit`
 - Token indexes: `token_hash`, `device_id`, `expires_at`, `revoked_at` (Laravel-generated names)
 
+## Admin Audit Log
+
+- `admin_audit_logs` table (append-only): `actor_id`, `action`, `target_type`, `target_id`, `ip_address`, `metadata` (JSON)
+- Written by `AdminAuditService`; integrated into `AdminBookingController`, `RoomController`, `ReviewController`
+- Force-delete records pre-deletion snapshot in `metadata` for forensic recovery
+- Source: RBAC Phase 2, migration `2026_03_11_*`
+
 ## RBAC Permission Baseline
 
 Canonical permission matrix: [docs/PERMISSION_MATRIX.md](../PERMISSION_MATRIX.md)
 
 Current enforcement status: PASS WITH FOLLOW-UPS. Room CUD and admin booking endpoints use defense-in-depth (route middleware + controller-level gate/policy). Moderator role is DEFINED-BUT-LATENT — no distinct moderator capability is CURRENT at Tier 1. Open follow-ups: 5 — see PERMISSION_MATRIX.md.
 
-## Missing DB Constraints (Backlog)
+## DB Constraints Added (formerly backlog)
 
-These are documented in `DB_FACTS.md` as absent:
-- `CHECK (check_out > check_in)` on bookings — not in migrations
-- `CHECK (rating BETWEEN 1 AND 5)` on reviews — not in migrations
-- `CHECK (price >= 0)` on rooms — not in migrations
-- FK `reviews.booking_id → bookings.id` — not in migrations
+All four previously absent constraints added via migrations (audit v2, PR-2 + PR-3, 2026-02-21):
+- `CHECK (check_out > check_in)` on bookings — **added** (F-06 fixed)
+- `CHECK (rating BETWEEN 1 AND 5)` on reviews — **added** (F-07 fixed)
+- `CHECK (price >= 0)` on rooms — **added** (F-08 fixed)
+- FK `reviews.booking_id -> bookings.id` — **added** (F-09 fixed)
+

@@ -174,7 +174,7 @@ class RoomService
 **Request:**
 
 ```http
-PUT /api/rooms/1
+PUT /api/v1/rooms/1
 Content-Type: application/json
 
 {
@@ -214,7 +214,7 @@ Content-Type: application/json
 
 ```typescript
 async function updateRoom(id: number, data: RoomData): Promise<Room> {
-  const response = await fetch(`/api/rooms/${id}`, {
+  const response = await fetch(`/api/v1/rooms/${id}`, {
     method: "PUT",
     body: JSON.stringify({ ...data, lock_version: data.lock_version }),
   });
@@ -251,13 +251,13 @@ function updateWithRetry(Room $room, array $data, int $maxAttempts = 3): Room
 
 ## API Endpoints
 
-| Method | Endpoint          | Description         |
-| ------ | ----------------- | ------------------- |
-| GET    | `/api/rooms`      | List all rooms      |
-| POST   | `/api/rooms`      | Create room (Admin) |
-| GET    | `/api/rooms/{id}` | View room           |
-| PUT    | `/api/rooms/{id}` | Update room (Admin) |
-| DELETE | `/api/rooms/{id}` | Delete room (Admin) |
+| Method | Endpoint             | Description         |
+| ------ | -------------------- | ------------------- |
+| GET    | `/api/v1/rooms`      | List all rooms      |
+| POST   | `/api/v1/rooms`      | Create room (Admin) |
+| GET    | `/api/v1/rooms/{id}` | View room           |
+| PUT    | `/api/v1/rooms/{id}` | Update room (Admin) |
+| DELETE | `/api/v1/rooms/{id}` | Delete room (Admin) |
 
 ---
 

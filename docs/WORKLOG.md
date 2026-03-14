@@ -1,5 +1,16 @@
 ﻿# WORKLOG — Soleil Hostel (Append-only)
 
+## 2026-03-14
+
+- Change: Docs sync v7 — 5-batch truth-alignment pass in worktree `claude/magical-bardeen`.
+- Batch 1 (RBAC surface): Fixed moderator access rows A7/A8/A9 (DENIED→ALLOWED), Table B booking:view-all, Contradiction C1 (LATENT-SHADOWED→LATENT), C2/C6; updated RBAC.md moderator capability labels; POLICIES.md: added ReviewPolicy overview entry, fixed viewAny note. Source: v1.php line 57 (`role:moderator`), AdminBookingController (`Gate::authorize('view-all-bookings')`).
+- Batch 2 (Reviews domain): Added `booking_id` to REVIEWS.md schema/fillable/relations/form request; removed 4 phantom endpoints (`GET /rooms/{room}/reviews`, `GET /reviews/{id}`, `POST /reviews/import`, `GET /reviews/audit`); fixed `is_approved` → `approved` (9 occurrences). Source: 5 review migrations, Review model, ReviewPolicy.
+- Batch 3 (Path prefix): Normalized `/api/` → `/api/v1/` in BOOKING.md (11 paths), ROOMS.md (7 paths), AUTHENTICATION.md (2 paths); added `guest_email` to create-booking example. Auth/email paths marked UNVERIFIED (not in v1.php).
+- Batch 4 (Frontend inventory): TESTING.md: 19→21 files, 194→226 tests, removed phantom `booking.constants.test.ts`. FEATURES_LAYER.md: removed `booking.constants.ts` (absent), added `AdminRoute.tsx`/`AdminSidebar.tsx`/`BookingDetailPanel.tsx`/`BookingDetailPage.tsx`; cleaned cross-feature deps and "What Does NOT Exist".
+- Batch 5 (Metadata hygiene): ARCHITECTURE_FACTS.md: `target_type`/`target_id` → `resource_type`/`resource_id` (migration-verified), ReviewController IMPLEMENTED label added. COMPACT.md: commit hash `ef138cc` → `d6fc4db`. AUDIT_2026_03_12_STRUCTURE.md: snapshot note added. FINDINGS_BACKLOG.md: F-24 / F-25 ordering corrected.
+- Files changed (13): PERMISSION_MATRIX.md, RBAC.md, POLICIES.md, REVIEWS.md, BOOKING.md, ROOMS.md, AUTHENTICATION.md, TESTING.md, FEATURES_LAYER.md, ARCHITECTURE_FACTS.md, COMPACT.md, AUDIT_2026_03_12_STRUCTURE.md, FINDINGS_BACKLOG.md.
+- Verification: docs-only task — no gate runs required.
+
 ## 2026-03-11
 
 - Change: Docs sync v6 — truth-alignment pass after RBAC hardening (commit `012ce40`, Mar 10).

@@ -1,5 +1,7 @@
 # Repository Structure Audit — 2026-03-12
 
+> NOTE: Snapshot as of 2026-03-12. Current baseline: 901 tests.
+
 Full monorepo structure audit of the Soleil Hostel repository.
 
 ## Audit Summary

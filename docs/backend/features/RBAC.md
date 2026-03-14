@@ -13,7 +13,7 @@ Soleil Hostel uses a **backed string enum** for user roles with Laravel Gates fo
 | Role      | Level | Value         | Permissions                                            |
 | --------- | ----- | ------------- | ------------------------------------------------------ |
 | USER      | 1     | `'user'`      | Own bookings only                                      |
-| MODERATOR | 2     | `'moderator'` | + View all bookings, moderate content, approve reviews |
+| MODERATOR | 2     | `'moderator'` | + View all bookings (ROUTE-ACCESSIBLE: route `role:moderator` + gate `view-all-bookings`; read-only, A7/A8 tested, A9 FOLLOW-UP REQUIRED), moderate content via contact messages (ROUTE-ACCESSIBLE: route `role:moderator`; gate `moderate-content` invocation in ContactController UNVERIFIED), approve reviews (UNVERIFIED: no moderator-specific route or gate found in v1.php) |
 | ADMIN     | 3     | `'admin'`     | + Manage users, rooms, restore bookings, system config |
 
 **Hierarchy-aware**: Higher roles inherit lower role permissions.

@@ -10,7 +10,8 @@ src/features/
 │   ├── AuthContext.tsx         # Auth provider + useAuth hook (+test)
 │   ├── LoginPage.tsx           # Login form (+test)
 │   ├── RegisterPage.tsx        # Registration form (+test)
-│   └── ProtectedRoute.tsx      # Auth guard component
+│   ├── ProtectedRoute.tsx      # Auth guard component
+│   └── AdminRoute.tsx          # Admin-only auth guard (+test)
 ├── booking/
 │   ├── BookingForm.tsx         # Booking creation form (+test) — URL params pre-fill, Vietnamese UI
 │   ├── booking.api.ts          # createBooking, fetchMyBookings, cancelBooking
@@ -20,9 +21,11 @@ src/features/
 │   ├── GuestDashboard.tsx      # Guest "My Bookings" with filter tabs & cancel (+test)
 │   ├── useMyBookings.ts        # useMyBookingsQuery + useCancelBookingMutation hooks
 │   ├── bookingViewModel.ts     # toBookingViewModel, isUpcoming, isPast (+test)
-│   └── booking.constants.ts    # getStatusConfig, formatDateVN, formatDateRangeVN (+test)
+│   ├── BookingDetailPanel.tsx  # Booking detail panel component (+test)
+│   └── BookingDetailPage.tsx   # Booking detail page
 ├── admin/
 │   ├── AdminDashboard.tsx      # Admin 3-tab view: Bookings / Trashed / Contacts (+test)
+│   ├── AdminSidebar.tsx        # Admin navigation sidebar (+test)
 │   ├── admin.api.ts            # fetchAdminBookings, fetchTrashedBookings, fetchContactMessages
 │   └── admin.types.ts          # AdminBookingRaw, ContactMessageRaw, response wrappers
 ├── locations/
@@ -34,7 +37,7 @@ src/features/
 │   ├── constants.ts            # Amenity icon mapping
 │   └── index.ts                # Barrel exports
 ├── rooms/
-│   ├── RoomList.tsx            # Rooms grid page
+│   ├── RoomList.tsx            # Rooms grid page (+test)
 │   ├── room.api.ts             # getRooms
 │   └── room.types.ts           # Room, RoomsResponse
 └── home/
@@ -44,7 +47,7 @@ src/features/
         ├── FilterChips.tsx     # Filter chip row (+test)
         ├── RoomCard.tsx        # Room preview card
         ├── BottomNav.tsx       # Mobile bottom nav tabs
-        ├── HeaderMobile.tsx    # Mobile sticky header
+        ├── HeaderMobile.tsx    # Mobile sticky header (+test)
         ├── PromoBanner.tsx     # Promotional banner
         └── ReviewsCarousel.tsx # Reviews display
 ```
@@ -457,7 +460,7 @@ Full booking management UI for authenticated guests.
 - `ConfirmDialog` for cancel confirmation with pending state
 - Loading: 3× `Skeleton` cards; Error: inline retry; Empty: "Đặt phòng ngay" CTA link
 
-**Imports:** `useMyBookings`, `bookingViewModel`, `booking.constants`, `shared/ui`, `utils/toast`
+**Imports:** `useMyBookings`, `bookingViewModel`, `shared/ui`, `utils/toast`
 
 ### useMyBookings.ts
 
@@ -503,23 +506,6 @@ export function toBookingViewModel(raw: BookingApiRaw): BookingViewModel
 export function isUpcoming(booking: BookingViewModel): boolean  // checkIn >= today
 export function isPast(booking: BookingViewModel): boolean      // checkOut < today
 ```
-
-### booking.constants.ts
-
-Single source of truth for status badge rendering and date formatting:
-
-```typescript
-// Returns { label: string, colorClass: string } for a booking status string
-export function getStatusConfig(status: string): StatusConfig
-
-// Format Date → Vietnamese "dd/MM/yyyy"
-export function formatDateVN(date: Date): string
-
-// Format check-in — check-out as Vietnamese range
-export function formatDateRangeVN(checkIn: Date, checkOut: Date): string
-```
-
-**Status coverage:** `pending`, `confirmed`, `cancelled`, `completed`, `refund_pending`, `refund_failed`
 
 ---
 
@@ -597,7 +583,6 @@ booking/  → rooms/         (imports getRooms, Room type for room selection in 
 booking/  → shared/utils   (imports isValidEmail for validation)
 bookings/ → booking/       (imports fetchMyBookings, cancelBooking, BookingApiRaw)
 admin/    → booking/       (imports BookingApiRaw for AdminBookingRaw extension)
-admin/    → bookings/      (imports getStatusConfig, formatDateRangeVN, formatDateVN)
 auth/     → shared/lib     (imports api client)
 auth/     → shared/utils   (imports setCsrfToken, clearCsrfToken)
 rooms/    → shared/lib     (imports api client)
@@ -613,6 +598,7 @@ locations/ → shared/lib    (imports api client)
 
 Previously documented but not present in the actual codebase:
 
+- **No `booking.constants.ts`** in `features/bookings/` — File is absent; status/date formatting logic (`getStatusConfig`, `formatDateVN`, `formatDateRangeVN`) lives in `shared/lib/booking.utils.ts`
 - **No `RoomCard.tsx`** in `features/rooms/` — Room cards are rendered inline in `RoomList.tsx`
 - **No Zod schemas** — All validation uses plain TypeScript functions
 - **No `react-hot-toast`** — Auth pages use inline error/success states; dashboard uses `react-toastify`

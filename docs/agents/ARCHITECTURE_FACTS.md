@@ -123,8 +123,8 @@ Critical indexes:
 
 ## Admin Audit Log
 
-- `admin_audit_logs` table (append-only): `actor_id`, `action`, `target_type`, `target_id`, `ip_address`, `metadata` (JSON)
-- Written by `AdminAuditService`; integrated into `AdminBookingController`, `RoomController`, `ReviewController`
+- `admin_audit_logs` table (append-only): `actor_id`, `action`, `resource_type`, `resource_id`, `ip_address`, `metadata` (JSON)
+- Written by `AdminAuditService`; integrated into `AdminBookingController`, `RoomController`, `ReviewController` (IMPLEMENTED)
 - Force-delete records pre-deletion snapshot in `metadata` for forensic recovery
 - Source: RBAC Phase 2, migration `2026_03_11_*`
 

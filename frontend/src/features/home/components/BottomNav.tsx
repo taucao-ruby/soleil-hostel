@@ -1,22 +1,25 @@
-import React, { useState } from 'react'
+import React from 'react'
+import { Link, useLocation } from 'react-router-dom'
+import { useAuth } from '@/features/auth/AuthContext'
 
 /**
  * BottomNav — 4-tab sticky bottom navigation for mobile.
  *
+ * Route-driven: active tab derived from `useLocation`, not local state.
+ * Auth-aware: "Tài khoản" links to /dashboard when authenticated, /login otherwise.
+ *
  * Defect fixes:
  *   H-01: Labels are navigation destinations only. "Cuộn xuống" (or any action verb)
  *         is FORBIDDEN. Labels: Trang chủ | Phòng | Đặt phòng | Tài khoản.
- *
- * Uses local useState (not useLocation) per spec § 08 — makes testing simpler
- * and avoids Router context dependency for the nav itself.
- * Each tab is a <button> with aria-label + aria-current.
+ *   M-02: Tabs now use <Link> and useLocation instead of dead useState.
  */
 
-type TabId = 'home' | 'rooms' | 'booking' | 'account'
-
 interface Tab {
-  id: TabId
+  id: string
   label: string
+  path: string
+  /** Alternate path when user is authenticated */
+  authPath?: string
   icon: React.ReactNode
 }
 
@@ -24,6 +27,7 @@ const TABS: Tab[] = [
   {
     id: 'home',
     label: 'Trang chủ',
+    path: '/',
     icon: (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -45,6 +49,7 @@ const TABS: Tab[] = [
   {
     id: 'rooms',
     label: 'Phòng',
+    path: '/rooms',
     icon: (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -66,6 +71,7 @@ const TABS: Tab[] = [
   {
     id: 'booking',
     label: 'Đặt phòng',
+    path: '/booking',
     icon: (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -87,6 +93,8 @@ const TABS: Tab[] = [
   {
     id: 'account',
     label: 'Tài khoản',
+    path: '/login',
+    authPath: '/dashboard',
     icon: (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -107,8 +115,27 @@ const TABS: Tab[] = [
   },
 ]
 
+/**
+ * Match current location pathname to a tab id.
+ * Exact match for "/" to avoid false positives on "/" prefix.
+ */
+function getActiveTabId(pathname: string): string {
+  if (pathname === '/') return 'home'
+  if (pathname.startsWith('/rooms')) return 'rooms'
+  if (pathname.startsWith('/booking')) return 'booking'
+  if (
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/register')
+  )
+    return 'account'
+  return ''
+}
+
 const BottomNav: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabId>('home')
+  const location = useLocation()
+  const { isAuthenticated } = useAuth()
+  const activeTabId = getActiveTabId(location.pathname)
 
   return (
     <nav
@@ -118,13 +145,14 @@ const BottomNav: React.FC = () => {
     >
       <div className="grid grid-cols-4 h-14">
         {TABS.map(tab => {
-          const isActive = activeTab === tab.id
+          const isActive = activeTabId === tab.id
+          const href = tab.authPath && isAuthenticated ? tab.authPath : tab.path
           return (
-            <button
+            <Link
               key={tab.id}
+              to={href}
               aria-label={tab.label}
               aria-current={isActive ? 'page' : undefined}
-              onClick={() => setActiveTab(tab.id)}
               className={[
                 'relative flex flex-col items-center justify-center gap-0.5',
                 'text-xs font-sans font-medium',
@@ -142,7 +170,7 @@ const BottomNav: React.FC = () => {
               )}
               {tab.icon}
               {tab.label}
-            </button>
+            </Link>
           )
         })}
       </div>

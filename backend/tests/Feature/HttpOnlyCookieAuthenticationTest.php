@@ -56,7 +56,7 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
             'success',
             'message',
             'data' => [
-                'user' => ['id', 'name', 'email'],
+                'user' => ['id', 'name', 'email', 'role'],
                 'csrf_token',
                 'expires_in_minutes',
                 'expires_at',
@@ -335,7 +335,7 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
         $response->assertJsonStructure([
             'success',
             'data' => [
-                'user' => ['id', 'name', 'email'],
+                'user' => ['id', 'name', 'email', 'role'],
                 'token' => ['name', 'type', 'expires_at'],
             ],
         ]);

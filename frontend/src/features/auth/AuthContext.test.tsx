@@ -75,7 +75,7 @@ describe('AuthContext', () => {
       data: {
         success: true,
         data: {
-          user: { id: 1, name: 'Test User', email: 'test@example.com', role: 'guest' },
+          user: { id: 1, name: 'Test User', email: 'test@example.com', role: 'user' },
         },
       },
     })
@@ -120,7 +120,7 @@ describe('AuthContext', () => {
       data: {
         success: true,
         data: {
-          user: { id: 1, name: 'Logged In', email: 'test@example.com', role: 'guest' },
+          user: { id: 1, name: 'Logged In', email: 'test@example.com', role: 'user' },
           csrf_token: 'new-csrf',
         },
         message: 'Login thành công.',
@@ -179,7 +179,7 @@ describe('AuthContext', () => {
       data: {
         success: true,
         data: {
-          user: { id: 1, name: 'Logged In', email: 'test@example.com', role: 'guest' },
+          user: { id: 1, name: 'Logged In', email: 'test@example.com', role: 'user' },
           csrf_token: 'csrf',
         },
         message: 'Login thành công.',

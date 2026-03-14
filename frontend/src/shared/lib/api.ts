@@ -174,7 +174,17 @@ api.interceptors.response.use(
       }
     }
 
-    // Not a 401 or already retried - reject error
+    // 403 Forbidden — user authenticated but lacks permission (UX feedback only;
+    // backend middleware is the actual enforcement layer)
+    if (error.response?.status === 403) {
+      // Lazy-import toast to avoid circular dependency
+      void import('@/shared/utils/toast').then(({ showToast }) => {
+        showToast.error('Bạn không có quyền thực hiện thao tác này.')
+      })
+      return Promise.reject(error)
+    }
+
+    // Not a 401/403 or already retried - reject error
     return Promise.reject(error)
   }
 )

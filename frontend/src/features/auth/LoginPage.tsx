@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthContext'
 
 /**
@@ -11,11 +11,12 @@ import { useAuth } from './AuthContext'
  * - Loading/error/success states
  * - Redirect after successful login
  * - Link to registration
+ * - G-06 fix: redirect to /dashboard if already authenticated
  */
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate()
-  const { loginHttpOnly, error: authError, clearError } = useAuth()
+  const { isAuthenticated, loginHttpOnly, error: authError, clearError } = useAuth()
 
   const [formData, setFormData] = useState({
     email: '',
@@ -25,6 +26,12 @@ const LoginPage: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+
+  // G-06: Already authenticated → redirect to dashboard
+  // Must be AFTER all hooks to comply with React Rules of Hooks
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />
+  }
 
   /**
    * Validate form data

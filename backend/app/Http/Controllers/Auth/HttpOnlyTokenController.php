@@ -109,6 +109,7 @@ class HttpOnlyTokenController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'role' => $user->role,
             ],
             'expires_in_minutes' => $expiresInMinutes,
             'expires_at' => $expiresAt->toIso8601String(),
@@ -292,6 +293,7 @@ class HttpOnlyTokenController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'role' => $user->role,
             ],
             'token' => [
                 'name' => $token->name,

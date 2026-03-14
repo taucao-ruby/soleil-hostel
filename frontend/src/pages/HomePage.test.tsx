@@ -7,10 +7,18 @@
  */
 import { describe, test, expect, vi, beforeEach } from 'vitest'
 import { render, screen, within, fireEvent } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import HomePage from './HomePage'
 import BottomNav from '@/features/home/components/BottomNav'
+
+// BottomNav + HeaderMobile use useAuth — provide default unauthenticated state
+const { mockUseAuth } = vi.hoisted(() => ({
+  mockUseAuth: vi.fn(),
+}))
+
+vi.mock('@/features/auth/AuthContext', () => ({
+  useAuth: mockUseAuth,
+}))
 
 // SearchCard now fetches locations on mount — mock to prevent unhandled requests
 vi.mock('@/shared/lib/location.api', () => ({
@@ -41,6 +49,14 @@ vi.mock('@/shared/lib/location.api', () => ({
 
 // jsdom does not implement window.matchMedia — minimal stub
 beforeEach(() => {
+  // Default: unauthenticated user
+  mockUseAuth.mockReturnValue({
+    user: null,
+    isAuthenticated: false,
+    loading: false,
+    logoutHttpOnly: vi.fn(),
+  })
+
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
     value: vi.fn().mockImplementation((query: string) => ({
@@ -177,35 +193,53 @@ describe('Room cards', () => {
   })
 })
 
-describe('BottomNav — standalone', () => {
+describe('BottomNav — standalone (route-driven)', () => {
+  const renderBottomNav = (initialEntries: string[] = ['/']) =>
+    render(
+      <MemoryRouter initialEntries={initialEntries}>
+        <BottomNav />
+      </MemoryRouter>
+    )
+
   test('renders exactly 4 tabs with correct Vietnamese labels (H-01 regression)', () => {
-    render(<BottomNav />)
+    renderBottomNav()
     const nav = screen.getByRole('navigation', { name: /điều hướng/i })
-    const tabs = within(nav).getAllByRole('button')
+    const tabs = within(nav).getAllByRole('link')
     expect(tabs).toHaveLength(4)
-    expect(screen.getByRole('button', { name: /Trang chủ/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Phòng' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Đặt phòng/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Tài khoản/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Trang chủ/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Phòng' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Đặt phòng/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Tài khoản/i })).toBeInTheDocument()
   })
 
-  test('home tab is active by default (aria-current="page")', () => {
-    render(<BottomNav />)
-    const homeTab = screen.getByRole('button', { name: /Trang chủ/i })
+  test('home tab is active when on "/" (aria-current="page")', () => {
+    renderBottomNav(['/'])
+    const homeTab = screen.getByRole('link', { name: /Trang chủ/i })
     expect(homeTab).toHaveAttribute('aria-current', 'page')
   })
 
-  test('clicking Phòng tab makes it active and Trang chủ inactive', async () => {
-    const user = userEvent.setup()
-    render(<BottomNav />)
-
-    // Use exact label to avoid matching "Đặt phòng"
-    await user.click(screen.getByRole('button', { name: 'Phòng' }))
-
-    expect(screen.getByRole('button', { name: 'Phòng' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('button', { name: /Trang chủ/i })).not.toHaveAttribute(
+  test('rooms tab is active when on "/rooms"', () => {
+    renderBottomNav(['/rooms'])
+    expect(screen.getByRole('link', { name: 'Phòng' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: /Trang chủ/i })).not.toHaveAttribute(
       'aria-current',
       'page'
     )
+  })
+
+  test('account tab links to /login when not authenticated', () => {
+    renderBottomNav()
+    expect(screen.getByRole('link', { name: /Tài khoản/i })).toHaveAttribute('href', '/login')
+  })
+
+  test('account tab links to /dashboard when authenticated', () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 1, name: 'Test', email: 'test@test.com', role: 'user' },
+      isAuthenticated: true,
+      loading: false,
+      logoutHttpOnly: vi.fn(),
+    })
+    renderBottomNav()
+    expect(screen.getByRole('link', { name: /Tài khoản/i })).toHaveAttribute('href', '/dashboard')
   })
 })

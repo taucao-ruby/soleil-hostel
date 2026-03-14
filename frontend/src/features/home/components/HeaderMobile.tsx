@@ -1,19 +1,36 @@
 import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '@/features/auth/AuthContext'
 
 /**
  * HeaderMobile — sticky top header for the public homepage.
  * Transitions from transparent to warmWhite/blur as user scrolls.
+ *
+ * Auth-aware (M-03 fix):
+ *   Unauthenticated → Xem phòng | Đăng nhập | Đăng ký
+ *   Authenticated   → Xem phòng | Bảng điều khiển | Đăng xuất
  */
 const HeaderMobile: React.FC = () => {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const { isAuthenticated, user, logoutHttpOnly } = useAuth()
+  const navigate = useNavigate()
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 40)
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  const handleLogout = async () => {
+    setMenuOpen(false)
+    try {
+      await logoutHttpOnly()
+      navigate('/')
+    } catch {
+      // Logout API failure is non-critical
+    }
+  }
 
   return (
     <header
@@ -100,20 +117,45 @@ const HeaderMobile: React.FC = () => {
           >
             Xem phòng
           </Link>
-          <Link
-            to="/login"
-            className="py-2 text-sm font-sans text-woodDark hover:text-orangeCTA transition-colors"
-            onClick={() => setMenuOpen(false)}
-          >
-            Đăng nhập
-          </Link>
-          <Link
-            to="/register"
-            className="py-2 text-sm font-sans text-woodDark hover:text-orangeCTA transition-colors"
-            onClick={() => setMenuOpen(false)}
-          >
-            Đăng ký
-          </Link>
+          {isAuthenticated ? (
+            <>
+              <Link
+                to="/dashboard"
+                className="py-2 text-sm font-sans text-woodDark hover:text-orangeCTA transition-colors"
+                onClick={() => setMenuOpen(false)}
+              >
+                Bảng điều khiển
+              </Link>
+              <div className="border-t border-soleilBorder mt-1 pt-2 flex items-center justify-between">
+                <span className="text-xs text-woodDark/60 font-sans truncate">
+                  {user?.name ?? user?.email}
+                </span>
+                <button
+                  onClick={handleLogout}
+                  className="text-sm font-sans font-medium text-orangeCTA hover:text-orangeHover transition-colors"
+                >
+                  Đăng xuất
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                className="py-2 text-sm font-sans text-woodDark hover:text-orangeCTA transition-colors"
+                onClick={() => setMenuOpen(false)}
+              >
+                Đăng nhập
+              </Link>
+              <Link
+                to="/register"
+                className="py-2 text-sm font-sans text-woodDark hover:text-orangeCTA transition-colors"
+                onClick={() => setMenuOpen(false)}
+              >
+                Đăng ký
+              </Link>
+            </>
+          )}
         </nav>
       )}
     </header>

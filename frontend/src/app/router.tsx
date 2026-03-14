@@ -3,6 +3,7 @@ import { createBrowserRouter, RouterProvider, Outlet, useNavigate } from 'react-
 import { AuthProvider } from '@/features/auth/AuthContext'
 import { setNavigate } from '@/shared/lib/navigation'
 import ProtectedRoute from '@/features/auth/ProtectedRoute'
+import AdminRoute from '@/features/auth/AdminRoute'
 import LoadingSpinner from '@/shared/components/feedback/LoadingSpinner'
 import Layout from './Layout'
 import NotFoundPage from '@/pages/NotFoundPage'
@@ -187,13 +188,18 @@ export const router = createBrowserRouter([
         ],
       },
       // Admin routes — Uses AdminLayout (Sidebar + content area)
+      // ProtectedRoute = auth guard; AdminRoute = UX-only role guard (backend enforces)
       {
         path: '/admin',
         element: (
           <ProtectedRoute>
-            <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Loading Admin..." />}>
-              <AdminLayout />
-            </Suspense>
+            <AdminRoute>
+              <Suspense
+                fallback={<LoadingSpinner size="xl" fullScreen message="Loading Admin..." />}
+              >
+                <AdminLayout />
+              </Suspense>
+            </AdminRoute>
           </ProtectedRoute>
         ),
         children: [

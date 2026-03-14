@@ -6,7 +6,7 @@
 
 | Layer       | Framework                       | Status     | Files | Tests |
 | ----------- | ------------------------------- | ---------- | ----- | ----- |
-| Unit/Integ. | Vitest + @testing-library/react | Active     | 19    | 194   |
+| Unit/Integ. | Vitest + @testing-library/react | Active     | 24    | 236   |
 | E2E         | Playwright                      | Scaffolded | 1     | -     |
 
 ## 1. Vitest Configuration
@@ -47,6 +47,7 @@ pnpm test:watch       # Watch mode for development
 
 | File                     | Tests | Coverage                                    |
 | ------------------------ | ----- | ------------------------------------------- |
+| `AdminRoute.test.tsx`    | 5     | Admin-only auth guard, role checks, redirect |
 | `AuthContext.test.tsx`   | 8     | Login, logout, register, error states       |
 | `LoginPage.test.tsx`     | 9     | Form rendering, validation, submission      |
 | `RegisterPage.test.tsx`  | 16    | Form validation, password rules, submission |
@@ -55,23 +56,25 @@ pnpm test:watch       # Watch mode for development
 
 | File                          | Tests | Coverage                                                  |
 | ----------------------------- | ----- | --------------------------------------------------------- |
+| `BookingDetailPanel.test.tsx` | 13    | Detail panel states, loading, retry, keyboard/backdrop close |
 | `BookingForm.test.tsx`        | 12    | Form rendering, room dropdown, URL params pre-fill        |
 | `booking.validation.test.ts`  | 20    | Date validation, night calculation                        |
 | `bookingViewModel.test.ts`    | 12    | toBookingViewModel, isUpcoming, isPast, canCancel         |
-| `booking.constants.test.ts`   | 6     | getStatusConfig, formatDateVN, formatDateRangeVN          |
 
 ### Dashboard Tests
 
-| File                        | Tests | Coverage                                            |
-| --------------------------- | ----- | --------------------------------------------------- |
-| `GuestDashboard.test.tsx`   | 8     | Loading skeleton, empty state, booking cards, tabs  |
-| `AdminDashboard.test.tsx`   | 8     | Tab rendering, loading, data display, error states  |
-| `DashboardPage.test.tsx`    | 5     | Role-based routing (admin vs guest), loading state  |
+| File                        | Tests | Coverage                                              |
+| --------------------------- | ----- | ----------------------------------------------------- |
+| `AdminSidebar.test.tsx`     | 8     | Desktop sidebar, hamburger trigger, slide-over drawer |
+| `GuestDashboard.test.tsx`   | 8     | Loading skeleton, empty state, booking cards, tabs    |
+| `AdminDashboard.test.tsx`   | 8     | Tab rendering, loading, data display, error states    |
+| `DashboardPage.test.tsx`    | 5     | Role-based routing (admin vs guest), loading state    |
 
 ### Home Tests
 
 | File                      | Tests | Coverage                                          |
 | ------------------------- | ----- | ------------------------------------------------- |
+| `HeaderMobile.test.tsx`   | 8     | Logo, auth states (guest/user), hamburger toggle  |
 | `HomePage.test.tsx`       | 14    | Hero, search form, tabs, room cards, CTA links    |
 | `FilterChips.test.tsx`    | 4     | Chip rendering, active state, click handler       |
 | `SearchCard.test.tsx`     | 8     | Loading, location dropdown, navigation on submit  |
@@ -82,6 +85,12 @@ pnpm test:watch       # Watch mode for development
 | ------------------------- | ----- | --------------------------------- |
 | `LocationsNav.test.tsx`   | 3     | Nav link rendering, active styles |
 
+### Room Tests
+
+| File                  | Tests | Coverage                                                      |
+| --------------------- | ----- | ------------------------------------------------------------- |
+| `RoomList.test.tsx`   | 8     | Loading skeleton, room cards, empty state, error, status badges |
+
 ### Shared Component Tests
 
 | File              | Tests | Coverage                            |
@@ -91,11 +100,12 @@ pnpm test:watch       # Watch mode for development
 
 ### Utility Tests
 
-| File               | Tests | Coverage                              |
-| ------------------ | ----- | ------------------------------------- |
-| `csrf.test.ts`     | 6     | Token get/set/clear, header injection |
-| `security.test.ts` | 22    | XSS sanitization, URL validation      |
-| `api.test.ts`      | 6     | Interceptors, error handling, refresh |
+| File                    | Tests | Coverage                                         |
+| ----------------------- | ----- | ------------------------------------------------ |
+| `booking.utils.test.ts` | 6     | getStatusConfig, formatDateVN, formatDateRangeVN |
+| `csrf.test.ts`          | 6     | Token get/set/clear, header injection            |
+| `security.test.ts`      | 22    | XSS sanitization, URL validation                 |
+| `api.test.ts`           | 6     | Interceptors, error handling, refresh            |
 
 ---
 
@@ -177,11 +187,11 @@ cd frontend && npx vitest run src/features/auth/LoginPage.test.tsx
 cd frontend && npx vitest run --coverage
 ```
 
-### Latest Results (February 25, 2026)
+### Latest Results (March 14, 2026 — source-calculated)
 
 ```text
-Test Files  19 passed (19)
-     Tests  194 passed (194)
+Test Files  24 passed (24)
+     Tests  236 passed (236)
   Duration  ~16s
 ```
 

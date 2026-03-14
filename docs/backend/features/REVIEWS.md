@@ -11,7 +11,7 @@ Hệ thống reviews cho phép guests đánh giá phòng với **multi-layer XSS
 | Input      | FormRequest          | Validate + auto-purify     |
 | Model      | Purifiable trait     | Double-check on save       |
 | Output     | @purify directive    | Safe rendering in Blade    |
-| Moderation | is_approved workflow | Admin review before public |
+| Moderation | approved workflow | Admin review before public |
 
 ---
 
@@ -30,8 +30,10 @@ class Review extends Model
         'rating',
         'room_id',
         'user_id',
+        'booking_id',
         'guest_name',
         'guest_email',
+        'approved',
     ];
 
     // Auto-purify these fields on save
@@ -50,6 +52,11 @@ class Review extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function booking(): BelongsTo
+    {
+        return $this->belongsTo(Booking::class);
     }
 
     // Scopes
@@ -74,22 +81,26 @@ class Review extends Model
 
 ## Database Schema
 
+> NOTE: approval column is `approved` (BOOLEAN) — not `is_approved`
+
 ```sql
 CREATE TABLE reviews (
     id BIGSERIAL PRIMARY KEY,
     room_id BIGINT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
     user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    booking_id BIGINT NOT NULL UNIQUE REFERENCES bookings(id) ON DELETE RESTRICT,
     guest_name VARCHAR(255) NOT NULL,
     guest_email VARCHAR(255),
     title VARCHAR(255) NOT NULL,
     content TEXT NOT NULL,
     rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
-    is_approved BOOLEAN DEFAULT FALSE,
+    approved BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP,
     updated_at TIMESTAMP
 );
 
-CREATE INDEX idx_reviews_room_approved ON reviews (room_id, is_approved);
+-- Unique constraint name: reviews_booking_id_unique
+CREATE INDEX idx_reviews_room_approved ON reviews (room_id, approved);
 CREATE INDEX idx_reviews_rating ON reviews (rating);
 ```
 
@@ -97,15 +108,11 @@ CREATE INDEX idx_reviews_rating ON reviews (rating);
 
 ## API Endpoints
 
-| Method | Endpoint                | Description           | Auth   |
-| ------ | ----------------------- | --------------------- | ------ |
-| GET    | `/rooms/{room}/reviews` | List approved reviews | Public |
-| POST   | `/reviews`              | Create new review     | Auth   |
-| GET    | `/reviews/{id}`         | View single review    | Public |
-| PATCH  | `/reviews/{id}`         | Update own review     | Owner  |
-| DELETE | `/reviews/{id}`         | Delete own review     | Owner  |
-| POST   | `/reviews/import`       | Bulk import (CSV)     | Admin  |
-| GET    | `/reviews/audit`        | Audit XSS attempts    | Admin  |
+| Method    | Endpoint               | Description       | Auth        |
+| --------- | ---------------------- | ----------------- | ----------- |
+| POST      | `/reviews`             | Create new review | Auth        |
+| PUT/PATCH | `/reviews/{review}`    | Update own review | Owner       |
+| DELETE    | `/reviews/{review}`    | Delete own review | Owner/Admin |
 
 ---
 
@@ -119,10 +126,10 @@ class StoreReviewRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'booking_id' => 'required|integer|exists:bookings,id',
             'title' => 'required|string|max:255',
             'content' => 'required|string|max:5000',
             'rating' => 'required|integer|min:1|max:5',
-            'room_id' => 'required|integer|exists:rooms,id',
         ];
     }
 
@@ -201,9 +208,9 @@ trait Purifiable
 
 ```
 1. Guest submits review
-2. is_approved = false (default)
+2. approved = false (default)
 3. Admin reviews in dashboard
-4. Admin approves → is_approved = true
+4. Admin approves → approved = true
 5. Review appears publicly
 ```
 
@@ -213,60 +220,11 @@ trait Purifiable
 public function index(Room $room)
 {
     $reviews = $room->reviews()
-        ->where('is_approved', true)  // Only show approved
+        ->where('approved', true)  // Only show approved
         ->latest('created_at')
         ->paginate(15);
 
     return view('reviews.index', compact('reviews'));
-}
-```
-
----
-
-## Admin Features
-
-### Bulk Import
-
-```php
-public function importReviews(Request $request)
-{
-    Gate::authorize('admin');
-
-    $csvData = $request->file('csv')->getContent();
-    $lines = explode("\n", $csvData);
-
-    foreach ($lines as $line) {
-        [$title, $content, $rating] = str_getcsv($line);
-
-        // Direct purification for batch
-        Review::create([
-            'title' => HtmlPurifierService::purify($title),
-            'content' => HtmlPurifierService::purify($content),
-            'rating' => (int) $rating,
-            'is_approved' => false,
-        ]);
-    }
-}
-```
-
-### XSS Audit
-
-```php
-public function auditXssAttempts()
-{
-    Gate::authorize('admin');
-
-    $suspicious = Review::where('is_approved', false)
-        ->get()
-        ->filter(function ($review) {
-            $original = $review->getRawOriginal('content');
-            $purified = HtmlPurifierService::purify($original);
-
-            // Different = dangerous elements were stripped
-            return $original !== $purified;
-        });
-
-    return view('reviews.audit', ['suspicious' => $suspicious]);
 }
 ```
 
@@ -285,7 +243,7 @@ class Room extends Model
 
     public function approvedReviews(): HasMany
     {
-        return $this->reviews()->where('is_approved', true);
+        return $this->reviews()->where('approved', true);
     }
 
     public function averageRating(): float

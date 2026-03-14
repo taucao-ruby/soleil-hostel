@@ -89,7 +89,7 @@ const { token, expires_at, type } = await response.json();
 localStorage.setItem("token", token);
 
 // 3. Use in requests
-fetch("/api/bookings", {
+fetch("/api/v1/bookings", {
   headers: { Authorization: `Bearer ${token}` },
 });
 
@@ -116,7 +116,7 @@ await fetch("/api/auth/login-httponly", {
 sessionStorage.setItem("csrf_token", response.csrf_token);
 
 // 3. Requests (cookie sent automatically, add CSRF header)
-fetch("/api/bookings", {
+fetch("/api/v1/bookings", {
   method: "POST",
   credentials: "include",
   headers: { "X-XSRF-TOKEN": sessionStorage.getItem("csrf_token") },

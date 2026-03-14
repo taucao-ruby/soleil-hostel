@@ -11,7 +11,7 @@
 
 - Date updated: 2026-03-14
 - Current branch: `dev`
-- Latest commit: `ef138cc` — fix(frontend): bump flatted and undici CVEs
+- Latest commit: `d6fc4db` — docs: full review sync after March 11-14 sessions
 - Backend test baseline: 901 tests, 2510 assertions — verified 2026-03-11
 - Frontend test baseline: 226 tests, 21 suites — verified 2026-03-11
 - Pint: 283 files, 0 style issues. PHPStan: Level 5, 151 pre-existing. Psalm: Level 1, 0 blocking.

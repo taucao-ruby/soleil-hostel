@@ -9,6 +9,7 @@ Soleil Hostel uses Laravel Policies to authorize actions on resources:
 | Policy        | Model   | Purpose                    |
 | ------------- | ------- | -------------------------- |
 | BookingPolicy | Booking | Booking CRUD authorization |
+| ReviewPolicy  | Review  | Review CRUD authorization  |
 | RoomPolicy    | Room    | Room CRUD authorization    |
 
 ---
@@ -116,7 +117,7 @@ class BookingPolicy
 ### Authorization Matrix
 
 > **For the canonical enforced permission matrix (route + gate + policy combined), see [docs/PERMISSION_MATRIX.md](../../PERMISSION_MATRIX.md).**
-> The table below shows policy-level grants only. Some grants (e.g., `viewAny` for moderator) are LATENT-SHADOWED by route middleware and do not represent enforced permissions.
+> The table below shows policy-level grants only. Some grants (e.g., `viewAny` for moderator) are LATENT — not in the active call path — and do not represent enforced permissions on their own.
 
 | Action       | User | Moderator | Admin | Notes |
 | ------------ | ---- | --------- | ----- | ----- |
@@ -130,7 +131,7 @@ class BookingPolicy
 | cancel (own) | ✅   | ✅        | ✅    | Subject to BR-1, BR-2, BR-3 business rules |
 | cancel (any) | ❌   | ❌        | ✅    | |
 | forceCancel  | ❌   | ❌        | ✅    | |
-| viewAny      | ❌   | ✅        | ✅    | **LATENT-SHADOWED** — route `role:admin` + `Gate::authorize('admin')` fire first |
+| viewAny      | ❌   | ✅        | ✅    | **LATENT** — policy not invoked; route `role:moderator` + gate `view-all-bookings` both independently allow moderator |
 | viewTrashed  | ❌   | ❌        | ✅    | |
 | restore      | ❌   | ❌        | ✅    | |
 | forceDelete  | ❌   | ❌        | ✅    | |

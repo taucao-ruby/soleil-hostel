@@ -26,7 +26,7 @@ The booking system uses **pessimistic locking** (SELECT FOR UPDATE) to prevent d
 ### How It Works
 
 ```
-1. Request arrives: POST /api/bookings
+1. Request arrives: POST /api/v1/bookings
 2. Begin DB transaction
 3. Lock overlapping bookings: SELECT ... FOR UPDATE
 4. Check for conflicts
@@ -239,22 +239,22 @@ ALTER TABLE bookings ADD deleted_by BIGINT NULL REFERENCES users(id);
 
 ### User Endpoints
 
-| Method | Endpoint             | Description          |
-| ------ | -------------------- | -------------------- |
-| GET    | `/api/bookings`      | List user's bookings |
-| POST   | `/api/bookings`      | Create booking       |
-| GET    | `/api/bookings/{id}` | View booking         |
-| PUT    | `/api/bookings/{id}` | Update booking       |
-| DELETE | `/api/bookings/{id}` | Cancel (soft delete) |
+| Method | Endpoint                | Description          |
+| ------ | ----------------------- | -------------------- |
+| GET    | `/api/v1/bookings`      | List user's bookings |
+| POST   | `/api/v1/bookings`      | Create booking       |
+| GET    | `/api/v1/bookings/{id}` | View booking         |
+| PUT    | `/api/v1/bookings/{id}` | Update booking       |
+| DELETE | `/api/v1/bookings/{id}` | Cancel (soft delete) |
 
 ### Admin Endpoints
 
-| Method | Endpoint                           | Description                 |
-| ------ | ---------------------------------- | --------------------------- |
-| GET    | `/api/admin/bookings`              | All bookings (with trashed) |
-| GET    | `/api/admin/bookings/trashed`      | Only trashed                |
-| POST   | `/api/admin/bookings/{id}/restore` | Restore booking             |
-| DELETE | `/api/admin/bookings/{id}/force`   | Permanent delete            |
+| Method | Endpoint                              | Description                 |
+| ------ | ------------------------------------- | --------------------------- |
+| GET    | `/api/v1/admin/bookings`              | All bookings (with trashed) |
+| GET    | `/api/v1/admin/bookings/trashed`      | Only trashed                |
+| POST   | `/api/v1/admin/bookings/{id}/restore` | Restore booking             |
+| DELETE | `/api/v1/admin/bookings/{id}/force`   | Permanent delete            |
 
 ---
 
@@ -265,13 +265,14 @@ ALTER TABLE bookings ADD deleted_by BIGINT NULL REFERENCES users(id);
 **Request:**
 
 ```http
-POST /api/bookings
+POST /api/v1/bookings
 Content-Type: application/json
 Authorization: Bearer <token>
 
 {
   "room_id": 1,
   "guest_name": "John Doe",
+  "guest_email": "john@example.com",
   "check_in": "2025-12-20",
   "check_out": "2025-12-25"
 }

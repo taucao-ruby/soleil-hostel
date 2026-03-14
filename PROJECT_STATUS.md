@@ -1,8 +1,8 @@
 # Soleil Hostel - Project Status
 
-**Last Updated:** March 11, 2026
+**Last Updated:** March 14, 2026
 **Current Branch:** `dev`
-**Latest Commit:** `012ce40` — feat(backend): RBAC hardening with defense-in-depth and permission matrix
+**Latest Commit:** `ef138cc` — fix(frontend): bump flatted and undici CVEs
 
 ## Current Status: Repo Health Green
 
@@ -112,7 +112,7 @@ docker compose config
 | Feature                         | Priority | Notes                                                                                |
 | ------------------------------- | -------- | ------------------------------------------------------------------------------------ |
 | **Stripe Payment Integration**  | High     | Cashier bootstrapped, webhooks implemented; checkout session + payment UI pending    |
-| **RBAC Hardening**              | ✅ Done  | Defense-in-depth (route + gate), PERMISSION_MATRIX.md, +16 tests (Mar 10)            |
+| **RBAC Hardening**              | ✅ Done  | Defense-in-depth, phases 1-3, moderator activation, mobile guard, password complexity (Mar 10-14) |
 | **Booking Detail Panel**        | ✅ Done  | Guest read-only panel with 14 tests (Feb 27)                                         |
 | **Admin Pagination**            | ✅ Done  | All 3 tabs paginated with Trước/Sau controls (Feb 27)                                |
 | **RBAC Follow-ups (FU-1..5)**   | Medium   | Legacy test migration, coverage gaps, config verification — see PERMISSION_MATRIX.md |
@@ -138,6 +138,9 @@ All audit and batch details are preserved in [AUDIT_REPORT.md](./AUDIT_REPORT.md
 | Mar 6, 2026 | Batch 9–12 + H-02/H-05/H-06/H-07 | +14 backend tests, PG test default |
 | Mar 9, 2026 | Docs sync v5 + RBAC UX audit | COMPACT archived, frontend RBAC.md + RBAC_UX_AUDIT.md |
 | Mar 10, 2026 | RBAC hardening (defense-in-depth) | +16 backend tests, PERMISSION_MATRIX.md, Gate::authorize in AdminBookingController |
+| Mar 11, 2026 | RBAC phases 1-3: enforcement gaps, admin audit log, moderator activation | — |
+| Mar 12, 2026 | Admin panel expansion (AdminLayout, room/booking/customer mgmt) + CI hygiene checks | — |
+| Mar 13-14, 2026 | RBAC mobile guard, password complexity, EmailVerificationTest, CVE fixes (flatted/undici) | — |
 
 ---
 
@@ -145,4 +148,8 @@ All audit and batch details are preserved in [AUDIT_REPORT.md](./AUDIT_REPORT.md
 
 Audits v1 (61/61), v2 (98/98), v3 (14/14), v4 (6/6) complete. Findings F-01 through F-22 and F-24 resolved. F-23 open (low — MD lint).
 RBAC hardening (Mar 10): defense-in-depth verified, PERMISSION_MATRIX.md created, 5 follow-ups open (FU-1..FU-5).
+RBAC phases 1-3 (Mar 11): enforcement gaps closed, admin audit log, moderator activated.
+Admin panel expansion (Mar 12): AdminLayout, sidebar, customer/room/booking management (39556d7); CI hygiene hooks.
+RBAC mobile guard + password complexity (Mar 13-14): admin route guard on frontend, registration password rule.
+CVE fix (Mar 14): flatted >=3.4.0, undici >=7.24.0 (ef138cc). Logout-401 investigation: no code bug (stale cookie).
 Findings backlog: [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md)

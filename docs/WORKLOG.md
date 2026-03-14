@@ -111,3 +111,41 @@
 - Why: Preserve high-signal context across long AI sessions with low maintenance cost.
 - Files: `docs/COMPACT.md`, `docs/WORKLOG.md`, `docs/README.md`.
 - Verification: Confirmed target paths/invariants from repository docs and code references.
+
+## 2026-03-14
+
+- Investigation: logout-httponly 401 resolved — root cause was stale `soleil_token` cookie from old test users. No code bug. Curl + browser both confirm login→me→logout all 200.
+- Cleanup: removed debug files (`setup_roles.php`, `Temp*.txt`) from worktree.
+- Test accounts created in `soleil_test` DB: user@soleil.test / admin@soleil.test / moderator@soleil.test — all `P@ssworD123`.
+- Docs: F-25 logged (api.ts refresh CSRF path wrong — non-critical).
+- Merge: `claude/strange-raman` → `dev` (--no-ff). COMPACT.md updated. All docs synced.
+- Verification: gates not re-run (docs-only session); last known state 901 BE + 226 FE tests passing.
+
+## 2026-03-13
+
+- feat(frontend): RBAC mobile remediation — `AdminRouteGuard` protecting admin routes; non-admin redirect to dashboard.
+- feat(backend): password complexity enforcement on registration — `StrongPassword` rule, uppercase + lowercase + digit + special char required.
+- test(backend): `EmailVerificationTest` updated to use complex passwords matching new rule.
+- Commit: `c5bd49a` (mobile guard) + `9fcb657` (password complexity) + `b97dfe1` (test update).
+
+## 2026-03-12
+
+- chore(infra): remove tracked build artifacts + normalize frontend toolchain (`de333f5`).
+- ci(infra): hygiene CI checks (pre-commit hook, artifact guard) — `b8b36fd`.
+- docs: 2026-03-12 repository structure audit report (`AUDIT_2026_03_12_STRUCTURE.md`).
+- feat(frontend): add AdminLayout, sidebar navigation, room/booking/customer management panels, BookingCancelDialog, user-facing booking list + detail pages (`39556d7`).
+- Backend: `CustomerController` + `CustomerService` for admin guest view.
+- test(frontend): rewrite `AdminDashboard.test.tsx` to match updated component (`e0fc819`).
+- fix(frontend): correct toast import paths (`7da79a0`).
+- refactor(backend): code style fixes via Pint (`371b822`).
+- fix(backend): suppress Psalm `PossiblyInvalidMethodCall` for Laravel routes (`38c0427`).
+- fix(backend): force in-memory fallback in `RateLimitService` unit tests (`479c31e`).
+
+## 2026-03-11
+
+- feat(backend): RBAC phases 1-3 — enforcement gaps, admin audit log, moderator activation (`205ecf0`).
+  - Phase 1: `role:admin` middleware on legacy room CUD routes; Gate::authorize on ContactController.
+  - Phase 2: `admin_audit_logs` table (append-only), `AdminAuditService`, integrated into 3 controllers.
+  - Phase 3: Moderator role activation — split booking routes read (moderator+) vs write (admin-only).
+- docs: project docs update after RBAC hardening phases 1-3 (`1b36149`).
+- Verification: `php artisan test` 901 / 2510 ✅, `vitest run` 226 ✅ (baseline from this session).

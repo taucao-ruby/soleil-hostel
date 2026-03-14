@@ -410,6 +410,7 @@ FEAT-002 (Group Booking) → requires a new ADR before coding
 | FE-004 Booking History          | —        | 🟡 Next                                   |
 | I18N-002 Frontend i18n          | —        | 🟢 When time permits                      |
 | TD-004 Audit Log Retention      | —        | 🟡 Next                                   |
+| F-25 api.ts CSRF path fix       | —        | 🟢 Non-critical, when time permits        |
 
 ---
 
@@ -449,6 +450,13 @@ FEAT-002 (Group Booking) → requires a new ADR before coding
 | ✅ Batch 4: AbortController cleanup, vi.hoisted auth mocks, no-console ESLint, RoomList tests | Mar 2, 2026       | 8 tests   |
 | ✅ Docs sync v5 + RBAC UX audit (frontend RBAC.md + RBAC_UX_AUDIT.md)                         | Mar 9, 2026       | —         |
 | ✅ RBAC Hardening: defense-in-depth (route+gate), PERMISSION_MATRIX.md, moderator denial tests | Mar 10, 2026      | 16 tests  |
+| ✅ RBAC Phases 1-3: enforcement gaps, admin audit log, moderator role activated                 | Mar 11, 2026      | —         |
+| ✅ Admin panel expansion: AdminLayout, sidebar, room/booking/customer mgmt (frontend)          | Mar 12, 2026      | —         |
+| ✅ Repo hygiene: artifact cleanup, toolchain normalization, CI hygiene hooks                    | Mar 12, 2026      | —         |
+| ✅ Repository structure audit 2026-03-12 (AUDIT_2026_03_12_STRUCTURE.md)                       | Mar 12, 2026      | —         |
+| ✅ RBAC mobile remediation: admin route guard on frontend                                       | Mar 13, 2026      | —         |
+| ✅ Password complexity enforcement on registration + EmailVerificationTest                      | Mar 13-14, 2026   | —         |
+| ✅ CVE fix: flatted >=3.4.0 + undici >=7.24.0 (ef138cc)                                       | Mar 14, 2026      | —         |
 
 ---
 

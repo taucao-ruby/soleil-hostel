@@ -7,98 +7,96 @@
 This document captures important architectural decisions made during the development of Soleil Hostel. Each decision follows the ADR format:
 
 - **Status**: Proposed | Accepted | Deprecated | Superseded
-- **Context**: What is the issue?
-- **Decision**: What is the change?
-- **Consequences**: What are the trade-offs?
+- **Context**: What specific technical pressure or constraint forced this decision?
+- **Decision**: What was chosen and where it applies.
+- **Rationale**: Why this option over named alternatives, with explicit tradeoffs.
+- **Consequences**: Positive outcomes AND operational costs — both required.
+- **Related**: ADR cross-links and canonical docs only.
 
 ---
 
 ## ADR Index
 
-| ID                                                              | Title                                         | Status   | Date     |
-| --------------------------------------------------------------- | --------------------------------------------- | -------- | -------- |
-| [ADR-001](#adr-001-laravel-notifications-over-custom-mailables) | Laravel Notifications over Custom Mailables   | Accepted | Jan 2026 |
-| [ADR-002](#adr-002-repository-pattern-for-data-access)          | Repository Pattern for Data Access            | Accepted | Jan 2026 |
-| [ADR-003](#adr-003-pessimistic-locking-for-bookings)            | Pessimistic Locking for Bookings              | Accepted | Dec 2025 |
-| [ADR-004](#adr-004-optimistic-locking-for-rooms)                | Optimistic Locking for Rooms                  | Accepted | Jan 2026 |
-| [ADR-005](#adr-005-enum-based-rbac-over-boolean-flags)          | Enum-based RBAC over Boolean Flags            | Accepted | Dec 2025 |
-| [ADR-006](#adr-006-dual-authentication-modes)                   | Dual Authentication Modes (Bearer + HttpOnly) | Accepted | Dec 2025 |
-| [ADR-007](#adr-007-event-driven-cache-invalidation)             | Event-driven Cache Invalidation               | Accepted | Dec 2025 |
-| [ADR-008](#adr-008-markdown-email-templates)                    | Markdown Email Templates                      | Accepted | Jan 2026 |
-| [ADR-009](#adr-009-soft-deletes-for-bookings)                   | Soft Deletes for Bookings                     | Accepted | Dec 2025 |
-| [ADR-010](#adr-010-redis-with-database-fallback)                | Redis with Database Cache Fallback            | Accepted | Dec 2025 |
-| [ADR-011](#adr-011-form-request-validation)                     | Form Request Validation Classes               | Accepted | Jan 2026 |
-| [ADR-012](#adr-012-api-versioning-strategy)                     | API Versioning Strategy                       | Accepted | Dec 2025 |
-| [ADR-013](#adr-013-multi-location-architecture)                 | Multi-Location Architecture                   | Accepted | Feb 2026 |
+| ID                                                                         | Title                                         | Status   | Date      |
+| -------------------------------------------------------------------------- | --------------------------------------------- | -------- | --------- |
+| [ADR-001](#adr-001-laravel-notifications-over-custom-mailables)            | Laravel Notifications over Custom Mailables   | Accepted | Jan 2026  |
+| [ADR-002](#adr-002-repository-pattern-for-data-access)                    | Repository Pattern for Data Access            | Accepted | Jan 2026  |
+| [ADR-003](#adr-003-pessimistic-locking-for-booking-write-paths)           | Pessimistic Locking for Booking Write Paths   | Accepted | Dec 2025  |
+| [ADR-004](#adr-004-optimistic-locking-for-admin-entity-edits)             | Optimistic Locking for Admin Entity Edits     | Accepted | Jan 2026  |
+| [ADR-005](#adr-005-enum-based-rbac-over-boolean-flags)                    | Enum-based RBAC over Boolean Flags            | Accepted | Dec 2025  |
+| [ADR-006](#adr-006-dual-authentication-modes)                             | Dual Authentication Modes (Bearer + HttpOnly) | Accepted | Dec 2025  |
+| [ADR-007](#adr-007-event-driven-cache-invalidation)                       | Event-driven Cache Invalidation               | Accepted | Dec 2025  |
+| [ADR-008](#adr-008-markdown-email-templates)                              | Markdown Email Templates                      | Accepted | Jan 2026  |
+| [ADR-009](#adr-009-soft-deletes-for-bookings)                             | Soft Deletes for Bookings                     | Accepted | Dec 2025  |
+| [ADR-010](#adr-010-redis-with-database-cache-fallback)                    | Redis with Database Cache Fallback            | Accepted | Dec 2025  |
+| [ADR-011](#adr-011-form-request-validation-classes)                       | Form Request Validation Classes               | Accepted | Jan 2026  |
+| [ADR-012](#adr-012-url-path-api-versioning-apiv1)                         | URL Path API Versioning (/api/v1/)            | Accepted | Dec 2025  |
+| [ADR-013](#adr-013-multi-location-architecture)                           | Multi-Location Architecture                   | Accepted | Feb 2026  |
 
 ---
 
 ## ADR-001: Laravel Notifications over Custom Mailables
 
-**Status**: Accepted  
-**Date**: January 2026  
+**Status**: Accepted
+**Date**: January 2026
 **Deciders**: Development Team
 
 ### Context
 
-We need to send transactional emails for booking events (confirmed, cancelled, updated). Options:
+The booking system fires multiple transactional email events (booking confirmed, cancelled, updated). Each event needed to be queued asynchronously, consistent in appearance, and potentially extensible to non-email channels (SMS, database) without rewriting notification dispatch sites. Custom Mailable classes handle email only and require manual queue integration.
 
-1. Custom Mailable classes
-2. Laravel Notifications
-3. Third-party email service (SendGrid templates)
+**Scope:** All booking-triggered transactional emails. Does not cover marketing or bulk email.
 
 ### Decision
 
-Use **Laravel Notifications** with Markdown templates.
+Use **Laravel Notifications** with Markdown templates for all booking-triggered transactional emails. Template rendering specifics are governed by ADR-008.
 
 ### Rationale
 
-| Criteria       | Notifications           | Custom Mailables | Third-party |
-| -------------- | ----------------------- | ---------------- | ----------- |
-| Queueing       | Built-in                | Manual           | External    |
-| Multi-channel  | Easy (mail, SMS, Slack) | Email only       | Varies      |
-| Code volume    | Less                    | More             | Less        |
-| Vendor lock-in | None                    | None             | High        |
-| Cost           | Free                    | Free             | Paid        |
+| Criteria       | Notifications           | Custom Mailables         | Third-party Service |
+| -------------- | ----------------------- | ------------------------ | ------------------- |
+| Queueing       | Built-in (`ShouldQueue`)| Manual setup required    | External API call   |
+| Multi-channel  | Native (mail, SMS, DB)  | Email only               | Varies by vendor    |
+| Vendor lock-in | None                    | None                     | High                |
+| Cost           | None                    | None                     | Paid                |
+
+Custom Mailables were rejected: adding a non-email channel would require structural refactoring of every dispatch site. Third-party services were rejected due to vendor dependency and ongoing cost for a feature set Laravel covers natively.
 
 ### Consequences
 
 **Positive:**
 
-- Automatic queueing with `ShouldQueue`
-- Easy to add SMS/Slack channels later
-- Consistent API across notification types
-- Less code to maintain
+- Queueing is opt-in per notification class via `ShouldQueue` — no manual queue plumbing required
+- Adding a second notification channel (e.g., SMS) requires adding a listener, not changing dispatch sites
+- Notification contract is consistent across all booking event types
 
 **Negative:**
 
-- Markdown templates less flexible than pure HTML
-- Learning curve for Blade mail components
+- All notification rendering is bound to the Laravel Notification contract — migrating to an external notification platform requires replacing notification classes, not just templates
+- Template flexibility is constrained by Markdown rendering (see ADR-008 for template-specific tradeoffs)
 
 ### Related
 
+- [ADR-008](#adr-008-markdown-email-templates) — template rendering strategy
 - [EMAIL_NOTIFICATIONS.md](./backend/guides/EMAIL_NOTIFICATIONS.md)
-- [EMAIL_TEMPLATES.md](./backend/features/EMAIL_TEMPLATES.md)
 
 ---
 
 ## ADR-002: Repository Pattern for Data Access
 
-**Status**: Accepted  
-**Date**: January 2026  
+**Status**: Accepted
+**Date**: January 2026
 **Deciders**: Development Team
 
 ### Context
 
-As the codebase grows, we need to:
+Services consuming Eloquent models directly created two blockers: unit tests required a live database (or fragile Eloquent partial mocking), and query construction was entangled with business logic inside service methods. As the booking and room domains gained complexity, both testability and separation became active problems.
 
-- Unit test services without database
-- Swap data sources (e.g., API instead of DB)
-- Reduce coupling between business logic and Eloquent
+**Scope:** Backend data access layer for the booking and room domains. Does not apply to ad-hoc admin reporting queries that do not belong to a bounded service.
 
 ### Decision
 
-Implement **Repository Pattern** with interfaces and Eloquent implementations.
+Implement **Repository Pattern** with interfaces and Eloquent implementations. Services depend on interfaces; Eloquent implementations are bound in the service container.
 
 ```
 Contracts/
@@ -112,23 +110,27 @@ Repositories/
 
 ### Rationale
 
-- **Testability**: Mock repositories in unit tests
-- **Flexibility**: Swap implementations without changing services
-- **Single Responsibility**: Repositories handle data, services handle logic
+| Approach                       | Testability          | Service coupling | Added complexity |
+| ------------------------------ | -------------------- | ---------------- | ---------------- |
+| Direct Eloquent in service     | Requires DB fixture  | High             | None             |
+| Query Objects                  | Partial isolation    | Medium           | Medium           |
+| Repository with interface (chosen) | Mock-friendly    | Low              | Medium           |
+
+Direct Eloquent calls in services were rejected: service unit tests would require a database fixture or fragile Eloquent static mocking. Query Objects were considered but provide no interface boundary for dependency injection. The Repository interface provides a clear seam for both test doubles and potential future data source changes.
 
 ### Consequences
 
 **Positive:**
 
-- 53 repository unit tests with zero DB dependency
-- Services can be tested in isolation
-- Clear separation of concerns
+- Service unit tests use mock repositories with zero database dependency
+- Query logic is isolated per domain entity — Eloquent internals do not surface in service tests
+- Controller → Service → Repository layering is enforced structurally, not just by convention
 
 **Negative:**
 
-- More files to maintain
-- Extra abstraction layer
-- Must keep interface in sync with implementation
+- Each new query capability requires an interface method, an implementation, and a test double update — three touch points per change
+- The interface must stay in sync with the implementation; divergence causes subtle runtime failures, not compile-time errors
+- Added indirection makes simple queries more verbose than a direct Eloquent call
 
 ### Related
 
@@ -136,19 +138,21 @@ Repositories/
 
 ---
 
-## ADR-003: Pessimistic Locking for Bookings
+## ADR-003: Pessimistic Locking for Booking Write Paths
 
-**Status**: Accepted  
-**Date**: December 2025  
+**Status**: Accepted
+**Date**: December 2025
 **Deciders**: Development Team
 
 ### Context
 
-Under high load (100-500 requests/second), concurrent booking requests for the same room and dates can cause double-booking despite validation.
+Concurrent booking creation and cancellation requests for the same room can produce double-bookings despite application-level validation. Under any meaningful concurrency, two requests can pass the availability check simultaneously before either inserts. The cancellation path carries the same race risk: a room freed by a cancellation must not be double-allocated before the cancellation commits.
+
+**Scope:** Booking creation and cancellation write paths only. Does not apply to low-contention admin edits (see ADR-004).
 
 ### Decision
 
-Use **pessimistic locking** (`SELECT ... FOR UPDATE`) when creating bookings.
+Use **pessimistic locking** (`SELECT ... FOR UPDATE` via `lockForUpdate()`) within database transactions for booking creation and booking cancellation. Both the room row and the overlapping bookings query are locked for the duration of the transaction.
 
 ```php
 DB::transaction(function () {
@@ -169,53 +173,58 @@ DB::transaction(function () {
 
 ### Rationale
 
-| Approach             | Pros                 | Cons                               |
-| -------------------- | -------------------- | ---------------------------------- |
-| Pessimistic (chosen) | Zero race conditions | Blocking, potential deadlocks      |
-| Optimistic           | Non-blocking         | Retry logic needed, can still race |
-| Queue-based          | Serialized           | Added latency, complexity          |
+| Approach                  | Double-booking prevention | Blocking cost                  | Complexity |
+| ------------------------- | ------------------------- | ------------------------------ | ---------- |
+| Pessimistic (chosen)      | Guaranteed                | Requests serialize under contention | Low   |
+| Optimistic                | Probabilistic under race  | None                           | Retry logic required |
+| Queue-based serialization | Guaranteed                | Added latency always           | High       |
+
+Optimistic locking was rejected for this path: the check-then-insert window is a genuine TOCTOU race; optimistic locking would require retry logic that still cannot guarantee atomicity without further coordination. Queue-based serialization was rejected as disproportionate complexity for a transactional, short-lived write path.
 
 ### Consequences
 
 **Positive:**
 
-- Guaranteed no double-booking
-- Simple to understand and debug
-- Works with any transaction isolation level
+- No double-booking is possible while the transaction holds the lock — correctness is guaranteed, not probabilistic
+- The logic is simple and auditable: lock, check, create or abort
+- Works at any PostgreSQL transaction isolation level (the lock is explicit, not isolation-level dependent)
 
 **Negative:**
 
-- Blocking: concurrent requests wait
-- Deadlock risk (mitigated with retry logic)
-- Higher latency under contention
-
-### Deadlock Mitigation
+- Concurrent write requests for the same room serialize — throughput for that room is bounded by lock hold time, an accepted operational cost
+- Deadlock risk exists when multiple resources are locked in different orders; mitigated by a retry policy with exponential backoff:
 
 ```php
 private const DEADLOCK_RETRY_ATTEMPTS = 3;
-private const DEADLOCK_RETRY_DELAY_MS = 100; // Exponential backoff
+private const DEADLOCK_RETRY_DELAY_MS = 100; // base delay; exponential backoff applied
 ```
+
+- Higher P99 latency under contention is an accepted consequence
+- This strategy applies to `CancellationService` and booking creation — not to room or location admin edits (ADR-004)
 
 ### Related
 
+- [ADR-004](#adr-004-optimistic-locking-for-admin-entity-edits) — complementary strategy for low-contention admin edit paths
 - [BOOKING.md](./backend/features/BOOKING.md)
-- [CreateBookingService](./backend/architecture/SERVICES.md#createbookingservice)
+- [ARCHITECTURE_FACTS.md](./agents/ARCHITECTURE_FACTS.md) — confirms `lockForUpdate()` in `CancellationService.php` and `Booking.php`
 
 ---
 
-## ADR-004: Optimistic Locking for Rooms
+## ADR-004: Optimistic Locking for Admin Entity Edits
 
-**Status**: Accepted  
-**Date**: January 2026  
+**Status**: Accepted
+**Date**: January 2026
 **Deciders**: Development Team
 
 ### Context
 
-Room updates by admins don't need serialized access like bookings, but we need to prevent lost updates when two admins edit the same room.
+Admins occasionally edit room and location records simultaneously. These edits are low-frequency and concurrent conflicts are rare. Serializing them with pessimistic locks — as required for booking writes — would add unnecessary blocking overhead and does not match the risk profile. However, lost updates (two admins overwriting each other silently) must still be prevented.
+
+**Scope:** Admin edits to `rooms` and `locations` entities only. Does not replace pessimistic locking for booking or cancellation flows (ADR-003).
 
 ### Decision
 
-Use **optimistic locking** with `lock_version` column for room updates.
+Use **optimistic locking** with a `lock_version` column on `rooms` and `locations` for admin entity edits. The current `lock_version` must be included in every update request; a version mismatch raises an `OptimisticLockException` (surfaced as HTTP 409 Conflict). Callers are responsible for handling the 409 and presenting a retry or refresh UX.
 
 ```php
 // Request must include current lock_version
@@ -224,50 +233,58 @@ $room->updateWithLock([
     'lock_version' => $currentVersion,
 ]);
 
-// Throws OptimisticLockException if version mismatch
+// Throws OptimisticLockException (→ HTTP 409) if version mismatch
 ```
+
+**Schema:**
+- `rooms.lock_version` — NOT NULL, default 1 (migration `2025_12_18_200000`)
+- `locations.lock_version` — default 1 (migration `2026_02_09_000001`)
 
 ### Rationale
 
-| Criteria        | Optimistic        | Pessimistic          |
-| --------------- | ----------------- | -------------------- |
-| Contention      | Low (admin edits) | High (user bookings) |
-| Blocking        | No                | Yes                  |
-| User experience | Retry on conflict | Wait for lock        |
+| Criteria        | Optimistic (chosen) | Pessimistic          |
+| --------------- | ------------------- | -------------------- |
+| Contention      | Low (admin edits)   | High (user bookings) |
+| Blocking        | No                  | Yes                  |
+| Deadlock risk   | None                | Present; requires retry |
+| Conflict UX     | Client retries on 409 | Client waits for lock |
+
+Pessimistic locking was rejected for admin edits: admin UI conflicts are rare, and a 409 retry is preferable to holding a lock that blocks other readers. Using the same strategy as booking paths would add lock contention across unrelated write flows.
 
 ### Consequences
 
 **Positive:**
 
-- Non-blocking for low-contention scenarios
-- Clear conflict detection
+- Non-blocking for the common case (no concurrent edit)
+- Conflict detection is explicit: the caller receives a 409 and knows the record changed underneath them
 - No deadlock risk
 
 **Negative:**
 
-- Client must handle version conflicts
-- Extra `lock_version` column
-- Requires frontend integration for retry UX
+- `lock_version` is part of the write contract — every update endpoint for rooms and locations must include it; omitting it silently breaks conflict detection unless the endpoint validates its presence
+- Clients must handle 409 responses and present a retry or reload UX — an accepted coupling between server conflict detection and client behaviour
+- Two additional columns (`lock_version` on rooms and locations) must be incremented on every update and included in API payloads
 
 ### Related
 
+- [ADR-003](#adr-003-pessimistic-locking-for-booking-write-paths) — pessimistic strategy for high-contention booking write paths
 - [OPTIMISTIC_LOCKING.md](./backend/features/OPTIMISTIC_LOCKING.md)
 
 ---
 
 ## ADR-005: Enum-based RBAC over Boolean Flags
 
-**Status**: Accepted  
-**Date**: December 2025  
+**Status**: Accepted
+**Date**: December 2025
 **Deciders**: Development Team
 
 ### Context
 
-Original design used `is_admin` boolean. As roles grew (USER, MODERATOR, ADMIN), boolean flags became unwieldy (`is_admin`, `is_moderator`).
+The original user model used an `is_admin` boolean. Adding a moderator role required a second boolean (`is_moderator`), with no expressible hierarchy between roles. Enforcement logic scattered across controllers had no single type-safe authority. Extending to a third role would have added a third column and another round of scattered conditionals.
 
 ### Decision
 
-Replace boolean flags with **PHP 8.1 backed enum** for roles.
+Replace all boolean role flags with a **PHP 8.1 backed string enum** (`App\Enums\UserRole`), stored as a PostgreSQL ENUM type (`user_role_enum`). Role enforcement is applied at the Gate and middleware layer — not as conditional UI rendering alone.
 
 ```php
 enum UserRole: string
@@ -282,96 +299,108 @@ enum UserRole: string
 
 ### Rationale
 
-- Type safety (no string typos)
-- IDE autocomplete
-- Extensible (add roles without schema changes)
-- Database stores string value (PostgreSQL ENUM)
+| Criteria        | Enum (chosen)              | Boolean flags                      |
+| --------------- | -------------------------- | ---------------------------------- |
+| Type safety     | PHP compile-level          | String literals or runtime         |
+| Hierarchy       | `isAtLeast()` method       | Manual multi-flag and-chain        |
+| Adding a role   | `ALTER TYPE` + policy update | New boolean column + migration + scattered conditionals |
+| IDE support     | Full autocomplete          | None                               |
+
+Boolean flags were replaced because role hierarchy (admin > moderator > user) cannot be expressed without manual comparison chains, and every new role required a new boolean column. The enum approach requires no boolean column additions for new roles.
 
 ### Consequences
 
 **Positive:**
 
-- 47 RBAC tests with type-safe assertions
-- Helper methods: `isAdmin()`, `isModerator()`, `isAtLeast()`
-- Middleware: `EnsureUserHasRole`
+- Role checks are type-safe — no string typo risk; invalid role values are rejected at the PHP enum level
+- Adding a new role requires a new enum case, an `ALTER TYPE user_role_enum ADD VALUE` migration (lightweight DDL, no data migration), and updated Gate/policy rules — no boolean column addition
+- Enforcement via `EnsureUserHasRole` middleware and Laravel Gates applies at the request boundary, not only at the UI layer — a role check cannot be bypassed by manipulating frontend rendering
+- Helper methods (`isAdmin()`, `isModerator()`, `isAtLeast()`) centralise role comparison logic in one place
 
 **Negative:**
 
-- Migration required to remove old columns
-- PostgreSQL ENUM type complexity
+- PostgreSQL ENUM types require an `ALTER TYPE` DDL migration for each new role value — a schema operation that must be coordinated in production deployments and cannot be rolled back trivially
+- Removing or renaming an enum value is a multi-step migration to avoid constraint violations on existing rows
+- Migrating from old boolean columns required a data backfill to populate the `role` column for existing users
 
 ### Related
 
 - [RBAC.md](./backend/features/RBAC.md)
+- [PERMISSION_MATRIX.md](./PERMISSION_MATRIX.md) — canonical RBAC permission baseline and enforcement status
 
 ---
 
 ## ADR-006: Dual Authentication Modes
 
-**Status**: Accepted  
-**Date**: December 2025  
+**Status**: Accepted
+**Date**: December 2025
 **Deciders**: Development Team
 
 ### Context
 
-Different clients need different auth mechanisms:
+The system serves two distinct client classes with incompatible auth requirements:
 
-- **SPAs**: Prefer HttpOnly cookies (XSS protection)
-- **Mobile/API**: Prefer Bearer tokens (flexibility)
+- **Browser SPA**: Auth tokens must be inaccessible to JavaScript to mitigate XSS exfiltration. HttpOnly cookies satisfy this requirement.
+- **Mobile / API clients**: Cannot participate in an HttpOnly cookie session without a browser context. Bearer tokens delivered in the response body are the standard mechanism for these clients.
+
+A single auth mode would either accept XSS exposure for the SPA (Bearer-only) or break non-browser clients (HttpOnly-only).
 
 ### Decision
 
-Support **both** Bearer tokens AND HttpOnly cookies via Sanctum.
+Support **both** Bearer token auth and HttpOnly cookie auth via Sanctum. Each mode is served by a dedicated login endpoint. Both modes enforce token expiry (`expires_at`) and explicit revocation (`revoked_at`). The HttpOnly cookie path uses a custom token lookup — `token_identifier` (UUID stored in cookie) → `token_hash` DB lookup — rather than direct Sanctum token comparison.
 
 ```
-POST /api/auth/login-v2        → Bearer token response
-POST /api/auth/login-httponly  → HttpOnly cookie set
+POST /api/auth/login-v2        → Returns Bearer token in response body
+POST /api/auth/login-httponly  → Sets HttpOnly cookie; no token in response body
 ```
 
 ### Rationale
 
-| Mode     | Security                         | Use Case            |
-| -------- | -------------------------------- | ------------------- |
-| Bearer   | Token in localStorage (XSS risk) | Mobile, API clients |
-| HttpOnly | Cookie immune to JS (CSRF risk)  | Browser SPAs        |
+| Mode          | XSS posture                       | Client class    | Mechanism             |
+| ------------- | --------------------------------- | --------------- | --------------------- |
+| HttpOnly cookie | Token inaccessible to JS        | Browser SPA     | Cookie + CSRF header  |
+| Bearer token  | Token accessible to JS (client storage risk is client's responsibility) | Mobile, API | `Authorization` header |
+
+A single-mode system was rejected in both directions: HttpOnly-only blocks mobile and API integrations; Bearer-only requires accepting XSS token exfiltration risk for the SPA.
 
 ### Consequences
 
 **Positive:**
 
-- Flexible for all client types
-- HttpOnly provides better XSS protection for web
-- Token refresh and rotation for both modes
+- Browser SPA tokens are inaccessible to injected JavaScript — XSS cannot exfiltrate the auth token from the HttpOnly cookie
+- Bearer mode is compatible with standard HTTP clients and mobile SDKs without browser session overhead
+- Token expiry and revocation are enforced for both modes
 
 **Negative:**
 
-- Dual code paths to maintain
-- CORS configuration complexity
-- More test scenarios
+- Two distinct auth code paths to maintain: `HttpOnlyTokenController`, `UnifiedAuthController`, `AuthController`
+- The HttpOnly cookie path requires CSRF protection: a CSRF token is stored in `sessionStorage` and sent as the `X-XSRF-TOKEN` header on all mutating requests — bypassing this header breaks CSRF defence
+- Custom token columns (`token_identifier`, `token_hash`, `device_id`, `device_fingerprint`, `expires_at`, `revoked_at`, `refresh_count`, `last_rotated_at`, `type`) extend the `personal_access_tokens` schema — any Sanctum upgrade must be verified against these additions
+- Every auth-sensitive endpoint requires test coverage under both modes — test matrix doubles
+- CORS configuration must permit cookie mode for the SPA origin without over-permitting for API consumers
 
 ### Related
 
 - [AUTHENTICATION.md](./backend/features/AUTHENTICATION.md)
+- [ARCHITECTURE_FACTS.md](./agents/ARCHITECTURE_FACTS.md) — full custom token column inventory and enforcement middleware
 
 ---
 
 ## ADR-007: Event-driven Cache Invalidation
 
-**Status**: Accepted  
-**Date**: December 2025  
+**Status**: Accepted
+**Date**: December 2025
 **Deciders**: Development Team
 
 ### Context
 
-Cached data (rooms, availability) must stay fresh. Options:
+Room availability data is cached to reduce database load. When a booking is created or cancelled, cached availability for that room becomes stale. Explicit invalidation calls inside each service method would couple cache management to business logic and create a maintenance liability as the number of booking-affecting operations grows.
 
-1. Time-based expiration only
-2. Manual invalidation in services
-3. Event-driven invalidation
+**Scope:** Cache invalidation strategy — which events trigger invalidation and how. Cache backend selection is ADR-010.
 
 ### Decision
 
-Use **events** to trigger cache invalidation automatically.
+Trigger cache invalidation via **Laravel events**. Services dispatch domain events (e.g., `BookingCreated`, `BookingCancelled`); dedicated listeners handle cache invalidation.
 
 ```php
 // When booking created
@@ -387,28 +416,35 @@ class InvalidateCacheOnBookingChange
 }
 ```
 
+**Note:** `Cache::tags()` requires Redis. When the database cache fallback is active (ADR-010), tag-based invalidation is unavailable — stale entries persist until TTL expiry.
+
 ### Rationale
 
-- Decoupled: services don't know about caching
-- Consistent: all booking changes trigger same invalidation
-- Extensible: add more listeners without changing services
+| Approach                        | Service coupling | Consistency guarantee   | Debuggability          |
+| ------------------------------- | ---------------- | ----------------------- | ---------------------- |
+| Time-based expiry only          | None             | TTL-bounded staleness   | Easy                   |
+| Manual invalidation in service  | High             | Immediate               | Easy                   |
+| Event-driven (chosen)           | Low              | Immediate               | Harder (indirect)      |
+
+Manual invalidation in services was rejected: every service modifying booking availability would need explicit cache calls — a cross-cutting concern that leaks into domain logic. Time-based expiry alone was rejected: stale availability data directly harms the booking UX.
 
 ### Consequences
 
 **Positive:**
 
-- Clean separation of concerns
-- Easy to add new cache invalidation rules
-- Testable in isolation
+- Services dispatch events for domain reasons; caching is a listener concern — no coupling between service logic and cache strategy
+- New invalidation rules (e.g., invalidate on location update) require adding a listener, not modifying any service
+- Listeners are independently testable
 
 **Negative:**
 
-- Async events may cause brief stale data
-- Must remember to dispatch events
-- Debug complexity (invisible connections)
+- Event dispatch must not be omitted — a service that modifies booking availability without dispatching an event silently produces stale cache entries with no error signal
+- Indirect connections between event dispatch and cache state make debugging cache inconsistencies harder than direct service calls
+- Tag-based invalidation (`Cache::tags()`) requires Redis to be active; when the database fallback is in use, this path fails unless a fallback invalidation path is implemented (see ADR-010)
 
 ### Related
 
+- [ADR-010](#adr-010-redis-with-database-cache-fallback) — cache backend; determines whether tag-based invalidation is available
 - [EVENTS.md](./backend/architecture/EVENTS.md)
 - [CACHING.md](./backend/features/CACHING.md)
 
@@ -416,69 +452,66 @@ class InvalidateCacheOnBookingChange
 
 ## ADR-008: Markdown Email Templates
 
-**Status**: Accepted  
-**Date**: January 2026  
+**Status**: Accepted
+**Date**: January 2026
 **Deciders**: Development Team
 
 ### Context
 
-Booking notifications need professional appearance. Options:
+Booking notification emails (dispatched via Laravel Notifications, ADR-001) need to be visually distinguishable from the default Laravel Notification styling. The alternative — custom HTML email templates — requires maintaining inline CSS for email client compatibility, which is a significant ongoing maintenance burden.
 
-1. Plain text emails
-2. Fluent MailMessage (generic look)
-3. Custom HTML templates
-4. Markdown templates (Laravel components)
+**Scope:** Visual presentation layer for booking notification emails only.
 
 ### Decision
 
-Use **Markdown templates** with custom theme (`soleil.css`).
+Use **Markdown templates** with a custom theme for all booking notification emails.
 
 ### Rationale
 
-| Approach          | Branding | Maintainability | Complexity |
-| ----------------- | -------- | --------------- | ---------- |
-| Plain text        | None     | Easy            | Low        |
-| Fluent            | Limited  | Easy            | Low        |
-| Custom HTML       | Full     | Hard            | High       |
-| Markdown (chosen) | Good     | Medium          | Medium     |
+| Approach                | Branding control | Maintenance cost          | Email client compat      |
+| ----------------------- | ---------------- | ------------------------- | ------------------------ |
+| Plain text              | None             | Minimal                   | Universal                |
+| Fluent MailMessage      | Limited          | Minimal                   | Good                     |
+| Custom HTML             | Full             | High (inline CSS per client) | Requires per-client testing |
+| Markdown with theme (chosen) | Good        | Medium                    | Handled by Laravel       |
+
+Custom HTML templates were rejected: maintaining inline CSS for Outlook, Gmail, Apple Mail, and mobile clients is a recurring cost disproportionate for transactional notifications. The Markdown approach provides sufficient branding control.
 
 ### Consequences
 
 **Positive:**
 
-- Brand consistency via `config/email-branding.php`
-- Laravel components (buttons, panels, tables)
-- Responsive design built-in
-- 13 unit tests for templates
+- Laravel handles email client compatibility for Markdown-rendered HTML
+- Branding is applied via a custom theme — Blade component customisation in one place
+- Template structure (buttons, panels, tables) uses Laravel's built-in Markdown mail components
 
 **Negative:**
 
-- Less control than raw HTML
-- Must publish vendor views for customization
+- Complex layouts (multi-column, conditional sections) are not achievable in Markdown — any non-standard layout requires publishing and modifying vendor Blade components
+- The custom theme must be republished after Blade vendor updates to avoid reverting to defaults
 
 ### Related
 
+- [ADR-001](#adr-001-laravel-notifications-over-custom-mailables) — notification dispatch strategy
 - [EMAIL_TEMPLATES.md](./backend/features/EMAIL_TEMPLATES.md)
 
 ---
 
 ## ADR-009: Soft Deletes for Bookings
 
-**Status**: Accepted  
-**Date**: December 2025  
+**Status**: Accepted
+**Date**: December 2025
 **Deciders**: Development Team
 
 ### Context
 
-Deleted bookings need to be recoverable for:
+Booking records are referenced by admin audit logs, financial records, and review foreign key constraints. Hard-deleting a booking would break these references, eliminate audit trail, and make accidental deletion unrecoverable. Cancelled bookings must remain queryable by admins for reporting and dispute resolution.
 
-- Audit trails
-- Accidental deletion recovery
-- Reporting on cancelled bookings
+**Scope:** Booking records only. Does not cover room or user records.
 
 ### Decision
 
-Use Laravel's **soft deletes** for bookings.
+Use Laravel's **soft deletes** (`SoftDeletes` trait) for bookings. A deleted booking sets `deleted_at` and `deleted_by` rather than removing the row. Cancellation additionally sets `cancelled_at`, `cancelled_by`, and `cancellation_reason`.
 
 ```php
 class Booking extends Model
@@ -487,39 +520,64 @@ class Booking extends Model
 }
 ```
 
+### Rationale
+
+| Approach                        | Audit trail | Recovery       | Query complexity                   |
+| ------------------------------- | ----------- | -------------- | ---------------------------------- |
+| Hard delete                     | None        | Impossible     | Low                                |
+| Archive table (separate schema) | Full        | Possible       | High (cross-table joins)           |
+| Status-only cancellation        | Partial     | N/A            | Medium                             |
+| Soft delete (chosen)            | Full        | Via `restore()`| Medium (scope required everywhere) |
+
+Hard delete was rejected: review foreign keys and financial audit records reference booking rows. Archive tables were rejected as requiring a parallel schema and cross-table joins in all admin queries. Status-only cancellation was rejected: it does not remove bookings from the default query scope, requiring additional status filters on top of existing overlap logic without reducing data volume.
+
 ### Consequences
 
 **Positive:**
 
-- `deleted_at` timestamp for audit
-- `withTrashed()` for admin queries
-- `restore()` for recovery
+- `deleted_at` + `deleted_by` provide a complete deletion audit record
+- `cancelled_at`, `cancelled_by`, `cancellation_reason` provide cancellation-specific forensic context
+- Admin queries use `withTrashed()` to access deleted bookings; `restore()` enables recovery
+- Review and financial foreign key references are not orphaned by soft-deleted rows
 
 **Negative:**
 
-- Queries must consider soft deletes
-- Storage grows (never truly deleted)
-- Unique constraints more complex
+- Soft deletes do **not** simplify the overlap prevention logic. The PostgreSQL exclusion constraint must explicitly filter `deleted_at IS NULL` to prevent soft-deleted bookings from blocking room availability:
+
+  ```sql
+  EXCLUDE USING gist (
+      room_id WITH =,
+      daterange(check_in, check_out, '[)') WITH &&
+  )
+  WHERE (status IN ('pending', 'confirmed') AND deleted_at IS NULL)
+  ```
+
+  Omitting the `deleted_at IS NULL` predicate would cause cancelled and deleted bookings to block future bookings for the same dates.
+
+- Every query touching bookings must apply the `deleted_at` scope — the `SoftDeletes` global scope handles this for standard queries, but raw queries or scopes that bypass it will silently include deleted records
+- Storage grows over time: rows are never physically removed; a data retention policy is an accepted operational gap unless explicitly implemented
+- Unique constraints involving booking data must account for soft-deleted state (e.g., `reviews.booking_id` uniqueness remains enforced even for soft-deleted bookings)
 
 ### Related
 
 - [BOOKING.md](./backend/features/BOOKING.md)
+- [ARCHITECTURE_FACTS.md](./agents/ARCHITECTURE_FACTS.md) — confirms exclusion constraint `WHERE deleted_at IS NULL` and full audit column inventory
 
 ---
 
 ## ADR-010: Redis with Database Cache Fallback
 
-**Status**: Accepted  
-**Date**: December 2025  
+**Status**: Accepted
+**Date**: December 2025
 **Deciders**: Development Team
 
 ### Context
 
-Redis provides tag-based caching but may not be available in all environments (dev, CI, some hosting).
+Redis provides tag-based cache invalidation required by the event-driven invalidation strategy (ADR-007). However, Redis is not available in all environments — local development without Docker, CI pipelines, and some hosting configurations may only have database access. A hard Redis dependency would break these environments entirely.
 
 ### Decision
 
-Use **Redis as primary** with **database cache fallback**.
+Use **Redis as primary** with **database cache as automatic fallback**. Code that uses tag-based operations detects availability at runtime and degrades accordingly.
 
 ```php
 trait HasCacheTagSupport
@@ -531,43 +589,47 @@ trait HasCacheTagSupport
 }
 ```
 
+### Rationale
+
+A Redis-only approach was rejected due to environment portability. A database-only approach was rejected because it cannot support tag-based invalidation (ADR-007). The fallback pattern allows the application to run in all environments while accepting a documented degradation in cache invalidation behaviour when Redis is absent.
+
 ### Consequences
 
 **Positive:**
 
-- Works in any environment
-- Graceful degradation
-- CI/CD tests pass without Redis
+- Application runs in local development, CI, and production without environment-specific cache configuration
+- Graceful degradation: when Redis is unavailable, the database cache handles basic TTL-based caching
+- CI/CD tests pass without a Redis dependency
 
 **Negative:**
 
-- Database cache slower
-- No tag support in fallback mode
-- Must test both code paths
+- When the database fallback is active, `Cache::tags()` is unavailable — the event-driven invalidation strategy (ADR-007) degrades to TTL-only expiry; stale availability entries persist until their TTL expires naturally, not on the booking event
+- Both code paths (Redis and database fallback) must be explicitly tested; the Redis path does not exercise the fallback
+- Database cache is slower and adds load to the primary database under cache-miss conditions
+- The degraded invalidation behaviour in fallback mode is silent — no warning is emitted when tag-based invalidation is skipped
 
 ### Related
 
+- [ADR-007](#adr-007-event-driven-cache-invalidation) — invalidation strategy that depends on Redis tag support; degrades in fallback mode
 - [CACHING.md](./backend/features/CACHING.md)
 
 ---
 
 ## ADR-011: Form Request Validation Classes
 
-**Status**: Accepted  
-**Date**: January 2026  
+**Status**: Accepted
+**Date**: January 2026
 **Deciders**: Development Team
 
 ### Context
 
-Inline validation in controllers (`$request->validate([...])`) works but:
+Inline validation in controller methods (`$request->validate([...])`) was being duplicated across store and update methods, mixing HTTP-layer concerns with rule definitions, and could not be unit-tested in isolation. Controllers in the booking and auth flows had grown to where validation noise obscured business logic.
 
-- Duplicates rules across methods
-- Harder to test validation in isolation
-- Mixes HTTP and validation concerns
+**Scope:** HTTP request input validation only. Domain-level invariants (overlap checks, constraint enforcement) remain in services and the database layer.
 
 ### Decision
 
-Extract validation into **Form Request classes**.
+Extract validation into **Form Request classes** for all booking and auth controller methods. Controllers receive pre-validated data via `$request->validated()`; validation rules live in `*Request.php` classes.
 
 ```php
 // Before
@@ -583,19 +645,23 @@ public function register(RegisterRequest $request)
 }
 ```
 
+### Rationale
+
+Inline `$request->validate()` was rejected: rules were duplicated between store and update methods; testing validation required a full HTTP test rather than a unit test; and the controller method carried both HTTP plumbing and validation concerns. Form Request classes make validation independently testable and localise rule changes to one class.
+
 ### Consequences
 
 **Positive:**
 
-- Reusable validation rules
-- Testable in isolation
-- Clean controllers
-- Custom error messages in one place
+- Validation rules for a given request type are in one class — changes to rules have one touch point
+- Controllers receive validated data and delegate to the service — no validation noise in handler logic
+- Custom error messages and per-request authorisation live in the Form Request, not scattered across controllers
 
 **Negative:**
 
-- More files
-- Slight indirection
+- Each endpoint adds a corresponding `*Request.php` file — a small but real surface increase per endpoint
+- Developers must look in two places (controller + Form Request) to understand what data flows into a handler
+- Form Request `authorize()` can be confused with Gate/policy authorisation — both must be understood to reason about a request's full access control chain
 
 ### Related
 
@@ -604,50 +670,54 @@ public function register(RegisterRequest $request)
 
 ---
 
-## ADR-012: API Versioning Strategy
+## ADR-012: URL Path API Versioning (/api/v1/)
 
-**Status**: Accepted  
-**Date**: December 2025  
+**Status**: Accepted
+**Date**: December 2025
 **Deciders**: Development Team
 
 ### Context
 
-As API evolves, we need to:
-
-- Support multiple client versions
-- Deprecate old endpoints gracefully
-- Avoid breaking changes
+The initial API release shipped unversioned endpoints (e.g., `/api/bookings`, `/api/rooms`). As the system evolved, some endpoints required breaking changes that could not be deployed without coordinating with all existing consumers simultaneously. Without an explicit versioning scheme, every breaking change was a risk to existing integrations and the frontend.
 
 ### Decision
 
-Use **URL path versioning** with suffix pattern for iterations.
+Route all current stable API endpoints under the **`/api/v1/` URL path prefix**. Unversioned legacy endpoints remain active during a deprecation window **expiring July 2026**, after which they will be removed. The frontend exclusively uses `/api/v1/` endpoints.
 
 ```
-/api/auth/login           → Legacy (v1 implicit)
-/api/auth/login-v2        → Bearer token version
-/api/auth/login-httponly  → HttpOnly cookie version
+/api/v1/rooms       → Current stable
+/api/v1/bookings    → Current stable
+/api/v1/locations   → Current stable
+
+/api/bookings       → Legacy, deprecated, sunset July 2026
+/api/rooms          → Legacy, deprecated, sunset July 2026
 ```
+
+URL path versioning is the routing decision. Authentication mechanism variants (Bearer vs. HttpOnly cookie) are a separate concern documented in ADR-006 and do not constitute API versioning.
 
 ### Rationale
 
-| Strategy          | Pros             | Cons                   |
-| ----------------- | ---------------- | ---------------------- |
-| URL path (chosen) | Clear, cacheable | URL pollution          |
-| Header            | Clean URLs       | Hidden, harder to test |
-| Query param       | Flexible         | Not RESTful            |
+| Strategy          | Version visibility        | Cache-friendly | Client complexity |
+| ----------------- | ------------------------- | -------------- | ----------------- |
+| URL path (chosen) | Explicit in every request | Yes            | Low               |
+| Accept header     | Hidden from URL           | Harder         | Medium            |
+| Query parameter   | Visible but non-idiomatic | Partial        | Low               |
+
+Header-based versioning was rejected: the version is invisible in logs, browser history, CDN rules, and network traces. Query parameter versioning was rejected: it conflates versioning with filtering and is not idiomatic for REST resource endpoints.
 
 ### Consequences
 
 **Positive:**
 
-- Explicit versioning in URL
-- Easy to route and document
-- Cacheable by CDN
+- Version is explicit in every request URL — visible in logs, CDN configurations, and client code
+- CDN and reverse proxy routing by version requires no header inspection
+- Breaking changes can be introduced under a new prefix without affecting existing `/api/v1/` consumers
 
 **Negative:**
 
-- Multiple routes to maintain
-- Must document which version to use
+- Legacy unversioned endpoints must be maintained until July 2026 — two routing trees coexist, increasing test and documentation surface during the deprecation window
+- Consumers of legacy endpoints must be migrated before the sunset date; no automatic compatibility shim exists
+- Each future major version (e.g., `/api/v2/`) requires duplicating route definitions and actively managing drift between version namespaces
 
 ### Related
 
@@ -661,37 +731,38 @@ Use **URL path versioning** with suffix pattern for iterations.
 ```markdown
 ## ADR-XXX: Title
 
-**Status**: Proposed | Accepted | Deprecated | Superseded by ADR-YYY  
-**Date**: Month Year  
+**Status**: Proposed | Accepted | Deprecated | Superseded by ADR-YYY
+**Date**: Month Year
 **Deciders**: Who was involved
 
 ### Context
 
-What is the issue? What forces are at play?
+The specific technical pressure or constraint that forced a decision.
+No background theory. No "in software systems, X is important."
 
 ### Decision
 
-What is the change being proposed?
+One or two sentences. Explicit. Bounded.
+What was chosen and where it applies.
 
 ### Rationale
 
-Why was this decision made? Include alternatives considered.
+Why this option over named alternatives.
+Tradeoffs must be explicit. No "this is best practice."
 
 ### Consequences
 
 **Positive:**
 
 - Benefit 1
-- Benefit 2
 
 **Negative:**
 
-- Drawback 1
-- Drawback 2
+- Cost 1 (operational costs required — not just benefits)
 
 ### Related
 
-- Links to related docs
+- ADR cross-links or canonical docs only. No invented filenames.
 ```
 
 ---
@@ -704,75 +775,73 @@ Why was this decision made? Include alternatives considered.
 
 ### Context
 
-Soleil Hostel expanded from a single property to multiple locations across Hue City. The system needed to support:
-
-- Multiple physical locations with independent room inventories
-- Location-specific booking management and availability
-- Cross-location analytics and reporting
-- Location-aware API endpoints
+The system initially modelled a single physical property. Expanding to multiple locations introduced rooms with independent inventories per location, location-specific availability queries, and the need for cross-location analytics. A location-aware data model was required before further booking features could be safely built.
 
 ### Decision
 
-Introduce a **Location model** as a first-class entity with a one-to-many relationship to Rooms, and a denormalized `location_id` on Bookings for analytics.
+Introduce **Location as a first-class domain entity** — not a tag or attribute on rooms — with a one-to-many relationship to Rooms. `bookings.location_id` is intentionally denormalised (auto-set from `rooms.location_id` at write time) to preserve historical location context and simplify analytics queries. `locations.is_active` gates room and booking visibility in read queries.
 
 ```text
 Location (1) ──→ (N) Room (1) ──→ (N) Booking
-Location (1) ──→ (N) Booking  (denormalized for analytics)
+Location (1) ──→ (N) Booking  (denormalised; auto-set by PostgreSQL trigger)
 ```
 
 API endpoints:
 
 ```text
-GET  /api/v1/locations              → List all active locations
-GET  /api/v1/locations/{slug}       → Location detail + rooms
-GET  /api/v1/locations/{slug}/availability → Room availability
-GET  /api/v1/rooms?location_id=X    → Filter rooms by location
+GET  /api/v1/locations               → Active locations list
+GET  /api/v1/locations/{slug}        → Location detail + rooms
+GET  /api/v1/locations/{slug}/availability → Room availability by location
+GET  /api/v1/rooms?location_id=X     → Filter rooms by location
 ```
 
 ### Rationale
 
-| Approach                    | Pros                          | Cons                         |
-| --------------------------- | ----------------------------- | ---------------------------- |
-| Denormalized (chosen)       | Fast analytics, simple joins  | Data duplication on location |
-| Fully normalized            | No duplication                | Complex joins for reports    |
-| Separate databases per site | Full isolation                | Operational complexity       |
+| Approach                              | Analytics simplicity          | Historical integrity              | Operational complexity |
+| ------------------------------------- | ----------------------------- | --------------------------------- | ---------------------- |
+| Denormalised location_id (chosen)     | High — no join through rooms  | Preserved after room deletion     | Low                    |
+| Fully normalised                      | Low — join required on every report | Lost if room deleted        | Low                    |
+| Separate database per location        | Full isolation                | Full                              | Very high              |
+
+Fully normalised was rejected: analytics queries aggregating bookings by location would require a join through the rooms table on every query, including for historical bookings where the originating room has since been deleted or reassigned. Separate databases per location were rejected as operationally disproportionate at hostel scale.
 
 ### Consequences
 
 **Positive:**
 
-- Location-based filtering with no extra joins
-- Slug-based URLs for SEO (`/locations/soleil-hue-center`)
-- Room counts computed efficiently via `withCount`
-- Analytics queries stay simple with denormalized `location_id` on bookings
+- Analytics and reporting filter by `bookings.location_id` without joining through rooms — including for historical bookings after a room is deleted
+- Slug-based URL routing (`/locations/soleil-hue-center`) enables SEO-friendly endpoints
+- `locations.is_active = false` suppresses a location from availability queries without deleting it — inactive locations retain historical booking data
 
 **Negative:**
 
-- `location_id` on bookings must stay in sync with `room.location_id`
-- Migration required when adding new locations
-- Location deletion requires cascade consideration
+- `bookings.location_id` sync with `rooms.location_id` is controlled by PostgreSQL trigger `trg_booking_set_location`, which fires on booking INSERT and UPDATE. The trigger is the authoritative sync mechanism — no application-level sync code is required — but it introduces a dependency on PostgreSQL-specific DDL that cannot be replicated in SQLite test environments
+- `rooms.location_id` is NOT NULL with CASCADE on location delete — deleting a location cascades to all its rooms
+- `bookings.location_id` is nullable with SET NULL on location delete — historical booking records are preserved but lose their location reference; analytics queries must account for NULL `location_id` in historical data
+- The sync risk (location_id drift if the trigger is dropped or bypassed) is accepted and controlled at the database layer
 
 ### Related
 
-- [Location Model](../backend/app/Models/Location.php)
-- [LocationController](../backend/app/Http/Controllers/LocationController.php)
+- [ARCHITECTURE_FACTS.md](./agents/ARCHITECTURE_FACTS.md) — confirms trigger `trg_booking_set_location`, `is_active` gating, cascade behaviours, and `lock_version` on locations
+- [BOOKING.md](./backend/features/BOOKING.md)
 
 ---
 
 ## Decision Log History
 
-| Date     | ADR     | Action | Notes                        |
-| -------- | ------- | ------ | ---------------------------- |
-| Feb 2026 | ADR-013 | Added  | Multi-location architecture  |
-| Jan 2026 | ADR-008 | Added  | Markdown email templates     |
-| Jan 2026 | ADR-011 | Added  | Form request validation      |
-| Jan 2026 | ADR-002 | Added  | Repository pattern           |
-| Jan 2026 | ADR-004 | Added  | Optimistic locking           |
-| Dec 2025 | ADR-001 | Added  | Notifications over Mailables |
-| Dec 2025 | ADR-003 | Added  | Pessimistic locking          |
-| Dec 2025 | ADR-005 | Added  | Enum-based RBAC              |
-| Dec 2025 | ADR-006 | Added  | Dual auth modes              |
-| Dec 2025 | ADR-007 | Added  | Event-driven cache           |
-| Dec 2025 | ADR-009 | Added  | Soft deletes                 |
-| Dec 2025 | ADR-010 | Added  | Redis fallback               |
-| Dec 2025 | ADR-012 | Added  | API versioning               |
+| Date     | ADR     | Action   | Notes                                                   |
+| -------- | ------- | -------- | ------------------------------------------------------- |
+| Mar 2026 | ALL     | Reviewed | Governance audit — corrected ADR-003, -004, -005, -006, -009, -012, -013 |
+| Feb 2026 | ADR-013 | Added    | Multi-location architecture                             |
+| Jan 2026 | ADR-008 | Added    | Markdown email templates                                |
+| Jan 2026 | ADR-011 | Added    | Form request validation                                 |
+| Jan 2026 | ADR-002 | Added    | Repository pattern                                      |
+| Jan 2026 | ADR-004 | Added    | Optimistic locking                                      |
+| Dec 2025 | ADR-001 | Added    | Notifications over Mailables                            |
+| Dec 2025 | ADR-003 | Added    | Pessimistic locking                                     |
+| Dec 2025 | ADR-005 | Added    | Enum-based RBAC                                         |
+| Dec 2025 | ADR-006 | Added    | Dual auth modes                                         |
+| Dec 2025 | ADR-007 | Added    | Event-driven cache                                      |
+| Dec 2025 | ADR-009 | Added    | Soft deletes                                            |
+| Dec 2025 | ADR-010 | Added    | Redis fallback                                          |
+| Dec 2025 | ADR-012 | Added    | API versioning                                          |

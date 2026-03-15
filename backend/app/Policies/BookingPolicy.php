@@ -54,7 +54,10 @@ class BookingPolicy
 
     /**
      * Determine whether the user can view trashed (soft deleted) bookings.
-     * Only admins can view trashed bookings for audit purposes.
+     *
+     * NOTE: This policy method is NOT invoked by AdminBookingController,
+     * which uses Gate::authorize('view-all-bookings') instead (allows moderator+).
+     * This method is retained for completeness but is currently latent.
      */
     public function viewTrashed(User $user): bool
     {

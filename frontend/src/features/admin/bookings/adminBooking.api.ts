@@ -1,11 +1,14 @@
 import api from '@/shared/lib/api'
 import type { BookingDetailRaw } from '@/features/booking/booking.types'
 
-export interface PaginatedResponse<T> {
-  current_page: number
-  data: T[]
-  last_page: number
-  total: number
+export interface AdminBookingsResponse {
+  bookings: BookingDetailRaw[]
+  meta: {
+    current_page: number
+    last_page: number
+    per_page: number
+    total: number
+  }
 }
 
 // ----------------------------------------------------
@@ -26,18 +29,18 @@ export interface AdminBookingFilters {
 
 export const getAllBookings = async (
   filters?: AdminBookingFilters
-): Promise<PaginatedResponse<BookingDetailRaw>> => {
+): Promise<AdminBookingsResponse> => {
   const response = await api.get('/v1/admin/bookings', { params: filters })
-  return response.data
+  return response.data.data
 }
 
 export const confirmBooking = async (id: number): Promise<BookingDetailRaw> => {
-  const response = await api.post(`/v1/admin/bookings/${id}/confirm`)
+  const response = await api.post(`/v1/bookings/${id}/confirm`)
   return response.data.data
 }
 
 export const adminCancelBooking = async (id: number, reason: string): Promise<BookingDetailRaw> => {
-  const response = await api.post(`/v1/admin/bookings/${id}/cancel`, { reason })
+  const response = await api.post(`/v1/bookings/${id}/cancel`, { reason })
   return response.data.data
 }
 

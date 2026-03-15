@@ -43,8 +43,8 @@ const AdminBookingDashboard: React.FC = () => {
       if (search) filters.search = search
 
       const response = await getAllBookings(filters)
-      // The API response depends on whether it's paginated or not. Assuming paginated:
-      setBookings(response.data)
+      // Backend returns { bookings: [...], meta: {...} } via ApiResponse wrapper
+      setBookings(response.bookings)
     } catch {
       // fetch error handled silently
     } finally {

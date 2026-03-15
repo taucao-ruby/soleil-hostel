@@ -1,5 +1,5 @@
 import api from '@/shared/lib/api'
-import type { AdminRoom, CreateRoomData, UpdateRoomData, RoomStatus } from './adminRoom.types'
+import type { AdminRoom, CreateRoomData, UpdateRoomData } from './adminRoom.types'
 
 // Note: Ensure that the backend actually provides these endpoints in this format.
 // The prompt indicated /api/v1/rooms as the base.
@@ -24,19 +24,5 @@ export const deleteRoom = async (id: number): Promise<void> => {
   await api.delete(`/v1/rooms/${id}`)
 }
 
-export const updateRoomStatus = async (
-  id: number,
-  status: RoomStatus,
-  lock_version: number
-): Promise<AdminRoom> => {
-  const response = await api.patch(`/v1/rooms/${id}/status`, { status, lock_version })
-  return response.data.data
-}
-
-export const batchUpdateStatus = async (
-  roomIds: number[],
-  status: RoomStatus
-): Promise<AdminRoom[]> => {
-  const response = await api.post('/v1/rooms/batch-status', { room_ids: roomIds, status })
-  return response.data.data
-}
+// TODO: [XL-CONTRACT-02] updateRoomStatus — backend route PATCH /v1/rooms/{id}/status not yet implemented
+// TODO: [XL-CONTRACT-02] batchUpdateStatus — backend route POST /v1/rooms/batch-status not yet implemented

@@ -43,7 +43,9 @@ nul
 database.sqlite
 
 # Local agent / AI tool state
-.claude/
+# Only local-only items are excluded; project-shared .claude/ config is version-controlled.
+.claude/settings.local.json
+.claude/worktrees/
 
 # Dev/debug scripts that must not be committed
 backend/storage/check_pw.php

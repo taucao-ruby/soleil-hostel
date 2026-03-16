@@ -3,7 +3,18 @@
 # See: https://github.com/gitleaks/gitleaks#configuration
 
 [allowlist]
-  description = "Allowlist of audited false positives (doc examples, empty placeholders, deleted files)"
+  description = "Allowlist of audited false positives (doc examples, empty placeholders, deleted files, security config)"
+
+  # Path allowlist — files that contain credential-like STRINGS for defensive/security purposes, NOT real credentials.
+  # Audited 2026-03-16: these are Claude Code hook scripts and permission config.
+  # block-dangerous-bash.sh: case pattern matching strings (APP_KEY, DB_PASSWORD, etc.) to BLOCK dangerous commands
+  # guard-sensitive-files.sh: case pattern matching strings (id_rsa, .pem, etc.) to BLOCK edits to sensitive files
+  # settings.json: deny list pattern strings — not credentials, just pattern matchers
+  paths = [
+    '''.claude/hooks/block-dangerous-bash\.sh''',
+    '''.claude/hooks/guard-sensitive-files\.sh''',
+    '''.claude/settings\.json''',
+  ]
 
   # Commit hashes containing only false positives (doc examples, empty .env placeholders, test fixtures)
   commits = [

@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # check-migration-safety.sh
 # Checks recently modified migration files for common safety violations:
-#   1. Missing or empty down() method
-#   2. PG-only features used without DB::getDriverName() guard
-#   3. Auto-generated constraint/index names (no explicit string name passed)
+#   1. Missing or empty down() method          — mechanically reliable PASS/FAIL
+#   2. PG-only features without driver guard   — mechanically reliable PASS/FAIL
+#   3. Auto-generated index/constraint names   — ADVISORY ONLY (WARN, not FAIL)
+#      Detection is partial: catches zero-argument ->index()/>unique()/>primary() calls only.
+#      Single-column string calls and ->foreign() without explicit names are NOT detected.
+#      Manual naming review is always required for new migrations.
 #
-# Exit: 0 = PASS, 1 = FAIL, 2 = UNKNOWN (missing evidence)
+# Exit: 0 = PASS (or PASS with warnings), 1 = FAIL, 2 = UNKNOWN (missing evidence)
 #
 # Read-only. Never modifies files. CI-safe. Git Bash compatible.
 # Pass a migration file path as $1, or omit to check all migrations modified in the last git commit.
@@ -21,6 +24,7 @@ UNKNOWN=2
 
 fail=0
 unknown=0
+warn=0
 
 # Determine files to check
 if [ $# -ge 1 ]; then
@@ -92,7 +96,9 @@ for file in "${FILES[@]}"; do
   # Flag calls to ->unique(), ->index(), ->primary(), ->foreign() with no name argument (single or zero args after column)
   # Heuristic: constraint-creating calls with empty second argument position
   if grep -qE "\->(unique|index|primary)\(\s*\)" "$file"; then
-    echo "WARN    [$label] Possible auto-generated index name: ->unique()/->index()/->primary() with no name argument — verify explicit naming"
+    echo "WARN    [$label] Zero-argument ->unique()/->index()/->primary() detected — likely auto-generated name; verify explicit naming"
+    echo "         (Advisory only: single-column and ->foreign() auto-names are not detected by this check)"
+    warn=$((warn + 1))
   fi
 
   if [ $file_fail -eq 0 ]; then
@@ -112,5 +118,9 @@ if [ $fail -eq 1 ]; then
   exit $FAIL
 fi
 
-echo "RESULT: PASS — all checked migrations meet safety requirements"
+if [ $warn -gt 0 ]; then
+  echo "RESULT: PASS with $warn advisory warning(s) — see WARN lines above; manual index/constraint naming review required"
+else
+  echo "RESULT: PASS — no hard violations detected (naming convention check is advisory; verify explicit names in any new migration)"
+fi
 exit $PASS

@@ -11,19 +11,15 @@ Use this skill for concurrency-sensitive changes in rooms, bookings, cancellatio
 
 ## Non-negotiables
 
-- Use optimistic locking for room write conflicts.
-  - `rooms.lock_version` is the version token.
-  - Version mismatch must surface as conflict behavior (409 path via exception handling).
-- Use pessimistic locking for booking conflict paths.
-  - Conflict reads/writes must run in transaction with `SELECT ... FOR UPDATE`.
-- Keep stale-data behavior explicit.
-  - Room updates with stale `lock_version` must fail predictably, not silently overwrite.
+Column and schema facts (which tables carry `lock_version`, column defaults): `docs/agents/ARCHITECTURE_FACTS.md` § "Concurrency Control".
+Load `.agent/rules/booking-integrity.md` for locking STOP conditions before editing booking write paths.
+
+- Rooms and locations use **optimistic locking** (`lock_version` compare-and-swap) — version mismatch must surface as a conflict (409), never silently overwrite.
+- Booking conflict paths use **pessimistic locking** — overlap check and write must run in the same transaction under `lockForUpdate()` or a scope that delegates to it (`withLock()`).
+- Room updates with stale `lock_version` must fail predictably, not silently overwrite.
 - Keep booking conflict checks and writes in the same transaction boundary.
-- Keep deadlock/serialization retry behavior where applicable.
-  - `CreateBookingService` handles retryable SQL states.
-- Avoid deadlocks by consistent ordering and short transactions.
-  - Lock only what is required.
-  - Do external I/O outside DB transactions when possible.
+- Keep deadlock/serialization retry behavior where applicable — `CreateBookingService` handles retryable SQL states.
+- Do external I/O (payment, email, external APIs) outside DB transactions — never hold a DB lock across a network call.
 
 ## Implementation Checklist
 

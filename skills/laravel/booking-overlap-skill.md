@@ -11,23 +11,14 @@ Use this skill when changing booking date logic, conflict detection, booking sta
 
 ## Non-negotiables
 
-- Preserve half-open interval semantics: `[check_in, check_out)`.
-  - Same-day turnover is allowed: existing `check_out == new_check_in` is not a conflict.
-- Keep overlap condition exactly:
+Exact invariants (active statuses, constraint SQL, column facts): `docs/agents/ARCHITECTURE_FACTS.md` § "Booking Domain — Overlap Prevention".
+Load `.agent/rules/booking-integrity.md` for a fast-load summary before editing.
 
-```sql
-check_in < new_check_out AND check_out > new_check_in
-```
-
-- Only active statuses count for conflicts: `pending`, `confirmed`.
-- Soft-deleted bookings must not block new bookings.
-  - App layer: `SoftDeletes` excludes `deleted_at IS NOT NULL` by default.
-  - DB layer (PostgreSQL): exclusion constraint includes `deleted_at IS NULL`.
-- Preserve production constraint shape:
-  - `EXCLUDE USING gist (room_id WITH =, daterange(check_in, check_out, '[)') WITH &&)`
-  - `WHERE (status IN ('pending', 'confirmed') AND deleted_at IS NULL)`
-- Keep concurrency protection for conflicts.
-  - Booking create/update checks run in transaction with `SELECT ... FOR UPDATE` (`lockForUpdate`).
+- Preserve half-open interval semantics `[check_in, check_out)` — same-day turnover is valid.
+- Keep the overlap condition: `existing.check_in < new.check_out AND existing.check_out > new.check_in`.
+- Active statuses for overlap detection are defined in `Booking::ACTIVE_STATUSES` constant — do NOT hardcode status strings in queries; grep the constant.
+- `deleted_at IS NULL` required in BOTH the app-layer scope AND the DB constraint WHERE clause.
+- Overlap check and write must execute in the same transaction under lock — no exceptions.
 
 ## Implementation Checklist
 

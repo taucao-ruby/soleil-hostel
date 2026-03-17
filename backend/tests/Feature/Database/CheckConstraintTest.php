@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Database;
 
-use App\Models\Location;
 use App\Models\Room;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;

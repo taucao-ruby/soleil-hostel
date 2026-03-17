@@ -2,13 +2,10 @@
 
 namespace Tests\Feature\Database;
 
-use App\Enums\BookingStatus;
 use App\Models\Booking;
-use App\Models\Location;
 use App\Models\Review;
 use App\Models\Room;
 use App\Models\User;
-use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;

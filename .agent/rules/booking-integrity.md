@@ -1,7 +1,7 @@
 ---
 verified-against: docs/agents/ARCHITECTURE_FACTS.md
 section: "Booking Domain — Overlap Prevention, Concurrency Control, Booking Status"
-last-verified: 2026-03-16
+last-verified: 2026-03-17
 maintained-by: docs-sync
 ---
 
@@ -29,7 +29,7 @@ Exact SQL and migration evidence: read ARCHITECTURE_FACTS.md directly — do not
 
 ## Schema Facts (common mistake sources)
 
-- `bookings.status` is VARCHAR, NOT a PostgreSQL ENUM — values enforced at application level
+- `bookings.status` is VARCHAR, NOT a PostgreSQL ENUM — values enforced at application level AND DB CHECK `chk_bookings_status` on PostgreSQL (migration `2026_03_17_000003`)
 - Status values: `pending`, `confirmed`, `refund_pending`, `cancelled`, `refund_failed`
 - `Booking::ACTIVE_STATUSES` is a constant array — grep for inline strings will NOT find the status list
 

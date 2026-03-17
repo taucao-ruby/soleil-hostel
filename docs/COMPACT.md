@@ -9,13 +9,14 @@
 
 ## 1) Current Snapshot (keep under 12 lines)
 
-- Date updated: 2026-03-14
+- Date updated: 2026-03-17
 - Current branch: `dev`
-- Latest commit: `d6fc4db` — docs: full review sync after March 11-14 sessions
-- Backend test baseline: 901 tests, 2510 assertions — verified 2026-03-11
+- Latest commit: `8693fcd` — feat(backend): harden FK delete policies and add CHECK constraints
+- Backend test baseline: 954 tests, 2596 assertions — verified 2026-03-17
 - Frontend test baseline: 226 tests, 21 suites — verified 2026-03-11
 - Pint: 283 files, 0 style issues. PHPStan: Level 5, 151 pre-existing. Psalm: Level 1, 0 blocking.
 - Open findings: F-23 (MD lint), F-25 (api.ts CSRF path — non-critical). All others resolved.
+- **DB hardening 2026-03-17**: FK policies hardened (4 FKs), CHECKs added (max_guests, bookings.status), PG-only. Deferred: rooms.status CHECK.
 - **H-06**: `phpunit.xml` defaults to PostgreSQL; run `docker compose up -d db` before `php artisan test`.
 - Test accounts (soleil_test DB): user@soleil.test / admin@soleil.test / moderator@soleil.test — `P@ssworD123`
 

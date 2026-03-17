@@ -76,7 +76,18 @@ WHERE (status IN ('pending', 'confirmed') AND deleted_at IS NULL);
   - DB `CHECK (check_out > check_in)` on `bookings` (`chk_bookings_dates`).
   - DB `CHECK (rating BETWEEN 1 AND 5)` on `reviews` (`chk_reviews_rating`).
   - DB `CHECK (price >= 0)` on `rooms` (`chk_rooms_price`).
-  - Note: `chk_rooms_max_guests CHECK (max_guests > 0)` is documented in DATABASE.md but not present in migrations. Application-level validation only.
+- Additional CHECK constraints (added in migrations `2026_03_17_000002` and `2026_03_17_000003`, pgsql-only):
+  - DB `CHECK (max_guests > 0)` on `rooms` (`chk_rooms_max_guests`).
+  - DB `CHECK (status IN ('pending','confirmed','refund_pending','cancelled','refund_failed'))` on `bookings` (`chk_bookings_status`).
+  - Note: `rooms.status` DB CHECK is **deferred** — room status values are inconsistent across codebase; no stable `RoomStatus` enum exists yet.
+- FK delete policies hardened (migration `2026_03_17_000001`, pgsql-only):
+  - `bookings.user_id → users.id`: CASCADE → SET NULL (booking history survives user deletion)
+  - `bookings.room_id → rooms.id`: CASCADE → RESTRICT (room deletion blocked if bookings exist)
+  - `reviews.user_id → users.id`: CASCADE → SET NULL (review survives user deletion)
+  - `reviews.room_id → rooms.id`: CASCADE → SET NULL (review survives room deletion)
+- DB hardening test coverage (added `2026_03_17`):
+  - `tests/Feature/Database/FkDeletePolicyTest.php` — 5 tests: RESTRICT blocks, SET NULL nullifies
+  - `tests/Feature/Database/CheckConstraintTest.php` — 3 tests: max_guests boundary cases
 
 ## 4) Index Strategy (names that matter)
 

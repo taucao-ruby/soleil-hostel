@@ -1,5 +1,14 @@
 ﻿# WORKLOG — Soleil Hostel (Append-only)
 
+## 2026-03-17
+
+- Change: DB hardening pass — FK delete policy hardening + CHECK constraints.
+- Migrations: `2026_03_17_000001` (4 FKs: bookings.user_id CASCADE→SET NULL, bookings.room_id CASCADE→RESTRICT, reviews.user_id CASCADE→SET NULL, reviews.room_id CASCADE→SET NULL), `2026_03_17_000002` (chk_rooms_max_guests), `2026_03_17_000003` (chk_bookings_status). All PG-only, runtime-gated.
+- Tests: `FkDeletePolicyTest.php` (5 tests), `CheckConstraintTest.php` (3 tests). Backend: 954/2596 PASS.
+- Closeout: reviews.user_id original was CASCADE (not SET NULL). Gating standardized to `DB::getDriverName()`.
+- Deferred: rooms.status DB CHECK (no stable enum), legacy migration 2026_02_09_000000 gating cleanup.
+- Docs sync: DATABASE.md, DB_FACTS.md, ARCHITECTURE_FACTS.md, PROJECT_STATUS.md, BACKLOG.md, COMPACT.md, WORKLOG.md, booking-integrity.md, migrations-postgres-skill.md updated.
+
 ## 2026-03-14
 
 - Change: Docs sync v7 — 5-batch truth-alignment pass in worktree `claude/magical-bardeen`.

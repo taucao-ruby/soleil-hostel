@@ -1,6 +1,6 @@
 # 🗄️ Database Schema & Indexes
 
-> Complete database design for Soleil Hostel (35 migrations, 16 tables)
+> Complete database design for Soleil Hostel (38 migrations, 16 tables)
 
 ## ER Diagram
 

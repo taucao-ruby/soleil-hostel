@@ -11,7 +11,7 @@
 
 - Date updated: 2026-03-17
 - Current branch: `dev`
-- Latest commit: `8693fcd` — feat(backend): harden FK delete policies and add CHECK constraints
+- Latest commit: `81df6c9` — docs: sync documentation after DB hardening pass
 - Backend test baseline: 954 tests, 2596 assertions — verified 2026-03-17
 - Frontend test baseline: 226 tests, 21 suites — verified 2026-03-11
 - Pint: 283 files, 0 style issues. PHPStan: Level 5, 151 pre-existing. Psalm: Level 1, 0 blocking.

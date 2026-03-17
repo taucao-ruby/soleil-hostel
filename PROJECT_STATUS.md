@@ -2,7 +2,7 @@
 
 **Last Updated:** March 17, 2026
 **Current Branch:** `dev`
-**Latest Commit:** `8693fcd` — feat(backend): harden FK delete policies and add CHECK constraints
+**Latest Commit:** `81df6c9` — docs: sync documentation after DB hardening pass
 
 ## Current Status: Repo Health Green
 

@@ -65,7 +65,7 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 | Admin Audit Log (append-only; actor, IP, metadata)  | ✅ Complete       | —             |
 | Customer management (admin guest view + StayJournal) | ✅ Complete       | —             |
 | Password complexity enforcement (registration)       | ✅ Complete       | —             |
-| **Backend total**                                    | **✅ 20 systems** | **901+ tests** |
+| **Backend total**                                    | **✅ 20 systems** | **954 tests** |
 
 ### Frontend (React 19 + TypeScript) — 96% complete
 

@@ -1,6 +1,6 @@
 # Soleil Hostel Documentation
 
-> **Last Updated:** March 11, 2026 | **Tests:** 901 backend tests (2510 assertions) + 226 frontend unit tests | **Status:** Phases 0-5 Complete + DevSecOps + Quality Hardening + RBAC Hardening
+> **Last Updated:** March 17, 2026 | **Tests:** 954 backend tests (2596 assertions) + 226 frontend unit tests | **Status:** Phases 0-5 Complete + DevSecOps + Quality Hardening + RBAC Hardening + DB Hardening
 
 ## Quick Navigation
 
@@ -123,7 +123,7 @@ docs/
 
 See [PROJECT_STATUS.md](../PROJECT_STATUS.md) for full status snapshot with gate results and roadmap.
 
-**Current baselines** (verified March 11, 2026): 901 backend tests, 226 frontend tests, 283 Pint files, 0 open critical/high findings.
+**Current baselines** (verified March 17, 2026): 954 backend tests, 226 frontend tests, 283 Pint files, 0 open critical/high findings.
 
 ## Tech Stack
 
@@ -142,7 +142,7 @@ See [PROJECT_STATUS.md](../PROJECT_STATUS.md) for full status snapshot with gate
 - **Authentication**: Bearer Token + HttpOnly Cookie dual mode, token rotation, unified endpoints
 - **Booking System**: Pessimistic locking, soft deletes with audit trail, half-open intervals
 - **Room Management**: Optimistic locking, real-time availability cache
-- **RBAC**: 3 roles (USER, MODERATOR, ADMIN), type-safe enum, 6 authorization gates
+- **RBAC**: 3 roles (USER, MODERATOR, ADMIN), type-safe enum, 7 authorization gates
 - **Security**: A+ security headers, HTML Purifier XSS, multi-tier rate limiting, CSRF
 - **Performance**: Redis caching with event-driven invalidation, N+1 prevention, parallel testing
 - **Monitoring**: Correlation ID tracing, health probes, Sentry, structured JSON logging

@@ -16,6 +16,7 @@
         "laravel/horizon": "^5.42",
         "laravel/sanctum": "^4.1",
         "laravel/tinker": "^2.10.1",
+        "league/commonmark": "^2.8.2",
         "sentry/sentry-laravel": "^4.20"
     },
     "require-dev": {

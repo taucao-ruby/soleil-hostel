@@ -1,0 +1,69 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Edit",
+      "Write",
+      "Bash(cd backend && php artisan test*)",
+      "Bash(cd backend && php artisan migrate:status*)",
+      "Bash(cd backend && php artisan route:list*)",
+      "Bash(cd backend && vendor/bin/pint*)",
+      "Bash(cd backend && composer audit*)",
+      "Bash(cd backend && composer show*)",
+      "Bash(cd backend && composer why*)",
+      "Bash(cd frontend && npx tsc --noEmit*)",
+      "Bash(cd frontend && npx vitest run*)",
+      "Bash(docker compose config*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)"
+    ],
+    "deny": [
+      "Bash(rm -rf*)",
+      "Bash(git push --force*)",
+      "Bash(git reset --hard*)",
+      "Bash(git checkout -- .)",
+      "Bash(*APP_KEY*)",
+      "Bash(*REDIS_PASSWORD*)",
+      "Bash(*DB_PASSWORD*)",
+      "Bash(*SECRET*)",
+      "Bash(*private_key*)",
+      "Bash(*tinker*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/block-dangerous-bash.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/guard-sensitive-files.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/remind-frontend-validation.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

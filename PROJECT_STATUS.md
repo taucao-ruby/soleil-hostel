@@ -1,18 +1,18 @@
 # Soleil Hostel - Project Status
 
-**Last Updated:** March 14, 2026
+**Last Updated:** March 17, 2026
 **Current Branch:** `dev`
-**Latest Commit:** `ef138cc` — fix(frontend): bump flatted and undici CVEs
+**Latest Commit:** `81df6c9` — docs: sync documentation after DB hardening pass
 
 ## Current Status: Repo Health Green
 
 > Audits v1–v4 complete: 179 total findings, 179 resolved (100%).
-> Batches 1–12 + DevSecOps + quality hardening complete.
+> Batches 1–12 + DevSecOps + quality hardening + DB hardening complete.
 > See [AUDIT_REPORT.md](./AUDIT_REPORT.md) for detailed audit history.
 
-Gates (verified March 11, 2026):
+Gates (verified March 17, 2026):
 
-- Backend tests PASS: **901 tests**, **2510 assertions** (`cd backend && php artisan test`)
+- Backend tests PASS: **954 tests**, **2596 assertions** (`cd backend && php artisan test`)
 - Frontend typecheck PASS: 0 errors (`cd frontend && npx tsc --noEmit`)
 - Frontend unit tests PASS: **21 files**, **226 tests** (`cd frontend && npx vitest run`)
 - Compose config PASS (`docker compose config`)
@@ -51,9 +51,9 @@ Total Progress     ████████████████████�
 ### Backend (PHPUnit/Pest)
 
 ```text
-901 tests passed
-2510 assertions
-Duration: ~200s (verified March 11, 2026)
+954 tests passed
+2596 assertions
+Duration: ~210s (verified March 17, 2026)
 ```
 
 ### Frontend (Vitest)
@@ -141,6 +141,7 @@ All audit and batch details are preserved in [AUDIT_REPORT.md](./AUDIT_REPORT.md
 | Mar 11, 2026 | RBAC phases 1-3: enforcement gaps, admin audit log, moderator activation | — |
 | Mar 12, 2026 | Admin panel expansion (AdminLayout, room/booking/customer mgmt) + CI hygiene checks | — |
 | Mar 13-14, 2026 | RBAC mobile guard, password complexity, EmailVerificationTest, CVE fixes (flatted/undici) | — |
+| Mar 17, 2026 | DB hardening: FK delete policy hardening + CHECK constraints + DB tests | +53 backend tests (901→954), 3 migrations, 2 test files |
 
 ---
 
@@ -152,4 +153,5 @@ RBAC phases 1-3 (Mar 11): enforcement gaps closed, admin audit log, moderator ac
 Admin panel expansion (Mar 12): AdminLayout, sidebar, customer/room/booking management (39556d7); CI hygiene hooks.
 RBAC mobile guard + password complexity (Mar 13-14): admin route guard on frontend, registration password rule.
 CVE fix (Mar 14): flatted >=3.4.0, undici >=7.24.0 (ef138cc). Logout-401 investigation: no code bug (stale cookie).
+DB hardening (Mar 17): FK CASCADE→SET NULL/RESTRICT on 4 FKs (bookings.user_id, bookings.room_id, reviews.user_id, reviews.room_id). CHECK constraints added: chk_rooms_max_guests, chk_bookings_status. All PG-only, runtime-gated. 954 tests, 0 failures.
 Findings backlog: [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md)

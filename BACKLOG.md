@@ -1,7 +1,7 @@
 # BACKLOG.md — Soleil Hostel
 
 > **Product backlog — prioritized by implementation order**
-> Last updated: 2026-03-11 | Source: COMPACT.md + KNOWN_LIMITATIONS.md + FINDINGS_BACKLOG.md + PERMISSION_MATRIX.md
+> Last updated: 2026-03-17 | Source: COMPACT.md + KNOWN_LIMITATIONS.md + FINDINGS_BACKLOG.md + PERMISSION_MATRIX.md
 
 ---
 
@@ -411,6 +411,8 @@ FEAT-002 (Group Booking) → requires a new ADR before coding
 | I18N-002 Frontend i18n          | —        | 🟢 When time permits                      |
 | TD-004 Audit Log Retention      | —        | 🟡 Next                                   |
 | F-25 api.ts CSRF path fix       | —        | 🟢 Non-critical, when time permits        |
+| rooms.status normalization + RoomStatus enum | —  | 🟡 Prerequisite for rooms.status DB CHECK  |
+| Legacy migration gating cleanup (2026_02_09_000000) | — | 🟢 Standardize config→DB::getDriverName() |
 
 ---
 
@@ -457,6 +459,9 @@ FEAT-002 (Group Booking) → requires a new ADR before coding
 | ✅ RBAC mobile remediation: admin route guard on frontend                                       | Mar 13, 2026      | —         |
 | ✅ Password complexity enforcement on registration + EmailVerificationTest                      | Mar 13-14, 2026   | —         |
 | ✅ CVE fix: flatted >=3.4.0 + undici >=7.24.0 (ef138cc)                                       | Mar 14, 2026      | —         |
+| ✅ DB hardening: FK delete policies (4 FKs CASCADE→SET NULL/RESTRICT)                          | Mar 17, 2026      | 3 migrations, 8 tests |
+| ✅ DB hardening: chk_rooms_max_guests CHECK constraint                                         | Mar 17, 2026      | PG-only   |
+| ✅ DB hardening: chk_bookings_status CHECK constraint                                          | Mar 17, 2026      | PG-only   |
 
 ---
 

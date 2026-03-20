@@ -41,7 +41,7 @@ On `bookings` table: `amount`, `payment_intent_id`, `refund_id`, `refund_status`
 
 ### Booking Status
 
-**VARCHAR column, NOT a PostgreSQL ENUM.** Values enforced at application level:
+**VARCHAR column, NOT a PostgreSQL ENUM.** Values enforced at application level (`App\Enums\BookingStatus`) AND DB CHECK constraint `chk_bookings_status` on PostgreSQL (migration `2026_03_17_000003`):
 - `pending`, `confirmed`, `refund_pending`, `cancelled`, `refund_failed`
 
 ## Concurrency Control
@@ -83,7 +83,7 @@ Added across two migrations (`2025_11_20_000100` + `2025_11_21_150000`):
 
 ## Multi-Location
 
-- `rooms.location_id` — NOT NULL, FK to locations (CASCADE on delete)
+- `rooms.location_id` — NOT NULL, FK to locations (RESTRICT on delete) — location deletion blocked if rooms exist
 - `bookings.location_id` — nullable, FK to locations (SET NULL on delete) — denormalized for analytics
 - PostgreSQL trigger `trg_booking_set_location`: auto-sets `bookings.location_id` from `rooms.location_id` on insert/update
 - `locations.is_active` gates room/booking visibility
@@ -141,4 +141,24 @@ All four previously absent constraints added via migrations (audit v2, PR-2 + PR
 - `CHECK (rating BETWEEN 1 AND 5)` on reviews — **added** (F-07 fixed)
 - `CHECK (price >= 0)` on rooms — **added** (F-08 fixed)
 - FK `reviews.booking_id -> bookings.id` — **added** (F-09 fixed)
+
+## DB Hardening (2026-03-17)
+
+FK delete policy hardening (migration `2026_03_17_000001`, PG-only, runtime-gated via `DB::getDriverName()`):
+- `bookings.user_id → users.id`: CASCADE → **SET NULL** (booking history survives user deletion)
+- `bookings.room_id → rooms.id`: CASCADE → **RESTRICT** (room deletion blocked if bookings exist)
+- `reviews.user_id → users.id`: CASCADE → **SET NULL** (review survives user deletion)
+- `reviews.room_id → rooms.id`: CASCADE → **SET NULL** (review survives room deletion)
+
+Correction on record: prior operator baseline incorrectly claimed `reviews.user_id` was already SET NULL. Source `2026_02_09_000000_add_foreign_key_constraints.php` confirms original was `onDelete('cascade')`.
+
+Additional CHECK constraints (PG-only, runtime-gated):
+- `chk_rooms_max_guests CHECK (max_guests > 0)` — migration `2026_03_17_000002`
+- `chk_bookings_status CHECK (status IN ('pending','confirmed','refund_pending','cancelled','refund_failed'))` — migration `2026_03_17_000003`
+
+Deferred:
+- `rooms.status` DB CHECK — room status values inconsistent across codebase; deferred pending normalization + stable `RoomStatus` enum
+- Legacy migration `2026_02_09_000000` uses `config('database.default')` gating (weaker than `DB::getDriverName()`); cleanup deferred
+
+Test coverage: `FkDeletePolicyTest.php` (5 tests), `CheckConstraintTest.php` (3 tests). Backend suite: 954 tests, 0 failures.
 

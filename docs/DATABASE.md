@@ -1,6 +1,6 @@
 # 🗄️ Database Schema & Indexes
 
-> Complete database design for Soleil Hostel (35 migrations, 16 tables)
+> Complete database design for Soleil Hostel (38 migrations, 16 tables)
 
 ## ER Diagram
 
@@ -197,7 +197,7 @@ State transitions (see `App\Enums\BookingStatus::canTransitionTo()`):
 - CANCELLED → (terminal)
 - REFUND_FAILED → REFUND_PENDING (retry), CANCELLED
 
-Enforcement: application layer only.
+Enforcement: application layer (`App\Enums\BookingStatus`) + DB CHECK constraint `chk_bookings_status` on PostgreSQL (migration `2026_03_17_000003`).
 
 ### reviews
 
@@ -400,11 +400,15 @@ ON personal_access_tokens (revoked_at);
 ```sql
 ALTER TABLE bookings
 ADD CONSTRAINT fk_bookings_user
-FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL;
+-- Changed from CASCADE → SET NULL in migration 2026_03_17_000001
+-- Rationale: booking history must survive user deletion (financial audit)
 
 ALTER TABLE bookings
 ADD CONSTRAINT fk_bookings_room
-FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE;
+FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE RESTRICT;
+-- Changed from CASCADE → RESTRICT in migration 2026_03_17_000001
+-- Rationale: room deletion blocked if bookings exist (prevents data loss)
 
 ALTER TABLE bookings
 ADD CONSTRAINT fk_bookings_deleted_by
@@ -420,15 +424,20 @@ FOREIGN KEY (cancelled_by) REFERENCES users(id) ON DELETE SET NULL;
 
 ALTER TABLE rooms
 ADD CONSTRAINT fk_rooms_location
-FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE CASCADE;
+FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE RESTRICT;
+-- Already RESTRICT in migration 2026_02_09_000002
 
 ALTER TABLE reviews
 ADD CONSTRAINT fk_reviews_room
-FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE;
+FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE SET NULL;
+-- Changed from CASCADE → SET NULL in migration 2026_03_17_000001
+-- Rationale: review survives room deletion
 
 ALTER TABLE reviews
 ADD CONSTRAINT fk_reviews_user
 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL;
+-- Changed from CASCADE → SET NULL in migration 2026_03_17_000001
+-- Rationale: review survives user deletion
 
 ALTER TABLE reviews
 ADD CONSTRAINT fk_reviews_booking_id
@@ -457,9 +466,22 @@ CHECK (price >= 0);
 ALTER TABLE reviews
 ADD CONSTRAINT chk_reviews_rating
 CHECK (rating >= 1 AND rating <= 5);
+
+-- Max guests must be positive (added 2026-03-17)
+ALTER TABLE rooms
+ADD CONSTRAINT chk_rooms_max_guests
+CHECK (max_guests > 0);
+-- Added in migration 2026_03_17_000002. PostgreSQL only.
+
+-- Booking status must be a known value (added 2026-03-17)
+ALTER TABLE bookings
+ADD CONSTRAINT chk_bookings_status
+CHECK (status IN ('pending', 'confirmed', 'refund_pending', 'cancelled', 'refund_failed'));
+-- Added in migration 2026_03_17_000003. PostgreSQL only.
+-- Values match App\Enums\BookingStatus. Adding a new status requires a migration.
 ```
 
-> **Note:** `chk_rooms_max_guests CHECK (max_guests > 0)` is **not present in migrations**. This rule is enforced at the application layer only (see `StoreRoomRequest`, `UpdateRoomRequest`). To add it at the DB level, apply manually via `psql` or add a new migration.
+> **Note:** `rooms.status` DB-level CHECK is **not present**. Room status values are inconsistent across application code (`available`, `occupied`, `maintenance`, `booked`, `active`). Enforcement deferred pending normalization and a stable `RoomStatus` enum.
 
 ---
 
@@ -507,7 +529,7 @@ EXCLUDE USING gist (
 
 ## Migrations
 
-### Migration History (35 files)
+### Migration History (38 files)
 
 | Migration                                                 | Description                                       |
 | --------------------------------------------------------- | ------------------------------------------------- |
@@ -546,6 +568,9 @@ EXCLUDE USING gist (
 | `2026_02_22_add_check_constraints_bookings_reviews_rooms` | CHECK constraints: dates, rating, price (PG only) |
 | `2026_02_22_add_fk_reviews_booking_id`                    | FK reviews.booking_id → bookings.id (RESTRICT)    |
 | `2026_02_28_add_cashier_columns_to_users_table`           | Cashier: stripe_id, pm_type, pm_last_four, trial  |
+| `2026_03_17_000001_harden_fk_delete_policies`             | FK hardening: 4 FKs CASCADE→SET NULL/RESTRICT (PG)|
+| `2026_03_17_000002_add_check_constraint_rooms_max_guests` | CHECK (max_guests > 0) on rooms (PG only)         |
+| `2026_03_17_000003_add_check_constraint_bookings_status`  | CHECK (status IN (...)) on bookings (PG only)      |
 
 ### Commands
 

@@ -15,7 +15,7 @@ Use this skill for schema changes, indexes, constraints, enum changes, or DB por
   - Default runtime DB is `pgsql` in `backend/config/database.php`.
   - CI backend jobs run PostgreSQL services.
 - Keep SQLite test caveats explicit.
-  - Local test default in `backend/phpunit.xml` is `sqlite` with `:memory:`.
+  - `backend/phpunit.xml` defaults to PostgreSQL (`pgsql`). SQLite opt-in via `phpunit.pgsql.xml`.
   - Do not assume SQLite fully matches PostgreSQL features.
 - For PostgreSQL-specific features, guard by driver and provide safe fallback.
   - Example: `btree_gist` extension and exclusion constraints.
@@ -78,4 +78,9 @@ If migration behavior depends on PostgreSQL-only features, also validate against
 - `../../backend/database/migrations/2026_02_12_000001_fix_overlapping_bookings_constraint_soft_deletes.php`
 - `../../backend/database/migrations/2025_11_20_000100_add_token_expiration_to_personal_access_tokens.php`
 - `../../backend/database/migrations/2025_11_21_150000_add_token_security_columns.php`
+- `../../backend/database/migrations/2026_03_17_000001_harden_fk_delete_policies.php`
+- `../../backend/database/migrations/2026_03_17_000002_add_check_constraint_rooms_max_guests.php`
+- `../../backend/database/migrations/2026_03_17_000003_add_check_constraint_bookings_status.php`
+- `../../backend/tests/Feature/Database/FkDeletePolicyTest.php`
+- `../../backend/tests/Feature/Database/CheckConstraintTest.php`
 - `../../.github/workflows/tests.yml`

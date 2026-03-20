@@ -32,6 +32,7 @@ What the system actually does. Tier 1 evidence only.
 - Booking create/update/delete (user endpoints)
 - Booking confirm
 - Contact messages (`/api/v1/admin/contact-messages/*`)
+- Customers (`/api/v1/admin/customers/*`) — gated by `role:moderator`; `CustomerController`
 - Reviews (`/api/v1/reviews/*`)
 - Locations (`/api/v1/locations/*`)
 - Auth endpoints (`/api/v1/auth/*`)

@@ -120,6 +120,7 @@ After non-trivial implementation work, update project status docs if present:
 - `skills/react/testing-vitest-skill.md`
 - `skills/react/performance-core-web-vitals-skill.md`
 - `skills/react/security-frontend-skill.md`
+- `skills/react/typescript-patterns-skill.md`
 
 ### Ops
 

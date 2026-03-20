@@ -9,7 +9,7 @@ ARCHITECTURE_FACTS.md and CONTRACT.md. Consult these additional layers as needed
 | Session state | `docs/COMPACT.md` | Current snapshot, active work, handoff log |
 | Slash commands | `.claude/commands/` | Invocable execution playbooks |
 | Subagents | `.claude/agents/` | Specialist reasoning (security, DB, docs) |
-| Skills | `skills/README.md` | Task-specific guardrails (16 skill files) |
+| Skills | `skills/README.md` | Task-specific guardrails (17 skill files) |
 | Governance | `docs/AI_GOVERNANCE.md` | Full agent workflow framework |
 
 ## Core Domains

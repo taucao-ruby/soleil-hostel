@@ -8,7 +8,7 @@
 
 > Audits v1–v4 complete: 179 total findings, 179 resolved (100%).
 > Batches 1–12 + DevSecOps + quality hardening + DB hardening complete.
-> See [AUDIT_REPORT.md](./AUDIT_REPORT.md) for detailed audit history.
+> See [docs/AUDIT_2026_02_21.md](./docs/AUDIT_2026_02_21.md) for detailed audit history.
 
 Gates (verified March 17, 2026):
 
@@ -24,7 +24,7 @@ Open Findings: 1 (F-23 — MD lint, low)
 Blocked Items: M-11 (migration squash — needs human approval)
 
 Findings backlog: [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md)
-Previous audits: [AUDIT_REPORT.md](./AUDIT_REPORT.md) | [docs/AUDIT_2026_02_21.md](./docs/AUDIT_2026_02_21.md)
+Previous audits: [docs/AUDIT_2026_02_21.md](./docs/AUDIT_2026_02_21.md)
 
 ---
 

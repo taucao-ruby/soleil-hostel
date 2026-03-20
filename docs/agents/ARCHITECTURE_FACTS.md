@@ -1,6 +1,6 @@
 # Architecture Facts — Soleil Hostel
 
-Domain invariants verified against code on 2026-02-21. See [AUDIT_2026_02_21.md](../AUDIT_2026_02_21.md) for evidence.
+Domain invariants last verified 2026-03-17. See [AUDIT_2026_02_21.md](../AUDIT_2026_02_21.md) for the original 2026-02-21 audit evidence.
 
 ## Booking Domain
 
@@ -126,13 +126,17 @@ Critical indexes:
 - `admin_audit_logs` table (append-only): `actor_id`, `action`, `resource_type`, `resource_id`, `ip_address`, `metadata` (JSON)
 - Written by `AdminAuditService`; integrated into `AdminBookingController`, `RoomController`, `ReviewController` (IMPLEMENTED)
 - Force-delete records pre-deletion snapshot in `metadata` for forensic recovery
-- Source: RBAC Phase 2, migration `2026_03_11_*`
+- Source: RBAC Phase 2, migration `2026_03_12_000001`
+
+## Admin Resources
+
+- Customer management: `GET /api/v1/admin/customers/*` (index, show, update, destroy) — gated by `role:moderator` middleware — `App\Http\Controllers\Admin\CustomerController`
 
 ## RBAC Permission Baseline
 
 Canonical permission matrix: [docs/PERMISSION_MATRIX.md](../PERMISSION_MATRIX.md)
 
-Current enforcement status: PASS WITH FOLLOW-UPS. Room CUD and admin booking endpoints use defense-in-depth (route middleware + controller-level gate/policy). Moderator role is DEFINED-BUT-LATENT — no distinct moderator capability is CURRENT at Tier 1. Open follow-ups: 5 — see PERMISSION_MATRIX.md.
+Current enforcement status: PASS WITH FOLLOW-UPS. Room CUD and admin booking endpoints use defense-in-depth (route middleware + controller-level gate/policy). Moderator role is ACTIVE: gates admin booking READ routes (`role:moderator` middleware, v1.php) and customer management endpoints (`/api/v1/admin/customers/*`). Open follow-ups: 5 — see PERMISSION_MATRIX.md.
 
 ## DB Constraints Added (formerly backlog)
 
@@ -160,5 +164,5 @@ Deferred:
 - `rooms.status` DB CHECK — room status values inconsistent across codebase; deferred pending normalization + stable `RoomStatus` enum
 - Legacy migration `2026_02_09_000000` uses `config('database.default')` gating (weaker than `DB::getDriverName()`); cleanup deferred
 
-Test coverage: `FkDeletePolicyTest.php` (5 tests), `CheckConstraintTest.php` (3 tests). Backend suite: 954 tests, 0 failures.
+Test coverage: `FkDeletePolicyTest.php` (5 tests), `CheckConstraintTest.php` (3 tests — covers `chk_rooms_max_guests` only; `chk_bookings_status` has no dedicated constraint test). Backend suite: 954 tests, 0 failures.
 

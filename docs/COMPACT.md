@@ -10,13 +10,14 @@
 ## 1) Current Snapshot (keep under 12 lines)
 
 - Date updated: 2026-03-21
-- Current branch: `main`
-- Latest commit: `5ec58dd` — chore: merge dev into main — add gitnexus skills + .gitnexus gitignore
-- Backend test baseline: 1009 passed, 4 skipped, 2721 assertions — verified 2026-03-21 (operational pass 2)
+- Current branch: `main` + `dev` (synced; main=`bb3332e`, dev=`3f59d86`)
+- Latest commit: `bb3332e` — chore: merge dev into main — Psalm + PHPStan fixes, operational domain
+- Backend test baseline: **1037 passed, 2803 assertions** — verified 2026-03-21 (static analysis pass)
 - Frontend test baseline: 226 tests, 21 suites — verified 2026-03-11
-- Pint: 283 files, 0 style issues. PHPStan: Level 5, 151 pre-existing. Psalm: Level 1, 0 blocking.
+- Pint: 283 files, 0 style issues. **PHPStan: Level 5, 0 errors (no baseline, no ignores).** Psalm: Level 1, 0 blocking.
 - **v3.1 remediation (2026-03-20)**: four-layer domain model — stays, room_assignments, service_recovery_cases + BackfillOperationalStays command. 35 new tests. 989 total, 0 failures.
-- **v3.2 operations (2026-03-21)**: room readiness, dashboard read models, front-desk blockage resolver, financial ops visibility. 20 targeted tests passed, 4 source-grounded skips.
+- **v3.2 operations (2026-03-21)**: room readiness, blockage resolver, financial ops. 1009 tests, 4 skipped.
+- **v3.3 static analysis (2026-03-21)**: Psalm 35→0, PHPStan 151→0. 1037 tests, 0 failures.
 - Open findings: F-23 (MD lint), F-25 (CSRF path), F-26–F-62 (2026-03-20 audit). See FINDINGS_BACKLOG.md.
 - **H-06**: `phpunit.xml` defaults to PostgreSQL; run `docker compose up -d db` before `php artisan test`.
 - Test accounts (soleil_test DB): user@soleil.test / admin@soleil.test / moderator@soleil.test — `P@ssworD123`

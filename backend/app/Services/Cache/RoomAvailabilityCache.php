@@ -209,7 +209,7 @@ class RoomAvailabilityCache
         ?int $capacity = null
     ): Collection {
         $query = Room::query()
-            ->where('status', 'available')
+            ->active()
             ->whereDoesntHave('bookings', function ($q) use ($checkIn, $checkOut) {
                 $q->where('status', '!=', 'cancelled')
                     ->whereBetween('check_out', [$checkIn, $checkOut])
@@ -230,6 +230,10 @@ class RoomAvailabilityCache
      */
     private function isRoomAvailable(Room $room, Carbon $checkIn, Carbon $checkOut): bool
     {
+        if ($room->status !== 'available' || $room->readiness_status?->value === \App\Enums\RoomReadinessStatus::OUT_OF_SERVICE->value) {
+            return false;
+        }
+
         return ! $room->bookings()
             ->where('status', '!=', 'cancelled')
             ->whereBetween('check_out', [$checkIn, $checkOut])

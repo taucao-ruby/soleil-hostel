@@ -82,7 +82,9 @@ class Location extends Model
      */
     public function activeRooms(): HasMany
     {
-        return $this->rooms()->where('status', 'available');
+        return $this->rooms()
+            ->where('status', 'available')
+            ->where('readiness_status', '!=', \App\Enums\RoomReadinessStatus::OUT_OF_SERVICE->value);
     }
 
     /**

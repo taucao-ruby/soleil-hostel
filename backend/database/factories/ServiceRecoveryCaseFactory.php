@@ -6,6 +6,7 @@ use App\Enums\CaseStatus;
 use App\Enums\CompensationType;
 use App\Enums\IncidentSeverity;
 use App\Enums\IncidentType;
+use App\Enums\SettlementStatus;
 use App\Models\Booking;
 use App\Models\ServiceRecoveryCase;
 use App\Models\Stay;
@@ -35,6 +36,7 @@ class ServiceRecoveryCaseFactory extends Factory
             'opened_at' => Carbon::now()->subHours($this->faker->numberBetween(1, 24)),
             'resolved_at' => null,
             'notes' => null,
+            'settlement_status' => SettlementStatus::UNSETTLED,
         ];
     }
 

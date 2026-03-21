@@ -2,7 +2,7 @@
 
 > Architecture references for backend design, runtime behavior, and code organization.
 >
-> Last Updated: February 12, 2026
+> Last Updated: March 21, 2026
 
 ## Architecture Index
 

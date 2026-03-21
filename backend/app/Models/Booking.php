@@ -97,6 +97,14 @@ class Booking extends Model
     }
 
     /**
+     * Get the operational stay for this booking (nullable — exists once stay tracking begins).
+     */
+    public function stay(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Stay::class, 'booking_id');
+    }
+
+    /**
      * Get the review for this booking.
      *
      * One-to-one: Each booking can have at most one review.

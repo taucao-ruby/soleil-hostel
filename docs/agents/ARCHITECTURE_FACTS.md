@@ -1,6 +1,6 @@
 # Architecture Facts — Soleil Hostel
 
-Domain invariants last verified 2026-03-17. See [AUDIT_2026_02_21.md](../AUDIT_2026_02_21.md) for the original 2026-02-21 audit evidence.
+Domain invariants last verified 2026-03-20. See [AUDIT_2026_02_21.md](../AUDIT_2026_02_21.md) for the original 2026-02-21 audit evidence.
 
 ## Booking Domain
 
@@ -43,6 +43,60 @@ On `bookings` table: `amount`, `payment_intent_id`, `refund_id`, `refund_status`
 
 **VARCHAR column, NOT a PostgreSQL ENUM.** Values enforced at application level (`App\Enums\BookingStatus`) AND DB CHECK constraint `chk_bookings_status` on PostgreSQL (migration `2026_03_17_000003`):
 - `pending`, `confirmed`, `refund_pending`, `cancelled`, `refund_failed`
+
+### Booking Model Relationships
+
+`Booking` has the following Eloquent relationships (verified `Booking.php`):
+- `room()` — BelongsTo `Room`
+- `location()` — BelongsTo `Location` (denormalized)
+- `user()` — BelongsTo `User`
+- `cancelledBy()` — BelongsTo `User` (via `cancelled_by`)
+- `stay()` — HasOne `Stay` (nullable; exists once stay tracking begins — lazy-created at confirmation)
+- `review()` — HasOne `Review` (via `booking_id`)
+
+## Operational Domain (Four-Layer Model)
+
+Added 2026-03-20. Full specification: `docs/DOMAIN_LAYERS.md`.
+
+| Table | Domain | Purpose |
+|-------|--------|---------|
+| `bookings` | Commercial | Reservation state machine |
+| `stays` | Operational | Occupancy lifecycle per booking (`stay_status`) |
+| `room_assignments` | Allocation | Physical room assignment history per stay |
+| `service_recovery_cases` | Incident | Service failure incidents and compensation audit trail |
+
+### Key Invariants
+
+- `bookings.status` = commercial reservation state only; `stays.stay_status` = operational occupancy lifecycle
+- In-house guest detection: `stays.stay_status IN ('in_house', 'late_checkout')` — do NOT use a static flag on `users`
+- One stay per booking: UNIQUE `booking_id` on `stays`
+- Active room assignment: partial unique index `UNIQUE (stay_id) WHERE assigned_until IS NULL` (PG only)
+- All monetary fields in `service_recovery_cases` (`refund_amount`, `voucher_amount`, `cost_delta_absorbed`) stored in **cents** (BIGINT)
+- Booking overlap logic (`no_overlapping_bookings` constraint, `Booking.php`, `CancellationService.php`) is **orthogonal** to and untouched by the four-layer model
+
+### Stay Creation: Two-Path Strategy
+
+**Forward path** (new bookings): `BookingService::confirmBooking()` calls `Stay::firstOrCreate()` inside the confirmation transaction. If stay creation fails, the confirmation rolls back.
+
+**Backfill path** (historical bookings): `php artisan stays:backfill-operational` creates `expected`-status Stay rows for confirmed bookings with `check_out >= today` that have no existing stay row. Idempotent; safe to re-run. `--dry-run` flag available.
+
+Source: `app/Console/Commands/BackfillOperationalStays.php`, `app/Services/BookingService.php`
+
+### Stay Domain Enums
+
+`App\Enums\StayStatus`: `expected`, `in_house`, `late_checkout`, `checked_out`, `no_show`, `relocated_internal`, `relocated_external`
+
+`App\Enums\AssignmentType`: `original`, `equivalent_swap`, `complimentary_upgrade`, `maintenance_move`, `overflow_relocation`
+
+`App\Enums\AssignmentStatus`: (see source)
+
+`App\Enums\IncidentType`, `App\Enums\IncidentSeverity`, `App\Enums\CaseStatus`, `App\Enums\CompensationType`: see `app/Enums/` for values
+
+### Migrations
+
+- `2026_03_20_000001` — creates `stays` table
+- `2026_03_20_000002` — creates `room_assignments` table
+- `2026_03_20_000003` — creates `service_recovery_cases` table
 
 ## Concurrency Control
 
@@ -164,5 +218,4 @@ Deferred:
 - `rooms.status` DB CHECK — room status values inconsistent across codebase; deferred pending normalization + stable `RoomStatus` enum
 - Legacy migration `2026_02_09_000000` uses `config('database.default')` gating (weaker than `DB::getDriverName()`); cleanup deferred
 
-Test coverage: `FkDeletePolicyTest.php` (5 tests), `CheckConstraintTest.php` (3 tests — covers `chk_rooms_max_guests` only; `chk_bookings_status` has no dedicated constraint test). Backend suite: 954 tests, 0 failures.
-
+Test coverage: `FkDeletePolicyTest.php` (5 tests), `CheckConstraintTest.php` (3 tests — covers `chk_rooms_max_guests` only; `chk_bookings_status` has no dedicated constraint test). Backend suite: 989 tests, 0 failures (verified 2026-03-20).

@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Enums\BookingStatus;
+use App\Enums\StayStatus;
 use App\Models\Booking;
+use App\Models\Stay;
 use App\Notifications\BookingConfirmed;
 use App\Traits\HasCacheTagSupport;
 use Illuminate\Support\Collection;
@@ -91,6 +93,20 @@ class BookingService
 
         return DB::transaction(function () use ($booking) {
             $booking->update(['status' => BookingStatus::CONFIRMED]);
+
+            // Create the operational stay record (idempotent — skip if already exists).
+            // Canonical business hours: 14:00 check-in, 12:00 check-out.
+            // Actual timestamps are intentionally left null (filled at front-desk check-in/out).
+            Stay::firstOrCreate(
+                ['booking_id' => $booking->id],
+                [
+                    'stay_status' => StayStatus::EXPECTED,
+                    'scheduled_check_in_at' => $booking->check_in->copy()->setTime(14, 0, 0),
+                    'scheduled_check_out_at' => $booking->check_out->copy()->setTime(12, 0, 0),
+                    'actual_check_in_at' => null,
+                    'actual_check_out_at' => null,
+                ]
+            );
 
             // Invalidate cache
             $this->invalidateBooking($booking->id, $booking->user_id);

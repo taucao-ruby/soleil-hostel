@@ -12,6 +12,11 @@ Source of truth: `backend/database/migrations/*` (not older docs).
 - `users`: Accounts and roles used by bookings/reviews/auth flows.
 - `personal_access_tokens`: Sanctum tokens plus hardened cookie-auth/security columns.
 
+Operational domain tables (added 2026-03-20, see `docs/DOMAIN_LAYERS.md`):
+- `stays`: Operational occupancy lifecycle per booking (`stay_status`). One per booking (UNIQUE `booking_id`).
+- `room_assignments`: Physical room allocation history per stay. Partial unique index prevents two active assignments for same stay (PostgreSQL only).
+- `service_recovery_cases`: Incident and compensation audit trail. `stay_id` nullable.
+
 Other framework tables exist (`sessions`, `cache`, `jobs`, etc.) but are out of scope for booking/auth invariants.
 
 ## 2) Invariants (must always hold)

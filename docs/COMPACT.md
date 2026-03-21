@@ -12,10 +12,10 @@
 - Date updated: 2026-03-20
 - Current branch: `main`
 - Latest commit: `5ec58dd` — chore: merge dev into main — add gitnexus skills + .gitnexus gitignore
-- Backend test baseline: 954 tests, 2596 assertions — verified 2026-03-17
+- Backend test baseline: 989 tests, 2677 assertions — verified 2026-03-20 (v3.1 stay domain, +35 tests)
 - Frontend test baseline: 226 tests, 21 suites — verified 2026-03-11
 - Pint: 283 files, 0 style issues. PHPStan: Level 5, 151 pre-existing. Psalm: Level 1, 0 blocking.
-- **2026-03-20 full audit**: 37 new findings logged (F-26–F-62): 5 Critical, 8 High, 18 Medium, 6 Low. Docs also corrected (14 fixes across 8 files). No code changed.
+- **v3.1 remediation (2026-03-20)**: four-layer domain model — stays, room_assignments, service_recovery_cases + BackfillOperationalStays command. 35 new tests. 989 total, 0 failures.
 - Open findings: F-23 (MD lint), F-25 (CSRF path), F-26–F-62 (2026-03-20 audit). See FINDINGS_BACKLOG.md.
 - **H-06**: `phpunit.xml` defaults to PostgreSQL; run `docker compose up -d db` before `php artisan test`.
 - Test accounts (soleil_test DB): user@soleil.test / admin@soleil.test / moderator@soleil.test — `P@ssworD123`

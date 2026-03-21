@@ -1,18 +1,18 @@
 # Soleil Hostel - Project Status
 
-**Last Updated:** March 17, 2026
-**Current Branch:** `dev`
-**Latest Commit:** `81df6c9` — docs: sync documentation after DB hardening pass
+**Last Updated:** March 20, 2026
+**Current Branch:** `main`
+**Latest Commit:** `5ec58dd` — chore: merge dev into main — add gitnexus skills + .gitnexus gitignore
 
 ## Current Status: Repo Health Green
 
 > Audits v1–v4 complete: 179 total findings, 179 resolved (100%).
-> Batches 1–12 + DevSecOps + quality hardening + DB hardening complete.
+> Batches 1–12 + DevSecOps + quality hardening + DB hardening + v3.1 stay domain complete.
 > See [docs/AUDIT_2026_02_21.md](./docs/AUDIT_2026_02_21.md) for detailed audit history.
 
-Gates (verified March 17, 2026):
+Gates (verified March 20, 2026):
 
-- Backend tests PASS: **954 tests**, **2596 assertions** (`cd backend && php artisan test`)
+- Backend tests PASS: **989 tests**, **2677 assertions** (`cd backend && php artisan test`)
 - Frontend typecheck PASS: 0 errors (`cd frontend && npx tsc --noEmit`)
 - Frontend unit tests PASS: **21 files**, **226 tests** (`cd frontend && npx vitest run`)
 - Compose config PASS (`docker compose config`)
@@ -20,7 +20,7 @@ Gates (verified March 17, 2026):
 - PHPStan Level 5 installed with Larastan (baseline: 151 pre-existing errors)
 - Psalm: 0 blocking errors (v1 routes)
 
-Open Findings: 1 (F-23 — MD lint, low)
+Open Findings: F-23 (MD lint, low), F-25 (CSRF path, low), F-26–F-62 (2026-03-20 audit — 37 findings, no code changed)
 Blocked Items: M-11 (migration squash — needs human approval)
 
 Findings backlog: [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md)
@@ -51,9 +51,9 @@ Total Progress     ████████████████████�
 ### Backend (PHPUnit/Pest)
 
 ```text
-954 tests passed
-2596 assertions
-Duration: ~210s (verified March 17, 2026)
+989 tests passed
+2677 assertions
+Duration: ~210s (verified March 20, 2026)
 ```
 
 ### Frontend (Vitest)
@@ -84,12 +84,13 @@ Playwright remains scaffolded; app runtime required for execution
 | Document                                                       | Description                                       |
 | -------------------------------------------------------------- | ------------------------------------------------- |
 | [docs/README.md](./docs/README.md)                             | Documentation entry point                         |
-| [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md)         | Code issues backlog (24 items, 23 fixed, 1 open)  |
+| [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md)         | Code issues backlog                               |
 | [docs/COMMANDS_AND_GATES.md](./docs/COMMANDS_AND_GATES.md)     | Verified commands + CI gates                      |
 | [docs/AI_GOVERNANCE.md](./docs/AI_GOVERNANCE.md)               | AI agent workflow                                 |
 | [docs/agents/](./docs/agents/)                                 | Agent framework                                   |
 | [AUDIT_REPORT.md](./AUDIT_REPORT.md)                           | Audit report (v1–v4)                              |
 | [docs/OPERATIONAL_PLAYBOOK.md](./docs/OPERATIONAL_PLAYBOOK.md) | Operational runbooks                              |
+| [docs/DOMAIN_LAYERS.md](./docs/DOMAIN_LAYERS.md)               | Four-layer operational domain model               |
 
 ---
 
@@ -115,6 +116,7 @@ docker compose config
 | **RBAC Hardening**              | ✅ Done  | Defense-in-depth, phases 1-3, moderator activation, mobile guard, password complexity (Mar 10-14) |
 | **Booking Detail Panel**        | ✅ Done  | Guest read-only panel with 14 tests (Feb 27)                                         |
 | **Admin Pagination**            | ✅ Done  | All 3 tabs paginated with Trước/Sau controls (Feb 27)                                |
+| **Four-Layer Operational Domain** | ✅ Done | stays, room_assignments, service_recovery_cases + backfill command (Mar 20)         |
 | **RBAC Follow-ups (FU-1..5)**   | Medium   | Legacy test migration, coverage gaps, config verification — see PERMISSION_MATRIX.md |
 | **E2E Test Suite (Playwright)** | Medium   | Scaffolded; blocked on stable staging environment                                    |
 | **2FA (TOTP)**                  | Low      | Force-logout-all on 2FA enable already wired in `logoutAll()`; TOTP issuance pending |
@@ -142,16 +144,18 @@ All audit and batch details are preserved in [AUDIT_REPORT.md](./AUDIT_REPORT.md
 | Mar 12, 2026 | Admin panel expansion (AdminLayout, room/booking/customer mgmt) + CI hygiene checks | — |
 | Mar 13-14, 2026 | RBAC mobile guard, password complexity, EmailVerificationTest, CVE fixes (flatted/undici) | — |
 | Mar 17, 2026 | DB hardening: FK delete policy hardening + CHECK constraints + DB tests | +53 backend tests (901→954), 3 migrations, 2 test files |
+| Mar 20, 2026 | v3.1 stay domain: stays/room_assignments/service_recovery_cases + BackfillOperationalStays command | +35 backend tests (954→989), 3 migrations, 4 test files, 3 models, 9 enums, 3 factories |
 
 ---
 
 ## Status Note
 
-Audits v1 (61/61), v2 (98/98), v3 (14/14), v4 (6/6) complete. Findings F-01 through F-22 and F-24 resolved. F-23 open (low — MD lint).
+Audits v1 (61/61), v2 (98/98), v3 (14/14), v4 (6/6) complete. Findings F-01 through F-22 and F-24 resolved. F-23 open (low — MD lint). F-25 open (low — CSRF path). F-26–F-62 open (2026-03-20 audit, code findings — not fixed in docs pass).
 RBAC hardening (Mar 10): defense-in-depth verified, PERMISSION_MATRIX.md created, 5 follow-ups open (FU-1..FU-5).
 RBAC phases 1-3 (Mar 11): enforcement gaps closed, admin audit log, moderator activated.
 Admin panel expansion (Mar 12): AdminLayout, sidebar, customer/room/booking management (39556d7); CI hygiene hooks.
 RBAC mobile guard + password complexity (Mar 13-14): admin route guard on frontend, registration password rule.
 CVE fix (Mar 14): flatted >=3.4.0, undici >=7.24.0 (ef138cc). Logout-401 investigation: no code bug (stale cookie).
 DB hardening (Mar 17): FK CASCADE→SET NULL/RESTRICT on 4 FKs (bookings.user_id, bookings.room_id, reviews.user_id, reviews.room_id). CHECK constraints added: chk_rooms_max_guests, chk_bookings_status. All PG-only, runtime-gated. 954 tests, 0 failures.
+v3.1 stay domain (Mar 20): four-layer operational model (stays, room_assignments, service_recovery_cases). BackfillOperationalStays command. Booking.stay() hasOne relationship added. 989 tests, 0 failures.
 Findings backlog: [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md)

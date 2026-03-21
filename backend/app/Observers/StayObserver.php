@@ -27,9 +27,7 @@ class StayObserver
             return;
         }
 
-        $status = $stay->stay_status instanceof StayStatus
-            ? $stay->stay_status
-            : StayStatus::from((string) $stay->stay_status);
+        $status = $stay->stay_status;
 
         if ($status === StayStatus::IN_HOUSE) {
             $this->roomReadinessService->transition(

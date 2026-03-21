@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Enums\RoomReadinessStatus;
 use App\Exceptions\RoomNotReadyForAssignmentException;
 use App\Models\Room;
+use App\Models\RoomAssignment;
 use App\Models\RoomReadinessLog;
 use App\Models\Stay;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +22,6 @@ final class RoomReadinessService
         ?int $stayId = null
     ): Room {
         return DB::transaction(function () use ($room, $toStatus, $changedBy, $reason, $stayId) {
-            /** @var Room $lockedRoom */
             $lockedRoom = Room::query()->lockForUpdate()->findOrFail($room->id);
             $fromStatus = $this->currentStatus($lockedRoom);
 
@@ -61,6 +61,7 @@ final class RoomReadinessService
 
     public function roomForStay(Stay $stay): ?Room
     {
+        /** @var RoomAssignment|null $assignment */
         $assignment = $stay->roomAssignments()
             ->with('room')
             ->orderByRaw('CASE WHEN assigned_until IS NULL THEN 0 ELSE 1 END')
@@ -72,10 +73,6 @@ final class RoomReadinessService
 
     private function currentStatus(Room $room): RoomReadinessStatus
     {
-        if ($room->readiness_status instanceof RoomReadinessStatus) {
-            return $room->readiness_status;
-        }
-
-        return RoomReadinessStatus::from((string) ($room->readiness_status ?? RoomReadinessStatus::READY->value));
+        return $room->readiness_status;
     }
 }

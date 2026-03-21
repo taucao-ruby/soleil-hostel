@@ -11,7 +11,7 @@ final class RoomNotReadyForAssignmentException extends DomainException
 {
     public static function forRoom(Room $room): self
     {
-        $status = $room->readiness_status?->value ?? (string) $room->readiness_status;
+        $status = $room->readiness_status?->value ?? '';
 
         return new self(
             "Room #{$room->id} is not ready for assignment. Current readiness status: {$status}."

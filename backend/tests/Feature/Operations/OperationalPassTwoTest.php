@@ -4,7 +4,6 @@ namespace Tests\Feature\Operations;
 
 use App\Enums\AssignmentStatus;
 use App\Enums\AssignmentType;
-use App\Enums\BookingStatus;
 use App\Enums\CaseStatus;
 use App\Enums\CompensationType;
 use App\Enums\IncidentType;

@@ -82,11 +82,11 @@ final class FinancialOperationsService
      *     location_id: int,
      *     date_from: string,
      *     date_to: string,
-     *     unresolved_refund_amount: int|null,
-     *     resolved_refund_amount: int|null,
-     *     cases_by_incident_type: array<string, int>,
-     *     voucher_amount_total: int|null,
-     *     relocation_absorbed_cost_total: int|null
+     *     unresolved_refund_amount: int,
+     *     resolved_refund_amount: int,
+     *     cases_by_incident_type: array<array-key, int>,
+     *     voucher_amount_total: int,
+     *     relocation_absorbed_cost_total: int
      * }
      */
     public function compensationExposure(int $locationId, string $dateFrom, string $dateTo): array
@@ -99,6 +99,7 @@ final class FinancialOperationsService
             ->where('bookings.location_id', $locationId)
             ->whereBetween('service_recovery_cases.opened_at', [$from, $to]);
 
+        /** @var array<string, int> $casesByType */
         $casesByType = (clone $baseQuery)
             ->select('service_recovery_cases.incident_type', DB::raw('COUNT(service_recovery_cases.id) as total'))
             ->groupBy('service_recovery_cases.incident_type')
@@ -134,10 +135,10 @@ final class FinancialOperationsService
      *     date_from: string,
      *     date_to: string,
      *     relocation_cases_count: int,
-     *     absorbed_cost_total: int|null,
+     *     absorbed_cost_total: int,
      *     unresolved_cases_count: int,
      *     resolved_cases_count: int,
-     *     manual_financial_settlement_case_ids: list<int>,
+     *     manual_financial_settlement_case_ids: array<array-key, int>,
      *     settlement_tracking_blocked: bool
      * }
      */

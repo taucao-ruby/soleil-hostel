@@ -32,7 +32,9 @@ final class CheckInBlockageResolver
      *     case_id: int|null,
      *     requires_manual_action: bool,
      *     manual_action_description: string,
-     *     attempted_steps: list<array{step: string, outcome: string}>
+     *     attempted_steps: list<array<string, mixed>>,
+     *     destination_location_id?: int,
+     *     destination_room_id?: int
      * }
      */
     public function resolve(Stay $stay): array
@@ -53,7 +55,10 @@ final class CheckInBlockageResolver
             ];
         }
 
-        $originalRoom = $stay->currentRoomAssignment->room;
+        $currentAssignment = $stay->currentRoomAssignment;
+        assert($currentAssignment !== null);
+        $originalRoom = $currentAssignment->room;
+        assert($originalRoom !== null);
         $checkInDate = $stay->scheduled_check_in_at ?? Carbon::today();
         $attemptedSteps = [['step' => 'detect', 'outcome' => "blockage={$blockageType}"]];
 
@@ -67,6 +72,7 @@ final class CheckInBlockageResolver
         );
 
         if ($candidates->isNotEmpty()) {
+            /** @var Room $newRoom */
             $newRoom = $candidates->first();
             $result = DB::transaction(function () use ($stay, $newRoom, $blockageType) {
                 // Close existing active assignment before creating new one
@@ -103,7 +109,7 @@ final class CheckInBlockageResolver
                 'blockage_type' => $blockageType,
                 'resolution' => 'equivalent_swap',
                 'new_room_id' => $newRoom->id,
-                'case_id' => $result['case']->id,
+                'case_id' => (int) $result['case']->id,
                 'requires_manual_action' => false,
                 'manual_action_description' => '',
                 'attempted_steps' => $attemptedSteps,
@@ -121,6 +127,7 @@ final class CheckInBlockageResolver
         );
 
         if ($candidates->isNotEmpty()) {
+            /** @var Room $newRoom */
             $newRoom = $candidates->first(); // ordered by tier ASC = minimum upgrade
             $result = DB::transaction(function () use ($stay, $newRoom, $originalRoom, $blockageType) {
                 // Close existing active assignment before creating new one
@@ -157,7 +164,7 @@ final class CheckInBlockageResolver
                 'blockage_type' => $blockageType,
                 'resolution' => 'complimentary_upgrade',
                 'new_room_id' => $newRoom->id,
-                'case_id' => $result['case']->id,
+                'case_id' => (int) $result['case']->id,
                 'requires_manual_action' => false,
                 'manual_action_description' => '',
                 'attempted_steps' => $attemptedSteps,
@@ -176,6 +183,7 @@ final class CheckInBlockageResolver
         );
 
         if ($candidates->isNotEmpty()) {
+            /** @var Room $destRoom */
             $destRoom = $candidates->first();
             $case = DB::transaction(function () use ($stay, $destRoom, $blockageType) {
                 return ServiceRecoveryCase::create([
@@ -203,7 +211,7 @@ final class CheckInBlockageResolver
                 'destination_location_id' => $destRoom->location_id,
                 'destination_room_id' => $destRoom->id,
                 'new_room_id' => null,
-                'case_id' => $case->id,
+                'case_id' => (int) $case->id,
                 'requires_manual_action' => true,
                 'manual_action_description' => 'Transfer booking to destination location. RoomAssignment must be created after booking transfer is confirmed by staff.',
                 'attempted_steps' => $attemptedSteps,
@@ -233,7 +241,7 @@ final class CheckInBlockageResolver
             'blockage_type' => $blockageType,
             'resolution' => 'external_relocation_escalated',
             'new_room_id' => null,
-            'case_id' => $case->id,
+            'case_id' => (int) $case->id,
             'requires_manual_action' => true,
             'manual_action_description' => 'No internal rooms available. Review external accommodation options and arrange transfer manually.',
             'attempted_steps' => $attemptedSteps,

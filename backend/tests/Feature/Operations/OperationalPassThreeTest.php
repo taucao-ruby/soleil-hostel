@@ -4,10 +4,8 @@ namespace Tests\Feature\Operations;
 
 use App\Enums\AssignmentStatus;
 use App\Enums\AssignmentType;
-use App\Enums\BookingStatus;
 use App\Enums\CaseStatus;
 use App\Enums\CompensationType;
-use App\Enums\IncidentSeverity;
 use App\Enums\IncidentType;
 use App\Enums\RoomReadinessStatus;
 use App\Enums\RoomTypeCode;
@@ -19,7 +17,6 @@ use App\Models\Room;
 use App\Models\RoomAssignment;
 use App\Models\ServiceRecoveryCase;
 use App\Models\Stay;
-use App\Models\User;
 use App\Services\CheckInBlockageResolver;
 use App\Services\FinancialOperationsService;
 use App\Services\OperationalDashboardService;
@@ -88,7 +85,7 @@ class OperationalPassThreeTest extends TestCase
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
-    public function test_room_with_lower_tier_is_NOT_accepted_as_upgrade(): void
+    public function test_room_with_lower_tier_is_not_accepted_as_upgrade(): void
     {
         $location = Location::factory()->create();
         $dorm = Room::factory()->create([

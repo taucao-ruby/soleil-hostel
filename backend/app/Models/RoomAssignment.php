@@ -19,6 +19,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * The partial unique index udx_room_assignments_one_active_per_stay
  * (PostgreSQL only) enforces at most one active assignment per stay.
  * When closing an assignment, set assigned_until before creating a new one.
+ *
+ * @property-read Room|null $room
  */
 class RoomAssignment extends Model
 {

@@ -45,10 +45,10 @@ return new class extends Migration
                 ))
             ");
 
-            DB::statement("
+            DB::statement('
                 ALTER TABLE rooms ADD CONSTRAINT chk_rooms_room_tier
                 CHECK (room_tier IN (1, 2, 3))
-            ");
+            ');
         }
 
         Schema::table('rooms', function (Blueprint $table) {

@@ -11,7 +11,7 @@ class RoomObserver
 {
     public function creating(Room $room): void
     {
-        if ($room->readiness_status) {
+        if (array_key_exists('readiness_status', $room->getAttributes())) {
             return;
         }
 

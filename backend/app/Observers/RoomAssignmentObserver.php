@@ -17,9 +17,7 @@ class RoomAssignmentObserver
 
     public function creating(RoomAssignment $assignment): void
     {
-        $assignmentStatus = $assignment->assignment_status instanceof AssignmentStatus
-            ? $assignment->assignment_status->value
-            : (string) ($assignment->assignment_status ?? AssignmentStatus::ACTIVE->value);
+        $assignmentStatus = $assignment->assignment_status->value;
 
         if ($assignment->assigned_until !== null || $assignmentStatus !== AssignmentStatus::ACTIVE->value) {
             return;

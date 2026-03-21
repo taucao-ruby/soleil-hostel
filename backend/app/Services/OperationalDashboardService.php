@@ -48,7 +48,7 @@ final class OperationalDashboardService
      *     due_outs_today: array{count: int, stays: list<array<string, mixed>>},
      *     late_checkouts: array{count: int, stays: list<array<string, mixed>>},
      *     arrivals_blocked_by_room_not_ready: array{count: int, stays: list<array<string, mixed>>},
-     *     confirmed_bookings_without_stay_row: array{count: int, bookings: list<array<string, mixed>>}
+     *     confirmed_bookings_without_stay_row: array{count: int, bookings: array<int, array<string, mixed>>}
      * }
      */
     public function arrivalDepartureBoard(int $locationId, string $date): array
@@ -73,11 +73,11 @@ final class OperationalDashboardService
                     static fn (StayStatus $status) => $status->value,
                     StayStatus::inHouseStatuses()
                 ))
-                ->where(function ($query) use ($dayStart, $dayEnd) {
+                ->where(function (\Illuminate\Database\Eloquent\Builder $query) use ($dayEnd) {
                     $query->whereNull('stays.scheduled_check_in_at')
                         ->orWhere('stays.scheduled_check_in_at', '<=', $dayEnd);
                 })
-                ->where(function ($query) use ($dayStart) {
+                ->where(function (\Illuminate\Database\Eloquent\Builder $query) use ($dayStart) {
                     $query->whereNull('stays.scheduled_check_out_at')
                         ->orWhere('stays.scheduled_check_out_at', '>', $dayStart);
                 })
@@ -164,8 +164,8 @@ final class OperationalDashboardService
      * @return array{
      *     location_id: int,
      *     threshold_minutes: int,
-     *     states: array<string, array{count: int, rooms: list<array<string, mixed>>}>,
-     *     stale_housekeeping_rooms: list<array<string, mixed>>
+     *     states: array<string, array{count: int, rooms: array<int, array<string, mixed>>}>,
+     *     stale_housekeeping_rooms: array<int, array<string, mixed>>
      * }
      */
     public function roomReadinessBoard(int $locationId, int $staleThresholdMinutes = 90): array
@@ -224,12 +224,12 @@ final class OperationalDashboardService
      * @return array{
      *     location_id: int,
      *     date: string,
-     *     open_recovery_cases: array{count: int, cases: list<array<string, mixed>>},
+     *     open_recovery_cases: array{count: int, cases: array<int, array<string, mixed>>},
      *     late_checkout_blockers: array{count: int, stays: list<array<string, mixed>>},
      *     rooms_needing_reassignment: array{count: int, stays: list<array<string, mixed>>},
-     *     internal_relocation_candidates: array{count: int, cases: list<array<string, mixed>>}|null,
-     *     external_relocation_escalations: array{count: int, cases: list<array<string, mixed>>}|null,
-     *     compensation_pending_settlement: array{count: int, cases: list<array<string, mixed>>}|null
+     *     internal_relocation_candidates: array{count: int, cases: list<array<string, mixed>>},
+     *     external_relocation_escalations: array{count: int, cases: list<array<string, mixed>>},
+     *     compensation_pending_settlement: array{count: int, cases: list<array<string, mixed>>}
      * }
      */
     public function exceptionBoard(int $locationId, string $date): array
@@ -332,13 +332,13 @@ final class OperationalDashboardService
      *     date_to: string,
      *     confirmed_bookings_without_stay_count: int,
      *     unresolved_recovery_cases_count: int,
-     *     unresolved_compensation_refund_amount: int|null,
-     *     unresolved_voucher_amount: int|null,
-     *     relocation_absorbed_cost_amount: int|null,
+     *     unresolved_compensation_refund_amount: int,
+     *     unresolved_voucher_amount: int,
+     *     relocation_absorbed_cost_amount: int,
      *     deposit_or_advance_amount_total: int,
      *     bookings_with_deposit_count: int,
      *     bookings_without_deposit_count: int,
-     *     settlement_status_breakdown: array<string, int>,
+     *     settlement_status_breakdown: array<array-key, int>,
      *     total_settled_amount: int,
      *     total_outstanding_exposure: int,
      *     recognized_revenue: null,
@@ -391,6 +391,7 @@ final class OperationalDashboardService
         $withoutDepositCount = (clone $bookingBase)->where('deposit_amount', 0)->count();
 
         // Settlement metrics
+        /** @var array<string, int> $settlementBreakdown */
         $settlementBreakdown = (clone $recoveryBase)
             ->select('service_recovery_cases.settlement_status', DB::raw('COUNT(service_recovery_cases.id) as count'))
             ->groupBy('service_recovery_cases.settlement_status')

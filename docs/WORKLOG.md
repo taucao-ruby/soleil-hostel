@@ -1,5 +1,30 @@
 # WORKLOG — Soleil Hostel (Append-only)
 
+## 2026-03-21
+
+### v3.2 — Operational services (room readiness + blockage resolver)
+
+- Change: RoomReadinessService, CheckInBlockageResolver, StayObserver, RoomAssignmentObserver, RoomObserver — front-desk 4-step blockage escalation (equivalent swap → complimentary upgrade → internal relocation → external escalation).
+- Tests: 20 targeted tests passed, 4 source-grounded skips. Backend: 1009/2721 PASS (+20 from 989).
+- Merged dev → main (`bb3332e`), synced main → dev (`3f59d86`).
+
+### v3.3 — Static analysis clean pass (Psalm + PHPStan)
+
+- Change: Resolved all static analysis errors with zero behavior changes, zero `@phpstan-ignore` annotations, no baseline generation.
+- Psalm (Level 1): 35 blocking errors → 0. Files: `BackfillOperationalStays.php`, `RoomAssignmentObserver.php`, `RoomObserver.php`, `StayObserver.php`, `CheckInBlockageResolver.php`.
+- PHPStan (Level 5, Larastan): 151 pre-existing errors → 0. Files: same 5 + `RoomReadinessService.php`, `RoomAssignment.php` (docblock), `Stay.php` (docblock).
+- Key fixes:
+  - `firstOrCreate()` array destructuring → `$model->wasRecentlyCreated` property
+  - `instanceof SomeEnum always true` guards removed (cast already guarantees type)
+  - `RoomObserver::creating()` always-true guard → `array_key_exists('readiness_status', $room->getAttributes())` (behavior-safe: attribute not set at create time)
+  - Psalm/PHPStan dual-tool conflict on `assert($x !== null)` after `isNotEmpty()` → replaced with `/** @var Room $x */` annotation (satisfies both tools)
+  - `@property-read Room|null $room` added to `RoomAssignment` docblock
+  - `@property-read RoomAssignment|null $currentRoomAssignment` added to `Stay` docblock
+  - Missing `use App\Models\RoomAssignment` import added to `RoomReadinessService`
+  - `currentStatus()` simplified: removed unreachable instanceof branch
+- Tests: 1037/2803 PASS (no regressions; 48 net new tests vs March 20 baseline).
+- Commits: `440496d` (Psalm+PHPStan fixes), `b52501a` (GitNexus reindex), `bb3332e` (merge to main), `3f59d86` (sync to dev).
+
 ## 2026-03-20
 
 - Change: v3.1 remediation — four-layer operational domain model + docs sync.

@@ -261,14 +261,14 @@ pnpm dev:docker  # Docker development environment
 
 ### Unit & Integration Testing (Vitest + Testing Library)
 
-- **Component Tests**: 19 test files, 194 tests passing
-- **Auth Tests**: Login, register, context lifecycle (33 tests)
-- **Booking Tests**: Form validation, date logic, view model (52 tests)
-- **Dashboard Tests**: GuestDashboard, AdminDashboard, DashboardPage (21 tests)
-- **Home Tests**: HomePage, SearchCard, FilterChips (26 tests)
-- **UI Tests**: Button, Input component behavior (27 tests)
-- **Security Tests**: CSRF, XSS sanitization, API interceptors (34 tests)
-- **Location Tests**: Nav link rendering (3 tests)
+- **Component Tests**: 21 test files, 226 tests passing
+- **Auth Tests**: Login, register, context lifecycle
+- **Booking Tests**: Form validation, date logic, view model
+- **Dashboard Tests**: GuestDashboard, AdminDashboard, DashboardPage
+- **Home Tests**: HomePage, SearchCard, FilterChips
+- **UI Tests**: Button, Input component behavior
+- **Security Tests**: CSRF, XSS sanitization, API interceptors
+- **Location Tests**: Nav link rendering
 
 ### E2E Testing (Playwright - Scaffolded)
 
@@ -346,20 +346,7 @@ pnpm build
 
 ## Future Enhancements
 
-- **React Query Integration**: Server state management
 - **PWA Features**: Offline support and caching
 - **Advanced Analytics**: User behavior tracking
 - **Multi-language Support**: Full i18n implementation
 - **Real-time Updates**: WebSocket integration
-
-## Available Scripts
-
-| Command            | Description                         |
-| ------------------ | ----------------------------------- |
-| `pnpm dev`         | Start dev server with HMR           |
-| `pnpm build`       | Production build with optimizations |
-| `pnpm preview`     | Preview production build locally    |
-| `pnpm lint`        | Run ESLint code quality checks      |
-| `pnpm lint:fix`    | Auto-fix ESLint issues              |
-| `pnpm format`      | Format code with Prettier           |
-| `pnpm test`        | Run Vitest unit tests               |

@@ -28,6 +28,9 @@ class Booking extends Model
         // Payment fields
         'payment_intent_id',
         'amount',
+        // Deposit tracking (operational — NOT recognized revenue)
+        'deposit_amount',
+        'deposit_collected_at',
         // Refund fields
         'refund_id',
         'refund_status',
@@ -48,6 +51,8 @@ class Booking extends Model
         'cancelled_at' => 'datetime',
         'status' => BookingStatus::class,
         'amount' => 'integer',
+        'deposit_amount' => 'integer',
+        'deposit_collected_at' => 'datetime',
         'refund_amount' => 'integer',
     ];
 
@@ -94,6 +99,14 @@ class Booking extends Model
     public function cancelledBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cancelled_by');
+    }
+
+    /**
+     * Get the operational stay for this booking (nullable — exists once stay tracking begins).
+     */
+    public function stay(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Stay::class, 'booking_id');
     }
 
     /**

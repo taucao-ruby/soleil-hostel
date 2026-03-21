@@ -1,6 +1,6 @@
 # Commands and Quality Gates
 
-Verified against code on 2026-03-06. Source: `composer.json`, `frontend/package.json`, root `package.json`, `.github/workflows/*.yml`, `tools/hooks/`, `mcp/soleil-mcp/policy.json`.
+Verified against code on 2026-03-20. Source: `composer.json`, `frontend/package.json`, root `package.json`, `.github/workflows/*.yml`, `tools/hooks/`, `mcp/soleil-mcp/policy.json`.
 
 ## Backend Commands
 
@@ -64,6 +64,22 @@ cd backend && vendor/bin/pint                      # Auto-fix
 cd backend && composer audit
 ```
 
+### Custom Artisan Commands
+
+```bash
+# Operational stay backfill (run once after deploying the four-layer domain model)
+cd backend && php artisan stays:backfill-operational            # persist rows
+cd backend && php artisan stays:backfill-operational --dry-run  # count eligible, persist nothing
+
+# Cache warmup
+cd backend && php artisan cache:warmup
+
+# Prune old soft-deleted bookings
+cd backend && php artisan bookings:prune-soft-deleted
+```
+
+`stays:backfill-operational` selection criteria: `status = 'confirmed'` AND `check_out >= today` AND no existing stay row. Idempotent — safe to re-run. Source: `app/Console/Commands/BackfillOperationalStays.php`. See `docs/DOMAIN_LAYERS.md` for full context.
+
 ## Frontend Commands
 
 ### Setup
@@ -94,7 +110,7 @@ Expected: `Found 0 errors.` (implicit — no output means pass)
 cd frontend && npx vitest run
 ```
 
-Expected: 226 tests passed, 0 failed (as of 2026-03-06).
+Expected: 226 tests passed, 0 failed (verified 2026-03-11).
 
 CI variant:
 

@@ -1,4 +1,11 @@
-﻿# WORKLOG — Soleil Hostel (Append-only)
+# WORKLOG — Soleil Hostel (Append-only)
+
+## 2026-03-20
+
+- Change: v3.1 remediation — four-layer operational domain model + docs sync.
+- Code: 3 new migrations (`2026_03_20_000001` stays, `2026_03_20_000002` room_assignments, `2026_03_20_000003` service_recovery_cases). 3 new models (`Stay`, `RoomAssignment`, `ServiceRecoveryCase`). 9 new enums (`StayStatus`, `AssignmentType`, `AssignmentStatus`, `IncidentType`, `IncidentSeverity`, `CaseStatus`, `CompensationType`). 3 new factories. `BackfillOperationalStays` Artisan command. `Booking.stay()` hasOne relationship added to `Booking.php`. `BookingService::confirmBooking()` lazy stay creation hook.
+- Tests: `StayInvariantTest.php` (8 tests), `StayBackfillTest.php` (7 tests), `RoomAssignmentTest.php` (9 tests), `ServiceRecoveryCaseTest.php` (11 tests). Backend: 989/2677 PASS (+35 from 954).
+- Docs: DOMAIN_LAYERS.md created (two-path strategy section). DB_FACTS.md updated (operational domain tables). ARCHITECTURE_FACTS.md updated (stay domain section, Booking model relationships, test count 954→989). PROJECT_STATUS.md updated (test counts, stay domain row). COMPACT.md updated (test baseline). COMMANDS.md + COMMANDS_AND_GATES.md updated (stays:backfill-operational command). WORKLOG.md updated.
 
 ## 2026-03-17
 

@@ -1,7 +1,7 @@
 # PRODUCT_GOAL.md — Soleil Hostel
 
 > **Product goals and strategic direction**
-> Last updated: 2026-03-14
+> Last updated: 2026-03-20
 
 ---
 
@@ -63,9 +63,10 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 | Email Verification                                   | ✅ Complete       | 26 tests      |
 | PHPStan/Larastan (Level 5)                           | ✅ Installed      | Baseline 151  |
 | Admin Audit Log (append-only; actor, IP, metadata)  | ✅ Complete       | —             |
-| Customer management (admin guest view + StayJournal) | ✅ Complete       | —             |
+| Customer management (admin guest view)               | ✅ Complete       | —             |
 | Password complexity enforcement (registration)       | ✅ Complete       | —             |
-| **Backend total**                                    | **✅ 20 systems** | **954 tests** |
+| Operational domain (stays, room_assignments, service_recovery_cases) | ✅ Complete | 35 tests |
+| **Backend total**                                    | **✅ 21 systems** | **989 tests** |
 
 ### Frontend (React 19 + TypeScript) — 96% complete
 
@@ -158,6 +159,7 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 [DONE] Q1-2026  — Backend i18n (47 keys), Stripe webhooks, review purification fix
 [DONE] Q1-2026  — Batch 3: HealthService extraction, FormRequests, PHPStan/Larastan, Contact+Review tests
 [DONE] Q1-2026  — Batch 4: AbortController cleanup, vi.hoisted auth mocks, no-console ESLint, RoomList tests
+[DONE] Q1-2026  — Four-layer operational domain: stays, room_assignments, service_recovery_cases + backfill command
 [NEXT] Q2-2026  — Payment checkout UI (Stripe/VNPay), frontend i18n, PWA
 [NEXT] Q2-2026  — Deployment pipeline complete (currently 60%)
 [PLAN] Q3-2026  — Webhook system, email delivery tracking, audit log retention

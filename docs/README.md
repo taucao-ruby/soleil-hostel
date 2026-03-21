@@ -1,6 +1,6 @@
 # Soleil Hostel Documentation
 
-> **Last Updated:** March 17, 2026 | **Tests:** 954 backend tests (2596 assertions) + 226 frontend unit tests | **Status:** Phases 0-5 Complete + DevSecOps + Quality Hardening + RBAC Hardening + DB Hardening
+> **Last Updated:** March 20, 2026 | **Tests:** 989 backend tests (2677 assertions) + 226 frontend unit tests | **Status:** Phases 0-5 Complete + DevSecOps + Quality Hardening + RBAC Hardening + DB Hardening + Stay Domain
 
 ## Quick Navigation
 
@@ -13,6 +13,7 @@
 | **Deprecate an API**                  | [API Deprecation](./API_DEPRECATION.md)                             |
 | **Database schema**                   | [Database Docs](./DATABASE.md)                                      |
 | **DB invariants & constraints**       | [DB Facts (Invariants & Constraints)](./DB_FACTS.md)                |
+| **Operational domain model**          | [Domain Layers](./DOMAIN_LAYERS.md)                                 |
 | **Backend documentation**             | [Backend Docs](./backend/README.md)                                 |
 | **Frontend documentation**            | [Frontend Docs](./frontend/README.md)                               |
 | **Set up development environment**    | [Setup Guide](./backend/guides/ENVIRONMENT_SETUP.md)                |
@@ -46,6 +47,7 @@ These domains have critical invariants. Read docs before making changes:
 - **Booking overlap constraint** — [DB_FACTS.md](./DB_FACTS.md), [ARCHITECTURE_FACTS](./agents/ARCHITECTURE_FACTS.md)
 - **Auth tokens** — [AUTHENTICATION.md](./backend/features/AUTHENTICATION.md)
 - **Migrations** — [DB_FACTS.md](./DB_FACTS.md) Section 6
+- **Operational stay domain** — [DOMAIN_LAYERS.md](./DOMAIN_LAYERS.md)
 
 ## Project Memory
 
@@ -98,6 +100,7 @@ docs/
 ├── OPERATIONAL_PLAYBOOK.md           # Incident runbooks
 ├── API_DEPRECATION.md                # API versioning & deprecation
 ├── DATABASE.md                       # Database schema & indexes
+├── DOMAIN_LAYERS.md                  # Four-layer operational domain model
 ├── PERFORMANCE_BASELINE.md           # Performance benchmarks & SLA targets
 ├── api/                              # API documentation
 │   ├── index.html                    # Interactive API docs (Redoc)
@@ -123,7 +126,7 @@ docs/
 
 See [PROJECT_STATUS.md](../PROJECT_STATUS.md) for full status snapshot with gate results and roadmap.
 
-**Current baselines** (verified March 17, 2026): 954 backend tests, 226 frontend tests, 283 Pint files, 0 open critical/high findings.
+**Current baselines** (verified March 20, 2026): 989 backend tests, 226 frontend tests, 283 Pint files, 0 open critical/high findings.
 
 ## Tech Stack
 
@@ -141,6 +144,7 @@ See [PROJECT_STATUS.md](../PROJECT_STATUS.md) for full status snapshot with gate
 
 - **Authentication**: Bearer Token + HttpOnly Cookie dual mode, token rotation, unified endpoints
 - **Booking System**: Pessimistic locking, soft deletes with audit trail, half-open intervals
+- **Operational Domain**: Four-layer model — bookings, stays, room_assignments, service_recovery_cases
 - **Room Management**: Optimistic locking, real-time availability cache
 - **RBAC**: 3 roles (USER, MODERATOR, ADMIN), type-safe enum, 7 authorization gates
 - **Security**: A+ security headers, HTML Purifier XSS, multi-tier rate limiting, CSRF
@@ -175,6 +179,7 @@ See [WORKLOG.md](./WORKLOG.md) for chronological change log.
 | [ADR.md](./ADR.md)                                   | Architecture Decision Records  |
 | [DATABASE.md](./DATABASE.md)                         | Database schema & indexes      |
 | [DB_FACTS.md](./DB_FACTS.md)                         | DB invariants & constraints    |
+| [DOMAIN_LAYERS.md](./DOMAIN_LAYERS.md)               | Four-layer operational domain  |
 | [KNOWN_LIMITATIONS.md](./KNOWN_LIMITATIONS.md)       | System constraints & tech debt |
 | [OPERATIONAL_PLAYBOOK.md](./OPERATIONAL_PLAYBOOK.md) | Incident runbooks              |
 | [PERFORMANCE_BASELINE.md](./PERFORMANCE_BASELINE.md) | Performance benchmarks         |

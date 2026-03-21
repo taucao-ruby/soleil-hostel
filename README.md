@@ -98,15 +98,15 @@ Dự án được xây dựng như một hệ thống có thể sống lâu dài
   - Repository Pattern
 - Authentication: **Laravel Sanctum**
 - RESTful API
-- **871 automated tests** (Feature + Unit) + **226 frontend tests**
+- **1037 automated tests** (Feature + Unit) + **236 frontend tests**
 - Security & performance-focused design
 
 ---
 
 ### 🛢️ Data Layer
 
-- **PostgreSQL**
-- **Redis** _(optional – cache & queue)_
+- **PostgreSQL 16**
+- **Redis 7** _(optional – cache & queue)_
 
 ---
 
@@ -143,7 +143,7 @@ soleil-hostel/
 │   ├── resources/                    # Views & Assets
 │   ├── routes/                       # API Routes
 │   ├── storage/                      # File Storage
-│   ├── tests/                        # 871 Automated Tests
+│   ├── tests/                        # 1037 Automated Tests
 │   │   ├── Feature/                  # Feature Tests
 │   │   └── Unit/                     # Unit Tests
 
@@ -156,8 +156,7 @@ soleil-hostel/
 │   │   ├── app/                      # App Configuration
 │   │   ├── features/                 # Feature Modules
 │   │   ├── pages/                    # Page Components
-│   │   ├── services/                 # API Services
-│   │   ├── shared/                   # Shared Components
+│   │   ├── shared/                   # Shared Components & API Client
 │   │   ├── types/                    # TypeScript Types
 │   │   └── utils/                    # Utility Functions
 │   ├── public/                       # Static Assets
@@ -208,10 +207,10 @@ soleil-hostel/
 
 ### 🧱 System Requirements
 
-- Node.js **18+**
+- Node.js **20+**
 - PHP **8.2+**
 - Composer
-- PostgreSQL **12+**
+- PostgreSQL **16+**
 - Redis _(optional)_
 
 ---
@@ -275,12 +274,19 @@ Sau đó mở Pull Request trên GitHub.
 - Core booking flow with pessimistic locking
 - Customer management
 - CI/CD with GitHub Actions
-- Full test suite (871 backend tests, 2449 assertions + 226 frontend tests)
+- Full test suite (1037 backend tests, 2803 assertions + 236 frontend tests)
 - Documentation consolidation & cleanup
 - Frontend documentation restructured into 12 modular files (January 2, 2026)
 - Backend documentation fully organized
 - Both servers verified running successfully
 - Optimistic locking for room concurrency control (January 2026)
+- Role-based access control: 3 roles (User, Moderator, Admin), 7 authorization gates (March 2026)
+- DB hardening: FK delete policies, CHECK constraints, booking status enforcement (March 2026)
+- Operational domain: stays, room assignments, service recovery cases — four-layer model (March 2026)
+- Booking notifications: event-driven queued emails (confirm, update, cancel)
+- Security hardening: A+ headers, HTML Purifier XSS, multi-tier rate limiting, CSRF
+- Admin audit log with forensic recovery
+- Customer management endpoints (admin)
 
 ---
 
@@ -289,7 +295,6 @@ Sau đó mở Pull Request trên GitHub.
 - Advanced booking calendar
 - Revenue & analytics modules
 - Customer statistics module
-- Role-based access (Admin / Staff)
 - UX optimization for non-technical / elderly homestay owners
 
 ---
@@ -362,7 +367,7 @@ Sau đó mở Pull Request trên GitHub.
 │                                                                 │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
 │  │   PHPUnit       │  │   PHPStan       │  │    Psalm        │ │
-│  │   871 Tests     │  │   Static Analysis│  │  Code Quality  │ │
+│  │  1037 Tests     │  │   Static Analysis│  │  Code Quality  │ │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
                                     │
@@ -409,18 +414,20 @@ Sau đó mở Pull Request trên GitHub.
 
 ## 🧪 Test Suite Summary
 
-Dự án hiện có **871 backend tests** + **226 frontend tests**, bao gồm Feature Tests, Unit Tests, và UI tests.
+Dự án hiện có **1037 backend tests** + **236 frontend tests**, bao gồm Feature Tests, Unit Tests, và UI tests.
 
-| Nhóm Test      | Số lượng | Mô tả                            |
-| -------------- | -------- | -------------------------------- |
-| Backend Tests  | 871      | Feature + Unit (2449 assertions) |
-| Frontend Tests | 226      | Vitest (21 test files)           |
-| Auth Tests     | 44       | Xác thực & token management      |
-| Booking Tests  | 60       | Đặt phòng, overlap, soft delete  |
-| Room Tests     | 151      | CRUD + Optimistic locking        |
-| RBAC Tests     | 47       | Role-based access control        |
-| Security Tests | 91       | Headers, XSS, Rate limiting      |
-| Cache Tests    | 6        | Redis cache layer                |
+| Nhóm Test      | Số lượng | Mô tả                                    |
+| -------------- | -------- | ---------------------------------------- |
+| Backend Tests  | 1037     | Feature + Unit (2803 assertions)         |
+| Frontend Tests | 236      | Vitest (24 test files)                   |
+| Auth Tests     | 44       | Xác thực & token management              |
+| Booking Tests  | 60       | Đặt phòng, overlap, soft delete          |
+| Room Tests     | 151      | CRUD + Optimistic locking                |
+| RBAC Tests     | 47       | Role-based access control                |
+| Security Tests | 91       | Headers, XSS, Rate limiting             |
+| Cache Tests    | 6        | Redis cache layer                        |
+| Operational    | 48+      | Stays, room assignments, service recovery|
+| DB Hardening   | 8        | FK policies, CHECK constraints           |
 
 ✔️ CI chạy test tự động cho mỗi Pull Request  
 ✔️ Không merge code lỗi vào `main`
@@ -434,24 +441,25 @@ Tài liệu dự án được tổ chức trong thư mục `docs/`:
 ```
 docs/
 ├── README.md                    # Documentation index
-├── guides/                      # How-to guides
-│   ├── ENVIRONMENT_SETUP.md     # Dev environment
+├── DATABASE.md                  # Database schema & indexes
+├── DB_FACTS.md                  # DB invariants & constraints
+├── DOMAIN_LAYERS.md             # Four-layer operational domain model
+├── backend/                     # Backend documentation
+│   ├── README.md                # Backend index
+│   ├── architecture/            # System design (API, services, middleware, events...)
+│   ├── features/                # Feature docs (auth, booking, rooms, RBAC, caching...)
+│   ├── guides/                  # How-to guides (setup, testing, deployment, migration...)
+│   └── security/                # Security docs (headers, XSS, rate limiting)
+├── frontend/                    # Frontend documentation (12 modular files)
+│   ├── ARCHITECTURE.md          # Main architecture
+│   ├── FEATURES_LAYER.md        # Feature modules
+│   ├── SERVICES_LAYER.md        # API services
 │   ├── TESTING.md               # Testing guide
-│   └── DEPLOYMENT.md            # Deployment
-├── architecture/                # System design
-│   ├── README.md                # Architecture overview
-│   └── DATABASE.md              # Schema & indexes
-├── features/                    # Feature docs
-│   ├── AUTHENTICATION.md        # Auth system
-│   ├── BOOKING.md               # Booking system
-│   ├── ROOMS.md                 # Room management
-│   ├── RBAC.md                  # Access control
-│   └── CACHING.md               # Redis cache
-└── security/                    # Security docs
-    ├── README.md                # Security overview
-    ├── HEADERS.md               # Security headers
-    ├── XSS_PROTECTION.md        # HTML Purifier
-    └── RATE_LIMITING.md         # Rate limiting
+│   └── ...                      # App, shared, types, utils, config, deployment layers
+└── agents/                      # AI agent framework
+    ├── CONTRACT.md              # Definition of Done
+    ├── ARCHITECTURE_FACTS.md    # Domain invariants
+    └── COMMANDS.md              # Verified commands
 ```
 
 📚 **Full Documentation:** → **[docs/README.md](./docs/README.md)**

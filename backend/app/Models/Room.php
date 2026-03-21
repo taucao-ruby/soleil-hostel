@@ -57,6 +57,18 @@ class Room extends Model
         'room_tier',
     ];
 
+    /**
+     * Default attribute values. Ensures room_type_code and room_tier are
+     * always present even when not explicitly provided, matching the backfill
+     * strategy applied to pre-classification rooms.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'room_type_code' => 'private_single',
+        'room_tier' => 2,
+    ];
+
     protected $casts = [
         'price' => 'decimal:2',
         'max_guests' => 'integer',

@@ -16,7 +16,7 @@ The Soleil Hostel frontend is a **modern, production-ready web application** bui
 - ✅ **Type Safety**: Full TypeScript coverage with strict mode
 - ✅ **Performance**: Code splitting with React.lazy + Suspense
 - ✅ **Accessibility**: WCAG 2.1 Level AA compliant
-- ✅ **Testing**: 226 Vitest unit tests + Playwright E2E (scaffolded)
+- ✅ **Testing**: 236 Vitest unit tests + Playwright E2E (scaffolded)
 
 ---
 

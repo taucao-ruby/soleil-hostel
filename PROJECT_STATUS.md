@@ -1,8 +1,8 @@
 # Soleil Hostel - Project Status
 
-**Last Updated:** March 21, 2026
-**Current Branch:** `main` (synced from dev `3f59d86`)
-**Latest Commit:** `bb3332e` — chore: merge dev into main — Psalm + PHPStan fixes, operational domain
+**Last Updated:** March 22, 2026
+**Current Branch:** `main` (synced from dev `cbe6da1`)
+**Latest Commit:** `e994cbd` — Merge dev into main — Skill OS hardening
 
 ## Current Status: Repo Health Green
 
@@ -10,11 +10,11 @@
 > Batches 1–12 + DevSecOps + quality hardening + DB hardening + v3.1 stay domain complete.
 > See [docs/AUDIT_2026_02_21.md](./docs/AUDIT_2026_02_21.md) for detailed audit history.
 
-Gates (verified March 21, 2026):
+Gates (verified March 22, 2026):
 
 - Backend tests PASS: **1037 tests**, **2803 assertions** (`cd backend && php artisan test`)
 - Frontend typecheck PASS: 0 errors (`cd frontend && npx tsc --noEmit`)
-- Frontend unit tests PASS: **21 files**, **226 tests** (`cd frontend && npx vitest run`)
+- Frontend unit tests PASS: **24 files**, **236 tests** (`cd frontend && npx vitest run`)
 - Compose config PASS (`docker compose config`)
 - Pint style PASS: **283 files**, 0 violations (`cd backend && vendor/bin/pint --test`)
 - PHPStan Level 5 PASS: **0 errors** (Larastan, no baseline, no ignores)

@@ -1,10 +1,10 @@
-# 🖥️ Soleil Hostel Backend (Laravel 12)
+# 🖥️ Soleil Hostel Backend (Laravel 11)
 
-> **Last Updated:** March 22, 2026 | **Laravel:** 12.x | **PHP:** 8.2+ | **Tests:** 1037 passing ✅
+> **Last Updated:** January 10, 2026 | **Laravel:** 11.x | **PHP:** 8.2+ | **Tests:** 537 passing ✅
 
 ## 🎯 Overview
 
-The Soleil Hostel backend is a **production-ready REST API** built with Laravel 12, implementing clean architecture principles with comprehensive test coverage, security hardening, and performance optimization.
+The Soleil Hostel backend is a **production-ready REST API** built with Laravel 11, implementing clean architecture principles with comprehensive test coverage, security hardening, and performance optimization.
 
 ### Key Features
 
@@ -18,7 +18,7 @@ The Soleil Hostel backend is a **production-ready REST API** built with Laravel 
 - ✅ **Security**: XSS protection, CSRF tokens, security headers, rate limiting
 - ✅ **Performance**: Redis caching, N+1 query prevention, database indexes
 - ✅ **Monitoring**: Correlation IDs, performance logging, health probes
-- ✅ **Testing**: 1037 tests with 2803 assertions (100% pass rate)
+- ✅ **Testing**: 537 tests with 1445 assertions (100% pass rate)
 
 ---
 
@@ -28,7 +28,7 @@ The Soleil Hostel backend is a **production-ready REST API** built with Laravel 
 
 - PHP 8.2 or higher
 - Composer
-- PostgreSQL 16+
+- PostgreSQL 12+
 - Redis (optional, for caching)
 
 ### Installation
@@ -97,9 +97,9 @@ backend/
 │   └── web.php          # Web routes
 ├── storage/             # File storage & logs
 ├── tests/
-│   ├── Feature/         # Feature tests
-│   └── Unit/            # Unit tests
-│       ├── Repositories/ # Repository unit tests (zero DB)
+│   ├── Feature/         # Feature tests (383 tests)
+│   └── Unit/            # Unit tests (105 tests)
+│       ├── Repositories/ # Repository unit tests (53 tests, zero DB)
 └── vendor/              # Composer dependencies
 ```
 
@@ -111,7 +111,7 @@ backend/
 
 ```bash
 php artisan test
-# ✅ 1037 tests, 2803 assertions
+# ✅ 537 tests, 1445 assertions, ~48 seconds
 ```
 
 ### Run Specific Test Suites
@@ -146,40 +146,38 @@ php artisan test --coverage --min=80
 
 ## 📋 API Endpoints
 
-> **Note:** All resource endpoints use the `/api/v1/` prefix. Legacy unversioned endpoints (`/api/rooms`, `/api/bookings`, etc.) are deprecated and sunset July 2026.
-
 ### Authentication
 
-| Method | Endpoint                          | Description             |
-| ------ | --------------------------------- | ----------------------- |
-| POST   | /api/auth/register                | Register new user       |
-| POST   | /api/auth/login-v2                | Login (Bearer token)    |
-| POST   | /api/auth/login-httponly          | Login (HttpOnly cookie) |
-| POST   | /api/auth/refresh-httponly        | Refresh token           |
-| POST   | /api/auth/logout-v2               | Logout single device    |
-| POST   | /api/auth/logout-all-v2           | Logout all devices      |
-| GET    | /api/auth/me-v2                   | Get current user        |
+| Method | Endpoint                   | Description             |
+| ------ | -------------------------- | ----------------------- |
+| POST   | /api/auth/register         | Register new user       |
+| POST   | /api/auth/login-v2         | Login (Bearer token)    |
+| POST   | /api/auth/login-httponly   | Login (HttpOnly cookie) |
+| POST   | /api/auth/refresh-httponly | Refresh token           |
+| POST   | /api/auth/logout-v2        | Logout single device    |
+| POST   | /api/auth/logout-all-v2    | Logout all devices      |
+| GET    | /api/auth/me-v2            | Get current user        |
 
 ### Rooms
 
-| Method | Endpoint                  | Description                         | Auth Required |
-| ------ | ------------------------- | ----------------------------------- | ------------- |
-| GET    | /api/v1/rooms             | List all rooms                      | No            |
-| GET    | /api/v1/rooms/{id}        | Get room details                    | No            |
-| POST   | /api/v1/rooms             | Create room                         | Admin only    |
-| PUT    | /api/v1/rooms/{id}        | Update room (requires lock_version) | Admin only    |
-| DELETE | /api/v1/rooms/{id}        | Delete room                         | Admin only    |
-| GET    | /api/v1/rooms/available   | Check availability                  | No            |
+| Method | Endpoint             | Description                         | Auth Required |
+| ------ | -------------------- | ----------------------------------- | ------------- |
+| GET    | /api/rooms           | List all rooms                      | No            |
+| GET    | /api/rooms/{id}      | Get room details                    | No            |
+| POST   | /api/rooms           | Create room                         | Admin only    |
+| PUT    | /api/rooms/{id}      | Update room (requires lock_version) | Admin only    |
+| DELETE | /api/rooms/{id}      | Delete room                         | Admin only    |
+| GET    | /api/rooms/available | Check availability                  | No            |
 
 ### Bookings
 
-| Method | Endpoint                  | Description         | Auth Required |
-| ------ | ------------------------- | ------------------- | ------------- |
-| GET    | /api/v1/bookings          | List all bookings   | Yes           |
-| POST   | /api/v1/bookings          | Create booking      | Yes           |
-| GET    | /api/v1/bookings/{id}     | Get booking details | Yes           |
-| PUT    | /api/v1/bookings/{id}     | Update booking      | Yes           |
-| DELETE | /api/v1/bookings/{id}     | Cancel booking      | Yes           |
+| Method | Endpoint           | Description         | Auth Required |
+| ------ | ------------------ | ------------------- | ------------- |
+| GET    | /api/bookings      | List all bookings   | Yes           |
+| POST   | /api/bookings      | Create booking      | Yes           |
+| GET    | /api/bookings/{id} | Get booking details | Yes           |
+| PUT    | /api/bookings/{id} | Update booking      | Yes           |
+| DELETE | /api/bookings/{id} | Cancel booking      | Yes           |
 
 ### Health & Monitoring
 
@@ -201,9 +199,7 @@ php artisan test --coverage --min=80
 ├─────────────────────────────────────┤
 │     Services (Business Logic)       │  ← Core Logic
 ├─────────────────────────────────────┤
-│    Repositories (Data Access)       │  ← Repository Pattern
-├─────────────────────────────────────┤
-│       Models (Eloquent ORM)         │  ← Domain Models
+│       Models (Data Access)          │  ← Eloquent ORM
 ├─────────────────────────────────────┤
 │          Database (PostgreSQL)      │  ← Persistence
 └─────────────────────────────────────┘
@@ -406,18 +402,17 @@ composer install --optimize-autoloader --no-dev
 
 ## 📊 Test Coverage
 
-| Component       | Status |
-| --------------- | ------ |
-| Authentication  | ✅     |
-| Booking System  | ✅     |
-| Room Management | ✅     |
-| RBAC            | ✅     |
-| Security        | ✅     |
-| Caching         | ✅     |
-| Monitoring      | ✅     |
-| Operational Domain (Stays, Assignments, Service Recovery) | ✅ |
-| DB Hardening (FK policies, CHECK constraints) | ✅ |
-| **Total**       | **1037 tests, 2803 assertions** |
+| Component       | Tests   | Assertions | Status |
+| --------------- | ------- | ---------- | ------ |
+| Authentication  | 26      | 78         | ✅     |
+| Booking System  | 60      | 180        | ✅     |
+| Room Management | 151     | 453        | ✅     |
+| RBAC            | 47      | 141        | ✅     |
+| Security        | 77      | 231        | ✅     |
+| Caching         | 6       | 18         | ✅     |
+| Monitoring      | 10      | 30         | ✅     |
+| Other           | 58      | 164        | ✅     |
+| **Total**       | **435** | **1295**   | **✅** |
 
 ---
 

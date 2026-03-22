@@ -1,6 +1,6 @@
 # 🎨 Soleil Hostel Frontend
 
-> **Last Updated:** March 21, 2026 | **React:** 19.0.0 | **TypeScript:** 5.x | **Status:** Production Ready ✅
+> **Last Updated:** January 4, 2026 | **React:** 19.0.0 | **TypeScript:** 5.x | **Status:** Production Ready ✅
 
 ## 🎯 Overview
 
@@ -16,7 +16,7 @@ The Soleil Hostel frontend is a **modern, production-ready web application** bui
 - ✅ **Type Safety**: Full TypeScript coverage with strict mode
 - ✅ **Performance**: Code splitting with React.lazy + Suspense
 - ✅ **Accessibility**: WCAG 2.1 Level AA compliant
-- ✅ **Testing**: 236 Vitest unit tests + Playwright E2E (scaffolded)
+- ✅ **Testing**: Playwright E2E tests ready
 
 ---
 
@@ -24,21 +24,21 @@ The Soleil Hostel frontend is a **modern, production-ready web application** bui
 
 ### Prerequisites
 
-- Node.js 20+ or higher
-- pnpm (preferred) or npm
+- Node.js 18+ or higher
+- npm or yarn
 
 ### Installation
 
 ```bash
 # 1. Install dependencies
-pnpm install
+npm ci
 
 # 2. Configure environment (optional)
 # Create .env file if needed for custom API URL
 echo "VITE_API_URL=http://127.0.0.1:8000" > .env
 
 # 3. Start development server
-pnpm dev
+npm run dev
 # Or with specific port:
 npx vite --port 5173
 ```
@@ -49,10 +49,10 @@ Frontend will be available at: http://localhost:5173
 
 ```bash
 # Build optimized production bundle
-pnpm build
+npm run build
 
 # Preview production build
-pnpm preview
+npm run preview
 ```
 
 ---
@@ -71,10 +71,7 @@ frontend/
 │   ├── features/        # Feature modules (business logic)
 │   │   ├── auth/        # Authentication feature
 │   │   ├── rooms/       # Room management feature
-│   │   ├── booking/     # Booking feature
-│   │   ├── bookings/    # Guest bookings dashboard
-│   │   ├── admin/       # Admin dashboard
-│   │   └── locations/   # Location listing
+│   │   └── booking/     # Booking feature
 │   │
 │   ├── shared/          # Shared resources
 │   │   ├── components/  # Reusable components

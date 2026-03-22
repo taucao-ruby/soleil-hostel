@@ -51,12 +51,22 @@ Run this skill when ANY of the following occur:
    - Verify PG-only features have driver guards
    - Check if any migration touches CRITICAL tables (`bookings`, `rooms`, `personal_access_tokens`)
    - If yes: run `review-schema-change-risk` skill on each
+   - For new table creation: check whether any column references a CRITICAL table PK. CRITICAL tables for FK purposes: `bookings`, `rooms`, `locations` (see `context/INVARIANTS.md` §CRITICAL Tables for FK Constraint Enforcement). If yes, verify an explicit FK constraint exists in the migration. Missing FK on a column referencing a CRITICAL table = CONDITIONAL (must be added within 48h)
    - Verify migration ordering (no timestamp conflicts)
 
 4. **Booking flow verification.** If any changed file touches booking logic:
    - Run `verify-no-double-booking` skill
    - Verify overlap tests pass
-   - Verify `lockForUpdate()` pattern is intact
+   - Verify `lockForUpdate()` is present in every method on the canonical booking entry-point list below. If a new booking creation or cancellation method was added in this release, add it to this list as part of the PR. A method that creates or cancels bookings and is NOT on the canonical list = automatic BLOCK.
+
+     **Canonical booking entry points (update when new paths are added):**
+     - `CreateBookingService::create()` — `app/Services/CreateBookingService.php`
+     - `CreateBookingService::createBookingWithLocking()` — `app/Services/CreateBookingService.php`
+     - `BookingService::confirmBooking()` — `app/Services/BookingService.php`
+     - `CancellationService::cancel()` — `app/Services/CancellationService.php`
+     - `BookingService::cancelBooking()` — `app/Services/BookingService.php`
+
+     **Secondary check (does not substitute for canonical list):** grep for `Booking::create()`, `DB::table('bookings')->insert()`, `Booking::insert()`, `Booking::upsert()`, `$booking->save()` to discover paths not yet on the list. Grep patterns miss repository wrappers, raw SQL, and bulk helpers — the canonical list is the authoritative source, not grep output.
    - Check: was `BookingStatus` enum modified? If yes, is the exclusion constraint updated?
 
 5. **RBAC completeness check.** If any changed file touches routes, middleware, or controllers:
@@ -119,7 +129,7 @@ The release **MUST NOT proceed** if any of these are true:
 3. A migration touches the exclusion constraint without full review
 4. DANGEROUS documentation drift detected
 5. A new admin endpoint exists without API-layer authorization
-6. `lockForUpdate()` removed from booking creation or cancellation flow
+6. `lockForUpdate()` missing from any booking creation or cancellation path — whether removed from an existing path or absent from a newly added one
 7. `BookingStatus` enum modified but exclusion constraint not updated
 8. FK cascade policy changed to `CASCADE` on booking-domain tables
 9. A "revert" commit exists in the release scope without explanation
@@ -133,6 +143,7 @@ The release **may proceed** with these conditions (must be resolved within 48 ho
 3. Test coverage for new booking behavior exists but is thin (<3 tests) — add tests within 48h
 4. Cache invalidation change not fully tested — monitor cache hit rates for 48h
 5. New endpoint added with authorization but without permission matrix update — update matrix within 48h
+6. New table has a column referencing a CRITICAL table PK without an explicit FK constraint — add FK within 48h
 
 ## CI Pipeline Gaps
 

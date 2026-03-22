@@ -52,7 +52,8 @@ Run this skill when ANY of the following occur:
    - **Escalation columns** (see below): any nullability change = automatic HIGH risk
 
 5. **Check constraint changes.** For each constraint added, dropped, or modified:
-   - If the exclusion constraint is touched: **automatic BLOCK** — requires verify-no-double-booking skill execution before merge
+   - If the exclusion constraint is touched (DROP CONSTRAINT, ALTER CONSTRAINT, RENAME, or any ALTER TABLE that causes PostgreSQL to rebuild the table): **automatic BLOCK** — requires verify-no-double-booking skill execution before merge
+   - If an index is dropped: check whether it is the GIST index backing the `no_overlapping_bookings` exclusion constraint. The exclusion constraint requires a GIST index to function — dropping that index makes the constraint unenforceable. If the dropped index supports the exclusion constraint: **automatic BLOCK** (same as dropping the constraint itself)
    - If a CHECK constraint is modified: verify the new values match application-level enum
    - If a UNIQUE constraint is dropped: verify no application code assumes uniqueness
 
@@ -98,6 +99,7 @@ A completed `migration-risk-review.md` template with:
 
 ### BLOCK — Do not merge without resolution
 - Exclusion constraint is dropped, modified, or conflicted
+- GIST index backing the `no_overlapping_bookings` exclusion constraint is dropped (makes constraint unenforceable)
 - FK cascade change would delete booking records (`CASCADE` on `bookings` parent FK)
 - `deleted_at` column dropped or renamed on `bookings` table
 - `check_in` or `check_out` column type changed

@@ -1,6 +1,6 @@
 # 🖥️ Soleil Hostel Backend (Laravel 12)
 
-> **Last Updated:** March 21, 2026 | **Laravel:** 12.x | **PHP:** 8.2+ | **Tests:** 989 passing ✅
+> **Last Updated:** March 22, 2026 | **Laravel:** 12.x | **PHP:** 8.2+ | **Tests:** 1037 passing ✅
 
 ## 🎯 Overview
 
@@ -18,7 +18,7 @@ The Soleil Hostel backend is a **production-ready REST API** built with Laravel 
 - ✅ **Security**: XSS protection, CSRF tokens, security headers, rate limiting
 - ✅ **Performance**: Redis caching, N+1 query prevention, database indexes
 - ✅ **Monitoring**: Correlation IDs, performance logging, health probes
-- ✅ **Testing**: 989 tests with 2677 assertions (100% pass rate)
+- ✅ **Testing**: 1037 tests with 2803 assertions (100% pass rate)
 
 ---
 
@@ -111,7 +111,7 @@ backend/
 
 ```bash
 php artisan test
-# ✅ 989 tests, 2677 assertions
+# ✅ 1037 tests, 2803 assertions
 ```
 
 ### Run Specific Test Suites
@@ -417,7 +417,7 @@ composer install --optimize-autoloader --no-dev
 | Monitoring      | ✅     |
 | Operational Domain (Stays, Assignments, Service Recovery) | ✅ |
 | DB Hardening (FK policies, CHECK constraints) | ✅ |
-| **Total**       | **989 tests, 2677 assertions** |
+| **Total**       | **1037 tests, 2803 assertions** |
 
 ---
 

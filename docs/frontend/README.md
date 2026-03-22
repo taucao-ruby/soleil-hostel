@@ -261,7 +261,7 @@ pnpm dev:docker  # Docker development environment
 
 ### Unit & Integration Testing (Vitest + Testing Library)
 
-- **Component Tests**: 21 test files, 226 tests passing
+- **Component Tests**: 24 test files, 236 tests passing
 - **Auth Tests**: Login, register, context lifecycle
 - **Booking Tests**: Form validation, date logic, view model
 - **Dashboard Tests**: GuestDashboard, AdminDashboard, DashboardPage

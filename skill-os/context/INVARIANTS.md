@@ -54,3 +54,16 @@ Bearer token AND HttpOnly cookie auth are both active. Neither may be disabled. 
 ## INV-10: Code Wins Over Docs
 
 When documentation contradicts source code or schema, the code is correct. Exception: `ARCHITECTURE_FACTS.md` has elevated authority as a curated truth document.
+
+## CRITICAL Tables for FK Constraint Enforcement
+
+Any new table with a column referencing one of these tables' PKs must have an explicit FK constraint. This list is authoritative for step 3 of `pre-release-verification`.
+
+| Table | In scope | Reason |
+|---|---|---|
+| `bookings` | YES | Core domain — INV-1 through INV-7 apply |
+| `rooms` | YES | `bookings` references `room_id`; orphan room = orphan booking |
+| `locations` | YES | `rooms` references `location_id`; orphan location = orphan room chain |
+| `personal_access_tokens` | NO | Auth table — not booking-domain integrity |
+
+Missing FK on a column referencing a CRITICAL table PK = CONDITIONAL (must be added within 48h).

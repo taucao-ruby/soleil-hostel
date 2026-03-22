@@ -95,18 +95,18 @@ class BackfillOperationalStays extends Command
         $skipped = 0;
 
         $eligibleQuery->each(function (Booking $booking) use (&$created, &$skipped) {
-            $stay = Stay::firstOrCreate(
+            [, $wasCreated] = Stay::firstOrCreate(
                 ['booking_id' => $booking->id],
                 [
-                    'stay_status' => StayStatus::EXPECTED,
-                    'scheduled_check_in_at' => $booking->check_in->copy()->setTime(14, 0, 0),
-                    'scheduled_check_out_at' => $booking->check_out->copy()->setTime(12, 0, 0),
-                    'actual_check_in_at' => null,
-                    'actual_check_out_at' => null,
+                    'stay_status'             => StayStatus::EXPECTED,
+                    'scheduled_check_in_at'   => $booking->check_in->copy()->setTime(14, 0, 0),
+                    'scheduled_check_out_at'  => $booking->check_out->copy()->setTime(12, 0, 0),
+                    'actual_check_in_at'      => null,
+                    'actual_check_out_at'     => null,
                 ]
             );
 
-            $stay->wasRecentlyCreated ? $created++ : $skipped++;
+            $wasCreated ? $created++ : $skipped++;
         });
 
         $this->info('Backfill complete.');
@@ -115,8 +115,8 @@ class BackfillOperationalStays extends Command
         $this->info("Total scanned:         {$totalScanned}");
 
         Log::info('stays:backfill-operational completed', [
-            'created' => $created,
-            'skipped' => $skipped,
+            'created'       => $created,
+            'skipped'       => $skipped,
             'total_scanned' => $totalScanned,
         ]);
 

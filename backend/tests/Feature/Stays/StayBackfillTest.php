@@ -46,11 +46,11 @@ class StayBackfillTest extends TestCase
         Stay::firstOrCreate(
             ['booking_id' => $booking->id],
             [
-                'stay_status' => StayStatus::EXPECTED,
-                'scheduled_check_in_at' => $booking->check_in->copy()->setTime(14, 0, 0),
+                'stay_status'            => StayStatus::EXPECTED,
+                'scheduled_check_in_at'  => $booking->check_in->copy()->setTime(14, 0, 0),
                 'scheduled_check_out_at' => $booking->check_out->copy()->setTime(12, 0, 0),
-                'actual_check_in_at' => null,
-                'actual_check_out_at' => null,
+                'actual_check_in_at'     => null,
+                'actual_check_out_at'    => null,
             ]
         );
 
@@ -65,7 +65,7 @@ class StayBackfillTest extends TestCase
     public function test_backfill_command_is_idempotent(): void
     {
         Booking::factory()->confirmed()->create([
-            'check_in' => Carbon::today()->addDay()->toDateString(),
+            'check_in'  => Carbon::today()->addDay()->toDateString(),
             'check_out' => Carbon::today()->addDays(3)->toDateString(),
         ]);
 
@@ -88,7 +88,7 @@ class StayBackfillTest extends TestCase
     public function test_backfill_command_creates_stay_for_confirmed_future_booking(): void
     {
         Booking::factory()->confirmed()->create([
-            'check_in' => Carbon::today()->addDay()->toDateString(),
+            'check_in'  => Carbon::today()->addDay()->toDateString(),
             'check_out' => Carbon::today()->addDays(3)->toDateString(),
         ]);
 
@@ -101,7 +101,7 @@ class StayBackfillTest extends TestCase
     public function test_backfill_command_skips_confirmed_booking_with_past_checkout(): void
     {
         Booking::factory()->confirmed()->create([
-            'check_in' => Carbon::today()->subDays(5)->toDateString(),
+            'check_in'  => Carbon::today()->subDays(5)->toDateString(),
             'check_out' => Carbon::today()->subDay()->toDateString(),
         ]);
 
@@ -114,7 +114,7 @@ class StayBackfillTest extends TestCase
     public function test_backfill_command_skips_cancelled_booking(): void
     {
         Booking::factory()->cancelled()->create([
-            'check_in' => Carbon::today()->addDay()->toDateString(),
+            'check_in'  => Carbon::today()->addDay()->toDateString(),
             'check_out' => Carbon::today()->addDays(3)->toDateString(),
         ]);
 
@@ -127,7 +127,7 @@ class StayBackfillTest extends TestCase
     public function test_backfill_command_skips_confirmed_booking_that_already_has_stay(): void
     {
         $booking = Booking::factory()->confirmed()->create([
-            'check_in' => Carbon::today()->addDay()->toDateString(),
+            'check_in'  => Carbon::today()->addDay()->toDateString(),
             'check_out' => Carbon::today()->addDays(3)->toDateString(),
         ]);
 
@@ -147,7 +147,7 @@ class StayBackfillTest extends TestCase
     public function test_backfill_command_dry_run_does_not_persist(): void
     {
         Booking::factory()->confirmed()->create([
-            'check_in' => Carbon::today()->addDay()->toDateString(),
+            'check_in'  => Carbon::today()->addDay()->toDateString(),
             'check_out' => Carbon::today()->addDays(3)->toDateString(),
         ]);
 

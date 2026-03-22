@@ -28,9 +28,6 @@ class Booking extends Model
         // Payment fields
         'payment_intent_id',
         'amount',
-        // Deposit tracking (operational — NOT recognized revenue)
-        'deposit_amount',
-        'deposit_collected_at',
         // Refund fields
         'refund_id',
         'refund_status',
@@ -51,8 +48,6 @@ class Booking extends Model
         'cancelled_at' => 'datetime',
         'status' => BookingStatus::class,
         'amount' => 'integer',
-        'deposit_amount' => 'integer',
-        'deposit_collected_at' => 'datetime',
         'refund_amount' => 'integer',
     ];
 

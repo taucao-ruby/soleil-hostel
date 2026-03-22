@@ -3,8 +3,6 @@
 namespace App\Models;
 
 use App\Enums\BookingStatus;
-use App\Enums\RoomReadinessStatus;
-use App\Enums\RoomTypeCode;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -27,9 +25,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $price
  * @property int $max_guests
  * @property string $status
- * @property RoomTypeCode $room_type_code
- * @property int $room_tier
- * @property RoomReadinessStatus $readiness_status
  * @property int $lock_version Optimistic locking version (starts at 1)
  * @property \Carbon\Carbon $created_at
  * @property \Carbon\Carbon $updated_at
@@ -53,31 +48,12 @@ class Room extends Model
         'price',
         'max_guests',
         'status',
-        'room_type_code',
-        'room_tier',
-    ];
-
-    /**
-     * Default attribute values. Ensures room_type_code and room_tier are
-     * always present even when not explicitly provided, matching the backfill
-     * strategy applied to pre-classification rooms.
-     *
-     * @var array<string, mixed>
-     */
-    protected $attributes = [
-        'room_type_code' => 'private_single',
-        'room_tier' => 2,
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
         'max_guests' => 'integer',
         'lock_version' => 'integer',
-        'room_type_code' => RoomTypeCode::class,
-        'room_tier' => 'integer',
-        'readiness_status' => RoomReadinessStatus::class,
-        'readiness_changed_at' => 'datetime',
-        'readiness_changed_by' => 'integer',
     ];
 
     /**
@@ -121,30 +97,6 @@ class Room extends Model
     public function reviews(): HasMany
     {
         return $this->hasMany(Review::class);
-    }
-
-    /**
-     * Get all room assignments for this room.
-     */
-    public function roomAssignments(): HasMany
-    {
-        return $this->hasMany(RoomAssignment::class);
-    }
-
-    /**
-     * Get room readiness transition history.
-     */
-    public function readinessLogs(): HasMany
-    {
-        return $this->hasMany(RoomReadinessLog::class);
-    }
-
-    /**
-     * Staff member who last changed readiness.
-     */
-    public function readinessChangedBy(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'readiness_changed_by');
     }
 
     /**
@@ -200,9 +152,7 @@ class Room extends Model
      */
     public function scopeActive(Builder $query): Builder
     {
-        return $query
-            ->where('status', 'available')
-            ->where('readiness_status', '!=', RoomReadinessStatus::OUT_OF_SERVICE->value);
+        return $query->where('status', 'available');
     }
 
     /**
@@ -230,42 +180,11 @@ class Room extends Model
         $checkOutDt = \Carbon\Carbon::parse($checkOut)->startOfDay()->toDateTimeString();
 
         return $query->where('status', 'available')
-            ->where('readiness_status', '!=', RoomReadinessStatus::OUT_OF_SERVICE->value)
             ->whereDoesntHave('bookings', function (Builder $q) use ($checkInDt, $checkOutDt) {
                 $q->whereIn('status', [BookingStatus::PENDING, BookingStatus::CONFIRMED])
                     ->where('check_in', '<', $checkOutDt)
                     ->where('check_out', '>', $checkInDt);
             });
-    }
-
-    // ===== ROOM CLASSIFICATION COMPARISON =====
-
-    /**
-     * Check if this room is equivalent to another (same type and tier).
-     */
-    public function isEquivalentTo(Room $other): bool
-    {
-        return $this->room_type_code === $other->room_type_code
-            && $this->room_tier === $other->room_tier;
-    }
-
-    /**
-     * Check if this room is a strict upgrade over another (higher tier).
-     * Never returns true for equal or lower tier.
-     */
-    public function isUpgradeOver(Room $other): bool
-    {
-        return $this->room_tier > $other->room_tier;
-    }
-
-    /**
-     * Check if this room is equivalent to another regardless of location.
-     * Same as isEquivalentTo — location is irrelevant for this check.
-     */
-    public function isCrossLocationEquivalentTo(Room $other): bool
-    {
-        return $this->room_type_code === $other->room_type_code
-            && $this->room_tier === $other->room_tier;
     }
 
     // ===== ACCESSORS =====

@@ -15,8 +15,6 @@ enum IncidentType: string
     case LATE_CHECKOUT_BLOCKING_ARRIVAL = 'late_checkout_blocking_arrival';
     case ROOM_UNAVAILABLE_MAINTENANCE = 'room_unavailable_maintenance';
     case OVERBOOKING_NO_ROOM = 'overbooking_no_room';
-    case EQUIVALENT_SWAP = 'equivalent_swap';
-    case COMPLIMENTARY_UPGRADE = 'complimentary_upgrade';
     case INTERNAL_RELOCATION = 'internal_relocation';
     case EXTERNAL_RELOCATION = 'external_relocation';
 }

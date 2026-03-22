@@ -19,8 +19,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  *
  * In-house guest detection: stays.stay_status IN ('in_house', 'late_checkout').
  * Do NOT use a static `users.active` flag for in-house status.
- *
- * @property-read RoomAssignment|null $currentRoomAssignment
  */
 class Stay extends Model
 {

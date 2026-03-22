@@ -7,12 +7,7 @@ use App\Macros\FormRequestPurifyMacro;
 use App\Models\Booking;
 use App\Models\PersonalAccessToken;
 use App\Models\Room;
-use App\Models\RoomAssignment;
-use App\Models\Stay;
 use App\Observers\BookingObserver;
-use App\Observers\RoomAssignmentObserver;
-use App\Observers\RoomObserver;
-use App\Observers\StayObserver;
 use App\Policies\BookingPolicy;
 use App\Policies\RoomPolicy;
 use App\Repositories\Contracts\BookingRepositoryInterface;
@@ -65,9 +60,6 @@ class AppServiceProvider extends ServiceProvider
     {
         // Register BookingObserver for automatic location_id population
         Booking::observe(BookingObserver::class);
-        Room::observe(RoomObserver::class);
-        Stay::observe(StayObserver::class);
-        RoomAssignment::observe(RoomAssignmentObserver::class);
 
         // Load RateLimiterServiceProvider early
         $this->app->register(RateLimiterServiceProvider::class);

@@ -6,7 +6,6 @@ use App\Enums\CaseStatus;
 use App\Enums\CompensationType;
 use App\Enums\IncidentSeverity;
 use App\Enums\IncidentType;
-use App\Enums\SettlementStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -45,14 +44,8 @@ class ServiceRecoveryCase extends Model
         'cost_delta_absorbed',
         'handled_by',
         'opened_at',
-        'escalated_at',
         'resolved_at',
         'notes',
-        // Settlement lifecycle
-        'settlement_status',
-        'settled_at',
-        'settled_amount',
-        'settlement_notes',
     ];
 
     protected $casts = [
@@ -64,11 +57,7 @@ class ServiceRecoveryCase extends Model
         'voucher_amount' => 'integer',
         'cost_delta_absorbed' => 'integer',
         'opened_at' => 'datetime',
-        'escalated_at' => 'datetime',
         'resolved_at' => 'datetime',
-        'settlement_status' => SettlementStatus::class,
-        'settled_at' => 'datetime',
-        'settled_amount' => 'integer',
     ];
 
     // ===== RELATIONSHIPS =====
@@ -124,37 +113,5 @@ class ServiceRecoveryCase extends Model
     public function scopeExternalRelocation(Builder $query): Builder
     {
         return $query->where('incident_type', IncidentType::EXTERNAL_RELOCATION->value);
-    }
-
-    // ===== SETTLEMENT PREDICATES =====
-
-    /**
-     * Check if this case has not been financially settled.
-     */
-    public function isUnsettled(): bool
-    {
-        return $this->settlement_status === SettlementStatus::UNSETTLED;
-    }
-
-    /**
-     * Check if this case has been financially settled (settled or waived).
-     */
-    public function isSettled(): bool
-    {
-        return in_array($this->settlement_status, [
-            SettlementStatus::SETTLED,
-            SettlementStatus::WAIVED,
-        ], true);
-    }
-
-    /**
-     * Calculate outstanding compensation amount (total owed minus settled).
-     * All amounts in cents.
-     */
-    public function outstandingAmount(): int
-    {
-        $totalCompensation = (int) ($this->refund_amount ?? 0) + (int) ($this->voucher_amount ?? 0);
-
-        return max(0, $totalCompensation - (int) ($this->settled_amount ?? 0));
     }
 }

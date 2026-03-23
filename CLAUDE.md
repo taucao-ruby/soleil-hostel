@@ -107,7 +107,7 @@ Out-of-scope bugs: log in `docs/FINDINGS_BACKLOG.md`, do not fix inline.
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **soleil-hostel** (4265 symbols, 11243 relationships, 168 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **soleil-hostel** (5329 symbols, 13306 relationships, 199 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

@@ -244,7 +244,12 @@ class ArrivalResolutionService
             'currentRoomAssignment.room',
         ]);
 
-        $room = $stay->currentRoomAssignment?->room ?? $stay->booking?->room;
+        $currentRoomAssignment = $stay->getRelation('currentRoomAssignment');
+        $booking = $stay->getRelation('booking');
+
+        $room = $currentRoomAssignment instanceof RoomAssignment
+            ? $currentRoomAssignment->room
+            : ($booking instanceof \App\Models\Booking ? $booking->room : null);
 
         if (! $room instanceof Room) {
             throw new RuntimeException(sprintf(
@@ -258,9 +263,7 @@ class ArrivalResolutionService
 
     private function normalizeReadinessStatus(Room $room): RoomReadinessStatus
     {
-        return $room->readiness_status instanceof RoomReadinessStatus
-            ? $room->readiness_status
-            : RoomReadinessStatus::from((string) $room->readiness_status);
+        return $room->readiness_status;
     }
 
     private function hasLateCheckoutConflict(Stay $stay, Room $sourceRoom): bool

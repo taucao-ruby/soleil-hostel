@@ -35,7 +35,7 @@ class RoomResource extends JsonResource
             'room_type_code' => $room->room_type_code,
             'room_tier' => $room->room_tier,
             'status' => $this->status,
-            'readiness_status' => $room->readiness_status->value,
+            'readiness_status' => $room->readiness_status?->value,
             'readiness_updated_at' => $this->when(
                 $room->readiness_updated_at !== null,
                 fn () => $room->readiness_updated_at->toIso8601String()

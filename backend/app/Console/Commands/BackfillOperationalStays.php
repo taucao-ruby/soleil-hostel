@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\BookingStatus;
 use App\Enums\StayStatus;
 use App\Models\Booking;
 use App\Models\Stay;
@@ -19,13 +20,13 @@ use Illuminate\Support\Facades\Log;
  *
  * SELECTION CRITERIA (all conditions must be true):
  * - bookings.status = 'confirmed'
- * - bookings.check_out >= today  (skip past-checkout bookings)
- * - no existing stays row for this booking
+ * - bookings.check_out >= today
+ * - no existing stay row for this booking
  *
  * SAFETY:
  * - Idempotent: re-running creates zero additional rows (uses firstOrCreate)
  * - Does NOT fabricate actual_check_in_at or actual_check_out_at timestamps
- * - Does NOT touch cancelled, refund_pending, refund_failed, or past-checkout bookings
+ * - Does NOT touch cancelled, refund_pending, refunded, refund_failed, or past-checkout bookings
  *
  * USAGE:
  * php artisan stays:backfill-operational            # Persist rows
@@ -46,38 +47,27 @@ class BackfillOperationalStays extends Command
     public function handle(): int
     {
         $dryRun = $this->option('dry-run');
-        $today = Carbon::today();
+        $today = Carbon::today()->toDateString();
 
         if ($dryRun) {
             $this->warn('DRY RUN MODE — No records will be persisted');
         }
 
-        $this->info("Scanning confirmed bookings with check_out >= {$today->toDateString()}...");
+        $this->info("Scanning confirmed bookings with check_out >= {$today}...");
 
-        // Total confirmed bookings with future/today checkout (denominator for summary)
-        $totalScanned = Booking::query()
-            ->where('status', 'confirmed')
-            ->where('check_out', '>=', $today)
-            ->count();
+        $scannedBookings = Booking::query()
+            ->where('status', BookingStatus::CONFIRMED)
+            ->where('check_out', '>=', $today);
 
-        // Subset that already have a stay (will be skipped)
-        $alreadyHaveStay = Booking::query()
-            ->where('status', 'confirmed')
-            ->where('check_out', '>=', $today)
-            ->whereHas('stay')
-            ->count();
+        $totalScanned = (clone $scannedBookings)->count();
+        $alreadyHaveStay = (clone $scannedBookings)->whereHas('stay')->count();
 
-        // Eligible: confirmed + future checkout + no existing stay row
-        $eligibleQuery = Booking::query()
-            ->where('status', 'confirmed')
-            ->where('check_out', '>=', $today)
-            ->whereDoesntHave('stay');
-
-        $eligible = $eligibleQuery->count();
+        $eligibleQuery = (clone $scannedBookings)->whereDoesntHave('stay');
+        $eligible = (clone $eligibleQuery)->count();
 
         $this->info("Total scanned:         {$totalScanned}");
         $this->info("Already have a stay:   {$alreadyHaveStay}");
-        $this->info("Eligible for backfill: {$eligible}");
+        $this->info("Rows to create:        {$eligible}");
 
         if ($eligible === 0) {
             $this->info('No eligible bookings found. Nothing to do.');
@@ -86,24 +76,18 @@ class BackfillOperationalStays extends Command
         }
 
         if ($dryRun) {
-            $this->info("DRY RUN: Would create {$eligible} stay row(s). Run without --dry-run to persist.");
+            $this->info("DRY RUN: Would create {$eligible} stay row(s).");
 
             return Command::SUCCESS;
         }
 
         $created = 0;
-        $skipped = 0;
+        $skipped = $alreadyHaveStay;
 
-        $eligibleQuery->each(function (Booking $booking) use (&$created, &$skipped) {
+        (clone $eligibleQuery)->each(function (Booking $booking) use (&$created, &$skipped) {
             $stay = Stay::firstOrCreate(
                 ['booking_id' => $booking->id],
-                [
-                    'stay_status' => StayStatus::EXPECTED,
-                    'scheduled_check_in_at' => $booking->check_in->copy()->setTime(14, 0, 0),
-                    'scheduled_check_out_at' => $booking->check_out->copy()->setTime(12, 0, 0),
-                    'actual_check_in_at' => null,
-                    'actual_check_out_at' => null,
-                ]
+                $this->stayAttributesFor($booking)
             );
 
             $stay->wasRecentlyCreated ? $created++ : $skipped++;
@@ -116,10 +100,31 @@ class BackfillOperationalStays extends Command
 
         Log::info('stays:backfill-operational completed', [
             'created' => $created,
-            'skipped' => $skipped,
+            'skipped_exists' => $skipped,
             'total_scanned' => $totalScanned,
         ]);
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * Build stay attributes without fabricating actual operational timestamps.
+     *
+     * @return array<string, mixed>
+     */
+    private function stayAttributesFor(Booking $booking): array
+    {
+        return [
+            'stay_status' => StayStatus::EXPECTED,
+            'scheduled_check_in_at' => $booking->check_in->copy()->setTime(14, 0, 0),
+            'scheduled_check_out_at' => $booking->check_out->copy()->setTime(12, 0, 0),
+            'actual_check_in_at' => null,
+            'actual_check_out_at' => null,
+            'late_checkout_minutes' => 0,
+            'late_checkout_fee_amount' => null,
+            'no_show_at' => null,
+            'checked_in_by' => null,
+            'checked_out_by' => null,
+        ];
     }
 }

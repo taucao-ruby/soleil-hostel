@@ -6,6 +6,12 @@
 > - **Archive**: when history exceeds ~80 lines, move resolved items to `docs/WORKLOG.md` and keep only the latest 5 entries here
 > - **Stable facts** (invariants, architecture, auth) belong in `docs/agents/ARCHITECTURE_FACTS.md` — never here
 > - **Owner**: this file is volatile session state; `ARCHITECTURE_FACTS.md` and `CLAUDE.md` own canonical truth
+>
+> **Lifetime metadata** (per master contract)
+> - generated_from: ARCHITECTURE_FACTS.md, CONTRACT.md, COMMANDS_AND_GATES.md, FINDINGS_BACKLOG.md
+> - last_verified_at: 2026-03-21
+> - scope: AI session handoff state (current snapshot, active work, known warnings, pointers)
+> - expiry_trigger: any code task, gate run, or milestone change
 
 ## 1) Current Snapshot (keep under 12 lines)
 

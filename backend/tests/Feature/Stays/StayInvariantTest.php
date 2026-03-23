@@ -111,6 +111,28 @@ class StayInvariantTest extends TestCase
         $this->assertEquals(StayStatus::EXPECTED, $expectedToday->first()->stay_status);
     }
 
+    // ===== STAY TRANSITION GUARDS =====
+
+    #[\PHPUnit\Framework\Attributes\Test]
+    public function test_transition_to_allows_valid_stay_lifecycle_change(): void
+    {
+        $stay = Stay::factory()->expected()->create();
+
+        $stay->transitionTo(StayStatus::IN_HOUSE);
+
+        $this->assertEquals(StayStatus::IN_HOUSE, $stay->fresh()->stay_status);
+    }
+
+    #[\PHPUnit\Framework\Attributes\Test]
+    public function test_transition_to_rejects_illegal_stay_lifecycle_change(): void
+    {
+        $stay = Stay::factory()->expected()->create();
+
+        $this->expectException(\RuntimeException::class);
+
+        $stay->transitionTo(StayStatus::CHECKED_OUT);
+    }
+
     // ===== BOOKING OVERLAP ISOLATION =====
 
     #[\PHPUnit\Framework\Attributes\Test]

@@ -20,6 +20,7 @@ Read on demand (not auto-loaded):
 - `docs/agents/COMMANDS.md` — command catalog, setup, dev servers
 - `docs/COMPACT.md` — volatile session handoff log (see lifecycle policy inside)
 - `skills/README.md` — skill index for task-specific guardrails
+- `docs/DOMAIN_LAYERS.md` — four-layer operational model (bookings → stays → room_assignments → service_recovery)
 - `docs/FINDINGS_BACKLOG.md` — out-of-scope issues log
 - `.claude/output-styles/` — Execution and Audit response formats (use via `/output-style`)
 
@@ -106,7 +107,7 @@ Out-of-scope bugs: log in `docs/FINDINGS_BACKLOG.md`, do not fix inline.
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **soleil-hostel** (4432 symbols, 11902 relationships, 174 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **soleil-hostel** (5329 symbols, 13306 relationships, 199 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

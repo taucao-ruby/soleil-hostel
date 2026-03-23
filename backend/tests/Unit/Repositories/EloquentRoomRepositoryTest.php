@@ -92,7 +92,7 @@ class EloquentRoomRepositoryTest extends TestCase
     public function find_by_id_with_bookings_returns_room_with_eager_loaded_bookings(): void
     {
         $roomId = 1;
-        $expectedColumns = ['id', 'name', 'description', 'price', 'max_guests', 'status', 'lock_version', 'created_at', 'updated_at'];
+        $expectedColumns = ['id', 'location_id', 'name', 'room_number', 'description', 'price', 'max_guests', 'room_type_code', 'room_tier', 'status', 'readiness_status', 'readiness_updated_at', 'readiness_updated_by', 'lock_version', 'created_at', 'updated_at'];
 
         // Create a partial alias mock that extends Room
         $mockModel = Mockery::mock('alias:'.Room::class)->makePartial();
@@ -130,7 +130,7 @@ class EloquentRoomRepositoryTest extends TestCase
     public function find_by_id_with_bookings_returns_null_when_room_not_found(): void
     {
         $roomId = 999;
-        $expectedColumns = ['id', 'name', 'description', 'price', 'max_guests', 'status', 'lock_version', 'created_at', 'updated_at'];
+        $expectedColumns = ['id', 'location_id', 'name', 'room_number', 'description', 'price', 'max_guests', 'room_type_code', 'room_tier', 'status', 'readiness_status', 'readiness_updated_at', 'readiness_updated_by', 'lock_version', 'created_at', 'updated_at'];
 
         $mockBuilder = Mockery::mock(Builder::class);
         $mockBuilder->shouldReceive('select')
@@ -231,7 +231,7 @@ class EloquentRoomRepositoryTest extends TestCase
     public function get_all_ordered_by_name_returns_collection_sorted_by_name(): void
     {
         $expectedCollection = new Collection;
-        $expectedColumns = ['id', 'name', 'description', 'price', 'max_guests', 'status', 'lock_version', 'created_at', 'updated_at'];
+        $expectedColumns = ['id', 'location_id', 'name', 'room_number', 'description', 'price', 'max_guests', 'room_type_code', 'room_tier', 'status', 'readiness_status', 'readiness_updated_at', 'readiness_updated_by', 'lock_version', 'created_at', 'updated_at'];
 
         $mockBuilder = Mockery::mock(Builder::class);
         $mockBuilder->shouldReceive('orderBy')
@@ -266,7 +266,7 @@ class EloquentRoomRepositoryTest extends TestCase
     public function get_all_ordered_by_name_returns_empty_collection_when_no_rooms(): void
     {
         $expectedCollection = new Collection;
-        $expectedColumns = ['id', 'name', 'description', 'price', 'max_guests', 'status', 'lock_version', 'created_at', 'updated_at'];
+        $expectedColumns = ['id', 'location_id', 'name', 'room_number', 'description', 'price', 'max_guests', 'room_type_code', 'room_tier', 'status', 'readiness_status', 'readiness_updated_at', 'readiness_updated_by', 'lock_version', 'created_at', 'updated_at'];
 
         $mockBuilder = Mockery::mock(Builder::class);
         $mockBuilder->shouldReceive('orderBy')

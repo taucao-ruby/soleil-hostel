@@ -1,8 +1,8 @@
 # Soleil Hostel - Project Status
 
-**Last Updated:** March 22, 2026
-**Current Branch:** `main` (synced from dev `cbe6da1`)
-**Latest Commit:** `e994cbd` — Merge dev into main — Skill OS hardening
+**Last Updated:** March 20, 2026
+**Current Branch:** `main`
+**Latest Commit:** `5ec58dd` — chore: merge dev into main — add gitnexus skills + .gitnexus gitignore
 
 ## Current Status: Repo Health Green
 
@@ -10,15 +10,15 @@
 > Batches 1–12 + DevSecOps + quality hardening + DB hardening + v3.1 stay domain complete.
 > See [docs/AUDIT_2026_02_21.md](./docs/AUDIT_2026_02_21.md) for detailed audit history.
 
-Gates (verified March 22, 2026):
+Gates (verified March 20, 2026):
 
-- Backend tests PASS: **1037 tests**, **2803 assertions** (`cd backend && php artisan test`)
+- Backend tests PASS: **989 tests**, **2677 assertions** (`cd backend && php artisan test`)
 - Frontend typecheck PASS: 0 errors (`cd frontend && npx tsc --noEmit`)
-- Frontend unit tests PASS: **24 files**, **236 tests** (`cd frontend && npx vitest run`)
+- Frontend unit tests PASS: **21 files**, **226 tests** (`cd frontend && npx vitest run`)
 - Compose config PASS (`docker compose config`)
 - Pint style PASS: **283 files**, 0 violations (`cd backend && vendor/bin/pint --test`)
-- PHPStan Level 5 PASS: **0 errors** (Larastan, no baseline, no ignores)
-- Psalm Level 1 PASS: **0 blocking errors**
+- PHPStan Level 5 installed with Larastan (baseline: 151 pre-existing errors)
+- Psalm: 0 blocking errors (v1 routes)
 
 Open Findings: F-23 (MD lint, low), F-25 (CSRF path, low), F-26–F-62 (2026-03-20 audit — 37 findings, no code changed)
 Blocked Items: M-11 (migration squash — needs human approval)
@@ -51,9 +51,9 @@ Total Progress     ████████████████████�
 ### Backend (PHPUnit/Pest)
 
 ```text
-1037 tests passed
-2803 assertions
-Duration: ~215s (verified March 21, 2026)
+989 tests passed
+2677 assertions
+Duration: ~210s (verified March 20, 2026)
 ```
 
 ### Frontend (Vitest)
@@ -145,8 +145,6 @@ All audit and batch details are preserved in [AUDIT_REPORT.md](./AUDIT_REPORT.md
 | Mar 13-14, 2026 | RBAC mobile guard, password complexity, EmailVerificationTest, CVE fixes (flatted/undici) | — |
 | Mar 17, 2026 | DB hardening: FK delete policy hardening + CHECK constraints + DB tests | +53 backend tests (901→954), 3 migrations, 2 test files |
 | Mar 20, 2026 | v3.1 stay domain: stays/room_assignments/service_recovery_cases + BackfillOperationalStays command | +35 backend tests (954→989), 3 migrations, 4 test files, 3 models, 9 enums, 3 factories |
-| Mar 21, 2026 | v3.2 operational services: RoomReadinessService, CheckInBlockageResolver, StayObserver, RoomObserver, front-desk resolver | +20 targeted tests; 4 source-grounded skips |
-| Mar 21, 2026 | v3.3 static analysis: Psalm 35→0 errors + PHPStan 151→0 errors (Level 5, no baseline, no ignores) | 8 files fixed; 1037 tests, 0 failures |
 
 ---
 
@@ -160,6 +158,4 @@ RBAC mobile guard + password complexity (Mar 13-14): admin route guard on fronte
 CVE fix (Mar 14): flatted >=3.4.0, undici >=7.24.0 (ef138cc). Logout-401 investigation: no code bug (stale cookie).
 DB hardening (Mar 17): FK CASCADE→SET NULL/RESTRICT on 4 FKs (bookings.user_id, bookings.room_id, reviews.user_id, reviews.room_id). CHECK constraints added: chk_rooms_max_guests, chk_bookings_status. All PG-only, runtime-gated. 954 tests, 0 failures.
 v3.1 stay domain (Mar 20): four-layer operational model (stays, room_assignments, service_recovery_cases). BackfillOperationalStays command. Booking.stay() hasOne relationship added. 989 tests, 0 failures.
-v3.2 operational services (Mar 21): RoomReadinessService, CheckInBlockageResolver, StayObserver, RoomAssignmentObserver, RoomObserver. Front-desk blockage resolver with 4-step escalation. 1009 tests, 4 skipped, 0 failures.
-v3.3 static analysis (Mar 21): Psalm Level 1 fixed (35→0 blocking errors). PHPStan Level 5 fixed (151 pre-existing → 0, no baseline, no @phpstan-ignore). 1037 tests, 0 failures. Key fixes: firstOrCreate wasRecentlyCreated API, instanceof always-true guards, @var annotations for dual-tool compat (Psalm+PHPStan), @property-read docblocks on RoomAssignment/Stay, RoomObserver array_key_exists behavior-safe guard.
 Findings backlog: [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md)

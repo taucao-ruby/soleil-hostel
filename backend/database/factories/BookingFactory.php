@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\BookingStatus;
+use App\Enums\DepositStatus;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
@@ -35,6 +36,9 @@ class BookingFactory extends Factory
             'guest_name' => $this->faker->name(),
             'guest_email' => $this->faker->safeEmail(),
             'status' => BookingStatus::PENDING,
+            'deposit_amount' => null,
+            'deposit_collected_at' => null,
+            'deposit_status' => DepositStatus::NONE,
         ];
     }
 
@@ -117,6 +121,30 @@ class BookingFactory extends Factory
             'refund_id' => 're_test_'.$this->faker->uuid(),
             'refund_status' => 'succeeded',
             'refund_amount' => $refundAmountCents ?? $this->faker->numberBetween(2500, 50000),
+        ]);
+    }
+
+    /**
+     * Create booking with collected deposit/advance.
+     */
+    public function withDeposit(?int $depositAmountCents = null): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'deposit_amount' => $depositAmountCents ?? $this->faker->numberBetween(1000, 10000),
+            'deposit_collected_at' => Carbon::now()->subHours($this->faker->numberBetween(1, 48)),
+            'deposit_status' => DepositStatus::COLLECTED,
+        ]);
+    }
+
+    /**
+     * Create booking whose deposit has already been applied.
+     */
+    public function depositApplied(?int $depositAmountCents = null): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'deposit_amount' => $depositAmountCents ?? $this->faker->numberBetween(1000, 10000),
+            'deposit_collected_at' => Carbon::now()->subDays($this->faker->numberBetween(1, 7)),
+            'deposit_status' => DepositStatus::APPLIED,
         ]);
     }
 

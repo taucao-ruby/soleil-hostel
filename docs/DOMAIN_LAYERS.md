@@ -9,13 +9,13 @@ Added: 2026-03-20. Describes the operational domain tables introduced in migrati
 | `bookings` | Commercial | Reservation state machine (pending → confirmed → cancelled/refunded) |
 | `stays` | Operational | Occupancy lifecycle per booking (expected → in_house → checked_out) |
 | `room_assignments` | Allocation | Actual room assignment history and reassignment audit trail |
-| `service_recovery_cases` | Incident | Service failure incidents and compensation audit trail |
+| `service_recovery_cases` | Incident | Service failure incidents, compensation, and settlement tracking audit trail |
 
 ```
 bookings.status         = Commercial reservation state only
 stays.stay_status       = Operational stay / occupancy lifecycle
 room_assignments        = Actual room allocation history and reassignment audit trail
-service_recovery_cases  = Incident and compensation audit trail
+service_recovery_cases  = Incident, compensation, and settlement tracking audit trail
 
 Active in-house guest is derived from stays.stay_status IN ('in_house', 'late_checkout').
 A static users.active flag is NOT the source of truth for in-house guest status.
@@ -30,6 +30,14 @@ This logic is unchanged and must not be modified.
 
 This is purely the commercial/payment lifecycle. A booking being `confirmed` says nothing about
 whether the guest has physically arrived.
+
+Deposit tracking also lives on `bookings`:
+- `deposit_amount`
+- `deposit_collected_at`
+- `deposit_status` (`none`, `collected`, `applied`, `refunded`)
+
+`deposit_amount` is operational liability tracking only. It is **unearned revenue / liability**
+until the stay is fulfilled. This layer does **not** implement a ledger or GL posting model.
 
 Source: `App\Enums\BookingStatus`, migration `2026_03_17_000003`.
 
@@ -61,7 +69,36 @@ Do NOT use a static flag on the `users` table for this purpose.
 
 Source: `App\Enums\AssignmentType`, `App\Enums\AssignmentStatus`, `App\Models\RoomAssignment`, migration `2026_03_20_000002`.
 
-## Layer 4: service_recovery_cases — Incident and Compensation Audit
+## Operational Room State
+
+`rooms.status` remains the legacy availability/admin field and is **not** the canonical physical
+readiness truth.
+
+Canonical physical room readiness now lives on `rooms.readiness_status`:
+- `ready` = cleaned, inspected, available for immediate arrival
+- `occupied` = currently in use by an active stay
+- `dirty` = guest departed, cleaning not started
+- `cleaning` = housekeeping in progress
+- `inspected` = cleaned, awaiting final sign-off
+- `out_of_service` = maintenance, damage, or deliberate closure
+
+Room comparability now lives on:
+- `rooms.room_type_code` = equivalence key for swap candidates
+- `rooms.room_tier` = numeric upgrade comparability (higher = better)
+
+Both classification fields are nullable until operators populate them.
+
+Blocked-arrival escalation path:
+1. Equivalent room, same location
+2. Complimentary upgrade, same location
+3. Equivalent room, another location in chain
+4. Upgrade room, another location in chain
+5. No internal candidate → external/manual review
+
+Steps 3-5 always require operator approval before any `room_assignments` or
+`service_recovery_cases` write is performed.
+
+## Layer 4: service_recovery_cases — Incident, Compensation, and Settlement Audit
 
 `service_recovery_cases` records incidents where service standards were not met and tracks
 the resolution and compensation actions.
@@ -72,6 +109,14 @@ the resolution and compensation actions.
 - `case_status`: `open`, `investigating`, `action_in_progress`, `compensated`, `resolved`, `closed`.
 - `compensation_type`: `none`, `refund_partial`, `refund_full`, `voucher`, `complimentary_upgrade`, `refund_plus_voucher`.
 - All monetary amounts (`refund_amount`, `voucher_amount`, `cost_delta_absorbed`) are stored in **cents** (BIGINT), consistent with `bookings.amount`.
+- Settlement tracking is operational only:
+  - `settlement_status`: `unsettled`, `partially_settled`, `settled`, `written_off`
+  - `settled_amount`
+  - `settled_at`
+  - `settlement_notes`
+
+`settlement_status` is **not** authoritative accounting. It exists to expose operational financial
+exposure and case closure progress.
 
 Source: `App\Enums\{IncidentType, IncidentSeverity, CaseStatus, CompensationType}`, `App\Models\ServiceRecoveryCase`, migration `2026_03_20_000003`.
 
@@ -93,6 +138,10 @@ All actual operational timestamps (`actual_check_in_at`, `actual_check_out_at`) 
 the front-desk event occurs. The stay is created inside the existing DB transaction — if stay
 creation fails, the confirmation rolls back.
 
+Stay lifecycle changes are guarded at application level via `App\Enums\StayStatus::canTransitionTo()`
+and `App\Models\Stay::transitionTo()`. Illegal transitions are rejected without overloading
+`bookings.status`.
+
 **Historical confirmed bookings (pre-deployment):**
 Bookings confirmed before this feature was deployed do not have Stay rows.
 Run the bounded backfill command before first use of operational stay features:
@@ -103,10 +152,22 @@ php artisan stays:backfill-operational --dry-run  # count eligible, persist noth
 ```
 
 Selection criteria: `status = 'confirmed'` AND `check_out >= today` AND no existing stay row.
+
 The command is idempotent and safe to re-run.
 It does NOT fabricate `actual_check_in_at` or `actual_check_out_at` timestamps.
-It does NOT touch `cancelled`, `refund_pending`, `refund_failed`, or past-checkout bookings.
+It does NOT touch `cancelled`, `refund_pending`, `refunded`, `refund_failed`, or past-checkout bookings.
 Source: `app/Console/Commands/BackfillOperationalStays.php`
+
+## Source-of-Truth Boundaries
+
+- `bookings.status` = commercial reservation state only (`pending`, `confirmed`, `cancelled`, etc.)
+- `bookings.deposit_*` = operational deposit lifecycle only; liability tracking, not recognized revenue
+- `stays.stay_status` = operational stay lifecycle (`expected`, `in_house`, `late_checkout`, etc.)
+- `rooms.readiness_status` = canonical physical room state
+- `rooms.room_type_code` / `rooms.room_tier` = operational comparability for swaps/upgrades
+- `room_assignments` = actual room allocation history and current assignment truth
+- `service_recovery_cases` = incident, remediation, compensation, and settlement tracking audit trail
+- Active in-house guest = `stays WHERE stay_status IN ('in_house', 'late_checkout')`, not a static `users.active` flag
 
 ## Overlap Logic Preservation
 

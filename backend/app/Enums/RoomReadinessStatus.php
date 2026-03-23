@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Enums;
 
 /**
- * Room readiness status - physical room state for front-desk operations.
+ * Physical room readiness state.
  *
- * Distinct from rooms.status:
- * - rooms.status = coarse commercial/catalog availability
- * - rooms.readiness_status = physical check-in readiness right now
+ * Distinct from:
+ * - bookings.status (commercial reservation state)
+ * - stays.stay_status (guest operational lifecycle)
  */
 enum RoomReadinessStatus: string
 {
@@ -20,8 +20,23 @@ enum RoomReadinessStatus: string
     case INSPECTED = 'inspected';
     case OUT_OF_SERVICE = 'out_of_service';
 
-    public function blocksArrival(): bool
+    /**
+     * States that block immediate arrival into the room.
+     *
+     * @return array<self>
+     */
+    public static function arrivalBlockedStatuses(): array
     {
-        return $this !== self::READY;
+        return [
+            self::DIRTY,
+            self::CLEANING,
+            self::INSPECTED,
+            self::OUT_OF_SERVICE,
+        ];
+    }
+
+    public function isReadyForArrival(): bool
+    {
+        return $this === self::READY;
     }
 }

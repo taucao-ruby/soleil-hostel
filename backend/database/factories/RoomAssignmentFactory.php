@@ -20,7 +20,7 @@ class RoomAssignmentFactory extends Factory
         return [
             'booking_id' => Booking::factory(),
             'stay_id' => Stay::factory(),
-            'room_id' => Room::factory()->available(),
+            'room_id' => Room::factory(),
             'assignment_type' => AssignmentType::ORIGINAL,
             'assignment_status' => AssignmentStatus::ACTIVE,
             'assigned_from' => Carbon::now()->subHours($this->faker->numberBetween(1, 24)),

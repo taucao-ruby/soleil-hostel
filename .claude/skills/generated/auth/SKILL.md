@@ -1,11 +1,11 @@
 ---
 name: auth
-description: "Skill for the Auth area of soleil-hostel. 50 symbols across 16 files."
+description: "Skill for the Auth area of soleil-hostel. 54 symbols across 19 files."
 ---
 
 # Auth
 
-50 symbols | 16 files | Cohesion: 86%
+54 symbols | 19 files | Cohesion: 87%
 
 ## When to Use
 
@@ -26,7 +26,7 @@ description: "Skill for the Auth area of soleil-hostel. 50 symbols across 16 fil
 | `backend/app/Http/Controllers/Auth/UnifiedAuthController.php` | logout, logoutAll |
 | `frontend/src/shared/utils/csrf.ts` | setCsrfToken, clearCsrfToken |
 | `frontend/src/features/auth/AuthContext.tsx` | AuthProvider, validateToken |
-| `frontend/src/features/auth/RegisterPage.tsx` | validate, handleSubmit |
+| `backend/tests/Feature/Auth/AuthenticationTest.php` | test_login_success_with_valid_credentials, test_refresh_token_creates_new_token |
 
 ## Entry Points
 
@@ -82,9 +82,9 @@ Start here when exploring this area:
 
 | Area | Connections |
 |------|-------------|
-| Feature | 8 calls |
+| Room | 8 calls |
 | Models | 5 calls |
-| Room | 3 calls |
+| Booking | 3 calls |
 
 ## How to Explore
 

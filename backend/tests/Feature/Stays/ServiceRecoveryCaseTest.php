@@ -149,7 +149,7 @@ class ServiceRecoveryCaseTest extends TestCase
         ServiceRecoveryCase::factory()->forBooking($booking)->critical()->create();
         ServiceRecoveryCase::factory()->forBooking($booking)->critical()->create();
 
-        $criticalCases = ServiceRecoveryCase::bySeverity(IncidentSeverity::CRITICAL)->get();
+        $criticalCases = ServiceRecoveryCase::bySeverity(IncidentSeverity::CRITICAL->value)->get();
 
         $this->assertCount(2, $criticalCases);
 

@@ -22,17 +22,36 @@ use Illuminate\Support\Facades\DB;
  */
 class EloquentRoomRepository implements RoomRepositoryInterface
 {
+    private const ROOM_SELECT_COLUMNS = [
+        'id',
+        'location_id',
+        'name',
+        'room_number',
+        'description',
+        'price',
+        'max_guests',
+        'room_type_code',
+        'room_tier',
+        'status',
+        'readiness_status',
+        'readiness_updated_at',
+        'readiness_updated_by',
+        'lock_version',
+        'created_at',
+        'updated_at',
+    ];
+
     /**
      * Find a room by ID with bookings relationship eager loaded.
      *
      * Reproduces: Room::with('bookings')
-     *     ->select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'created_at', 'updated_at'])
+     *     ->select([... operational room columns ...])
      *     ->find($roomId)
      */
     public function findByIdWithBookings(int $roomId): ?Room
     {
         return Room::with('bookings')
-            ->select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'lock_version', 'created_at', 'updated_at'])
+            ->select(self::ROOM_SELECT_COLUMNS)
             ->find($roomId);
     }
 
@@ -55,7 +74,7 @@ class EloquentRoomRepository implements RoomRepositoryInterface
     /**
      * Get all rooms ordered by name.
      *
-     * Reproduces: Room::select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'created_at', 'updated_at'])
+     * Reproduces: Room::select([... operational room columns ...])
      *     ->orderBy('name')
      *     ->get()
      *
@@ -63,7 +82,7 @@ class EloquentRoomRepository implements RoomRepositoryInterface
      */
     public function getAllOrderedByName(): Collection
     {
-        return Room::select(['id', 'name', 'description', 'price', 'max_guests', 'status', 'lock_version', 'created_at', 'updated_at'])
+        return Room::select(self::ROOM_SELECT_COLUMNS)
             ->orderBy('name')
             ->get();
     }

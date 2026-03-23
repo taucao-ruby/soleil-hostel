@@ -33,7 +33,7 @@ description: "Skill for the Models area of soleil-hostel. 56 symbols across 23 f
 Start here when exploring this area:
 
 - **`LocationResource`** (Class) — `backend/app/Http/Resources/LocationResource.php:13`
-- **`Room`** (Class) — `backend/app/Models/Room.php:37`
+- **`Room`** (Class) — `backend/app/Models/Room.php:32`
 - **`test_logout_revokes_token_and_clears_cookie`** (Method) — `backend/tests/Feature/HttpOnlyCookieAuthenticationTest.php:173`
 - **`isExpired`** (Method) — `backend/app/Models/PersonalAccessToken.php:180`
 - **`isRevoked`** (Method) — `backend/app/Models/PersonalAccessToken.php:194`
@@ -43,7 +43,7 @@ Start here when exploring this area:
 | Symbol | Type | File | Line |
 |--------|------|------|------|
 | `LocationResource` | Class | `backend/app/Http/Resources/LocationResource.php` | 13 |
-| `Room` | Class | `backend/app/Models/Room.php` | 37 |
+| `Room` | Class | `backend/app/Models/Room.php` | 32 |
 | `test_logout_revokes_token_and_clears_cookie` | Method | `backend/tests/Feature/HttpOnlyCookieAuthenticationTest.php` | 173 |
 | `isExpired` | Method | `backend/app/Models/PersonalAccessToken.php` | 180 |
 | `isRevoked` | Method | `backend/app/Models/PersonalAccessToken.php` | 194 |
@@ -84,7 +84,7 @@ Start here when exploring this area:
 |------|-------------|
 | Authorization | 10 calls |
 | Cache | 4 calls |
-| Feature | 3 calls |
+| Room | 3 calls |
 | Policies | 2 calls |
 | Auth | 2 calls |
 

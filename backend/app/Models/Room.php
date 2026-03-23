@@ -4,9 +4,9 @@ namespace App\Models;
 
 use App\Enums\BookingStatus;
 use App\Enums\RoomReadinessStatus;
-use App\Enums\RoomTypeCode;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -27,9 +27,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $price
  * @property int $max_guests
  * @property string $status
- * @property RoomTypeCode $room_type_code
- * @property int $room_tier
  * @property RoomReadinessStatus $readiness_status
+ * @property \Carbon\Carbon|null $readiness_updated_at
+ * @property int|null $readiness_updated_by
+ * @property string|null $room_type_code
+ * @property int|null $room_tier
  * @property int $lock_version Optimistic locking version (starts at 1)
  * @property \Carbon\Carbon $created_at
  * @property \Carbon\Carbon $updated_at
@@ -53,31 +55,20 @@ class Room extends Model
         'price',
         'max_guests',
         'status',
+        'readiness_status',
+        'readiness_updated_at',
+        'readiness_updated_by',
         'room_type_code',
         'room_tier',
-    ];
-
-    /**
-     * Default attribute values. Ensures room_type_code and room_tier are
-     * always present even when not explicitly provided, matching the backfill
-     * strategy applied to pre-classification rooms.
-     *
-     * @var array<string, mixed>
-     */
-    protected $attributes = [
-        'room_type_code' => 'private_single',
-        'room_tier' => 2,
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
         'max_guests' => 'integer',
-        'lock_version' => 'integer',
-        'room_type_code' => RoomTypeCode::class,
-        'room_tier' => 'integer',
         'readiness_status' => RoomReadinessStatus::class,
-        'readiness_changed_at' => 'datetime',
-        'readiness_changed_by' => 'integer',
+        'readiness_updated_at' => 'datetime',
+        'room_tier' => 'integer',
+        'lock_version' => 'integer',
     ];
 
     /**
@@ -124,30 +115,6 @@ class Room extends Model
     }
 
     /**
-     * Get all room assignments for this room.
-     */
-    public function roomAssignments(): HasMany
-    {
-        return $this->hasMany(RoomAssignment::class);
-    }
-
-    /**
-     * Get room readiness transition history.
-     */
-    public function readinessLogs(): HasMany
-    {
-        return $this->hasMany(RoomReadinessLog::class);
-    }
-
-    /**
-     * Staff member who last changed readiness.
-     */
-    public function readinessChangedBy(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'readiness_changed_by');
-    }
-
-    /**
      * Get active bookings for the room (for availability checking).
      */
     public function activeBookings(): HasMany
@@ -186,7 +153,12 @@ class Room extends Model
             'rooms.description',
             'rooms.price',
             'rooms.max_guests',
+            'rooms.room_type_code',
+            'rooms.room_tier',
             'rooms.status',
+            'rooms.readiness_status',
+            'rooms.readiness_updated_at',
+            'rooms.readiness_updated_by',
             'rooms.lock_version', // Include for optimistic locking
             'rooms.created_at',
             'rooms.updated_at',
@@ -200,9 +172,7 @@ class Room extends Model
      */
     public function scopeActive(Builder $query): Builder
     {
-        return $query
-            ->where('status', 'available')
-            ->where('readiness_status', '!=', RoomReadinessStatus::OUT_OF_SERVICE->value);
+        return $query->where('status', 'available');
     }
 
     /**
@@ -210,9 +180,52 @@ class Room extends Model
      *
      * Usage: Room::atLocation(1)->get()
      */
-    public function scopeAtLocation(Builder $query, int $locationId): Builder
+    public function scopeAtLocation(Builder $query, Location|int $location): Builder
     {
+        $locationId = $location instanceof Location ? $location->id : $location;
+
         return $query->where('location_id', $locationId);
+    }
+
+    /**
+     * Scope: rooms physically ready for immediate arrival.
+     */
+    public function scopeReady(Builder $query): Builder
+    {
+        return $query->where('readiness_status', RoomReadinessStatus::READY->value);
+    }
+
+    /**
+     * Scope: rooms equivalent to the provided source room.
+     */
+    public function scopeEquivalentTo(Builder $query, Room $source): Builder
+    {
+        if ($source->room_type_code === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query
+            ->where('room_type_code', $source->room_type_code)
+            ->where('max_guests', '>=', $source->max_guests)
+            ->where('id', '!=', $source->id)
+            ->where('readiness_status', '!=', RoomReadinessStatus::OUT_OF_SERVICE->value);
+    }
+
+    /**
+     * Scope: rooms that qualify as an upgrade over the provided source room.
+     */
+    public function scopeUpgradeOver(Builder $query, Room $source): Builder
+    {
+        if ($source->room_tier === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query
+            ->whereNotNull('room_tier')
+            ->where('room_tier', '>', $source->room_tier)
+            ->where('max_guests', '>=', $source->max_guests)
+            ->where('id', '!=', $source->id)
+            ->where('readiness_status', '!=', RoomReadinessStatus::OUT_OF_SERVICE->value);
     }
 
     /**
@@ -230,42 +243,11 @@ class Room extends Model
         $checkOutDt = \Carbon\Carbon::parse($checkOut)->startOfDay()->toDateTimeString();
 
         return $query->where('status', 'available')
-            ->where('readiness_status', '!=', RoomReadinessStatus::OUT_OF_SERVICE->value)
             ->whereDoesntHave('bookings', function (Builder $q) use ($checkInDt, $checkOutDt) {
                 $q->whereIn('status', [BookingStatus::PENDING, BookingStatus::CONFIRMED])
                     ->where('check_in', '<', $checkOutDt)
                     ->where('check_out', '>', $checkInDt);
             });
-    }
-
-    // ===== ROOM CLASSIFICATION COMPARISON =====
-
-    /**
-     * Check if this room is equivalent to another (same type and tier).
-     */
-    public function isEquivalentTo(Room $other): bool
-    {
-        return $this->room_type_code === $other->room_type_code
-            && $this->room_tier === $other->room_tier;
-    }
-
-    /**
-     * Check if this room is a strict upgrade over another (higher tier).
-     * Never returns true for equal or lower tier.
-     */
-    public function isUpgradeOver(Room $other): bool
-    {
-        return $this->room_tier > $other->room_tier;
-    }
-
-    /**
-     * Check if this room is equivalent to another regardless of location.
-     * Same as isEquivalentTo — location is irrelevant for this check.
-     */
-    public function isCrossLocationEquivalentTo(Room $other): bool
-    {
-        return $this->room_type_code === $other->room_type_code
-            && $this->room_tier === $other->room_tier;
     }
 
     // ===== ACCESSORS =====
@@ -280,5 +262,62 @@ class Room extends Model
                 ? "{$this->name} (#{$this->room_number})"
                 : $this->name
         );
+    }
+
+    /**
+     * Determine whether this room can serve as an equivalent replacement for the source room.
+     */
+    public function isEquivalentTo(Room $other): bool
+    {
+        return $this->id !== $other->id
+            && $this->room_type_code !== null
+            && $other->room_type_code !== null
+            && $this->room_type_code === $other->room_type_code
+            && $this->max_guests >= $other->max_guests;
+    }
+
+    /**
+     * Determine whether this room is an operational upgrade over the source room.
+     */
+    public function isUpgradeOver(Room $other): bool
+    {
+        return $this->room_tier !== null
+            && $other->room_tier !== null
+            && $this->room_tier > $other->room_tier
+            && $this->max_guests >= $other->max_guests;
+    }
+
+    /**
+     * Cross-location equivalent candidates at the given location.
+     *
+     * @return EloquentCollection<int, self>
+     */
+    public function equivalentCandidatesAt(Location $location): EloquentCollection
+    {
+        return self::query()
+            ->atLocation($location)
+            ->where('location_id', '!=', $this->location_id)
+            ->ready()
+            ->equivalentTo($this)
+            ->orderBy('max_guests')
+            ->orderBy('room_tier')
+            ->get();
+    }
+
+    /**
+     * Cross-location upgrade candidates at the given location.
+     *
+     * @return EloquentCollection<int, self>
+     */
+    public function upgradeCandidatesAt(Location $location): EloquentCollection
+    {
+        return self::query()
+            ->atLocation($location)
+            ->where('location_id', '!=', $this->location_id)
+            ->ready()
+            ->upgradeOver($this)
+            ->orderBy('room_tier')
+            ->orderBy('max_guests')
+            ->get();
     }
 }

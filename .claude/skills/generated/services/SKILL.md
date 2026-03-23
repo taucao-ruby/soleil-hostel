@@ -1,11 +1,11 @@
 ---
 name: services
-description: "Skill for the Services area of soleil-hostel. 129 symbols across 43 files."
+description: "Skill for the Services area of soleil-hostel. 117 symbols across 38 files."
 ---
 
 # Services
 
-129 symbols | 43 files | Cohesion: 77%
+117 symbols | 38 files | Cohesion: 76%
 
 ## When to Use
 
@@ -19,14 +19,14 @@ description: "Skill for the Services area of soleil-hostel. 129 symbols across 4
 |------|---------|
 | `backend/tests/Unit/Services/HealthServiceTest.php` | test_check_cache_returns_healthy, test_check_queue_returns_healthy_for_sync_driver, test_check_component_delegates_correctly, test_check_component_returns_error_for_unknown, test_readiness_check_returns_expected_structure (+9) |
 | `backend/app/Services/HealthService.php` | checkComponent, checkCache, checkQueue, readinessCheck, checkDatabase (+7) |
-| `backend/app/Services/RateLimitService.php` | check, checkWithRedis, checkSlidingWindow, checkTokenBucket, checkWithMemory (+5) |
+| `backend/app/Services/RateLimitService.php` | check, checkWithMemory, getStatus, redisAvailable, checkWithRedis (+4) |
 | `backend/app/Services/CreateBookingService.php` | create, parseDate, createWithDeadlockRetry, classifyDatabaseError, calculateRetryDelay (+4) |
 | `backend/app/Services/BookingService.php` | invalidateAllBookings, restore, forceDelete, invalidateTrashedBookings, bookingSelectColumns (+3) |
 | `backend/app/Http/Controllers/HealthController.php` | database, cache, queue, readiness, detailed (+1) |
 | `backend/app/Services/RoomService.php` | getRoomById, createRoom, invalidateAllRooms, findById, fetchRoomsFromDB |
 | `backend/app/Repositories/Contracts/RoomRepositoryInterface.php` | create, findByIdWithBookings, getAllOrderedByName, hasOverlappingConfirmedBookings |
-| `backend/app/Services/RoomReadinessService.php` | transition, assertRoomReadyForAssignment, roomForStay, currentStatus |
 | `backend/app/Services/CustomerService.php` | getCustomers, getCustomerProfile, getCustomerBookings, getAggregateStats |
+| `backend/app/Http/Controllers/Admin/CustomerController.php` | index, show, bookings, stats |
 
 ## Entry Points
 
@@ -83,13 +83,13 @@ Start here when exploring this area:
 | Area | Connections |
 |------|-------------|
 | Cache | 8 calls |
-| Feature | 7 calls |
+| Feature | 5 calls |
 | Enums | 4 calls |
-| RateLimiting | 4 calls |
 | Booking | 3 calls |
 | Database | 3 calls |
 | Listeners | 3 calls |
 | Policies | 2 calls |
+| RateLimiting | 2 calls |
 
 ## How to Explore
 

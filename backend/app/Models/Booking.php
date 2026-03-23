@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\BookingStatus;
+use App\Enums\DepositStatus;
 use App\Traits\Purifiable;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -15,6 +16,10 @@ class Booking extends Model
 {
     use HasFactory, Purifiable, SoftDeletes;
 
+    /**
+     * deposit_amount remains unearned revenue / liability until the stay is fulfilled.
+     * These fields are operational visibility only and not authoritative accounting.
+     */
     protected $fillable = [
         'room_id',
         'location_id',
@@ -28,9 +33,9 @@ class Booking extends Model
         // Payment fields
         'payment_intent_id',
         'amount',
-        // Deposit tracking (operational — NOT recognized revenue)
         'deposit_amount',
         'deposit_collected_at',
+        'deposit_status',
         // Refund fields
         'refund_id',
         'refund_status',
@@ -53,6 +58,7 @@ class Booking extends Model
         'amount' => 'integer',
         'deposit_amount' => 'integer',
         'deposit_collected_at' => 'datetime',
+        'deposit_status' => DepositStatus::class,
         'refund_amount' => 'integer',
     ];
 
@@ -307,6 +313,22 @@ class Booking extends Model
     public function scopeByStatus(Builder $query, BookingStatus $status): Builder
     {
         return $query->where('status', $status);
+    }
+
+    /**
+     * Scope: bookings with a collected deposit still held on account.
+     */
+    public function scopeWithDeposit(Builder $query): Builder
+    {
+        return $query->where('deposit_status', DepositStatus::COLLECTED->value);
+    }
+
+    /**
+     * Scope: bookings whose deposit has been applied to the stay.
+     */
+    public function scopeDepositApplied(Builder $query): Builder
+    {
+        return $query->where('deposit_status', DepositStatus::APPLIED->value);
     }
 
     // ===== ACCESSORS / MUTATORS =====

@@ -1,6 +1,6 @@
 # 🗄️ Database Schema & Indexes
 
-> Complete database design for Soleil Hostel (38 migrations, 16 tables)
+> Complete database design for Soleil Hostel (47 migrations, 18 tables)
 
 ## ER Diagram
 
@@ -36,9 +36,12 @@
 │ email_verified_at  │       │ price              │       │ content            │
 │ remember_token     │       │ max_guests         │       │ guest_name         │
 │ created_at         │       │ status             │       │ rating (1-5)       │
-│ updated_at         │       │ lock_version       │◄──    │ approved           │
-└────────────────────┘       │ created_at         │       │ created_at         │
-          │                  │ updated_at         │       └────────────────────┘
+│ updated_at         │       │ readiness_status   │◄──    │ approved           │
+└────────────────────┘       │ room_type_code     │       │ created_at         │
+          │                  │ room_tier          │       └────────────────────┘
+          │                  │ lock_version       │
+          │                  │ created_at         │
+          │                  │ updated_at         │
           │ 1:N              └────────────────────┘                │
           ▼                           │ 1:N                        │
 ┌─────────────────────────────────────────────────┐               │
@@ -50,11 +53,49 @@
 │ location_id (FK → locations)  ◄── Denormalized   │
 │ guest_name, guest_email                          │
 │ check_in (DATE), check_out (DATE)                │
-│ status (pending/confirmed/cancelled)             │
+│ status (commercial-only)                         │
+│ deposit_*                  ◄── Liability state   │
 │ cancellation_reason          ◄── Cancellation    │
 │ deleted_at, deleted_by       ◄── Soft delete     │
 │ created_at, updated_at                           │
 └─────────────────────────────────────────────────┘
+
+                │ 1:1 operational lifecycle
+                ▼
+┌────────────────────────────┐
+│           stays            │
+├────────────────────────────┤
+│ id (PK)                    │
+│ booking_id (FK, UNIQUE)    │
+│ stay_status                │
+│ scheduled_check_in_at      │
+│ scheduled_check_out_at     │
+│ actual_check_in_at         │
+│ actual_check_out_at        │
+│ late_checkout_minutes      │
+│ late_checkout_fee_amount   │
+│ no_show_at                 │
+│ checked_in_by / out_by     │
+│ created_at, updated_at     │
+└────────────────────────────┘
+          │ 1:N                           │ 1:N
+          ▼                               ▼
+┌────────────────────────────┐   ┌──────────────────────────────┐
+│      room_assignments      │   │   service_recovery_cases    │
+├────────────────────────────┤   ├──────────────────────────────┤
+│ id (PK)                    │   │ id (PK)                      │
+│ booking_id (FK)            │   │ booking_id (FK)              │
+│ stay_id (FK)               │   │ stay_id (FK, nullable)       │
+│ room_id (FK)               │   │ incident_type                │
+│ assignment_type            │   │ severity / case_status       │
+│ assignment_status          │   │ compensation_type            │
+│ assigned_from              │   │ refund_amount                │
+│ assigned_until             │   │ voucher_amount               │
+│ assigned_by                │   │ cost_delta_absorbed          │
+│ reason_code, notes         │   │ settlement_*                 │
+│ created_at, updated_at     │   │ opened_at / resolved_at      │
+│                            │   │ handled_by, notes            │
+└────────────────────────────┘   └──────────────────────────────┘
 
 ┌────────────────────────────┐
 │     contact_messages       │ ◄── Contact form submissions
@@ -141,41 +182,58 @@ CREATE TYPE user_role AS ENUM ('user', 'moderator', 'admin');
 | price        | DECIMAL(10,2)   | NOT NULL                 |
 | max_guests   | INTEGER         | NOT NULL                 |
 | status       | VARCHAR         | DEFAULT 'available'      |
+| readiness_status | VARCHAR     | NOT NULL, DEFAULT 'ready' |
+| readiness_updated_at | TIMESTAMP | NULLABLE               |
+| readiness_updated_by | BIGINT  | NULLABLE, FK → users(id) |
+| room_type_code | VARCHAR(50)   | NULLABLE                |
+| room_tier    | SMALLINT        | NULLABLE, DEFAULT 1      |
 | lock_version | BIGINT UNSIGNED | NOT NULL, DEFAULT 1      |
 | created_at   | TIMESTAMP       |                          |
 | updated_at   | TIMESTAMP       |                          |
 
 **room_status: VARCHAR** (intentional — not a PostgreSQL ENUM).
-Allowed values enforced at application layer (`App\Models\Room`, `App\Enums\RoomStatus` if present):
-`available`, `occupied`, `maintenance`.
-Using VARCHAR instead of a DB ENUM allows adding new statuses without a schema migration.
+`rooms.status` is the legacy availability/admin field and remains intentionally separate from
+physical readiness. Values in application code are still inconsistent (`available`, `occupied`,
+`maintenance`, `booked`, `active`), so DB enforcement for `rooms.status` remains deferred.
+
+Canonical physical room state lives on `rooms.readiness_status`:
+`ready`, `occupied`, `dirty`, `cleaning`, `inspected`, `out_of_service`.
+
+Room comparability lives on:
+- `room_type_code` = equivalence key for swap candidates
+- `room_tier` = numeric upgrade comparison (higher = better)
+
+`room_type_code` and `room_tier` remain nullable until populated by operators.
 
 ### bookings
 
-| Column              | Type         | Constraints                         |
-| ------------------- | ------------ | ----------------------------------- |
-| id                  | BIGSERIAL    | PRIMARY KEY                         |
-| user_id             | BIGINT       | FK → users(id), NULLABLE            |
-| room_id             | BIGINT       | FK → rooms(id)                      |
-| location_id         | BIGINT       | FK → locations(id), NULLABLE        |
-| guest_name          | VARCHAR(255) | NOT NULL                            |
-| guest_email         | VARCHAR(255) | NOT NULL                            |
-| check_in            | DATE         | NOT NULL                            |
-| check_out           | DATE         | NOT NULL                            |
-| status              | VARCHAR      | DEFAULT 'pending'                   |
-| amount              | BIGINT       | NULLABLE (cents)                    |
-| payment_intent_id   | VARCHAR(255) | NULLABLE (Stripe PaymentIntent ID)  |
-| refund_id           | VARCHAR(255) | NULLABLE (Stripe Refund ID)         |
-| refund_status       | VARCHAR      | NULLABLE (pending/succeeded/failed) |
-| refund_amount       | BIGINT       | NULLABLE (cents)                    |
-| refund_error        | TEXT         | NULLABLE                            |
-| cancelled_at        | TIMESTAMP    | NULLABLE                            |
-| cancelled_by        | BIGINT       | NULLABLE, FK → users(id)            |
-| cancellation_reason | TEXT         | NULLABLE                            |
-| deleted_at          | TIMESTAMP    | NULLABLE (soft delete)              |
-| deleted_by          | BIGINT       | NULLABLE, FK → users(id)            |
-| created_at          | TIMESTAMP    |                                     |
-| updated_at          | TIMESTAMP    |                                     |
+| Column               | Type         | Constraints                         |
+| -------------------- | ------------ | ----------------------------------- |
+| id                   | BIGSERIAL    | PRIMARY KEY                         |
+| user_id              | BIGINT       | FK → users(id), NULLABLE            |
+| room_id              | BIGINT       | FK → rooms(id)                      |
+| location_id          | BIGINT       | FK → locations(id), NULLABLE        |
+| guest_name           | VARCHAR(255) | NOT NULL                            |
+| guest_email          | VARCHAR(255) | NOT NULL                            |
+| check_in             | DATE         | NOT NULL                            |
+| check_out            | DATE         | NOT NULL                            |
+| status               | VARCHAR      | DEFAULT 'pending'                   |
+| amount               | BIGINT       | NULLABLE (cents)                    |
+| payment_intent_id    | VARCHAR(255) | NULLABLE (Stripe PaymentIntent ID)  |
+| refund_id            | VARCHAR(255) | NULLABLE (Stripe Refund ID)         |
+| refund_status        | VARCHAR      | NULLABLE (pending/succeeded/failed) |
+| refund_amount        | BIGINT       | NULLABLE (cents)                    |
+| refund_error         | TEXT         | NULLABLE                            |
+| deposit_amount       | BIGINT       | NULLABLE (cents)                    |
+| deposit_collected_at | TIMESTAMP    | NULLABLE                            |
+| deposit_status       | VARCHAR      | NOT NULL, DEFAULT 'none'            |
+| cancelled_at         | TIMESTAMP    | NULLABLE                            |
+| cancelled_by         | BIGINT       | NULLABLE, FK → users(id)            |
+| cancellation_reason  | TEXT         | NULLABLE                            |
+| deleted_at           | TIMESTAMP    | NULLABLE (soft delete)              |
+| deleted_by           | BIGINT       | NULLABLE, FK → users(id)            |
+| created_at           | TIMESTAMP    |                                     |
+| updated_at           | TIMESTAMP    |                                     |
 
 **booking_status: VARCHAR** (intentional — not a PostgreSQL ENUM).
 VARCHAR chosen over DB ENUM for migration flexibility (adding new statuses requires no schema change).
@@ -198,6 +256,96 @@ State transitions (see `App\Enums\BookingStatus::canTransitionTo()`):
 - REFUND_FAILED → REFUND_PENDING (retry), CANCELLED
 
 Enforcement: application layer (`App\Enums\BookingStatus`) + DB CHECK constraint `chk_bookings_status` on PostgreSQL (migration `2026_03_17_000003`).
+
+`bookings.status` remains the **commercial reservation state only**. Operational occupancy state is derived from `stays.stay_status`, not from booking status or a static user flag.
+
+Deposit lifecycle values (`App\Enums\DepositStatus`):
+- `none`
+- `collected`
+- `applied`
+- `refunded`
+
+`deposit_amount` is operational liability tracking only. It is **unearned revenue / liability**
+until the stay is fulfilled. This schema does **not** represent authoritative accounting or GL.
+
+### stays
+
+| Column                   | Type         | Constraints                      |
+| ------------------------ | ------------ | -------------------------------- |
+| id                       | BIGSERIAL    | PRIMARY KEY                      |
+| booking_id               | BIGINT       | NOT NULL, UNIQUE, FK → bookings  |
+| stay_status              | VARCHAR      | DEFAULT 'expected'               |
+| scheduled_check_in_at    | TIMESTAMP    | NULLABLE                         |
+| scheduled_check_out_at   | TIMESTAMP    | NULLABLE                         |
+| actual_check_in_at       | TIMESTAMP    | NULLABLE                         |
+| actual_check_out_at      | TIMESTAMP    | NULLABLE                         |
+| late_checkout_minutes    | INTEGER      | NOT NULL, DEFAULT 0              |
+| late_checkout_fee_amount | BIGINT       | NULLABLE (cents)                 |
+| no_show_at               | TIMESTAMP    | NULLABLE                         |
+| checked_in_by            | BIGINT       | NULLABLE, FK → users(id)         |
+| checked_out_by           | BIGINT       | NULLABLE, FK → users(id)         |
+| created_at               | TIMESTAMP    |                                  |
+| updated_at               | TIMESTAMP    |                                  |
+
+**stay_status: VARCHAR** (intentional — not a PostgreSQL ENUM).
+Allowed values are enforced via `App\Enums\StayStatus` and PostgreSQL CHECK constraint `chk_stays_stay_status`.
+
+Active in-house guest is derived from `stays.stay_status IN ('in_house', 'late_checkout')`.
+A static `users.active` flag is **not** the source of truth.
+
+### room_assignments
+
+| Column            | Type         | Constraints                      |
+| ----------------- | ------------ | -------------------------------- |
+| id                | BIGSERIAL    | PRIMARY KEY                      |
+| booking_id        | BIGINT       | NOT NULL, FK → bookings          |
+| stay_id           | BIGINT       | NOT NULL, FK → stays             |
+| room_id           | BIGINT       | NOT NULL, FK → rooms             |
+| assignment_type   | VARCHAR      | NOT NULL                         |
+| assignment_status | VARCHAR      | DEFAULT 'active'                 |
+| assigned_from     | TIMESTAMP    | NOT NULL                         |
+| assigned_until    | TIMESTAMP    | NULLABLE                         |
+| assigned_by       | BIGINT       | NULLABLE, FK → users(id)         |
+| reason_code       | VARCHAR(255) | NULLABLE                         |
+| notes             | TEXT         | NULLABLE                         |
+| created_at        | TIMESTAMP    |                                  |
+| updated_at        | TIMESTAMP    |                                  |
+
+`assigned_until IS NULL` means the assignment is currently active.
+PostgreSQL partial unique index `udx_room_assignments_one_active_per_stay`
+enforces at most one active room assignment per stay.
+
+### service_recovery_cases
+
+| Column                     | Type         | Constraints                      |
+| -------------------------- | ------------ | -------------------------------- |
+| id                         | BIGSERIAL    | PRIMARY KEY                      |
+| booking_id                 | BIGINT       | NOT NULL, FK → bookings          |
+| stay_id                    | BIGINT       | NULLABLE, FK → stays             |
+| incident_type              | VARCHAR      | NOT NULL                         |
+| severity                   | VARCHAR      | DEFAULT 'medium'                 |
+| case_status                | VARCHAR      | DEFAULT 'open'                   |
+| action_taken               | TEXT         | NULLABLE                         |
+| external_hotel_name        | VARCHAR(255) | NULLABLE                         |
+| external_booking_reference | VARCHAR(255) | NULLABLE                         |
+| compensation_type          | VARCHAR      | DEFAULT 'none'                   |
+| refund_amount              | BIGINT       | NULLABLE (cents)                 |
+| voucher_amount             | BIGINT       | NULLABLE (cents)                 |
+| cost_delta_absorbed        | BIGINT       | NULLABLE (cents)                 |
+| settlement_status          | VARCHAR      | NOT NULL, DEFAULT 'unsettled'    |
+| settled_amount             | BIGINT       | NULLABLE (cents)                 |
+| settled_at                 | TIMESTAMP    | NULLABLE                         |
+| settlement_notes           | TEXT         | NULLABLE                         |
+| handled_by                 | BIGINT       | NULLABLE, FK → users(id)         |
+| opened_at                  | TIMESTAMP    | NOT NULL                         |
+| resolved_at                | TIMESTAMP    | NULLABLE                         |
+| notes                      | TEXT         | NULLABLE                         |
+| created_at                 | TIMESTAMP    |                                  |
+| updated_at                 | TIMESTAMP    |                                  |
+
+All compensation amounts are stored in **cents** (BIGINT) to match `bookings.amount`.
+`stay_id` remains nullable because incidents may be recorded before the stay row exists.
+`settlement_status` is operational financial tracking only and is **not** authoritative accounting.
 
 ### reviews
 
@@ -329,6 +477,10 @@ CREATE INDEX bookings_status_index ON bookings (status);
 CREATE INDEX bookings_room_id_check_in_check_out_index ON bookings (room_id, check_in, check_out);
 CREATE INDEX bookings_user_id_check_in_index ON bookings (user_id, check_in);
 CREATE INDEX bookings_status_check_out_index ON bookings (status, check_out);
+
+-- Deposit lifecycle reporting
+CREATE INDEX idx_bookings_deposit_status_check_in
+ON bookings (deposit_status, check_in);
 ```
 
 ### Room Indexes
@@ -336,6 +488,15 @@ CREATE INDEX bookings_status_check_out_index ON bookings (status, check_out);
 ```sql
 -- Status filter
 CREATE INDEX idx_rooms_status ON rooms (status);
+
+-- Physical readiness boards
+CREATE INDEX idx_rooms_location_readiness ON rooms (location_id, readiness_status);
+CREATE INDEX idx_rooms_readiness_status ON rooms (readiness_status);
+
+-- Swap / upgrade candidate lookups
+CREATE INDEX idx_rooms_type_location ON rooms (room_type_code, location_id);
+CREATE INDEX idx_rooms_tier_location ON rooms (room_tier, location_id);
+CREATE INDEX idx_rooms_type_tier ON rooms (room_type_code, room_tier);
 
 -- Price range
 CREATE INDEX idx_rooms_price ON rooms (price);
@@ -365,6 +526,41 @@ CREATE INDEX idx_reviews_user_id ON reviews (user_id);
 CREATE INDEX idx_contact_messages_email ON contact_messages (email);
 CREATE INDEX idx_contact_messages_read_at ON contact_messages (read_at);
 CREATE INDEX idx_contact_messages_created_at ON contact_messages (created_at);
+```
+
+### Operational Stay Indexes
+
+```sql
+CREATE INDEX idx_stays_stay_status ON stays (stay_status);
+CREATE INDEX idx_stays_scheduled_check_in_at ON stays (scheduled_check_in_at);
+CREATE INDEX idx_stays_scheduled_check_out_at ON stays (scheduled_check_out_at);
+```
+
+### Room Assignment Indexes
+
+```sql
+CREATE INDEX idx_room_assignments_stay_active
+ON room_assignments (stay_id, assigned_until);
+
+CREATE INDEX idx_room_assignments_room_window
+ON room_assignments (room_id, assigned_from, assigned_until);
+
+CREATE UNIQUE INDEX udx_room_assignments_one_active_per_stay
+ON room_assignments (stay_id)
+WHERE assigned_until IS NULL;
+```
+
+### Service Recovery Case Indexes
+
+```sql
+CREATE INDEX idx_src_case_status_severity
+ON service_recovery_cases (case_status, severity);
+
+CREATE INDEX idx_src_booking_id ON service_recovery_cases (booking_id);
+CREATE INDEX idx_src_opened_at ON service_recovery_cases (opened_at);
+CREATE INDEX idx_src_stay_id ON service_recovery_cases (stay_id);
+CREATE INDEX idx_src_settlement_status_settled_at
+ON service_recovery_cases (settlement_status, settled_at);
 ```
 
 ### Token Indexes (HttpOnly Cookie Support)
@@ -427,11 +623,16 @@ ADD CONSTRAINT fk_rooms_location
 FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE RESTRICT;
 -- Already RESTRICT in migration 2026_02_09_000002
 
+ALTER TABLE rooms
+ADD CONSTRAINT fk_rooms_readiness_updated_by
+FOREIGN KEY (readiness_updated_by) REFERENCES users(id) ON DELETE SET NULL;
+-- Added in migration 2026_03_23_000001
+
 ALTER TABLE reviews
 ADD CONSTRAINT fk_reviews_room
-FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE SET NULL;
--- Changed from CASCADE → SET NULL in migration 2026_03_17_000001
--- Rationale: review survives room deletion
+FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE RESTRICT;
+-- `reviews.room_id` is NOT NULL in schema, so SET NULL was invalid source truth.
+-- Corrected in migration 2026_03_23_000005.
 
 ALTER TABLE reviews
 ADD CONSTRAINT fk_reviews_user
@@ -473,15 +674,85 @@ ADD CONSTRAINT chk_rooms_max_guests
 CHECK (max_guests > 0);
 -- Added in migration 2026_03_17_000002. PostgreSQL only.
 
+-- Physical room readiness states (added 2026-03-23)
+ALTER TABLE rooms
+ADD CONSTRAINT chk_rooms_readiness_status
+CHECK (readiness_status IN (
+    'ready', 'occupied', 'dirty', 'cleaning', 'inspected', 'out_of_service'
+));
+
+-- Room tier must remain positive if populated (added 2026-03-23)
+ALTER TABLE rooms
+ADD CONSTRAINT chk_rooms_room_tier_positive
+CHECK (room_tier IS NULL OR room_tier > 0);
+
 -- Booking status must be a known value (added 2026-03-17)
 ALTER TABLE bookings
 ADD CONSTRAINT chk_bookings_status
 CHECK (status IN ('pending', 'confirmed', 'refund_pending', 'cancelled', 'refund_failed'));
 -- Added in migration 2026_03_17_000003. PostgreSQL only.
 -- Values match App\Enums\BookingStatus. Adding a new status requires a migration.
+
+-- Deposit lifecycle must use known operational states (added 2026-03-23)
+ALTER TABLE bookings
+ADD CONSTRAINT chk_bookings_deposit_status
+CHECK (deposit_status IN ('none', 'collected', 'applied', 'refunded'));
+
+-- Stay lifecycle must use known operational states (added 2026-03-20)
+ALTER TABLE stays
+ADD CONSTRAINT chk_stays_stay_status
+CHECK (stay_status IN (
+    'expected', 'in_house', 'late_checkout', 'checked_out',
+    'no_show', 'relocated_internal', 'relocated_external'
+));
+
+-- Room assignment classification (added 2026-03-20)
+ALTER TABLE room_assignments
+ADD CONSTRAINT chk_room_assignments_assignment_type
+CHECK (assignment_type IN (
+    'original', 'equivalent_swap', 'complimentary_upgrade',
+    'maintenance_move', 'overflow_relocation'
+));
+
+ALTER TABLE room_assignments
+ADD CONSTRAINT chk_room_assignments_assignment_status
+CHECK (assignment_status IN ('active', 'closed', 'cancelled'));
+
+-- Service recovery classifications (added 2026-03-20)
+ALTER TABLE service_recovery_cases
+ADD CONSTRAINT chk_src_incident_type
+CHECK (incident_type IN (
+    'late_checkout_blocking_arrival', 'room_unavailable_maintenance',
+    'overbooking_no_room', 'internal_relocation', 'external_relocation'
+));
+
+ALTER TABLE service_recovery_cases
+ADD CONSTRAINT chk_src_severity
+CHECK (severity IN ('low', 'medium', 'high', 'critical'));
+
+ALTER TABLE service_recovery_cases
+ADD CONSTRAINT chk_src_case_status
+CHECK (case_status IN (
+    'open', 'investigating', 'action_in_progress',
+    'compensated', 'resolved', 'closed'
+));
+
+ALTER TABLE service_recovery_cases
+ADD CONSTRAINT chk_src_compensation_type
+CHECK (compensation_type IN (
+    'none', 'refund_partial', 'refund_full', 'voucher',
+    'complimentary_upgrade', 'refund_plus_voucher'
+));
+
+-- Operational settlement tracking states (added 2026-03-23)
+ALTER TABLE service_recovery_cases
+ADD CONSTRAINT chk_src_settlement_status
+CHECK (settlement_status IN (
+    'unsettled', 'partially_settled', 'settled', 'written_off'
+));
 ```
 
-> **Note:** `rooms.status` DB-level CHECK is **not present**. Room status values are inconsistent across application code (`available`, `occupied`, `maintenance`, `booked`, `active`). Enforcement deferred pending normalization and a stable `RoomStatus` enum.
+> **Note:** `rooms.status` DB-level CHECK is still **not present**. That field remains a legacy availability/admin signal. Physical readiness is now enforced separately through `rooms.readiness_status`.
 
 ---
 
@@ -529,7 +800,7 @@ EXCLUDE USING gist (
 
 ## Migrations
 
-### Migration History (38 files)
+### Migration History (47 files)
 
 | Migration                                                 | Description                                       |
 | --------------------------------------------------------- | ------------------------------------------------- |
@@ -571,6 +842,14 @@ EXCLUDE USING gist (
 | `2026_03_17_000001_harden_fk_delete_policies`             | FK hardening: 4 FKs CASCADE→SET NULL/RESTRICT (PG)|
 | `2026_03_17_000002_add_check_constraint_rooms_max_guests` | CHECK (max_guests > 0) on rooms (PG only)         |
 | `2026_03_17_000003_add_check_constraint_bookings_status`  | CHECK (status IN (...)) on bookings (PG only)      |
+| `2026_03_20_000001_create_stays_table`                    | stays table + operational lifecycle indexes        |
+| `2026_03_20_000002_create_room_assignments_table`         | room assignment history + partial active index     |
+| `2026_03_20_000003_create_service_recovery_cases_table`   | incident + compensation audit trail                |
+| `2026_03_23_000001_add_room_readiness_to_rooms_table`     | room readiness status + audit fields               |
+| `2026_03_23_000002_add_room_classification_to_rooms_table`| room equivalence and upgrade comparability fields  |
+| `2026_03_23_000003_add_deposit_lifecycle_to_bookings_table` | deposit / advance lifecycle tracking             |
+| `2026_03_23_000004_add_settlement_lifecycle_to_service_recovery_cases_table` | settlement tracking on recovery cases |
+| `2026_03_23_000005_fix_reviews_room_fk_delete_policy`     | correct `reviews.room_id` FK to RESTRICT           |
 
 ### Commands
 
@@ -628,6 +907,9 @@ php artisan db:seed --class=RoomSeeder
 | `LocationFactory` | Location | Test locations |
 | `RoomFactory`     | Room     | Test rooms     |
 | `BookingFactory`  | Booking  | Test bookings  |
+| `StayFactory`     | Stay     | Operational stays |
+| `RoomAssignmentFactory` | RoomAssignment | Assignment history |
+| `ServiceRecoveryCaseFactory` | ServiceRecoveryCase | Incident audit |
 
 ### Factory States
 
@@ -655,6 +937,21 @@ Booking::factory()->forRoom($room)->create();
 Booking::factory()->forUser($user)->create();
 Booking::factory()->forDates($checkIn, $checkOut)->create();
 Booking::factory()->todayCheckIn()->create();
+
+// StayFactory states
+Stay::factory()->expected()->create();
+Stay::factory()->inHouse()->create();
+Stay::factory()->lateCheckout()->create();
+Stay::factory()->checkedOut()->create();
+Stay::factory()->noShow()->create();
+
+// RoomAssignmentFactory states
+RoomAssignment::factory()->active()->create();
+RoomAssignment::factory()->closed()->create();
+
+// ServiceRecoveryCaseFactory states
+ServiceRecoveryCase::factory()->open()->create();
+ServiceRecoveryCase::factory()->resolved()->create();
 ```
 
 ### Basic Usage
@@ -719,7 +1016,26 @@ Booking
 ├── belongsTo → Location (location_id)  // denormalized
 ├── belongsTo → User (cancelled_by)     // cancellation audit
 ├── belongsTo → User (deleted_by)       // soft delete audit
+├── hasOne → Stay (booking_id)          // operational lifecycle
 ├── hasOne → Review (booking_id)        // one review per booking
+│
+Stay
+├── belongsTo → Booking (booking_id)
+├── belongsTo → User (checked_in_by)
+├── belongsTo → User (checked_out_by)
+├── hasMany → RoomAssignment (stay_id)
+├── hasMany → ServiceRecoveryCase (stay_id)
+│
+RoomAssignment
+├── belongsTo → Booking (booking_id)
+├── belongsTo → Stay (stay_id)
+├── belongsTo → Room (room_id)
+├── belongsTo → User (assigned_by)
+│
+ServiceRecoveryCase
+├── belongsTo → Booking (booking_id)
+├── belongsTo → Stay (stay_id, nullable)
+├── belongsTo → User (handled_by)
 │
 Review
 ├── belongsTo → Room (room_id)

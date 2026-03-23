@@ -61,7 +61,7 @@
 
 - Type-safe enum: USER, MODERATOR, ADMIN
 - Helper methods: `isAdmin()`, `isAtLeast()`
-- 7 authorization gates
+- 6 authorization gates
 - Middleware for route protection
 
 ### ⚡ Caching

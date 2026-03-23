@@ -17,7 +17,7 @@ use Tests\TestCase;
  * Covers:
  * - 2A: Lazy stay creation (BookingService::confirmBooking) is idempotent
  * - 2B: stays:backfill-operational is idempotent (re-run creates zero rows)
- * - 2C: stays:backfill-operational respects scope (4 sub-cases)
+ * - 2C: stays:backfill-operational respects scope
  * - 2D: stays:backfill-operational --dry-run persists nothing
  */
 class StayBackfillTest extends TestCase
@@ -64,81 +64,68 @@ class StayBackfillTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function test_backfill_command_is_idempotent(): void
     {
-        Booking::factory()->confirmed()->create([
-            'check_in' => Carbon::today()->addDay()->toDateString(),
-            'check_out' => Carbon::today()->addDays(3)->toDateString(),
-        ]);
-
-        $this->assertDatabaseCount('stays', 0);
-
-        // First run — should create 1 stay
-        $this->artisan('stays:backfill-operational')->assertSuccessful();
-
-        $this->assertDatabaseCount('stays', 1);
-
-        // Second run — should create 0 additional stays
-        $this->artisan('stays:backfill-operational')->assertSuccessful();
-
-        $this->assertDatabaseCount('stays', 1);
-    }
-
-    // ===== 2C — BACKFILL COMMAND SCOPE CORRECTNESS =====
-
-    #[\PHPUnit\Framework\Attributes\Test]
-    public function test_backfill_command_creates_stay_for_confirmed_future_booking(): void
-    {
-        Booking::factory()->confirmed()->create([
-            'check_in' => Carbon::today()->addDay()->toDateString(),
-            'check_out' => Carbon::today()->addDays(3)->toDateString(),
-        ]);
-
-        $this->artisan('stays:backfill-operational')->assertSuccessful();
-
-        $this->assertDatabaseCount('stays', 1);
-    }
-
-    #[\PHPUnit\Framework\Attributes\Test]
-    public function test_backfill_command_skips_confirmed_booking_with_past_checkout(): void
-    {
-        Booking::factory()->confirmed()->create([
-            'check_in' => Carbon::today()->subDays(5)->toDateString(),
-            'check_out' => Carbon::today()->subDay()->toDateString(),
-        ]);
-
-        $this->artisan('stays:backfill-operational')->assertSuccessful();
-
-        $this->assertDatabaseCount('stays', 0);
-    }
-
-    #[\PHPUnit\Framework\Attributes\Test]
-    public function test_backfill_command_skips_cancelled_booking(): void
-    {
-        Booking::factory()->cancelled()->create([
-            'check_in' => Carbon::today()->addDay()->toDateString(),
-            'check_out' => Carbon::today()->addDays(3)->toDateString(),
-        ]);
-
-        $this->artisan('stays:backfill-operational')->assertSuccessful();
-
-        $this->assertDatabaseCount('stays', 0);
-    }
-
-    #[\PHPUnit\Framework\Attributes\Test]
-    public function test_backfill_command_skips_confirmed_booking_that_already_has_stay(): void
-    {
         $booking = Booking::factory()->confirmed()->create([
             'check_in' => Carbon::today()->addDay()->toDateString(),
             'check_out' => Carbon::today()->addDays(3)->toDateString(),
         ]);
 
-        Stay::factory()->forBooking($booking)->expected()->create();
+        $this->assertDatabaseCount('stays', 0);
+
+        // First run — should create one expected stay
+        $this->artisan('stays:backfill-operational')->assertSuccessful();
+
+        $this->assertDatabaseCount('stays', 1);
+        $this->assertDatabaseHas('stays', [
+            'booking_id' => $booking->id,
+            'stay_status' => StayStatus::EXPECTED->value,
+        ]);
+
+        // Second run — should create 0 additional stays
+        $this->artisan('stays:backfill-operational')->assertSuccessful();
+
+        $this->assertEquals(1, Stay::where('booking_id', $booking->id)->count());
+    }
+
+    // ===== 2C — BACKFILL COMMAND SCOPE CORRECTNESS =====
+
+    #[\PHPUnit\Framework\Attributes\Test]
+    public function test_backfill_command_respects_scope(): void
+    {
+        $eligibleBooking = Booking::factory()->confirmed()->create([
+            'check_in' => Carbon::today()->addDay()->toDateString(),
+            'check_out' => Carbon::today()->addDays(3)->toDateString(),
+        ]);
+
+        $pastCheckoutBooking = Booking::factory()->confirmed()->create([
+            'check_in' => Carbon::today()->subDays(5)->toDateString(),
+            'check_out' => Carbon::today()->subDay()->toDateString(),
+        ]);
+
+        $cancelledBooking = Booking::factory()->cancelled()->create([
+            'check_in' => Carbon::today()->addDay()->toDateString(),
+            'check_out' => Carbon::today()->addDays(4)->toDateString(),
+        ]);
+
+        $existingStayBooking = Booking::factory()->confirmed()->create([
+            'check_in' => Carbon::today()->addDays(5)->toDateString(),
+            'check_out' => Carbon::today()->addDays(7)->toDateString(),
+        ]);
+
+        $existingStay = Stay::factory()->forBooking($existingStayBooking)->expected()->create();
 
         $this->assertDatabaseCount('stays', 1);
 
         $this->artisan('stays:backfill-operational')->assertSuccessful();
 
-        // Still exactly 1 — no second stay created
-        $this->assertDatabaseCount('stays', 1);
+        $this->assertDatabaseCount('stays', 2);
+        $this->assertDatabaseHas('stays', [
+            'booking_id' => $eligibleBooking->id,
+            'stay_status' => StayStatus::EXPECTED->value,
+        ]);
+        $this->assertEquals(0, Stay::where('booking_id', $pastCheckoutBooking->id)->count());
+        $this->assertEquals(0, Stay::where('booking_id', $cancelledBooking->id)->count());
+        $this->assertEquals(1, Stay::where('booking_id', $existingStayBooking->id)->count());
+        $this->assertEquals($existingStay->id, Stay::where('booking_id', $existingStayBooking->id)->value('id'));
     }
 
     // ===== 2D — DRY-RUN PRODUCES NO ROWS =====

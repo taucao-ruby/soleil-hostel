@@ -23,6 +23,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * Monetary columns (refund_amount, voucher_amount, cost_delta_absorbed)
  * are stored in cents (BIGINT), consistent with bookings.amount.
+ *
+ * settlement_status is operational financial tracking only.
+ * It is not authoritative accounting / general-ledger state.
  */
 class ServiceRecoveryCase extends Model
 {
@@ -43,16 +46,14 @@ class ServiceRecoveryCase extends Model
         'refund_amount',
         'voucher_amount',
         'cost_delta_absorbed',
+        'settlement_status',
+        'settled_amount',
+        'settled_at',
+        'settlement_notes',
         'handled_by',
         'opened_at',
-        'escalated_at',
         'resolved_at',
         'notes',
-        // Settlement lifecycle
-        'settlement_status',
-        'settled_at',
-        'settled_amount',
-        'settlement_notes',
     ];
 
     protected $casts = [
@@ -63,12 +64,11 @@ class ServiceRecoveryCase extends Model
         'refund_amount' => 'integer',
         'voucher_amount' => 'integer',
         'cost_delta_absorbed' => 'integer',
-        'opened_at' => 'datetime',
-        'escalated_at' => 'datetime',
-        'resolved_at' => 'datetime',
         'settlement_status' => SettlementStatus::class,
-        'settled_at' => 'datetime',
         'settled_amount' => 'integer',
+        'opened_at' => 'datetime',
+        'resolved_at' => 'datetime',
+        'settled_at' => 'datetime',
     ];
 
     // ===== RELATIONSHIPS =====
@@ -113,9 +113,9 @@ class ServiceRecoveryCase extends Model
     /**
      * Scope: filter by severity level.
      */
-    public function scopeBySeverity(Builder $query, IncidentSeverity $severity): Builder
+    public function scopeBySeverity(Builder $query, string $severity): Builder
     {
-        return $query->where('severity', $severity->value);
+        return $query->where('severity', $severity);
     }
 
     /**
@@ -126,35 +126,35 @@ class ServiceRecoveryCase extends Model
         return $query->where('incident_type', IncidentType::EXTERNAL_RELOCATION->value);
     }
 
-    // ===== SETTLEMENT PREDICATES =====
-
     /**
-     * Check if this case has not been financially settled.
+     * Scope: cases that still carry unsettled exposure.
      */
-    public function isUnsettled(): bool
+    public function scopeUnsettled(Builder $query): Builder
     {
-        return $this->settlement_status === SettlementStatus::UNSETTLED;
+        return $query->whereIn('settlement_status', array_map(
+            static fn (SettlementStatus $status): string => $status->value,
+            SettlementStatus::openStatuses()
+        ));
     }
 
     /**
-     * Check if this case has been financially settled (settled or waived).
+     * Scope: cases fully settled with the guest.
      */
-    public function isSettled(): bool
+    public function scopeSettled(Builder $query): Builder
     {
-        return in_array($this->settlement_status, [
-            SettlementStatus::SETTLED,
-            SettlementStatus::WAIVED,
-        ], true);
+        return $query->where('settlement_status', SettlementStatus::SETTLED->value);
     }
 
     /**
-     * Calculate outstanding compensation amount (total owed minus settled).
-     * All amounts in cents.
+     * Net open exposure for this case in cents.
      */
-    public function outstandingAmount(): int
+    public function totalExposure(): int
     {
-        $totalCompensation = (int) ($this->refund_amount ?? 0) + (int) ($this->voucher_amount ?? 0);
-
-        return max(0, $totalCompensation - (int) ($this->settled_amount ?? 0));
+        return (int) (
+            ($this->refund_amount ?? 0)
+            + ($this->voucher_amount ?? 0)
+            + ($this->cost_delta_absorbed ?? 0)
+            - ($this->settled_amount ?? 0)
+        );
     }
 }

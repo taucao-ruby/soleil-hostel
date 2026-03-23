@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Enums\RoomTypeCode;
+use App\Enums\RoomReadinessStatus;
 use App\Models\Location;
 use App\Models\Room;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -13,8 +13,6 @@ class RoomFactory extends Factory
 
     public function definition(): array
     {
-        $typeCode = $this->faker->randomElement(RoomTypeCode::cases());
-
         return [
             'location_id' => Location::factory(),
             'name' => $this->faker->word.' Room',
@@ -22,9 +20,12 @@ class RoomFactory extends Factory
             'description' => $this->faker->sentence(10),
             'price' => $this->faker->randomFloat(2, 20, 200),
             'max_guests' => $this->faker->numberBetween(1, 8),
-            'status' => 'available',
-            'room_type_code' => $typeCode,
-            'room_tier' => $typeCode->defaultTier(),
+            'room_type_code' => null,
+            'room_tier' => 1,
+            'status' => $this->faker->randomElement(['available', 'booked', 'maintenance']),
+            'readiness_status' => RoomReadinessStatus::READY,
+            'readiness_updated_at' => null,
+            'readiness_updated_by' => null,
         ];
     }
 
@@ -49,49 +50,43 @@ class RoomFactory extends Factory
     }
 
     /**
-     * State: Booked room.
+     * State: physically ready room.
      */
-    public function booked(): static
+    public function ready(): static
     {
         return $this->state(fn (array $attributes) => [
-            'status' => 'booked',
+            'readiness_status' => RoomReadinessStatus::READY,
         ]);
     }
 
     /**
-     * State: Maintenance room.
+     * State: physically dirty room awaiting housekeeping.
      */
-    public function maintenance(): static
+    public function dirty(): static
     {
         return $this->state(fn (array $attributes) => [
-            'status' => 'maintenance',
+            'readiness_status' => RoomReadinessStatus::DIRTY,
         ]);
     }
 
     /**
-     * State: Room with specific type code and derived tier.
+     * State: room blocked from service.
      */
-    public function ofType(RoomTypeCode $typeCode, ?int $tier = null): static
+    public function outOfService(): static
     {
         return $this->state(fn (array $attributes) => [
-            'room_type_code' => $typeCode,
-            'room_tier' => $tier ?? $typeCode->defaultTier(),
+            'readiness_status' => RoomReadinessStatus::OUT_OF_SERVICE,
         ]);
     }
 
     /**
-     * State: Dormitory room (tier 1).
+     * State: set operational comparability fields.
      */
-    public function dormitory(): static
+    public function classified(string $roomTypeCode, int $roomTier): static
     {
-        return $this->ofType(RoomTypeCode::DORMITORY);
-    }
-
-    /**
-     * State: Private suite (tier 3).
-     */
-    public function privateSuite(): static
-    {
-        return $this->ofType(RoomTypeCode::PRIVATE_SUITE);
+        return $this->state(fn (array $attributes) => [
+            'room_type_code' => $roomTypeCode,
+            'room_tier' => $roomTier,
+        ]);
     }
 }

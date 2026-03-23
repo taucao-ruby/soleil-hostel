@@ -83,7 +83,7 @@ Start here when exploring this area:
 | Area | Connections |
 |------|-------------|
 | Services | 5 calls |
-| Feature | 5 calls |
+| Room | 5 calls |
 | Cache | 4 calls |
 | Notifications | 3 calls |
 | Booking | 1 calls |

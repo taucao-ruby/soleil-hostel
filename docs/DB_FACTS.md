@@ -1,7 +1,12 @@
 # docs/DB_FACTS.md - Soleil Hostel Database Facts
 
-Canonical database rules and invariants for backend and migration work.
-Source of truth: `backend/database/migrations/*` (not older docs).
+Operational database reference for backend and migration work.
+Source of truth for migrations: `backend/database/migrations/*`.
+
+> **Relationship to ARCHITECTURE_FACTS.md**: Domain invariants (booking overlap, auth, concurrency)
+> are defined canonically in `docs/agents/ARCHITECTURE_FACTS.md`. This file provides the
+> operational companion: table catalog, index strategy, query patterns, and migration rules.
+> When invariants overlap, ARCHITECTURE_FACTS.md is authoritative.
 
 ## 1) Core Tables (authoritative)
 

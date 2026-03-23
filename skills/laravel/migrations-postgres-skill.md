@@ -34,6 +34,7 @@ Use this skill for schema changes, indexes, constraints, enum changes, or DB por
    - Add guards or alternative behavior for unsupported operations.
 3. Implement `up()` with explicit safety.
    - Check existence before create/alter where needed.
+   - If creating a new table: verify any column referencing a CRITICAL table PK (`bookings`, `rooms`, `locations` — see `.agent/rules/migration-safety.md` § CRITICAL tables for FK constraint enforcement) has an explicit FK constraint in the migration.
 4. Implement `down()` with explicit rollback plan.
    - Drop created objects safely and in correct order.
 5. For enum and advanced constraints:
@@ -66,6 +67,7 @@ If migration behavior depends on PostgreSQL-only features, also validate against
 - Missing `down()` cleanup for added indexes/constraints/types.
 - Forgetting `DB::getDriverName()` guards around PostgreSQL-only statements.
 - Re-introducing overlap constraint without `deleted_at IS NULL`.
+- Dropping or rebuilding the GIST index backing the `no_overlapping_bookings` exclusion constraint — the constraint becomes unenforceable without its index.
 - Creating irreversible migration sequences for hotfix rollbacks.
 
 ## References

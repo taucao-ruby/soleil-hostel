@@ -15,6 +15,8 @@ Heavy commands (`audit-security`, `review-pr`, `sync-docs`, `ship`) require expl
 
 ## Quality Gates (must pass before merge)
 
+> Full gate reference with CI job map: `docs/COMMANDS_AND_GATES.md`
+
 ```bash
 cd backend && php artisan test
 cd frontend && npx tsc --noEmit

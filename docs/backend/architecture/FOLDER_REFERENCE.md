@@ -1,6 +1,6 @@
 # Backend Folder Reference
 
-> Verified against `backend/` source code on 2026-03-20.
+> Verified against `backend/` source code on 2026-03-23.
 > Scope covers all folders under `app/`, `config/`, and `database/`.
 
 ## Naming Notes
@@ -43,7 +43,7 @@
 
 ### `Console/Commands`
 
-- `BackfillOperationalStays.php` - creates expected-state Stay rows for confirmed bookings pre-dating lazy stay creation (stays:backfill-operational).
+- `BackfillOperationalStays.php` - creates `expected` Stay rows for confirmed bookings with `check_out >= today` that pre-date lazy stay creation (stays:backfill-operational). See `docs/DOMAIN_LAYERS.md`.
 - `CacheWarmupCommand.php` - cache warmup orchestration and preflight checks.
 - `OctaneNPlusOneMonitor.php` - Octane query metric monitor command.
 - `PruneOldSoftDeletedBookings.php` - cleanup command for old soft deleted bookings.

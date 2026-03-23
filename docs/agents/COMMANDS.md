@@ -71,9 +71,11 @@ docker compose up --build                                      # Docker stack
 
 | Command | Purpose | Notes |
 |---------|---------|-------|
-| `php artisan stays:backfill-operational` | Create `expected`-status Stay rows for confirmed bookings that pre-date lazy stay creation | Safe to re-run (idempotent via `firstOrCreate`) |
+| `php artisan stays:backfill-operational` | Create `expected` Stay rows for confirmed bookings with `check_out >= today` that pre-date lazy stay creation | Safe to re-run (idempotent via `firstOrCreate`) |
 | `php artisan stays:backfill-operational --dry-run` | Count eligible bookings without persisting | Prints summary only |
 | `php artisan cache:warmup` | Pre-populate room availability cache | — |
 | `php artisan bookings:prune-soft-deleted` | Purge old soft-deleted booking records | — |
 
-Selection criteria for `stays:backfill-operational`: `status = 'confirmed'` AND `check_out >= today` AND no existing stay row. Does NOT touch cancelled, refund_pending, refund_failed, or past-checkout bookings. Source: `app/Console/Commands/BackfillOperationalStays.php`.
+Selection criteria for `stays:backfill-operational`: `status = 'confirmed'` AND `check_out >= today` AND no existing stay row.
+Does NOT touch cancelled, refund_pending, refunded, refund_failed, or past-checkout bookings. Source: `app/Console/Commands/BackfillOperationalStays.php`.
+Canonical operational note and source-of-truth boundaries: `docs/DOMAIN_LAYERS.md`.

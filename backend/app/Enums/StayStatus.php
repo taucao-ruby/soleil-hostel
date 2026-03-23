@@ -37,6 +37,21 @@ enum StayStatus: string
     }
 
     /**
+     * Statuses that end the current stay lifecycle.
+     *
+     * @return array<self>
+     */
+    public static function terminalStatuses(): array
+    {
+        return [
+            self::CHECKED_OUT,
+            self::NO_SHOW,
+            self::RELOCATED_INTERNAL,
+            self::RELOCATED_EXTERNAL,
+        ];
+    }
+
+    /**
      * Check if the guest is currently in-house (occupying a room).
      */
     public function isInHouse(): bool
@@ -49,10 +64,34 @@ enum StayStatus: string
      */
     public function isTerminal(): bool
     {
-        return in_array($this, [
+        return in_array($this, self::terminalStatuses(), true);
+    }
+
+    /**
+     * Validate whether an operational stay transition is allowed.
+     */
+    public function canTransitionTo(self $target): bool
+    {
+        return match ($this) {
+            self::EXPECTED => in_array($target, [
+                self::IN_HOUSE,
+                self::NO_SHOW,
+            ], true),
+            self::IN_HOUSE => in_array($target, [
+                self::LATE_CHECKOUT,
+                self::CHECKED_OUT,
+                self::RELOCATED_INTERNAL,
+                self::RELOCATED_EXTERNAL,
+            ], true),
+            self::LATE_CHECKOUT => in_array($target, [
+                self::CHECKED_OUT,
+                self::RELOCATED_INTERNAL,
+                self::RELOCATED_EXTERNAL,
+            ], true),
             self::CHECKED_OUT,
             self::NO_SHOW,
-            self::RELOCATED_EXTERNAL,
-        ], true);
+            self::RELOCATED_INTERNAL,
+            self::RELOCATED_EXTERNAL => false,
+        };
     }
 }

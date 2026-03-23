@@ -1,6 +1,6 @@
 # Architecture Facts — Soleil Hostel
 
-Domain invariants last verified 2026-03-20. See [AUDIT_2026_02_21.md](../AUDIT_2026_02_21.md) for the original 2026-02-21 audit evidence.
+Domain invariants last verified 2026-03-23. See [AUDIT_2026_02_21.md](../AUDIT_2026_02_21.md) for the original 2026-02-21 audit evidence.
 
 ## Booking Domain
 
@@ -39,6 +39,9 @@ Requires: `CREATE EXTENSION IF NOT EXISTS btree_gist;`
 
 On `bookings` table: `amount`, `payment_intent_id`, `refund_id`, `refund_status`, `refund_amount`, `refund_error`.
 
+Deposit lifecycle also lives on `bookings`: `deposit_amount`, `deposit_collected_at`, `deposit_status`.
+`deposit_amount` is operational liability tracking only and is **not** recognized revenue at collection time.
+
 ### Booking Status
 
 **VARCHAR column, NOT a PostgreSQL ENUM.** Values enforced at application level (`App\Enums\BookingStatus`) AND DB CHECK constraint `chk_bookings_status` on PostgreSQL (migration `2026_03_17_000003`):
@@ -63,40 +66,62 @@ Added 2026-03-20. Full specification: `docs/DOMAIN_LAYERS.md`.
 | `bookings` | Commercial | Reservation state machine |
 | `stays` | Operational | Occupancy lifecycle per booking (`stay_status`) |
 | `room_assignments` | Allocation | Physical room assignment history per stay |
-| `service_recovery_cases` | Incident | Service failure incidents and compensation audit trail |
+| `service_recovery_cases` | Incident | Service failure incidents, compensation, and settlement tracking audit trail |
 
 ### Key Invariants
 
 - `bookings.status` = commercial reservation state only; `stays.stay_status` = operational occupancy lifecycle
+- `bookings.deposit_*` = operational deposit lifecycle only; not authoritative accounting
 - In-house guest detection: `stays.stay_status IN ('in_house', 'late_checkout')` — do NOT use a static flag on `users`
 - One stay per booking: UNIQUE `booking_id` on `stays`
 - Active room assignment: partial unique index `UNIQUE (stay_id) WHERE assigned_until IS NULL` (PG only)
+- `rooms.readiness_status` = canonical physical room state (`ready`, `occupied`, `dirty`, `cleaning`, `inspected`, `out_of_service`)
+- `rooms.room_type_code` = equivalence key; `rooms.room_tier` = upgrade comparability, both nullable until operators populate them
 - All monetary fields in `service_recovery_cases` (`refund_amount`, `voucher_amount`, `cost_delta_absorbed`) stored in **cents** (BIGINT)
+- `service_recovery_cases.settlement_*` = operational settlement tracking only; not authoritative accounting / GL
 - Booking overlap logic (`no_overlapping_bookings` constraint, `Booking.php`, `CancellationService.php`) is **orthogonal** to and untouched by the four-layer model
+
+Blocked-arrival escalation path:
+1. equivalent room, same location
+2. complimentary upgrade, same location
+3. equivalent room, another location in chain
+4. upgrade room, another location in chain
+5. no internal candidate → external/manual review
+
+Steps 3-5 require operator approval before any assignment or recovery write is performed.
 
 ### Stay Creation: Two-Path Strategy
 
 **Forward path** (new bookings): `BookingService::confirmBooking()` calls `Stay::firstOrCreate()` inside the confirmation transaction. If stay creation fails, the confirmation rolls back.
 
-**Backfill path** (historical bookings): `php artisan stays:backfill-operational` creates `expected`-status Stay rows for confirmed bookings with `check_out >= today` that have no existing stay row. Idempotent; safe to re-run. `--dry-run` flag available.
+**Backfill path** (historical bookings): `php artisan stays:backfill-operational` creates `expected` stays for `confirmed` bookings with `check_out >= today` and no existing stay row. Idempotent; safe to re-run. `--dry-run` flag available.
 
 Source: `app/Console/Commands/BackfillOperationalStays.php`, `app/Services/BookingService.php`
+Canonical operational note and source-of-truth boundaries: `docs/DOMAIN_LAYERS.md`.
 
 ### Stay Domain Enums
 
 `App\Enums\StayStatus`: `expected`, `in_house`, `late_checkout`, `checked_out`, `no_show`, `relocated_internal`, `relocated_external`
+
+Stay lifecycle guard: `App\Enums\StayStatus::canTransitionTo()` + `App\Models\Stay::transitionTo()`
 
 `App\Enums\AssignmentType`: `original`, `equivalent_swap`, `complimentary_upgrade`, `maintenance_move`, `overflow_relocation`
 
 `App\Enums\AssignmentStatus`: (see source)
 
 `App\Enums\IncidentType`, `App\Enums\IncidentSeverity`, `App\Enums\CaseStatus`, `App\Enums\CompensationType`: see `app/Enums/` for values
+`App\Enums\RoomReadinessStatus`, `App\Enums\DepositStatus`, `App\Enums\SettlementStatus`, `App\Enums\BlockerType`, `App\Enums\ResolutionStep`: operational PM/BM support enums
 
 ### Migrations
 
 - `2026_03_20_000001` — creates `stays` table
 - `2026_03_20_000002` — creates `room_assignments` table
 - `2026_03_20_000003` — creates `service_recovery_cases` table
+- `2026_03_23_000001` — adds room readiness fields to `rooms`
+- `2026_03_23_000002` — adds room classification fields to `rooms`
+- `2026_03_23_000003` — adds deposit lifecycle fields to `bookings`
+- `2026_03_23_000004` — adds settlement lifecycle fields to `service_recovery_cases`
+- `2026_03_23_000005` — corrects `reviews.room_id` FK delete policy to RESTRICT
 
 ## Concurrency Control
 
@@ -156,12 +181,13 @@ PHP: `App\Enums\UserRole` (backed string enum). Default: `user`.
 
 **The rooms `status` column is VARCHAR** (`$table->string('status')` in migration `2025_05_09_000000`). No `CREATE TYPE room_status` exists in migrations despite some docs claiming otherwise.
 
-Application-level values: `available`, `occupied`, `maintenance` (verify in model/service code).
+Application-level values remain inconsistent across the codebase (`available`, `occupied`, `maintenance`, `booked`, `active`). `rooms.status` is not the canonical physical readiness field.
 
 ## Reviews
 
 - One review per booking: `reviews_booking_id_unique` constraint
 - `booking_id` is NOT NULL (migration `2026_02_10_000002`)
+- `room_id` is NOT NULL in schema and its FK is `ON DELETE RESTRICT` after the 2026-03-23 correction
 - `approved` column defaults to `false`
 - FK `reviews.booking_id → bookings.id` added via migration (F-09 fix, PR-3 2026-02-21)
 
@@ -200,22 +226,29 @@ All four previously absent constraints added via migrations (audit v2, PR-2 + PR
 - `CHECK (price >= 0)` on rooms — **added** (F-08 fixed)
 - FK `reviews.booking_id -> bookings.id` — **added** (F-09 fixed)
 
-## DB Hardening (2026-03-17)
+## DB Hardening (2026-03-17 / 2026-03-23)
 
 FK delete policy hardening (migration `2026_03_17_000001`, PG-only, runtime-gated via `DB::getDriverName()`):
 - `bookings.user_id → users.id`: CASCADE → **SET NULL** (booking history survives user deletion)
 - `bookings.room_id → rooms.id`: CASCADE → **RESTRICT** (room deletion blocked if bookings exist)
 - `reviews.user_id → users.id`: CASCADE → **SET NULL** (review survives user deletion)
-- `reviews.room_id → rooms.id`: CASCADE → **SET NULL** (review survives room deletion)
+- `reviews.room_id → rooms.id`: CASCADE → **RESTRICT** after correction in `2026_03_23_000005`
 
 Correction on record: prior operator baseline incorrectly claimed `reviews.user_id` was already SET NULL. Source `2026_02_09_000000_add_foreign_key_constraints.php` confirms original was `onDelete('cascade')`.
+
+Additional source correction:
+- `reviews.room_id` is `NOT NULL` in the original table definition, so the interim `SET NULL` FK from `2026_03_17_000001` was internally inconsistent and has been corrected back to `RESTRICT`.
 
 Additional CHECK constraints (PG-only, runtime-gated):
 - `chk_rooms_max_guests CHECK (max_guests > 0)` — migration `2026_03_17_000002`
 - `chk_bookings_status CHECK (status IN ('pending','confirmed','refund_pending','cancelled','refund_failed'))` — migration `2026_03_17_000003`
+- `chk_rooms_readiness_status CHECK (readiness_status IN (...))` — migration `2026_03_23_000001`
+- `chk_rooms_room_tier_positive CHECK (room_tier IS NULL OR room_tier > 0)` — migration `2026_03_23_000002`
+- `chk_bookings_deposit_status CHECK (deposit_status IN ('none','collected','applied','refunded'))` — migration `2026_03_23_000003`
+- `chk_src_settlement_status CHECK (settlement_status IN ('unsettled','partially_settled','settled','written_off'))` — migration `2026_03_23_000004`
 
 Deferred:
-- `rooms.status` DB CHECK — room status values inconsistent across codebase; deferred pending normalization + stable `RoomStatus` enum
+- `rooms.status` DB CHECK — legacy room status values are still inconsistent across codebase; physical readiness is now enforced separately via `rooms.readiness_status`
 - Legacy migration `2026_02_09_000000` uses `config('database.default')` gating (weaker than `DB::getDriverName()`); cleanup deferred
 
-Test coverage: `FkDeletePolicyTest.php` (5 tests), `CheckConstraintTest.php` (3 tests — covers `chk_rooms_max_guests` only; `chk_bookings_status` has no dedicated constraint test). Backend suite: 989 tests, 0 failures (verified 2026-03-20).
+Test coverage: `FkDeletePolicyTest.php` (5 tests), `CheckConstraintTest.php` (3 tests — covers `chk_rooms_max_guests` only), plus PM/BM operational tests for room readiness, arrival resolution, financial lifecycle, and dashboard queries. Backend suite: 1014 tests, 0 failures (verified 2026-03-23).

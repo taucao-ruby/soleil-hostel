@@ -6,6 +6,7 @@ use App\Enums\CaseStatus;
 use App\Enums\CompensationType;
 use App\Enums\IncidentSeverity;
 use App\Enums\IncidentType;
+use App\Enums\SettlementStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -22,6 +23,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * Monetary columns (refund_amount, voucher_amount, cost_delta_absorbed)
  * are stored in cents (BIGINT), consistent with bookings.amount.
+ *
+ * settlement_status is operational financial tracking only.
+ * It is not authoritative accounting / general-ledger state.
  */
 class ServiceRecoveryCase extends Model
 {
@@ -42,6 +46,10 @@ class ServiceRecoveryCase extends Model
         'refund_amount',
         'voucher_amount',
         'cost_delta_absorbed',
+        'settlement_status',
+        'settled_amount',
+        'settled_at',
+        'settlement_notes',
         'handled_by',
         'opened_at',
         'resolved_at',
@@ -56,8 +64,11 @@ class ServiceRecoveryCase extends Model
         'refund_amount' => 'integer',
         'voucher_amount' => 'integer',
         'cost_delta_absorbed' => 'integer',
+        'settlement_status' => SettlementStatus::class,
+        'settled_amount' => 'integer',
         'opened_at' => 'datetime',
         'resolved_at' => 'datetime',
+        'settled_at' => 'datetime',
     ];
 
     // ===== RELATIONSHIPS =====
@@ -102,9 +113,9 @@ class ServiceRecoveryCase extends Model
     /**
      * Scope: filter by severity level.
      */
-    public function scopeBySeverity(Builder $query, IncidentSeverity $severity): Builder
+    public function scopeBySeverity(Builder $query, string $severity): Builder
     {
-        return $query->where('severity', $severity->value);
+        return $query->where('severity', $severity);
     }
 
     /**
@@ -113,5 +124,37 @@ class ServiceRecoveryCase extends Model
     public function scopeExternalRelocation(Builder $query): Builder
     {
         return $query->where('incident_type', IncidentType::EXTERNAL_RELOCATION->value);
+    }
+
+    /**
+     * Scope: cases that still carry unsettled exposure.
+     */
+    public function scopeUnsettled(Builder $query): Builder
+    {
+        return $query->whereIn('settlement_status', array_map(
+            static fn (SettlementStatus $status): string => $status->value,
+            SettlementStatus::openStatuses()
+        ));
+    }
+
+    /**
+     * Scope: cases fully settled with the guest.
+     */
+    public function scopeSettled(Builder $query): Builder
+    {
+        return $query->where('settlement_status', SettlementStatus::SETTLED->value);
+    }
+
+    /**
+     * Net open exposure for this case in cents.
+     */
+    public function totalExposure(): int
+    {
+        return (int) (
+            ($this->refund_amount ?? 0)
+            + ($this->voucher_amount ?? 0)
+            + ($this->cost_delta_absorbed ?? 0)
+            - ($this->settled_amount ?? 0)
+        );
     }
 }

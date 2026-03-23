@@ -28,7 +28,17 @@ class RoomResource extends JsonResource
             'description' => $this->description,
             'price' => (float) $this->price,
             'max_guests' => $this->max_guests,
+            'room_type_code' => $this->room_type_code,
+            'room_tier' => $this->room_tier,
             'status' => $this->status,
+            'readiness_status' => $this->readiness_status instanceof \BackedEnum
+                ? $this->readiness_status->value
+                : $this->readiness_status,
+            'readiness_updated_at' => $this->when(
+                $this->readiness_updated_at !== null,
+                fn () => $this->readiness_updated_at->toIso8601String()
+            ),
+            'readiness_updated_by' => $this->readiness_updated_by,
 
             // ===== LOCATION INFO =====
             'location' => $this->when($this->relationLoaded('location') && $this->location, [

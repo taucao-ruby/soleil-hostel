@@ -99,6 +99,30 @@ class Stay extends Model
         return $this->belongsTo(User::class, 'checked_out_by');
     }
 
+    /**
+     * Transition the stay lifecycle while enforcing allowed state changes.
+     *
+     * Full front-desk orchestration is intentionally deferred; this guard only
+     * protects the lifecycle boundary so commercial booking status stays separate.
+     *
+     * @throws \RuntimeException
+     */
+    public function transitionTo(StayStatus $target): self
+    {
+        if (! $this->stay_status->canTransitionTo($target)) {
+            throw new \RuntimeException(sprintf(
+                "Cannot transition stay %d from '%s' to '%s'.",
+                $this->id,
+                $this->stay_status->value,
+                $target->value
+            ));
+        }
+
+        $this->update(['stay_status' => $target]);
+
+        return $this->refresh();
+    }
+
     // ===== SCOPES =====
 
     /**

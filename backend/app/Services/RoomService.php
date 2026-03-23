@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\RoomReadinessStatus;
 use App\Exceptions\OptimisticLockException;
 use App\Models\Room;
 use App\Repositories\Contracts\RoomRepositoryInterface;
@@ -128,6 +129,8 @@ final class RoomService
             ->except(['lock_version', 'id'])
             ->toArray();
 
+        $updateData = $this->stampReadinessAudit($updateData);
+
         // Atomic update with version check and increment
         // This is the key to optimistic locking - single atomic operation
         // Repository handles the raw query to ensure atomicity
@@ -184,6 +187,7 @@ final class RoomService
     {
         // Ensure lock_version is not set by caller (DB default handles it)
         $createData = collect($data)->except(['lock_version'])->toArray();
+        $createData = $this->stampReadinessAudit($createData);
 
         $room = $this->roomRepository->create($createData);
 
@@ -196,6 +200,30 @@ final class RoomService
         ]);
 
         return $room;
+    }
+
+    /**
+     * Keep readiness audit columns consistent when readiness changes through the room write path.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function stampReadinessAudit(array $data): array
+    {
+        if (! array_key_exists('readiness_status', $data)) {
+            return $data;
+        }
+
+        $readinessStatus = $data['readiness_status'];
+
+        if ($readinessStatus instanceof RoomReadinessStatus) {
+            $data['readiness_status'] = $readinessStatus->value;
+        }
+
+        $data['readiness_updated_at'] = now();
+        $data['readiness_updated_by'] = auth()->id();
+
+        return $data;
     }
 
     /**

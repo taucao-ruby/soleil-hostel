@@ -26,6 +26,9 @@ class RoomRequest extends FormRequest
             'price' => 'required|numeric|min:0',
             'max_guests' => 'required|integer|min:1',
             'status' => 'required|in:available,booked,maintenance',
+            'readiness_status' => 'sometimes|in:ready,occupied,dirty,cleaning,inspected,out_of_service',
+            'room_type_code' => 'sometimes|nullable|string|max:50',
+            'room_tier' => 'sometimes|nullable|integer|min:1|max:255',
         ];
 
         // For POST requests (create), location_id is required

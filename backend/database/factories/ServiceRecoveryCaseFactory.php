@@ -6,6 +6,7 @@ use App\Enums\CaseStatus;
 use App\Enums\CompensationType;
 use App\Enums\IncidentSeverity;
 use App\Enums\IncidentType;
+use App\Enums\SettlementStatus;
 use App\Models\Booking;
 use App\Models\ServiceRecoveryCase;
 use App\Models\Stay;
@@ -31,6 +32,10 @@ class ServiceRecoveryCaseFactory extends Factory
             'refund_amount' => null,
             'voucher_amount' => null,
             'cost_delta_absorbed' => null,
+            'settlement_status' => SettlementStatus::UNSETTLED,
+            'settled_amount' => null,
+            'settled_at' => null,
+            'settlement_notes' => null,
             'handled_by' => null,
             'opened_at' => Carbon::now()->subHours($this->faker->numberBetween(1, 24)),
             'resolved_at' => null,
@@ -105,6 +110,32 @@ class ServiceRecoveryCaseFactory extends Factory
             'external_booking_reference' => strtoupper($this->faker->bothify('??######')),
             'compensation_type' => CompensationType::REFUND_PLUS_VOUCHER,
             'cost_delta_absorbed' => $this->faker->numberBetween(5000, 50000), // $50-$500 in cents
+        ]);
+    }
+
+    /**
+     * State: case partially settled.
+     */
+    public function partiallySettled(?int $settledAmountCents = null): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'settlement_status' => SettlementStatus::PARTIALLY_SETTLED,
+            'settled_amount' => $settledAmountCents ?? $this->faker->numberBetween(1000, 5000),
+            'settled_at' => Carbon::now()->subHours($this->faker->numberBetween(1, 12)),
+            'settlement_notes' => 'Partial operational settlement recorded.',
+        ]);
+    }
+
+    /**
+     * State: case fully settled.
+     */
+    public function settled(?int $settledAmountCents = null): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'settlement_status' => SettlementStatus::SETTLED,
+            'settled_amount' => $settledAmountCents ?? $this->faker->numberBetween(1000, 10000),
+            'settled_at' => Carbon::now()->subHours($this->faker->numberBetween(1, 12)),
+            'settlement_notes' => 'Operational settlement completed.',
         ]);
     }
 }

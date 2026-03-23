@@ -11,8 +11,8 @@ Source of truth for migrations: `backend/database/migrations/*`.
 ## 1) Core Tables (authoritative)
 
 - `locations`: Physical hostel locations; includes operational metadata and `lock_version`.
-- `rooms`: Room inventory; each room belongs to one location (`rooms.location_id`).
-- `bookings`: Reservation records; owns stay dates, status, payment/refund, cancellation, soft-delete audit, and denormalized `location_id`.
+- `rooms`: Room inventory plus physical readiness (`readiness_status`) and comparability fields (`room_type_code`, `room_tier`); each room belongs to one location (`rooms.location_id`).
+- `bookings`: Reservation records; owns stay dates, status, payment/refund, deposit lifecycle, cancellation, soft-delete audit, and denormalized `location_id`.
 - `reviews`: Guest reviews tied to bookings; one review per booking rule.
 - `users`: Accounts and roles used by bookings/reviews/auth flows.
 - `personal_access_tokens`: Sanctum tokens plus hardened cookie-auth/security columns.
@@ -20,7 +20,7 @@ Source of truth for migrations: `backend/database/migrations/*`.
 Operational domain tables (added 2026-03-20, see `docs/DOMAIN_LAYERS.md`):
 - `stays`: Operational occupancy lifecycle per booking (`stay_status`). One per booking (UNIQUE `booking_id`).
 - `room_assignments`: Physical room allocation history per stay. Partial unique index prevents two active assignments for same stay (PostgreSQL only).
-- `service_recovery_cases`: Incident and compensation audit trail. `stay_id` nullable.
+- `service_recovery_cases`: Incident, compensation, and settlement-tracking audit trail. `stay_id` nullable.
 
 Other framework tables exist (`sessions`, `cache`, `jobs`, etc.) but are out of scope for booking/auth invariants.
 
@@ -44,14 +44,23 @@ Other framework tables exist (`sessions`, `cache`, `jobs`, etc.) but are out of 
   - [DB] `bookings.location_id` is denormalized and nullable (`ON DELETE SET NULL` FK).
   - [DB] PostgreSQL trigger `trg_booking_set_location` auto-populates `bookings.location_id` from `rooms.location_id`.
   - [APP] room location is the canonical source; booking location is a historical/analytics snapshot.
+- Room readiness / comparability truth:
+  - [DB] `rooms.readiness_status` is the canonical physical room state.
+  - [DB] `rooms.room_type_code` is the equivalence key for swap candidates.
+  - [DB] `rooms.room_tier` is the upgrade comparison field.
+  - [APP] `rooms.status` remains legacy availability/admin semantics and is not the readiness truth.
 - Optimistic locking:
   - [DB] `rooms.lock_version` exists (`NOT NULL`, default `1`).
   - [DB] `locations.lock_version` exists (default `1`).
   - [APP] compare-and-swap update semantics are required to enforce optimistic lock behavior.
 - Payment/refund/cancellation audit:
   - [DB] `amount`, `payment_intent_id`, `refund_id`, `refund_status`, `refund_amount`, `refund_error`.
+  - [DB] `deposit_amount`, `deposit_collected_at`, `deposit_status`.
   - [DB] cancellation fields: `cancelled_at`, `cancelled_by`, `cancellation_reason`.
   - [DB] soft-delete audit: `deleted_at`, `deleted_by`.
+- Deposit / settlement semantics:
+  - [APP] `deposit_amount` is unearned revenue / liability until stay fulfillment; not recognized revenue at collection time.
+  - [DB/APP] `settlement_status` is operational financial tracking only; not authoritative accounting / GL.
 
 ## 3) PostgreSQL Guarantees (defense in depth)
 
@@ -89,12 +98,17 @@ WHERE (status IN ('pending', 'confirmed') AND deleted_at IS NULL);
 - Additional CHECK constraints (added in migrations `2026_03_17_000002` and `2026_03_17_000003`, pgsql-only):
   - DB `CHECK (max_guests > 0)` on `rooms` (`chk_rooms_max_guests`).
   - DB `CHECK (status IN ('pending','confirmed','refund_pending','cancelled','refund_failed'))` on `bookings` (`chk_bookings_status`).
-  - Note: `rooms.status` DB CHECK is **deferred** — room status values are inconsistent across codebase; no stable `RoomStatus` enum exists yet.
+  - Note: `rooms.status` DB CHECK is **deferred** — that field remains legacy availability/admin state. Physical readiness is enforced separately via `rooms.readiness_status`.
+- Additional CHECK constraints (added in `2026_03_23_*`, pgsql-only):
+  - DB `CHECK (readiness_status IN ('ready','occupied','dirty','cleaning','inspected','out_of_service'))` on `rooms` (`chk_rooms_readiness_status`).
+  - DB `CHECK (room_tier IS NULL OR room_tier > 0)` on `rooms` (`chk_rooms_room_tier_positive`).
+  - DB `CHECK (deposit_status IN ('none','collected','applied','refunded'))` on `bookings` (`chk_bookings_deposit_status`).
+  - DB `CHECK (settlement_status IN ('unsettled','partially_settled','settled','written_off'))` on `service_recovery_cases` (`chk_src_settlement_status`).
 - FK delete policies hardened (migration `2026_03_17_000001`, pgsql-only):
   - `bookings.user_id → users.id`: CASCADE → SET NULL (booking history survives user deletion)
   - `bookings.room_id → rooms.id`: CASCADE → RESTRICT (room deletion blocked if bookings exist)
   - `reviews.user_id → users.id`: CASCADE → SET NULL (review survives user deletion)
-  - `reviews.room_id → rooms.id`: CASCADE → SET NULL (review survives room deletion)
+  - `reviews.room_id → rooms.id`: corrected to RESTRICT in `2026_03_23_000005` because `reviews.room_id` is NOT NULL in schema
 - DB hardening test coverage (added `2026_03_17`):
   - `tests/Feature/Database/FkDeletePolicyTest.php` — 5 tests: RESTRICT blocks, SET NULL nullifies
   - `tests/Feature/Database/CheckConstraintTest.php` — 3 tests: max_guests boundary cases
@@ -123,6 +137,7 @@ Bookings: payment/refund/cancellation
 - `idx_bookings_refund_status` on `(refund_status)`.
 - `idx_bookings_payment_intent` on `(payment_intent_id)`.
 - `idx_bookings_cancellation` on `(status, cancelled_at)`.
+- `idx_bookings_deposit_status_check_in` on `(deposit_status, check_in)`.
 
 Bookings: soft delete and audit
 
@@ -138,7 +153,16 @@ Locations and rooms
 - `idx_rooms_location_status` on `(location_id, status)`.
 - `idx_rooms_location_price` on `(location_id, price)`.
 - `idx_rooms_status` on `(status)`.
+- `idx_rooms_location_readiness` on `(location_id, readiness_status)`.
+- `idx_rooms_readiness_status` on `(readiness_status)`.
+- `idx_rooms_type_location` on `(room_type_code, location_id)`.
+- `idx_rooms_tier_location` on `(room_tier, location_id)`.
+- `idx_rooms_type_tier` on `(room_type_code, room_tier)`.
 - `idx_rooms_location_room_number` unique partial on `(location_id, room_number)` where `room_number IS NOT NULL` (PostgreSQL only).
+
+Service recovery financial tracking
+
+- `idx_src_settlement_status_settled_at` on `(settlement_status, settled_at)`.
 
 Reviews and tokens
 

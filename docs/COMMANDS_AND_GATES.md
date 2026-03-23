@@ -1,6 +1,6 @@
 # Commands and Quality Gates
 
-Verified against code on 2026-03-20. Source: `composer.json`, `frontend/package.json`, root `package.json`, `.github/workflows/*.yml`, `tools/hooks/`, `mcp/soleil-mcp/policy.json`.
+Verified against code on 2026-03-23. Source: `composer.json`, `frontend/package.json`, root `package.json`, `.github/workflows/*.yml`, `tools/hooks/`, `mcp/soleil-mcp/policy.json`.
 
 ## Backend Commands
 
@@ -78,7 +78,10 @@ cd backend && php artisan cache:warmup
 cd backend && php artisan bookings:prune-soft-deleted
 ```
 
-`stays:backfill-operational` selection criteria: `status = 'confirmed'` AND `check_out >= today` AND no existing stay row. Idempotent — safe to re-run. Source: `app/Console/Commands/BackfillOperationalStays.php`. See `docs/DOMAIN_LAYERS.md` for full context.
+`stays:backfill-operational` selection criteria:
+- `status = 'confirmed'` AND `check_out >= today` AND no existing stay row → create `expected`
+
+Idempotent — safe to re-run. Source: `app/Console/Commands/BackfillOperationalStays.php`. Canonical operational note and source-of-truth boundaries: `docs/DOMAIN_LAYERS.md`.
 
 ## Frontend Commands
 

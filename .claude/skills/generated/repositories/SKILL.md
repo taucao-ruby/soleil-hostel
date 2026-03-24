@@ -1,11 +1,11 @@
 ---
 name: repositories
-description: "Skill for the Repositories area of soleil-hostel. 90 symbols across 10 files."
+description: "Skill for the Repositories area of soleil-hostel. 91 symbols across 10 files."
 ---
 
 # Repositories
 
-90 symbols | 10 files | Cohesion: 97%
+91 symbols | 10 files | Cohesion: 97%
 
 ## When to Use
 
@@ -18,7 +18,7 @@ description: "Skill for the Repositories area of soleil-hostel. 90 symbols acros
 | File | Symbols |
 |------|---------|
 | `backend/tests/Unit/Repositories/EloquentBookingRepositoryTest.php` | update_returns_true_on_success, update_returns_false_on_failure, delete_returns_true_on_success, delete_returns_false_on_failure, restore_returns_true_on_success (+32) |
-| `backend/app/Repositories/EloquentBookingRepository.php` | EloquentBookingRepository, findById, findByIdOrFail, findByIdWithRelations, create (+14) |
+| `backend/app/Repositories/EloquentBookingRepository.php` | EloquentBookingRepository, findById, findByIdOrFail, findByIdWithRelations, create (+15) |
 | `backend/tests/Unit/Repositories/EloquentRoomRepositoryTest.php` | refresh_calls_refresh_on_model_and_returns_it, refresh_preserves_model_identity, find_by_id_with_bookings_returns_room_with_eager_loaded_bookings, find_by_id_with_bookings_returns_null_when_room_not_found, find_by_id_with_confirmed_bookings_returns_room_with_filtered_bookings (+13) |
 | `backend/app/Repositories/EloquentRoomRepository.php` | EloquentRoomRepository, findByIdWithBookings, findByIdWithConfirmedBookings, getAllOrderedByName, hasOverlappingConfirmedBookings (+4) |
 | `backend/app/Repositories/EloquentContactMessageRepository.php` | EloquentContactMessageRepository, markAsRead |
@@ -56,12 +56,12 @@ Start here when exploring this area:
 | `getByUserId` | Method | `backend/app/Repositories/EloquentBookingRepository.php` | 87 |
 | `getByUserIdOrderedByCheckIn` | Method | `backend/app/Repositories/EloquentBookingRepository.php` | 108 |
 | `findOverlappingBookings` | Method | `backend/app/Repositories/EloquentBookingRepository.php` | 131 |
+| `hasOverlappingBookings` | Method | `backend/app/Repositories/EloquentBookingRepository.php` | 143 |
+| `findOverlappingBookingsWithLock` | Method | `backend/app/Repositories/EloquentBookingRepository.php` | 155 |
+| `hasOverlappingBookingsWithLock` | Method | `backend/app/Repositories/EloquentBookingRepository.php` | 170 |
 | `getTrashed` | Method | `backend/app/Repositories/EloquentBookingRepository.php` | 187 |
-| `findTrashedById` | Method | `backend/app/Repositories/EloquentBookingRepository.php` | 201 |
 | `restore` | Method | `backend/app/Repositories/EloquentBookingRepository.php` | 215 |
 | `forceDelete` | Method | `backend/app/Repositories/EloquentBookingRepository.php` | 223 |
-| `getTrashedOlderThan` | Method | `backend/app/Repositories/EloquentBookingRepository.php` | 231 |
-| `getAllWithTrashed` | Method | `backend/app/Repositories/EloquentBookingRepository.php` | 243 |
 
 ## Connected Areas
 

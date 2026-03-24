@@ -1,3 +1,16 @@
+---
+schema_version: 1.0
+produced_by_batch: B10A
+phase: Phase D
+date: 2026-03-22
+input_artifacts:
+  - docs/cleanup/00-inventory.md
+  - docs/cleanup/01-classification-matrix.md
+  - foundation/00-output-schemas.md
+authority_order_applied: false
+unresolved_count: 0
+---
+
 # Structural Validation Results — Batch 10A
 
 > Generated: 2026-03-22 | Branch: dev

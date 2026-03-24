@@ -5,7 +5,7 @@ description: "Skill for the Authorization area of soleil-hostel. 24 symbols acro
 
 # Authorization
 
-24 symbols | 5 files | Cohesion: 49%
+24 symbols | 5 files | Cohesion: 44%
 
 ## When to Use
 
@@ -17,7 +17,7 @@ description: "Skill for the Authorization area of soleil-hostel. 24 symbols acro
 
 | File | Symbols |
 |------|---------|
-| `backend/tests/Feature/Authorization/GateTest.php` | test_admin_gate_allows_admin, test_moderator_gate_allows_admin, test_view_all_bookings_gate_allows_moderator_and_above, test_gate_authorize_passes_for_authorized, test_gate_check_is_equivalent_to_allows (+5) |
+| `backend/tests/Feature/Authorization/GateTest.php` | test_admin_gate_allows_admin, test_moderator_gate_allows_admin, test_moderate_content_gate_allows_moderator_and_above, test_gate_authorize_passes_for_authorized, test_gate_check_is_equivalent_to_allows (+5) |
 | `backend/tests/Unit/Models/UserRoleHelpersTest.php` | test_is_user_returns_true_only_for_user_role, test_role_is_cast_to_enum, test_factory_admin_state, test_has_role_exact_match, test_factory_moderator_state |
 | `backend/tests/Feature/Middleware/EnsureUserHasRoleTest.php` | test_admin_can_access_admin_route, test_admin_can_access_moderator_route, test_moderator_cannot_access_admin_route, test_moderator_can_access_moderator_route, test_all_authenticated_users_can_access_user_route |
 | `backend/database/factories/UserFactory.php` | admin, moderator |
@@ -46,7 +46,7 @@ Start here when exploring this area:
 | `test_admin_can_access_moderator_route` | Method | `backend/tests/Feature/Middleware/EnsureUserHasRoleTest.php` | 71 |
 | `test_admin_gate_allows_admin` | Method | `backend/tests/Feature/Authorization/GateTest.php` | 22 |
 | `test_moderator_gate_allows_admin` | Method | `backend/tests/Feature/Authorization/GateTest.php` | 48 |
-| `test_view_all_bookings_gate_allows_moderator_and_above` | Method | `backend/tests/Feature/Authorization/GateTest.php` | 110 |
+| `test_moderate_content_gate_allows_moderator_and_above` | Method | `backend/tests/Feature/Authorization/GateTest.php` | 92 |
 | `test_gate_authorize_passes_for_authorized` | Method | `backend/tests/Feature/Authorization/GateTest.php` | 156 |
 | `test_gate_check_is_equivalent_to_allows` | Method | `backend/tests/Feature/Authorization/GateTest.php` | 169 |
 | `moderator` | Method | `backend/database/factories/UserFactory.php` | 59 |
@@ -63,7 +63,7 @@ Start here when exploring this area:
 | Area | Connections |
 |------|-------------|
 | Room | 15 calls |
-| Booking | 5 calls |
+| Booking | 15 calls |
 
 ## How to Explore
 

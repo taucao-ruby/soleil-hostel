@@ -26,7 +26,6 @@
 - **v3.3 static analysis (2026-03-21)**: Psalm 35→0, PHPStan 151→0. 1037 tests, 0 failures.
 - Open findings: F-23 (MD lint), F-25 (CSRF path), F-26–F-62 (2026-03-20 audit). See FINDINGS_BACKLOG.md.
 - **H-06**: `phpunit.xml` defaults to PostgreSQL; run `docker compose up -d db` before `php artisan test`.
-- Test accounts (soleil_test DB): user@soleil.test / admin@soleil.test / moderator@soleil.test — `P@ssworD123`
 
 ## 2) Invariants
 
@@ -57,6 +56,7 @@ See `docs/agents/COMMANDS.md` for full command catalog.
 - PHPUnit doc-comment metadata deprecation warnings can appear; treat as non-blocking when `php artisan test` is PASS.
 - Vitest can emit `act(...)` and non-boolean DOM attribute warnings; treat as non-blocking when `npx vitest run` is PASS.
 - Any new warning pattern or warning volume increase should be treated as a change signal and reviewed.
+- Test accounts (soleil_test DB): user@soleil.test / admin@soleil.test / moderator@soleil.test — `P@ssworD123`
 
 ## 6) Key pointers (docs / important files)
 

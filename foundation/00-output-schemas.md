@@ -8,8 +8,31 @@
 - Every table must have exactly the columns defined here — no additions, no omissions
 - Enum values must be used exactly as written — no synonyms
 - Unresolved items must use the UNRESOLVED schema — no freeform text
-- Path conventions: always relative from repo root, always lowercase-kebab-case
+- Path conventions: always relative from repo root and use repo-exact casing,
+  dot-prefixes, and extensions; use lowercase-kebab-case only when that matches the
+  actual repo path
 - All deliverable files must be listed under "Deliverables produced"
+- Historical artifacts produced before this harmonization may retain legacy aliases
+  (`claude.md`, `rules/*.md`, `commands/*.md`, `hooks/*.md`, `compact/*.md`,
+  `agents/*.md`, `subagents/*.md`); treat those as compatibility aliases when
+  validating prior outputs, but use repo-exact paths for new outputs
+
+## REPO SURFACE MAP (compatibility-safe)
+
+Use these concrete repo surfaces when a batch prompt or older artifact uses a
+generic bucket label:
+
+| legacy schema label | repo surface for new outputs | compatibility note |
+|---------------------|------------------------------|--------------------|
+| `claude.md` | `CLAUDE.md` | Exact casing required in new outputs |
+| `rules/*.md` | `.agent/rules/*.md` | RULES remains the bucket name; file paths must use `.agent/rules/` |
+| `skills/*.md` | `skills/**/*.md` | When bundled or generated skills are in scope, also use `.claude/skills/**/SKILL.md` |
+| `commands/*.md` | `.claude/commands/*.md` | Slash-command contracts live under `.claude/commands/` |
+| `hooks/*.md` | `.claude/hooks/*.sh` | Runtime hooks are shell scripts, not markdown files |
+| `compact/*.md` | `docs/COMPACT.md` | Apply the same metadata block to future compact snapshots if they are introduced |
+| `worklog/*.md` | `docs/WORKLOG.md` | Append-only ledger surface in this repo |
+| `mcp/*.md` / `integrations/*.md` | `docs/mcp/*.md` / `docs/integrations/*.md` | Supporting runtime assets may live under `mcp/*/` or `integrations/*/` |
+| `agents/*.md` / `subagents/*.md` | `.claude/agents/*.md` | This repo stores agent/subagent role contracts in one directory |
 
 ---
 
@@ -98,7 +121,7 @@ Required sections:
 ## BATCH 3 — CLAUDE.MD REFACTOR OUTPUT SCHEMA
 
 ### Files:
-- claude.md (updated)
+- CLAUDE.md (updated)
 - docs/cleanup/02-invariant-delta.md
 
 Required in docs/cleanup/02-invariant-delta.md:
@@ -119,7 +142,9 @@ Required sections in 02-invariant-delta.md:
 - ## Invariant baseline (before refactor)
 - ## Invariant tracking table
 - ## Content relocation map (source → destination for all moved content)
-- ## claude.md structure after refactor (section headers only)
+- ## CLAUDE.md structure after refactor (section headers only)
+  Legacy alias accepted for pre-harmonization artifacts:
+  `## claude.md structure after refactor (section headers only)`
 - ## Unresolved items
 
 ---
@@ -127,10 +152,10 @@ Required sections in 02-invariant-delta.md:
 ## BATCH 4 — RULES NORMALIZATION OUTPUT SCHEMA
 
 ### Files:
-- rules/*.md (normalized)
+- .agent/rules/*.md (normalized)
 - docs/cleanup/03-rules-consolidation-report.md
 
-Rule template (every rules/*.md must have):
+Rule template (every .agent/rules/*.md in scope must have):
 ```
 ## Purpose
 ## Rule
@@ -162,10 +187,10 @@ Required sections:
 ## BATCH 5 — SKILLS NORMALIZATION OUTPUT SCHEMA
 
 ### Files:
-- skills/*.md (normalized)
+- skills/**/*.md and/or .claude/skills/**/SKILL.md (normalized, when in scope)
 - docs/cleanup/04-skills-refactor-report.md
 
-Skill template (every skills/*.md must have):
+Skill template (every normalized skill file in scope must have):
 ```
 ## Outcome
 ## When to use
@@ -197,10 +222,10 @@ Required sections:
 ## BATCH 6 — COMMANDS OUTPUT SCHEMA
 
 ### Files:
-- commands/*.md (normalized)
+- .claude/commands/*.md (normalized)
 - docs/cleanup/05-command-skill-map.md
 
-Command template (every commands/*.md must have):
+Command template (every .claude/commands/*.md in scope must have):
 ```
 ## Intent
 ## Required context
@@ -227,10 +252,10 @@ Required sections:
 ## BATCH 7 — HOOKS OUTPUT SCHEMA
 
 ### Files:
-- hooks/*.md (normalized)
+- .claude/hooks/*.sh (audited runtime hooks)
 - docs/cleanup/06a-hooks-report.md
 
-Hook template (every hooks/*.md must have):
+Per-hook audit fields (each .claude/hooks/*.sh entry must capture in the report):
 ```
 ## Trigger
 ## Check performed
@@ -248,10 +273,11 @@ Columns (exact, in order):
 ## BATCH 8 — COMPACT + WORKLOG OUTPUT SCHEMA
 
 ### Files:
-- compact/*.md (normalized with freshness metadata)
+- docs/COMPACT.md (normalized with freshness metadata)
+- docs/WORKLOG.md (audited append-only ledger)
 - docs/cleanup/06b-compact-worklog-report.md
 
-Compact required metadata block (top of every compact/*.md):
+Compact required metadata block (top of docs/COMPACT.md and any future compact/*.md snapshots):
 ```
 ---
 generated_from: [list of source files]
@@ -275,7 +301,7 @@ Columns (exact, in order):
 ## BATCH 9A — BOUNDARY CONTRACTS OUTPUT SCHEMA
 
 ### Files:
-- mcp/*.md or integrations/*.md (normalized)
+- docs/mcp/*.md or docs/integrations/*.md (normalized boundary contract docs)
 - docs/cleanup/07-boundary-contract-report.md
 
 Boundary contract template:
@@ -302,8 +328,7 @@ Columns (exact, in order):
 ## BATCH 9B — AGENTS/SUBAGENTS OUTPUT SCHEMA
 
 ### Files:
-- agents/*.md (normalized)
-- subagents/*.md (normalized)
+- .claude/agents/*.md (normalized agent/subagent contracts)
 - docs/cleanup/08-agent-responsibility-matrix.md
 
 Agent contract template:
@@ -331,7 +356,7 @@ Enum — severity: CRITICAL | MAJOR | MINOR | NONE
 
 Every unresolved item must be logged as:
 ```
-| UNRESOLVED-[batch]-[N] | [description] | [evidence_missing] | [blocking_batch] |
+| UNRESOLVED-[batch]-[N] | [description] | [evidence_missing] | [blocks_batch] |
 ```
 
 Columns: id | description | evidence_missing | blocks_batch
@@ -346,6 +371,16 @@ Required sections:
 - ## Naming drift detected? (YES / NO + items)
 - ## Broken references detected? (YES / NO + items)
 - ## UNRESOLVED items carried forward
-- ## Gate verdict: PASS | PASS_WITH_CONDITIONS | FAIL
-- ## Conditions (if PASS_WITH_CONDITIONS)
-- ## Blockers (if FAIL)
+- ## Gate verdict: PASS | FAIL | BLOCKED
+- ## Blockers (if FAIL or BLOCKED)
+
+Gate verdict enum:
+```
+PASS    — all acceptance criteria met; next phase may begin
+FAIL    — one or more criteria unmet; remediate before re-run
+BLOCKED — gate cannot run or close due to missing prerequisite input or pending human action
+```
+
+> Legacy note: historical gate artifacts produced before 2026-03-24 may contain
+> `PASS_WITH_CONDITIONS` as a verdict value. Treat these as historical evidence records.
+> The active schema does not permit this value for new gate artifacts.

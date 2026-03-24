@@ -1,84 +1,86 @@
 ---
 name: stays
-description: "Skill for the Stays area of soleil-hostel. 37 symbols across 11 files."
+description: "Skill for the Stays area of soleil-hostel. 41 symbols across 12 files."
 ---
 
 # Stays
 
-37 symbols | 11 files | Cohesion: 55%
+41 symbols | 12 files | Cohesion: 53%
 
 ## When to Use
 
 - Working with code in `backend/`
-- Understanding how expected, lateCheckout, checkedOut work
+- Understanding how settled, forLocation, ready work
 - Modifying stays-related functionality
 
 ## Key Files
 
 | File | Symbols |
 |------|---------|
-| `backend/tests/Feature/Stays/RoomAssignmentTest.php` | test_multiple_closed_assignments_allowed_for_same_stay, test_active_assignment_lookup_via_scope, test_current_room_assignment_relation_returns_active, test_current_room_assignment_is_null_when_no_active_assignment, test_valid_assignment_type_accepted (+5) |
-| `backend/database/factories/StayFactory.php` | expected, lateCheckout, checkedOut, noShow, inHouse |
-| `backend/tests/Feature/Stays/StayInvariantTest.php` | test_scope_in_house_returns_in_house_and_late_checkout, test_scope_in_house_excludes_expected_and_checked_out, test_scope_expected_today_returns_arrivals_scheduled_for_today, test_scope_due_out_today_returns_in_house_with_checkout_today, test_stay_creation_does_not_affect_booking_overlap_logic |
+| `backend/tests/Feature/Stays/RoomAssignmentTest.php` | test_active_assignment_lookup_via_scope, test_current_room_assignment_relation_returns_active, test_current_room_assignment_is_null_when_no_active_assignment, test_valid_assignment_type_accepted, test_assignment_belongs_to_stay_booking_and_room (+5) |
+| `backend/tests/Feature/Stays/ArrivalResolutionServiceTest.php` | resolve_prefers_same_location_equivalent_before_upgrade_and_cross_location, resolve_escalates_to_external_when_no_internal_candidate_exists, apply_accepted_recommendation_creates_internal_assignment_and_recovery_case, makeBlockedExpectedArrival, blocker_for_detects_late_checkout_conflicts_from_active_assignments |
 | `backend/tests/Feature/Stays/ServiceRecoveryCaseTest.php` | test_case_can_be_linked_to_a_stay, isPgsql, test_invalid_incident_type_rejected_by_check_constraint, test_invalid_severity_rejected_by_check_constraint, test_invalid_case_status_rejected_by_check_constraint |
-| `backend/tests/Feature/Stays/StayBackfillTest.php` | test_backfill_command_skips_confirmed_booking_that_already_has_stay, test_backfill_command_is_idempotent, test_backfill_command_creates_stay_for_confirmed_future_booking, test_backfill_command_skips_confirmed_booking_with_past_checkout |
-| `backend/app/Models/Stay.php` | scopeExpectedToday, scopeDueOutToday |
-| `backend/tests/Feature/Cache/CacheWarmupTest.php` | setUp, createTestData |
-| `backend/app/Services/Cache/CacheWarmer.php` | warmBookingsCache |
-| `backend/app/Console/Commands/BackfillOperationalStays.php` | handle |
-| `frontend/src/features/admin/bookings/BookingCalendar.tsx` | today |
+| `backend/tests/Feature/Stays/FinancialLifecycleTest.php` | booking_deposit_scopes_filter_collected_and_applied_deposits, service_recovery_total_exposure_and_settlement_scopes_reflect_operational_financial_state, invalid_deposit_and_settlement_status_values_are_rejected_by_postgresql_checks, invalid_settlement_status_value_is_rejected_by_postgresql_check_constraint |
+| `backend/database/factories/StayFactory.php` | inHouse, checkedOut, noShow, lateCheckout |
+| `backend/tests/Feature/Stays/StayInvariantTest.php` | test_stay_creation_does_not_affect_booking_overlap_logic, test_scope_in_house_returns_in_house_and_late_checkout, test_scope_in_house_excludes_expected_and_checked_out, test_scope_due_out_today_returns_in_house_with_checkout_today |
+| `backend/database/factories/RoomFactory.php` | forLocation, ready, classified |
+| `backend/database/factories/BookingFactory.php` | withDeposit, depositApplied |
+| `backend/database/factories/ServiceRecoveryCaseFactory.php` | settled |
+| `backend/app/Models/ServiceRecoveryCase.php` | totalExposure |
 
 ## Entry Points
 
 Start here when exploring this area:
 
-- **`expected`** (Method) — `backend/database/factories/StayFactory.php:37`
-- **`lateCheckout`** (Method) — `backend/database/factories/StayFactory.php:64`
-- **`checkedOut`** (Method) — `backend/database/factories/StayFactory.php:84`
-- **`noShow`** (Method) — `backend/database/factories/StayFactory.php:101`
-- **`test_scope_in_house_returns_in_house_and_late_checkout`** (Method) — `backend/tests/Feature/Stays/StayInvariantTest.php:56`
+- **`settled`** (Method) — `backend/database/factories/ServiceRecoveryCaseFactory.php:131`
+- **`forLocation`** (Method) — `backend/database/factories/RoomFactory.php:34`
+- **`ready`** (Method) — `backend/database/factories/RoomFactory.php:54`
+- **`classified`** (Method) — `backend/database/factories/RoomFactory.php:84`
+- **`withDeposit`** (Method) — `backend/database/factories/BookingFactory.php:129`
 
 ## Key Symbols
 
 | Symbol | Type | File | Line |
 |--------|------|------|------|
-| `expected` | Method | `backend/database/factories/StayFactory.php` | 37 |
-| `lateCheckout` | Method | `backend/database/factories/StayFactory.php` | 64 |
-| `checkedOut` | Method | `backend/database/factories/StayFactory.php` | 84 |
-| `noShow` | Method | `backend/database/factories/StayFactory.php` | 101 |
-| `test_scope_in_house_returns_in_house_and_late_checkout` | Method | `backend/tests/Feature/Stays/StayInvariantTest.php` | 56 |
-| `test_scope_in_house_excludes_expected_and_checked_out` | Method | `backend/tests/Feature/Stays/StayInvariantTest.php` | 77 |
-| `test_scope_expected_today_returns_arrivals_scheduled_for_today` | Method | `backend/tests/Feature/Stays/StayInvariantTest.php` | 89 |
-| `test_scope_due_out_today_returns_in_house_with_checkout_today` | Method | `backend/tests/Feature/Stays/StayInvariantTest.php` | 177 |
-| `test_backfill_command_skips_confirmed_booking_that_already_has_stay` | Method | `backend/tests/Feature/Stays/StayBackfillTest.php` | 125 |
-| `test_multiple_closed_assignments_allowed_for_same_stay` | Method | `backend/tests/Feature/Stays/RoomAssignmentTest.php` | 115 |
-| `scopeExpectedToday` | Method | `backend/app/Models/Stay.php` | 118 |
-| `scopeDueOutToday` | Method | `backend/app/Models/Stay.php` | 128 |
-| `test_backfill_command_is_idempotent` | Method | `backend/tests/Feature/Stays/StayBackfillTest.php` | 63 |
-| `test_backfill_command_creates_stay_for_confirmed_future_booking` | Method | `backend/tests/Feature/Stays/StayBackfillTest.php` | 86 |
-| `test_backfill_command_skips_confirmed_booking_with_past_checkout` | Method | `backend/tests/Feature/Stays/StayBackfillTest.php` | 99 |
-| `setUp` | Method | `backend/tests/Feature/Cache/CacheWarmupTest.php` | 28 |
-| `createTestData` | Method | `backend/tests/Feature/Cache/CacheWarmupTest.php` | 41 |
-| `warmBookingsCache` | Method | `backend/app/Services/Cache/CacheWarmer.php` | 390 |
-| `handle` | Method | `backend/app/Console/Commands/BackfillOperationalStays.php` | 45 |
+| `settled` | Method | `backend/database/factories/ServiceRecoveryCaseFactory.php` | 131 |
+| `forLocation` | Method | `backend/database/factories/RoomFactory.php` | 34 |
+| `ready` | Method | `backend/database/factories/RoomFactory.php` | 54 |
+| `classified` | Method | `backend/database/factories/RoomFactory.php` | 84 |
+| `withDeposit` | Method | `backend/database/factories/BookingFactory.php` | 129 |
+| `depositApplied` | Method | `backend/database/factories/BookingFactory.php` | 141 |
+| `totalExposure` | Method | `backend/app/Models/ServiceRecoveryCase.php` | 150 |
+| `booking_deposit_scopes_filter_collected_and_applied_deposits` | Method | `backend/tests/Feature/Stays/FinancialLifecycleTest.php` | 17 |
+| `service_recovery_total_exposure_and_settlement_scopes_reflect_operational_financial_state` | Method | `backend/tests/Feature/Stays/FinancialLifecycleTest.php` | 39 |
+| `invalid_deposit_and_settlement_status_values_are_rejected_by_postgresql_checks` | Method | `backend/tests/Feature/Stays/FinancialLifecycleTest.php` | 63 |
+| `invalid_settlement_status_value_is_rejected_by_postgresql_check_constraint` | Method | `backend/tests/Feature/Stays/FinancialLifecycleTest.php` | 89 |
+| `resolve_prefers_same_location_equivalent_before_upgrade_and_cross_location` | Method | `backend/tests/Feature/Stays/ArrivalResolutionServiceTest.php` | 32 |
+| `resolve_escalates_to_external_when_no_internal_candidate_exists` | Method | `backend/tests/Feature/Stays/ArrivalResolutionServiceTest.php` | 100 |
+| `apply_accepted_recommendation_creates_internal_assignment_and_recovery_case` | Method | `backend/tests/Feature/Stays/ArrivalResolutionServiceTest.php` | 115 |
+| `makeBlockedExpectedArrival` | Method | `backend/tests/Feature/Stays/ArrivalResolutionServiceTest.php` | 172 |
 | `inHouse` | Method | `backend/database/factories/StayFactory.php` | 49 |
+| `closed` | Method | `backend/database/factories/RoomAssignmentFactory.php` | 48 |
+| `test_stay_creation_does_not_affect_booking_overlap_logic` | Method | `backend/tests/Feature/Stays/StayInvariantTest.php` | 137 |
+| `test_case_can_be_linked_to_a_stay` | Method | `backend/tests/Feature/Stays/ServiceRecoveryCaseTest.php` | 53 |
+| `test_active_assignment_lookup_via_scope` | Method | `backend/tests/Feature/Stays/RoomAssignmentTest.php` | 36 |
 
 ## Execution Flows
 
 | Flow | Type | Steps |
 |------|------|-------|
-| `ExecuteWarmup → Today` | cross_community | 5 |
+| `Run → ForLocation` | cross_community | 3 |
 
 ## Connected Areas
 
 | Area | Connections |
 |------|-------------|
-| Room | 17 calls |
-| Feature | 10 calls |
-| Cache | 4 calls |
+| Room | 23 calls |
+| Feature | 9 calls |
+| Cache | 6 calls |
+| Enums | 3 calls |
+| Services | 2 calls |
 
 ## How to Explore
 
-1. `gitnexus_context({name: "expected"})` — see callers and callees
+1. `gitnexus_context({name: "settled"})` — see callers and callees
 2. `gitnexus_query({query: "stays"})` — find related execution flows
 3. Read key files listed above for implementation details

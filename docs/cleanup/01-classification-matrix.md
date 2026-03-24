@@ -1,3 +1,16 @@
+---
+schema_version: 1.0
+produced_by_batch: B2
+phase: Phase A
+date: 2026-03-22
+input_artifacts:
+  - docs/cleanup/00-inventory.md
+  - foundation/00-master-contract.md
+  - foundation/00-output-schemas.md
+authority_order_applied: true
+unresolved_count: 0
+---
+
 # Classification Matrix
 
 > Batch 2 output | Generated: 2026-03-22 | Branch: dev

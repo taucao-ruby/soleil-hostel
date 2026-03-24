@@ -1,11 +1,11 @@
 ---
 name: auth
-description: "Skill for the Auth area of soleil-hostel. 54 symbols across 19 files."
+description: "Skill for the Auth area of soleil-hostel. 73 symbols across 22 files."
 ---
 
 # Auth
 
-54 symbols | 19 files | Cohesion: 87%
+73 symbols | 22 files | Cohesion: 82%
 
 ## When to Use
 
@@ -17,16 +17,16 @@ description: "Skill for the Auth area of soleil-hostel. 54 symbols across 19 fil
 
 | File | Symbols |
 |------|---------|
-| `backend/tests/Feature/Auth/EmailVerificationTest.php` | unverified_user_cannot_access_verified_routes, can_check_verification_status_for_unverified_user, user_can_verify_email_with_valid_signed_url, expired_verification_link_is_rejected, verification_link_expires_after_configured_time (+8) |
-| `backend/tests/Feature/Auth/SoleilTokenCookieEncryptionTest.php` | test_soleil_token_cookie_is_plain_uuid_not_encrypted, test_control_cookie_remains_encrypted, extractCookieValue, test_revoked_token_cookie_returns_401_on_v1_endpoint, test_expired_token_cookie_returns_401_on_v1_endpoint (+1) |
+| `backend/tests/Feature/Auth/SoleilTokenCookieEncryptionTest.php` | test_cookie_uuid_resolves_user_on_protected_endpoint, test_cookie_fallback_passes_auth_middleware_on_v1_endpoint, test_revoked_token_cookie_returns_401_on_v1_endpoint, test_expired_token_cookie_returns_401_on_v1_endpoint, test_security_headers_present_on_httponly_authenticated_endpoint (+4) |
+| `backend/tests/Feature/Auth/EmailVerificationTest.php` | can_check_verification_status_for_verified_user, already_verified_user_gets_success_response, verified_user_cannot_request_resend, verification_notice_returns_verified_status, email_change_clears_verification_status (+3) |
+| `backend/tests/Feature/TokenExpirationTest.php` | test_expired_token_returns_401, test_refresh_token_creates_new_and_revokes_old, test_logout_revokes_token, test_cannot_refresh_expired_token, test_logout_all_devices_revokes_all_tokens (+2) |
+| `backend/app/Models/PersonalAccessToken.php` | revoke, incrementRefreshCount, revokeOtherDevices, revokeAllUserTokens, isValid (+2) |
+| `backend/tests/Feature/Auth/AuthConsolidationTest.php` | test_unified_logout_all_works_with_bearer_token, test_unified_logout_all_works_with_httponly_cookie, test_unified_endpoints_return_401_with_expired_token, test_cookie_mode_takes_precedence, test_unified_endpoints_return_401_with_revoked_token |
 | `backend/tests/Unit/Requests/Auth/LoginRequestValidationTest.php` | rules, test_password_requires_minimum_8_characters, test_password_passes_with_8_characters, test_password_is_required, test_email_is_required |
-| `backend/app/Models/PersonalAccessToken.php` | revoke, incrementRefreshCount, revokeOtherDevices, revokeAllUserTokens |
-| `backend/app/Http/Controllers/Auth/HttpOnlyTokenController.php` | refresh, logout, login, generateDeviceFingerprint |
-| `backend/app/Http/Controllers/Auth/AuthController.php` | refresh, logout, logoutAll |
-| `backend/app/Http/Controllers/Auth/UnifiedAuthController.php` | logout, logoutAll |
-| `frontend/src/shared/utils/csrf.ts` | setCsrfToken, clearCsrfToken |
-| `frontend/src/features/auth/AuthContext.tsx` | AuthProvider, validateToken |
-| `backend/tests/Feature/Auth/AuthenticationTest.php` | test_login_success_with_valid_credentials, test_refresh_token_creates_new_token |
+| `backend/tests/Feature/Auth/AuthenticationTest.php` | test_expired_token_returns_401, test_logout_all_devices_revokes_all_tokens, test_login_success_with_valid_credentials, test_refresh_token_creates_new_token |
+| `backend/app/Http/Controllers/Auth/UnifiedAuthController.php` | logoutAll, me, logout, detectAuthMode |
+| `backend/app/Http/Controllers/Auth/AuthController.php` | refresh, logout, logoutAll, me |
+| `backend/app/Http/Controllers/Auth/HttpOnlyTokenController.php` | refresh, logout, me |
 
 ## Entry Points
 
@@ -47,21 +47,21 @@ Start here when exploring this area:
 | `clearCsrfToken` | Function | `frontend/src/shared/utils/csrf.ts` | 40 |
 | `AuthProvider` | Function | `frontend/src/features/auth/AuthContext.tsx` | 46 |
 | `validateToken` | Function | `frontend/src/features/auth/AuthContext.tsx` | 72 |
-| `revoke` | Method | `backend/app/Models/PersonalAccessToken.php` | 220 |
-| `incrementRefreshCount` | Method | `backend/app/Models/PersonalAccessToken.php` | 274 |
-| `revokeOtherDevices` | Method | `backend/app/Models/PersonalAccessToken.php` | 342 |
-| `revokeAllUserTokens` | Method | `backend/app/Models/PersonalAccessToken.php` | 366 |
-| `test_unified_endpoints_return_401_with_revoked_token` | Method | `backend/tests/Feature/Auth/AuthConsolidationTest.php` | 320 |
-| `logout` | Method | `backend/app/Http/Controllers/Auth/UnifiedAuthController.php` | 68 |
-| `logoutAll` | Method | `backend/app/Http/Controllers/Auth/UnifiedAuthController.php` | 89 |
-| `refresh` | Method | `backend/app/Http/Controllers/Auth/HttpOnlyTokenController.php` | 156 |
-| `logout` | Method | `backend/app/Http/Controllers/Auth/HttpOnlyTokenController.php` | 247 |
-| `refresh` | Method | `backend/app/Http/Controllers/Auth/AuthController.php` | 166 |
-| `logout` | Method | `backend/app/Http/Controllers/Auth/AuthController.php` | 277 |
-| `logoutAll` | Method | `backend/app/Http/Controllers/Auth/AuthController.php` | 318 |
-| `unverified` | Method | `backend/database/factories/UserFactory.php` | 39 |
-| `unverified_user_cannot_access_verified_routes` | Method | `backend/tests/Feature/Auth/EmailVerificationTest.php` | 29 |
-| `can_check_verification_status_for_unverified_user` | Method | `backend/tests/Feature/Auth/EmailVerificationTest.php` | 61 |
+| `test_expired_token_returns_401` | Method | `backend/tests/Feature/TokenExpirationTest.php` | 102 |
+| `test_refresh_token_creates_new_and_revokes_old` | Method | `backend/tests/Feature/TokenExpirationTest.php` | 135 |
+| `test_logout_revokes_token` | Method | `backend/tests/Feature/TokenExpirationTest.php` | 193 |
+| `test_cannot_refresh_expired_token` | Method | `backend/tests/Feature/TokenExpirationTest.php` | 242 |
+| `test_logout_all_devices_revokes_all_tokens` | Method | `backend/tests/Feature/TokenExpirationTest.php` | 274 |
+| `test_get_current_user_info_with_token_expiration` | Method | `backend/tests/Feature/TokenExpirationTest.php` | 379 |
+| `test_suspicious_activity_revokes_token` | Method | `backend/tests/Feature/TokenExpirationTest.php` | 462 |
+| `setUp` | Method | `backend/tests/Feature/CreateBookingConcurrencyTest.php` | 34 |
+| `createToken` | Method | `backend/app/Models/User.php` | 154 |
+| `test_booking_create_error_returns_localized_message` | Method | `backend/tests/Feature/I18n/LocaleTest.php` | 40 |
+| `setUp` | Method | `backend/tests/Feature/Booking/ConcurrentBookingTest.php` | 38 |
+| `can_check_verification_status_for_verified_user` | Method | `backend/tests/Feature/Auth/EmailVerificationTest.php` | 83 |
+| `already_verified_user_gets_success_response` | Method | `backend/tests/Feature/Auth/EmailVerificationTest.php` | 152 |
+| `verified_user_cannot_request_resend` | Method | `backend/tests/Feature/Auth/EmailVerificationTest.php` | 270 |
+| `verification_notice_returns_verified_status` | Method | `backend/tests/Feature/Auth/EmailVerificationTest.php` | 393 |
 
 ## Execution Flows
 
@@ -69,22 +69,23 @@ Start here when exploring this area:
 |------|------|-------|
 | `LogoutAll → IsExpired` | cross_community | 4 |
 | `LogoutAll → IsRevoked` | cross_community | 4 |
+| `Me → IsExpired` | cross_community | 4 |
+| `Me → IsRevoked` | cross_community | 4 |
 | `Logout → IsExpired` | cross_community | 4 |
 | `Logout → IsRevoked` | cross_community | 4 |
 | `Handle → IsRevoked` | cross_community | 3 |
 | `Handle → IsRevoked` | cross_community | 3 |
 | `Login → IsRevoked` | cross_community | 3 |
 | `Refresh → IsRevoked` | cross_community | 3 |
-| `Refresh → IsRevoked` | cross_community | 3 |
-| `RevokeOtherDevices → IsRevoked` | cross_community | 3 |
 
 ## Connected Areas
 
 | Area | Connections |
 |------|-------------|
-| Room | 8 calls |
-| Models | 5 calls |
+| Controllers | 8 calls |
+| Models | 7 calls |
 | Booking | 3 calls |
+| Feature | 2 calls |
 
 ## How to Explore
 

@@ -32,7 +32,7 @@ description: "Skill for the Policies area of soleil-hostel. 65 symbols across 13
 
 Start here when exploring this area:
 
-- **`Booking`** (Class) — `backend/app/Models/Booking.php:13`
+- **`Booking`** (Class) — `backend/app/Models/Booking.php:14`
 - **`Review`** (Class) — `backend/app/Models/Review.php:15`
 - **`User`** (Class) — `backend/app/Models/User.php:15`
 - **`update`** (Method) — `backend/app/Policies/RoomPolicy.php:36`
@@ -42,7 +42,7 @@ Start here when exploring this area:
 
 | Symbol | Type | File | Line |
 |--------|------|------|------|
-| `Booking` | Class | `backend/app/Models/Booking.php` | 13 |
+| `Booking` | Class | `backend/app/Models/Booking.php` | 14 |
 | `Review` | Class | `backend/app/Models/Review.php` | 15 |
 | `User` | Class | `backend/app/Models/User.php` | 15 |
 | `update` | Method | `backend/app/Policies/RoomPolicy.php` | 36 |

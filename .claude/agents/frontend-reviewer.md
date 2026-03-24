@@ -68,3 +68,7 @@ For each finding:
 ```
 
 Provide a summary with finding counts by category.
+
+## Linked Protocols
+
+- [API Endpoint Security Handoff Protocol](../../docs/agents/api-handoff-protocol.md)

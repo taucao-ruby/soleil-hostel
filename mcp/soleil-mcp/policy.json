@@ -1,4 +1,5 @@
 {
+  "schema_version": "1.0",
   "allowed_commands": {
     "backend_tests": {
       "cwd": "backend",

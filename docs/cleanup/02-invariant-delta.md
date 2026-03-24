@@ -1,3 +1,17 @@
+---
+schema_version: 1.0
+produced_by_batch: B3
+phase: Phase B
+date: 2026-03-22
+input_artifacts:
+  - foundation/03-invariant-baseline.md
+  - foundation/00-master-contract.md
+  - foundation/00-output-schemas.md
+  - docs/cleanup/01-classification-matrix.md
+authority_order_applied: false
+unresolved_count: 1
+---
+
 # Invariant Delta — Batch 3
 
 > Generated: 2026-03-22 | Branch: dev

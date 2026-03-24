@@ -45,6 +45,13 @@ Read these for domain context (CLAUDE.md + ARCHITECTURE_FACTS.md are already loa
 
 Per finding: `| File:Line | Severity (Critical/High/Medium/Low) | Issue | Suggested Fix |`
 
+## Escalation
+
+If the agent cannot resolve after completing all steps:
+1. Stop and preserve all work in progress.
+2. Output a structured summary: what was completed, what remains unresolved, and the specific blocker.
+3. Surface to the human operator for decision.
+
 ## Summary
 ## Findings
 ## Residual Risk

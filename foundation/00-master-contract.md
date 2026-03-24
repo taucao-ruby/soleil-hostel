@@ -17,7 +17,9 @@ Operate with Anthropic-grade execution standards:
 ---
 
 ## OPERATING MODE
-- READ contracts and schemas FIRST, before inspecting any file
+- READ `foundation/00-master-contract.md`, `foundation/00-output-schemas.md`, and
+  `foundation/00-authority-order.md` FIRST, then inspect the repo-specific inputs
+  named by the batch
 - INSPECT before changing
 - SEPARATE observed reality from proposed changes — never mix them
 - PREFER the minimum safe change that achieves the batch objective
@@ -29,25 +31,39 @@ Operate with Anthropic-grade execution standards:
 ## AUTHORITY ORDER (binding for all batches)
 When two sources conflict, resolve using this hierarchy — top wins:
 
-1. claude.md (root contract / constitution)
-2. rules/ (non-negotiable constraints)
-3. skills/ (execution procedures)
-4. commands/ (thin entrypoints)
-5. hooks/ (runtime enforcement notes)
-6. compact/ (temporary context snapshot — expires, never source-of-truth)
-7. worklog/ (dated execution ledger — never source-of-truth)
+1. `CLAUDE.md` (root contract / constitution)
+2. `docs/agents/ARCHITECTURE_FACTS.md` (canonical invariants)
+3. `docs/agents/CONTRACT.md` (definition of done / task contract)
+4. Canonical policy references:
+   `docs/PERMISSION_MATRIX.md`, `docs/DB_FACTS.md`
+5. Derived rules and execution procedures:
+   `.agent/rules/*.md`, `skills/`, `skill-os/`, `.claude/skills/`
+6. Thin entrypoints / command surfaces:
+   `.claude/commands/`, `.claude/output-styles/`
+7. Runtime enforcement:
+   `.claude/hooks/`, `.claude/settings*.json`
+8. Agent role contracts:
+   `.claude/agents/`
+9. Temporary context snapshots:
+   `docs/COMPACT.md`, `PROJECT_STATUS.md`
+10. Dated ledgers / backlog history:
+   `docs/WORKLOG.md`, `BACKLOG.md`
 
 Resolution rule: lower layer must reference or be corrected to conform to
 higher layer. Never "negotiate wording" between conflicting sources.
 When conflict cannot be resolved from evidence alone, mark UNRESOLVED.
+If a batch prompt uses conceptual bucket names (`rules/`, `commands/`, `compact/`),
+bind them to the observed repo paths above before making claims.
 
 ---
 
 ## EVIDENCE DISCIPLINE
-- Do not infer production truth from compact/ or worklog/ if canonical files disagree
+- Do not infer production truth from compact snapshots or worklogs if canonical files disagree
 - Do not treat a summary as fact when source files are available
 - Do not reproduce policy from memory — read the file
 - Do not claim a file "probably does X" — inspect it or mark it unclear
+- Do not cite generic directories when concrete repo paths exist — use observed paths
+- Use repository-exact path casing in evidence and reports (`CLAUDE.md`, not `claude.md`)
 - If a required file is missing, stop and report what is missing
 
 ---
@@ -62,16 +78,18 @@ For every piece of content that is moved, merged, archived, or deleted:
 ---
 
 ## COMPACT LIFETIME RULE
-compact/ files are temporary context snapshots.
+Compact snapshot files are temporary context snapshots.
+In this repo the active compact file is `docs/COMPACT.md`; if future batches emit
+`compact/*.md`, apply the same metadata rule.
 They MUST carry:
 - generated_from: [source files]
 - last_verified_at: [timestamp or session ID]
 - scope: [what this compact covers]
 - expiry_trigger: [what event invalidates this compact]
 
-compact/ files MUST NOT be consumed as source-of-truth when source files
+Compact snapshot files MUST NOT be consumed as source-of-truth when source files
 are available and disagree with the compact.
-compact/ files are NOT policy stores, NOT architecture truth, NOT rule sources.
+Compact snapshot files are NOT policy stores, NOT architecture truth, NOT rule sources.
 
 ---
 
@@ -79,6 +97,7 @@ compact/ files are NOT policy stores, NOT architecture truth, NOT rule sources.
 - Do not guess missing contracts
 - Do not treat summaries as source-of-truth when canonical files disagree
 - Do not mix constitution, rules, procedures, hooks, compact, worklog, and boundary concerns
+- Do not invent abstract layer paths when the repo already has concrete paths for them
 - Do not silently delete content — preserve traceability always
 - Do not overclaim completion or validation
 - Do not claim "production-ready", "deployable as-is", or "fully validated"
@@ -115,7 +134,7 @@ Stop execution and report instead of proceeding if:
 ---
 
 ## REPORT STRUCTURE (required in every batch output)
-Every batch must produce a report with these exact sections:
+Every batch must produce a report with these exact sections, in this exact order:
 
 ### Observed reality
 ### Conflicts detected

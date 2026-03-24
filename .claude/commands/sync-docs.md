@@ -34,6 +34,13 @@ routes, frontend features, `docker-compose.yml`, `package.json`, `composer.json`
 
 Per finding: `| Doc File | Section | Stale Content | Current Reality | Proposed Edit |`
 
+## Escalation
+
+If the agent cannot resolve after completing all steps:
+1. Stop and preserve all work in progress.
+2. Output a structured summary: what was completed, what remains unresolved, and the specific blocker.
+3. Surface to the human operator for decision.
+
 ## Summary
 ## Findings
 ## Proposed Edits

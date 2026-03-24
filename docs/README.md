@@ -184,7 +184,7 @@ See [WORKLOG.md](./WORKLOG.md) for chronological change log.
 | [OPERATIONAL_PLAYBOOK.md](./OPERATIONAL_PLAYBOOK.md) | Incident runbooks              |
 | [PERFORMANCE_BASELINE.md](./PERFORMANCE_BASELINE.md) | Performance benchmarks         |
 | [API_DEPRECATION.md](./API_DEPRECATION.md)           | API versioning & deprecation   |
-| [DEVELOPMENT_HOOKS.md](./DEVELOPMENT_HOOKS.md)       | Redirect to HOOKS.md           |
+| [HOOKS.md](./HOOKS.md)                               | Git hooks \u0026 enforcement       |
 | [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md)           | Migration guide                |
 
 ### Agent & Governance

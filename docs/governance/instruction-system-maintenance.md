@@ -1,3 +1,19 @@
+---
+schema_version: 1.0
+produced_by_batch: B10E
+phase: Phase D
+date: 2026-03-22
+input_artifacts:
+  - docs/cleanup/00-inventory.md
+  - docs/cleanup/01-classification-matrix.md
+  - docs/validation/10a-structural-results.md
+  - docs/validation/drift-matrix.md
+  - docs/validation/boundary-checklist.md
+  - docs/cleanup/unresolved-registry.md
+authority_order_applied: true
+unresolved_count: 0
+---
+
 # Instruction System Maintenance Guide
 
 > Governance loop for keeping the Soleil Hostel instruction system healthy.
@@ -130,9 +146,9 @@ When files disagree, this is the resolution order:
 | Conformance fixtures | `docs/validation/fixtures/RC-001.md` | Booking overlap rule |
 | Execution fixtures | `docs/validation/fixtures/SE-001.md` | /fix-backend gates |
 | Command fixtures | `docs/validation/fixtures/CD-001.md` | Slash command availability |
-| Gate A | `gates/gate-phase-a-review.md` | PASS |
-| Gate B | `gates/gate-phase-b-review.md` | PASS |
-| Gate C | `gates/gate-phase-c-review.md` | PASS |
+| Gate A | `docs/gates/gate-a-result.md` | PASS_WITH_CONDITIONS |
+| Gate B | `docs/gates/gate-b-result.md` | PASS_WITH_CONDITIONS |
+| Gate C | `docs/gates/gate-c-result.md` | PASS_WITH_CONDITIONS |
 
 ## Open Items (carried from all phases)
 

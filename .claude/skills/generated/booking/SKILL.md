@@ -1,11 +1,11 @@
 ---
 name: booking
-description: "Skill for the Booking area of soleil-hostel. 159 symbols across 34 files."
+description: "Skill for the Booking area of soleil-hostel. 179 symbols across 39 files."
 ---
 
 # Booking
 
-159 symbols | 34 files | Cohesion: 65%
+179 symbols | 39 files | Cohesion: 62%
 
 ## When to Use
 
@@ -25,8 +25,8 @@ description: "Skill for the Booking area of soleil-hostel. 159 symbols across 34
 | `backend/tests/Feature/CreateBookingConcurrencyTest.php` | test_normal_booking_creation_succeeds, test_fully_overlapping_booking_is_rejected, test_same_day_checkin_checkout_boundary_is_allowed, test_partial_overlap_at_start_is_rejected, test_partial_overlap_at_end_is_rejected (+5) |
 | `backend/tests/Feature/Health/HealthEndpointTest.php` | test_detailed_requires_admin_role, test_detailed_returns_full_health_for_admin, test_db_endpoint_returns_healthy_for_admin, test_cache_endpoint_returns_healthy_for_admin, test_queue_endpoint_returns_healthy_for_admin (+1) |
 | `backend/tests/Feature/Contact/ContactAuthorizationTest.php` | test_moderator_can_access_contact_index, test_user_cannot_access_contact_index, test_admin_can_access_contact_index, test_moderator_can_mark_contact_as_read, test_user_cannot_mark_contact_as_read (+1) |
+| `backend/tests/Feature/RoomOptimisticLockingTest.php` | test_post_rooms_creates_room_with_lock_version_1, test_put_room_with_correct_version_succeeds_and_increments_version, test_put_room_with_stale_version_returns_409_conflict, test_put_room_without_lock_version_uses_backward_compatible_mode, test_concurrent_api_updates_second_request_fails_with_409 |
 | `backend/tests/Feature/User/ProfileTest.php` | test_user_can_view_own_profile, test_legacy_me_endpoint_returns_user_data, test_unified_me_endpoint_has_transient_token_bug, test_profile_update_endpoint_not_implemented, test_password_change_endpoint_not_implemented |
-| `backend/tests/Feature/Room/RoomCrudTest.php` | test_admin_can_create_room, test_regular_user_cannot_create_room, test_admin_can_update_room, test_update_returns_404_for_nonexistent_room, test_delete_returns_404_for_nonexistent_room |
 
 ## Entry Points
 
@@ -36,7 +36,7 @@ Start here when exploring this area:
 - **`formatDateForInput`** (Function) — `frontend/src/features/booking/booking.validation.ts:109`
 - **`getMinCheckInDate`** (Function) — `frontend/src/features/booking/booking.validation.ts:119`
 - **`getMinCheckOutDate`** (Function) — `frontend/src/features/booking/booking.validation.ts:126`
-- **`isValidEmail`** (Function) — `frontend/src/shared/utils/security.ts:39`
+- **`useMyBookingsQuery`** (Function) — `frontend/src/features/bookings/useMyBookings.ts:11`
 
 ## Key Symbols
 
@@ -46,22 +46,22 @@ Start here when exploring this area:
 | `formatDateForInput` | Function | `frontend/src/features/booking/booking.validation.ts` | 109 |
 | `getMinCheckInDate` | Function | `frontend/src/features/booking/booking.validation.ts` | 119 |
 | `getMinCheckOutDate` | Function | `frontend/src/features/booking/booking.validation.ts` | 126 |
+| `useMyBookingsQuery` | Function | `frontend/src/features/bookings/useMyBookings.ts` | 11 |
+| `fetchMyBookings` | Function | `frontend/src/features/booking/booking.api.ts` | 36 |
 | `isValidEmail` | Function | `frontend/src/shared/utils/security.ts` | 39 |
 | `validateBookingForm` | Function | `frontend/src/features/booking/booking.validation.ts` | 20 |
 | `createBooking` | Function | `frontend/src/features/booking/booking.api.ts` | 24 |
 | `getBookingById` | Function | `frontend/src/features/booking/booking.api.ts` | 58 |
 | `actingAs` | Method | `backend/tests/TestCase.php` | 36 |
 | `assertConflictResponse` | Method | `backend/tests/Traits/RoomTestAssertions.php` | 60 |
+| `test_post_rooms_creates_room_with_lock_version_1` | Method | `backend/tests/Feature/RoomOptimisticLockingTest.php` | 320 |
+| `test_put_room_with_correct_version_succeeds_and_increments_version` | Method | `backend/tests/Feature/RoomOptimisticLockingTest.php` | 338 |
+| `test_put_room_with_stale_version_returns_409_conflict` | Method | `backend/tests/Feature/RoomOptimisticLockingTest.php` | 366 |
+| `test_put_room_without_lock_version_uses_backward_compatible_mode` | Method | `backend/tests/Feature/RoomOptimisticLockingTest.php` | 400 |
+| `test_concurrent_api_updates_second_request_fails_with_409` | Method | `backend/tests/Feature/RoomOptimisticLockingTest.php` | 428 |
 | `actingAsAdmin` | Method | `backend/tests/Feature/MonitoringLoggingTest.php` | 16 |
 | `test_detailed_health_endpoint_returns_correct_structure` | Method | `backend/tests/Feature/MonitoringLoggingTest.php` | 66 |
 | `test_normal_booking_creation_succeeds` | Method | `backend/tests/Feature/CreateBookingConcurrencyTest.php` | 56 |
-| `test_fully_overlapping_booking_is_rejected` | Method | `backend/tests/Feature/CreateBookingConcurrencyTest.php` | 89 |
-| `test_same_day_checkin_checkout_boundary_is_allowed` | Method | `backend/tests/Feature/CreateBookingConcurrencyTest.php` | 136 |
-| `test_partial_overlap_at_start_is_rejected` | Method | `backend/tests/Feature/CreateBookingConcurrencyTest.php` | 179 |
-| `test_partial_overlap_at_end_is_rejected` | Method | `backend/tests/Feature/CreateBookingConcurrencyTest.php` | 219 |
-| `test_cancelled_booking_does_not_block_new_booking` | Method | `backend/tests/Feature/CreateBookingConcurrencyTest.php` | 259 |
-| `test_booking_update_with_overlap_is_rejected` | Method | `backend/tests/Feature/CreateBookingConcurrencyTest.php` | 299 |
-| `test_different_rooms_can_have_same_dates` | Method | `backend/tests/Feature/CreateBookingConcurrencyTest.php` | 348 |
 
 ## Execution Flows
 
@@ -71,14 +71,18 @@ Start here when exploring this area:
 | `BookingForm → GetRooms` | cross_community | 3 |
 | `BookingForm → FormatDateForInput` | intra_community | 3 |
 | `HandleSubmit → IsValidEmail` | intra_community | 3 |
+| `GuestDashboard → FetchMyBookings` | cross_community | 3 |
+| `GuestDashboard → FetchBookings` | cross_community | 3 |
+| `BookingList → FetchMyBookings` | intra_community | 3 |
 
 ## Connected Areas
 
 | Area | Connections |
 |------|-------------|
-| Room | 4 calls |
 | Feature | 3 calls |
 | Rooms | 2 calls |
+| Room | 2 calls |
+| Auth | 1 calls |
 
 ## How to Explore
 

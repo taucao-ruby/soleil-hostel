@@ -1,3 +1,17 @@
+---
+schema_version: 1.0
+produced_by_batch: B6
+phase: Phase B
+date: 2026-03-22
+input_artifacts:
+  - docs/cleanup/04-skills-refactor-report.md
+  - docs/cleanup/01-classification-matrix.md
+  - foundation/00-master-contract.md
+  - foundation/00-output-schemas.md
+authority_order_applied: false
+unresolved_count: 2
+---
+
 # Command-Skill Map — Batch 6
 
 > Generated: 2026-03-22 | Branch: dev

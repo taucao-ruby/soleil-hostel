@@ -1,11 +1,11 @@
 ---
 name: controllers
-description: "Skill for the Controllers area of soleil-hostel. 29 symbols across 22 files."
+description: "Skill for the Controllers area of soleil-hostel. 54 symbols across 29 files."
 ---
 
 # Controllers
 
-29 symbols | 22 files | Cohesion: 90%
+54 symbols | 29 files | Cohesion: 75%
 
 ## When to Use
 
@@ -17,16 +17,16 @@ description: "Skill for the Controllers area of soleil-hostel. 29 symbols across
 
 | File | Symbols |
 |------|---------|
-| `backend/app/Http/Controllers/AdminBookingController.php` | AdminBookingController, showTrashed, restore, forceDelete, restoreBulk |
-| `backend/app/Http/Controllers/BookingController.php` | BookingController, confirm, cancel, buildCancellationMessage |
-| `backend/app/Http/Controllers/RoomController.php` | RoomController |
-| `backend/app/Http/Controllers/ReviewController.php` | ReviewController |
-| `backend/app/Http/Controllers/LocationController.php` | LocationController |
-| `backend/app/Http/Controllers/HealthController.php` | HealthController |
-| `backend/app/Http/Controllers/CspViolationReportController.php` | CspViolationReportController |
-| `backend/app/Http/Controllers/Controller.php` | Controller |
-| `backend/app/Http/Controllers/ContactController.php` | ContactController |
-| `backend/app/Http/Controllers/AuthController.php` | AuthController |
+| `backend/app/Http/Controllers/AdminBookingController.php` | index, trashed, AdminBookingController, showTrashed, restore (+2) |
+| `backend/app/Http/Controllers/AuthController.php` | register, login, me, logout, refresh (+1) |
+| `backend/app/Http/Controllers/BookingController.php` | BookingController, cancel, buildCancellationMessage, store, update |
+| `backend/app/Http/Controllers/ContactController.php` | store, index, markAsRead, ContactController |
+| `backend/app/Http/Controllers/RoomController.php` | RoomController, show, store, update |
+| `backend/app/Http/Controllers/Auth/HttpOnlyTokenController.php` | login, generateDeviceFingerprint, HttpOnlyTokenController |
+| `backend/app/Services/BookingService.php` | getTrashedBookings, getTrashedBookingById |
+| `backend/app/Repositories/Contracts/BookingRepositoryInterface.php` | getAllWithTrashedPaginated, hasOverlappingBookings |
+| `backend/app/Traits/ApiResponse.php` | success |
+| `backend/app/Services/ContactMessageService.php` | getPaginated |
 
 ## Entry Points
 
@@ -57,34 +57,39 @@ Start here when exploring this area:
 | `EmailVerificationController` | Class | `backend/app/Http/Controllers/Auth/EmailVerificationController.php` | 26 |
 | `AuthController` | Class | `backend/app/Http/Controllers/Auth/AuthController.php` | 34 |
 | `CustomerController` | Class | `backend/app/Http/Controllers/Admin/CustomerController.php` | 8 |
+| `RoomResource` | Class | `backend/app/Http/Resources/RoomResource.php` | 14 |
 | `BookingResource` | Class | `backend/app/Http/Resources/BookingResource.php` | 8 |
 | `getErrorMessage` | Function | `frontend/src/shared/utils/toast.ts` | 115 |
-| `getTrashedBookingById` | Method | `backend/app/Services/BookingService.php` | 406 |
-| `hasOverlappingBookings` | Method | `backend/app/Repositories/Contracts/BookingRepositoryInterface.php` | 156 |
-| `confirm` | Method | `backend/app/Http/Controllers/BookingController.php` | 212 |
+| `success` | Method | `backend/app/Traits/ApiResponse.php` | 11 |
+| `getPaginated` | Method | `backend/app/Services/ContactMessageService.php` | 47 |
 
 ## Execution Flows
 
 | Flow | Type | Steps |
 |------|------|-------|
-| `Handle → SupportsTags` | cross_community | 6 |
-| `Handle → Flush` | cross_community | 6 |
-| `Handle → BookingConfirmed` | cross_community | 4 |
-| `Handle → BookingResource` | intra_community | 3 |
-| `RestoreBulk → GetTrashedBookingById` | intra_community | 3 |
-| `RestoreBulk → HasOverlappingBookings` | intra_community | 3 |
-| `RestoreBulk → BookingResource` | intra_community | 3 |
-| `HandleCancelConfirm → User` | cross_community | 3 |
-| `HandleCancelConfirm → BuildCancellationMessage` | intra_community | 3 |
-| `HandleCancelConfirm → BookingResource` | cross_community | 3 |
+| `Store → ClassifyDatabaseError` | cross_community | 5 |
+| `Store → SupportsTags` | cross_community | 5 |
+| `Store → Flush` | cross_community | 5 |
+| `Store → GetInstance` | cross_community | 4 |
+| `Store → DoPurify` | cross_community | 4 |
+| `Store → CreateBookingWithLocking` | cross_community | 4 |
+| `Store → RecordSuccess` | cross_community | 4 |
+| `Store → GetInstance` | cross_community | 4 |
+| `Store → DoPurify` | cross_community | 4 |
+| `Update → GetInstance` | cross_community | 4 |
 
 ## Connected Areas
 
 | Area | Connections |
 |------|-------------|
-| Bookings | 1 calls |
+| Services | 3 calls |
+| Auth | 3 calls |
+| Security | 2 calls |
+| Listeners | 2 calls |
+| Feature | 1 calls |
+| Unit | 1 calls |
 | Notifications | 1 calls |
-| Services | 1 calls |
+| Bookings | 1 calls |
 
 ## How to Explore
 

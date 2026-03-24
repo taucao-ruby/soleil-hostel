@@ -51,6 +51,13 @@ SHIP VERDICT: NO-GO
 Blocker: <exact failure description>
 ```
 
+## Escalation
+
+If the agent cannot resolve after completing all steps:
+1. Stop and preserve all work in progress.
+2. Output a structured summary: what was completed, what remains unresolved, and the specific blocker.
+3. Surface to the human operator for decision.
+
 ## Summary
 ## Gates Run + Results
 ## Ship Verdict

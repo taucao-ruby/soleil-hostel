@@ -107,7 +107,7 @@ Out-of-scope bugs: log in `docs/FINDINGS_BACKLOG.md`, do not fix inline.
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **soleil-hostel** (4533 symbols, 12510 relationships, 199 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **soleil-hostel** (4702 symbols, 12678 relationships, 199 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
@@ -203,25 +203,5 @@ To check whether embeddings exist, inspect `.gitnexus/meta.json` — the `stats.
 | Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
 | Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
 | Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
-| Work in the Feature area (211 symbols) | `.claude/skills/generated/feature/SKILL.md` |
-| Work in the Booking area (179 symbols) | `.claude/skills/generated/booking/SKILL.md` |
-| Work in the Services area (148 symbols) | `.claude/skills/generated/services/SKILL.md` |
-| Work in the Room area (111 symbols) | `.claude/skills/generated/room/SKILL.md` |
-| Work in the Repositories area (91 symbols) | `.claude/skills/generated/repositories/SKILL.md` |
-| Work in the Auth area (73 symbols) | `.claude/skills/generated/auth/SKILL.md` |
-| Work in the Cache area (70 symbols) | `.claude/skills/generated/cache/SKILL.md` |
-| Work in the Models area (68 symbols) | `.claude/skills/generated/models/SKILL.md` |
-| Work in the Policies area (65 symbols) | `.claude/skills/generated/policies/SKILL.md` |
-| Work in the Security area (62 symbols) | `.claude/skills/generated/security/SKILL.md` |
-| Work in the Controllers area (54 symbols) | `.claude/skills/generated/controllers/SKILL.md` |
-| Work in the Database area (46 symbols) | `.claude/skills/generated/database/SKILL.md` |
-| Work in the Bookings area (41 symbols) | `.claude/skills/generated/bookings/SKILL.md` |
-| Work in the Stays area (41 symbols) | `.claude/skills/generated/stays/SKILL.md` |
-| Work in the Notifications area (38 symbols) | `.claude/skills/generated/notifications/SKILL.md` |
-| Work in the Listeners area (30 symbols) | `.claude/skills/generated/listeners/SKILL.md` |
-| Work in the Unit area (26 symbols) | `.claude/skills/generated/unit/SKILL.md` |
-| Work in the Authorization area (24 symbols) | `.claude/skills/generated/authorization/SKILL.md` |
-| Work in the Middleware area (22 symbols) | `.claude/skills/generated/middleware/SKILL.md` |
-| Work in the Requests area (21 symbols) | `.claude/skills/generated/requests/SKILL.md` |
 
 <!-- gitnexus:end -->

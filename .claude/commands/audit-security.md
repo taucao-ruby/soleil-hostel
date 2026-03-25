@@ -21,25 +21,33 @@ Read these for domain context (CLAUDE.md + ARCHITECTURE_FACTS.md are already loa
 - `skills/laravel/security-secrets-skill.md`
 - `skills/react/security-frontend-skill.md`
 
+## Canonical rules
+
+- `.agent/rules/auth-token-safety.md`
+- `.agent/rules/security-runtime-hygiene.md`
+- `.agent/rules/booking-integrity.md`
+- `.agent/rules/backend-preserve-rbac-source-and-request-validation.md`
+- `.agent/rules/instruction-surface-and-task-boundaries.md`
+
 ## Audit Checklist
 
 ### OWASP Top 10
 1. **SQL Injection** — Eloquent required; flag any raw SQL without documented justification
-2. **XSS** — All user input must pass through `HtmlPurifierService`
-3. **CSRF** — Verify `sessionStorage` csrf_token → `X-XSRF-TOKEN` header flow intact
-4. **Broken Auth** — Token expiry, revocation, refresh rotation enforcement
-5. **Security Misconfiguration** — Sanctum stateful vs stateless domain separation
-6. **Sensitive Data Exposure** — Tokens/hashes/session IDs never logged or in API responses
+2. **XSS** — inspect whether the established sanitization path is still intact
+3. **CSRF** — inspect whether the established `sessionStorage` csrf token -> `X-XSRF-TOKEN` header flow is still intact
+4. **Broken Auth** — inspect token expiry, revocation, refresh rotation, and dual-mode auth enforcement
+5. **Security Misconfiguration** — inspect Sanctum stateful vs stateless domain separation and runtime config discipline
+6. **Sensitive Data Exposure** — inspect logs, responses, and fixtures for token/hash/session leakage
 
 ### Soleil Hostel Business Integrity
 7. **Auth token leaks** — Grep for logging/dumping of token values or session identifiers
-8. **Route authorization bypass** — Policy/Gate::authorize coverage on all protected routes
-9. **Double-booking integrity** — Overlap query uses correct statuses + `deleted_at IS NULL`
-10. **Date boundary bugs** — Half-open `[check_in, check_out)` consistent across app + constraint
-11. **Soft-delete leakage** — Soft-deleted bookings excluded from availability/overlap queries
-12. **Location_id drift** — `bookings.location_id` aligned with `rooms.location_id` via trigger
-13. **Race conditions** — Booking create/confirm/cancel uses `lockForUpdate()` in transactions
-14. **Payment/refund state integrity** — Transitions follow defined state machine
+8. **Route authorization bypass** — inspect policy and gate coverage against `docs/PERMISSION_MATRIX.md`
+9. **Double-booking integrity** — inspect overlap status and soft-delete alignment across app and DB
+10. **Date boundary bugs** — inspect half-open `[check_in, check_out)` handling across app and constraint
+11. **Soft-delete leakage** — inspect whether soft-deleted bookings still appear in overlap or availability paths
+12. **Location_id drift** — inspect whether `bookings.location_id` still follows the trigger-managed contract
+13. **Race conditions** — inspect booking create/confirm/cancel lock and transaction coverage
+14. **Payment/refund state integrity** — inspect transitions against the documented state machine
 
 ## Output
 

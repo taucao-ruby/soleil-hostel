@@ -5,47 +5,36 @@ last-verified: 2026-03-16
 maintained-by: docs-sync
 ---
 
-# Auth Token Safety — Fast-Load Rule
+# Auth Token Safety
 
-Load this rule at the start of any task touching authentication, token handling,
-cookie auth, CSRF, Sanctum middleware, or the `personal_access_tokens` table.
+## Purpose
+Preserve the repository's dual-mode auth contract, token validity checks, and CSRF flow.
 
-Full specification: `docs/agents/ARCHITECTURE_FACTS.md` § "Authentication"
+## Rule
+- Bearer-token auth and HttpOnly-cookie auth both remain active unless a higher-authority product decision changes the contract.
+- Cookie auth lookup remains `token_identifier` -> `token_hash`; do not query the cookie path by raw token value.
+- Token validity enforcement keeps both revocation and expiry checks in middleware.
+- Frontend cookie auth keeps `sessionStorage` `csrf_token` -> `X-XSRF-TOKEN` header injection and `withCredentials: true` on the shared API client.
+- Token, session, and auth artifacts must not be exposed in logs, fixtures, or user-visible error payloads.
 
-## Dual-Mode Invariants
+## Why it exists
+These constraints prevent auth regressions, token replay gaps, broken cookie sessions, and CSRF bypasses.
 
-- Bearer token AND HttpOnly cookie are BOTH active simultaneously — neither is optional
-- Disabling either mode without explicit product decision is a breaking change
-- Both paths must remain tested; do not test only one path
+## Applies to
+Agents, humans, skills, commands, reviews, and tests touching authentication, Sanctum middleware, token storage, cookie auth, or frontend auth transport.
 
-## Cookie Auth Chain
+## Violations
+- Removing either Bearer or HttpOnly-cookie auth without an approved higher-layer change.
+- Querying `personal_access_tokens` by raw cookie value instead of `token_identifier` -> `token_hash`.
+- Dropping `revoked_at`, `expires_at`, CSRF header injection, or `withCredentials: true`.
+- Logging token identifiers, hashed tokens, auth headers, or session secrets.
 
-- Cookie auth lookup: `token_identifier` (UUID) → `token_hash` (indexed) → token record
-- `token_identifier` is the cookie value; `token_hash` is the indexed DB column for fast lookup
-- Do NOT query `personal_access_tokens` by raw token value on the cookie path
+## Enforcement
+- Canonical source: `docs/agents/ARCHITECTURE_FACTS.md` § "Authentication".
+- Runtime enforcement: auth middleware and the shared frontend API client.
+- Review and validation: `tests/Feature/TokenExpirationTest.php`, `tests/Feature/HttpOnlyCookieAuthenticationTest.php`, `tests/Feature/Auth/AuthenticationTest.php`, `tests/Feature/Auth/AuthConsolidationTest.php`, `.claude/commands/audit-security.md`, `.claude/commands/review-pr.md`.
 
-## Token Validity (both conditions required, not OR)
-
-- `revoked_at IS NULL` — token must not be revoked
-- `expires_at IS NULL OR expires_at > now()` — token must not be expired
-- Both conditions enforced by middleware; removing either is a security regression
-
-## CSRF Invariant
-
-- CSRF token stored in `sessionStorage` (key: `csrf_token`)
-- Sent as `X-XSRF-TOKEN` request header — not a cookie, not a body parameter
-- Axios instance in `frontend/src/shared/lib/api.ts` must keep `withCredentials: true`
-- Do not bypass or remove the CSRF interceptor; read `docs/frontend/SERVICES_LAYER.md` first
-
-## STOP Conditions
-
-```
-STOP — do not commit if any of these are true:
-- Bearer token path removed or disabled
-- HttpOnly cookie path removed or disabled
-- Cookie auth queries by raw token value instead of token_identifier → token_hash chain
-- revoked_at check removed from token validation middleware
-- expires_at check removed from token validation middleware
-- withCredentials: true removed from the shared Axios instance
-- X-XSRF-TOKEN header bypassed or replaced with cookie-based CSRF
-```
+## Linked skills / hooks
+- `skills/laravel/auth-tokens-skill.md`
+- `skills/react/api-client-skill.md`
+- `skills/react/security-frontend-skill.md`

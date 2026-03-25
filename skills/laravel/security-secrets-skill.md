@@ -9,20 +9,10 @@ Use this skill for auth/session/cookie/security-header changes and any work touc
 - You add logs around auth, payment, booking, or user identity flows.
 - You change CORS/CSP/security headers or rate limiting/security middleware.
 
-## Non-negotiables
+## Canonical rules
 
-- Never commit real secrets.
-  - No real `APP_KEY`, Redis password, API keys, tokens, or webhook secrets.
-- Keep runtime config discipline.
-  - Use `config()` in app logic, not `env()` calls in controllers/services.
-- Preserve cookie and token security flags.
-  - `HttpOnly`, environment-aware `Secure`, strict same-site settings.
-- Preserve token validity checks on protected flows.
-  - Revocation and expiry checks must remain enforced.
-- Avoid sensitive data leakage in logs and tests.
-  - Use existing masking processors; avoid printing tokens/passwords.
-- Keep CI security checks viable.
-  - Gitleaks and dependency audits must remain runnable in workflows.
+- `.agent/rules/security-runtime-hygiene.md`
+- `.agent/rules/auth-token-safety.md`
 
 ## Implementation Checklist
 

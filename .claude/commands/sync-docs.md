@@ -24,7 +24,15 @@ If no focus area specified, run full sync check.
 Cross-reference against: migrations, services, repositories, auth controllers,
 routes, frontend features, `docker-compose.yml`, `package.json`, `composer.json`.
 
-## Rules
+## Canonical rules
+
+- `.agent/rules/instruction-surface-and-task-boundaries.md`
+- `.agent/rules/backend-preserve-rbac-source-and-request-validation.md`
+- `.agent/rules/frontend-preserve-boundaries-and-ui-standards.md`
+- `.agent/rules/security-runtime-hygiene.md`
+- `.agent/rules/gitnexus-impact-and-change-scope.md`
+
+## Review boundaries
 
 - Propose specific line-level edits only — do not rewrite entire documents
 - Do not invent facts; only surface real discrepancies found by reading code

@@ -1,7 +1,7 @@
 # ReviewPolicy Authorization Design Document
 
 **Status**: Production-Ready Design  
-**Target**: Laravel 11 — Soleil Hostel Management System  
+**Target**: Laravel 12 — Soleil Hostel Management System
 **Scope**: Backend Authorization ONLY (Review CRUD via Policy)
 
 ---
@@ -27,7 +27,7 @@
 | Feature                                  | Location                                       | Notes                                                    |
 | ---------------------------------------- | ---------------------------------------------- | -------------------------------------------------------- |
 | Policy hook methods                      | `before()`, `create()`, `update()`, `delete()` | Automatic invocation via Gate                            |
-| Policy auto-discovery                    | `App\Policies\{Model}Policy` naming convention | Laravel 11 auto-registers if naming matches              |
+| Policy auto-discovery                    | `App\Policies\{Model}Policy` naming convention | Laravel auto-registers if naming matches              |
 | `Response::allow()` / `Response::deny()` | `Illuminate\Auth\Access\Response`              | Rich authorization responses                             |
 | `$this->authorize()` in controllers      | `AuthorizesRequests` trait                     | Delegates to Gate → Policy                               |
 | Gate supportsClass                       | Automatic model-to-policy resolution           | No explicit mapping needed if naming convention followed |
@@ -327,7 +327,7 @@ protected $policies = [
 ];
 ```
 
-**Rationale**: Laravel 11 auto-discovers `ReviewPolicy` for `Review` model, but explicit registration aids code navigation and removes ambiguity.
+**Rationale**: Laravel auto-discovers `ReviewPolicy` for `Review` model, but explicit registration aids code navigation and removes ambiguity.
 
 ---
 

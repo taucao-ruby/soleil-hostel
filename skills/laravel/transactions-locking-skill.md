@@ -9,17 +9,12 @@ Use this skill for concurrency-sensitive changes in rooms, bookings, cancellatio
 - You touch `lockForUpdate`, retry behavior, or deadlock handling.
 - You debug race conditions, stale writes, or duplicate booking conflicts.
 
-## Non-negotiables
+## Canonical rules
+
+- `.agent/rules/booking-integrity.md`
+- `.agent/rules/migration-safety.md`
 
 Column and schema facts (which tables carry `lock_version`, column defaults): `docs/agents/ARCHITECTURE_FACTS.md` § "Concurrency Control".
-Load `.agent/rules/booking-integrity.md` for locking STOP conditions before editing booking write paths.
-
-- Rooms and locations use **optimistic locking** (`lock_version` compare-and-swap) — version mismatch must surface as a conflict (409), never silently overwrite.
-- Booking conflict paths use **pessimistic locking** — overlap check and write must run in the same transaction under `lockForUpdate()` or a scope that delegates to it (`withLock()`).
-- Room updates with stale `lock_version` must fail predictably, not silently overwrite.
-- Keep booking conflict checks and writes in the same transaction boundary.
-- Keep deadlock/serialization retry behavior where applicable — `CreateBookingService` handles retryable SQL states.
-- Do external I/O (payment, email, external APIs) outside DB transactions — never hold a DB lock across a network call.
 
 ## Implementation Checklist
 

@@ -538,7 +538,7 @@ php artisan horizon:install
 ### Scheduler Commands
 
 ```php
-// app/Console/Kernel.php (or routes/console.php in Laravel 11+)
+// routes/console.php (Laravel 12)
 $schedule->command('queue:prune-failed --hours=168')->daily();
 $schedule->command('queue:prune-batches --hours=48')->daily();
 $schedule->command('horizon:snapshot')->everyFiveMinutes(); // If using Horizon

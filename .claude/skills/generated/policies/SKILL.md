@@ -73,7 +73,8 @@ Start here when exploring this area:
 
 | Area | Connections |
 |------|-------------|
-| Authorization | 2 calls |
+| Authorization | 1 calls |
+| Models | 1 calls |
 
 ## How to Explore
 

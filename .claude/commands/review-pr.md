@@ -14,6 +14,17 @@ wait for user confirmation before proceeding.
 
 $ARGUMENTS
 
+## Canonical rules
+
+- `.agent/rules/booking-integrity.md`
+- `.agent/rules/auth-token-safety.md`
+- `.agent/rules/migration-safety.md`
+- `.agent/rules/backend-preserve-rbac-source-and-request-validation.md`
+- `.agent/rules/frontend-preserve-boundaries-and-ui-standards.md`
+- `.agent/rules/security-runtime-hygiene.md`
+- `.agent/rules/instruction-surface-and-task-boundaries.md`
+- `.agent/rules/gitnexus-impact-and-change-scope.md`
+
 ## Review Checklist
 
 All invariants from CLAUDE.md and ARCHITECTURE_FACTS.md apply. Key checks:
@@ -25,13 +36,13 @@ All invariants from CLAUDE.md and ARCHITECTURE_FACTS.md apply. Key checks:
 ### 2. Architecture Compliance
 - [ ] Controller → Service → Repository boundaries (backend)
 - [ ] Feature-sliced architecture (frontend)
-- [ ] No `env()` in runtime code; no `any` types; no new Axios instances
+- [ ] Runtime config, frontend typing, and shared-client boundaries still match the canonical rules
 
 ### 3. Invariant Safety
 - [ ] Booking overlap semantics preserved
 - [ ] Locking present on booking write paths
 - [ ] Auth token enforcement intact
-- [ ] No secrets in code, logs, or API responses
+- [ ] Security hygiene intact across code, logs, and API responses
 
 ### 4. Test Coverage
 - [ ] New behavior has tests

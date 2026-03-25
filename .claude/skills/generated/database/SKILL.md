@@ -1,11 +1,11 @@
 ---
 name: database
-description: "Skill for the Database area of soleil-hostel. 46 symbols across 13 files."
+description: "Skill for the Database area of soleil-hostel. 45 symbols across 12 files."
 ---
 
 # Database
 
-46 symbols | 13 files | Cohesion: 77%
+45 symbols | 12 files | Cohesion: 78%
 
 ## When to Use
 
@@ -53,7 +53,6 @@ Start here when exploring this area:
 | `test_get_result_after_execution` | Method | `backend/tests/Unit/Database/IdempotencyGuardTest.php` | 173 |
 | `available` | Method | `backend/database/factories/RoomFactory.php` | 44 |
 | `cancelled` | Method | `backend/database/factories/BookingFactory.php` | 57 |
-| `test_backfill_command_respects_scope` | Method | `backend/tests/Feature/Stays/StayBackfillTest.php` | 90 |
 | `isPgsql` | Method | `backend/tests/Feature/Database/FkDeletePolicyTest.php` | 22 |
 | `test_room_deletion_blocked_when_booking_exists` | Method | `backend/tests/Feature/Database/FkDeletePolicyTest.php` | 29 |
 | `test_room_deletion_succeeds_when_no_bookings` | Method | `backend/tests/Feature/Database/FkDeletePolicyTest.php` | 43 |
@@ -62,6 +61,7 @@ Start here when exploring this area:
 | `processRefund` | Method | `backend/app/Services/CancellationService.php` | 178 |
 | `handleRefundFailure` | Method | `backend/app/Services/CancellationService.php` | 288 |
 | `fromException` | Method | `backend/app/Exceptions/RefundFailedException.php` | 27 |
+| `recordSuccess` | Method | `backend/app/Database/TransactionMetrics.php` | 31 |
 
 ## Execution Flows
 
@@ -81,12 +81,10 @@ Start here when exploring this area:
 
 | Area | Connections |
 |------|-------------|
-| Room | 6 calls |
-| Feature | 3 calls |
-| Cache | 2 calls |
+| Room | 5 calls |
+| Feature | 2 calls |
 | Jobs | 1 calls |
-| Services | 1 calls |
-| Enums | 1 calls |
+| Cache | 1 calls |
 | Booking | 1 calls |
 | Unit | 1 calls |
 

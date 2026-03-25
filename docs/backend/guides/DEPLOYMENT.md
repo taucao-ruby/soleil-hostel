@@ -6,7 +6,7 @@
 
 | Service  | Image          | Port | Purpose               |
 | -------- | -------------- | ---- | --------------------- |
-| backend  | Laravel 11     | 8000 | API server            |
+| backend  | Laravel 12     | 8000 | API server            |
 | frontend | Vite + React   | 5173 | Web application       |
 | db       | PostgreSQL 16  | 5432 | Primary database      |
 | redis    | Redis 7 Alpine | 6379 | Cache, queue, session |
@@ -198,6 +198,12 @@ backend:
         cpus: "4"
         memory: 2G
 ```
+
+---
+
+## Known Deploy Caveat: Cache Warmup Step
+
+The CI/CD deploy workflow (`.github/workflows/deploy.yml`) contains a post-deploy cache warmup step that POSTs to `/api/cache/warmup`. This route does not currently exist in the backend. The step is silenced with `|| true` so the failure is invisible. Cache is not warmed on deployment. This has no impact on correctness but means the first requests after deploy may be slower than expected.
 
 ---
 

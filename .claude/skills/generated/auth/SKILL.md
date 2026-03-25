@@ -1,11 +1,11 @@
 ---
 name: auth
-description: "Skill for the Auth area of soleil-hostel. 73 symbols across 22 files."
+description: "Skill for the Auth area of soleil-hostel. 83 symbols across 23 files."
 ---
 
 # Auth
 
-73 symbols | 22 files | Cohesion: 82%
+83 symbols | 23 files | Cohesion: 78%
 
 ## When to Use
 
@@ -17,8 +17,8 @@ description: "Skill for the Auth area of soleil-hostel. 73 symbols across 22 fil
 
 | File | Symbols |
 |------|---------|
+| `backend/tests/Feature/Auth/EmailVerificationTest.php` | can_check_verification_status_for_verified_user, already_verified_user_gets_success_response, verified_user_cannot_request_resend, verification_notice_returns_verified_status, unverified_user_cannot_access_verified_routes (+12) |
 | `backend/tests/Feature/Auth/SoleilTokenCookieEncryptionTest.php` | test_cookie_uuid_resolves_user_on_protected_endpoint, test_cookie_fallback_passes_auth_middleware_on_v1_endpoint, test_revoked_token_cookie_returns_401_on_v1_endpoint, test_expired_token_cookie_returns_401_on_v1_endpoint, test_security_headers_present_on_httponly_authenticated_endpoint (+4) |
-| `backend/tests/Feature/Auth/EmailVerificationTest.php` | can_check_verification_status_for_verified_user, already_verified_user_gets_success_response, verified_user_cannot_request_resend, verification_notice_returns_verified_status, email_change_clears_verification_status (+3) |
 | `backend/tests/Feature/TokenExpirationTest.php` | test_expired_token_returns_401, test_refresh_token_creates_new_and_revokes_old, test_logout_revokes_token, test_cannot_refresh_expired_token, test_logout_all_devices_revokes_all_tokens (+2) |
 | `backend/app/Models/PersonalAccessToken.php` | revoke, incrementRefreshCount, revokeOtherDevices, revokeAllUserTokens, isValid (+2) |
 | `backend/tests/Feature/Auth/AuthConsolidationTest.php` | test_unified_logout_all_works_with_bearer_token, test_unified_logout_all_works_with_httponly_cookie, test_unified_endpoints_return_401_with_expired_token, test_cookie_mode_takes_precedence, test_unified_endpoints_return_401_with_revoked_token |
@@ -82,9 +82,10 @@ Start here when exploring this area:
 
 | Area | Connections |
 |------|-------------|
+| Room | 8 calls |
 | Controllers | 8 calls |
 | Models | 7 calls |
-| Booking | 3 calls |
+| Booking | 5 calls |
 | Feature | 2 calls |
 
 ## How to Explore

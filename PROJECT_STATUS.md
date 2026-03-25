@@ -108,6 +108,22 @@ cd frontend && npx vitest run
 docker compose config
 ```
 
+## Known Product Limitations (March 2026)
+
+The following confirmed limitations affect operator-facing or guest-facing functionality. Each is a code-level defect requiring a code change to resolve; they are documented here so that contributors and operators are aware of current behavior.
+
+| ID | Limitation | Impact | Remediation |
+|----|-----------|--------|-------------|
+| TL-01 | Admin booking screens (arrivals/departures, calendar) parse `response.data.data` but backend returns `data.bookings` + `data.meta` — bookings may not render correctly | High | Batch 1 |
+| TL-02 | Admin booking list filters (location, status, search, date range) are sent by the SPA but ignored server-side — backend returns unfiltered global dataset | High | Batch 1 |
+| TL-03 | Booking form submits `number_of_guests` and `special_requests` but backend does not validate or persist these fields — guest data is silently discarded | Medium | Batch 2 |
+| TL-04 | Admin sidebar links to `/admin/reviews` and `/admin/messages` are non-functional — routes not defined in frontend router | Low | Batch 2 |
+| TL-05 | Moderator role has confirmed backend read access to `/v1/admin/bookings` but the SPA redirects all non-admin users away from `/admin/*` routes — moderator capability is inaccessible via shipped UI | Medium | Batch 2 |
+
+See also: `docs/PERMISSION_MATRIX.md` Table E and Moderator Status Assessment for TL-05 detail.
+
+---
+
 ## Q2 2026 Roadmap
 
 | Feature                         | Priority | Notes                                                                                |

@@ -9,24 +9,10 @@ Use this skill when changing token issuance, refresh, revocation, cookie auth, o
 - You change `personal_access_tokens` columns, indexes, or token lifecycle.
 - You update Bearer mode, HttpOnly-cookie mode, or unified auth detection.
 
-## Non-negotiables
+## Canonical rules
 
-- Always enforce token validity checks:
-  - `revoked_at` must be null.
-  - `expires_at` must be in the future (or explicitly handled legacy-null case).
-- Preserve cookie-token lookup contract:
-  - Cookie carries `token_identifier`.
-  - Backend hashes identifier and looks up `token_hash`.
-- Preserve device binding fields where used:
-  - `device_id`
-  - `device_fingerprint` (when `sanctum.verify_device_fingerprint` is enabled)
-- Preserve rotation and suspicious-activity controls:
-  - `refresh_count` thresholds
-  - `last_rotated_at` updates on rotation flows
-- Never leak tokens or secrets in logs, tests, fixtures, or error messages.
-- Keep both auth paths consistent when affected:
-  - Bearer token endpoints
-  - HttpOnly cookie endpoints
+- `.agent/rules/auth-token-safety.md`
+- `.agent/rules/security-runtime-hygiene.md`
 
 ## Implementation Checklist
 
@@ -35,7 +21,7 @@ Use this skill when changing token issuance, refresh, revocation, cookie auth, o
 2. Keep middleware checks aligned.
    - `CheckTokenNotRevokedAndNotExpired`
    - `CheckHttpOnlyTokenValid`
-3. Preserve token creation and rotation invariants.
+3. Preserve token creation and rotation behavior.
    - Set expiry based on token type.
    - Revoke old token during refresh.
    - Carry or increment refresh counters intentionally.

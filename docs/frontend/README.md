@@ -1,6 +1,6 @@
 # 🖥️ Frontend Documentation
 
-> React 19 + TypeScript + Vite + TailwindCSS - Production-Ready Hostel Booking Platform
+> React 19 + TypeScript + Vite + TailwindCSS — Hostel Booking Platform
 
 ## Quick Navigation
 

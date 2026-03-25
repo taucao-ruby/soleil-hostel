@@ -8,17 +8,10 @@ Use this skill when changing frontend API calls, auth refresh behavior, or reque
 - You change auth, CSRF, or token-refresh behavior in the shared client.
 - You see duplicated fetch/axios wrappers or inconsistent endpoint handling.
 
-## Non-negotiables
+## Canonical rules
 
-- Use the single canonical client: `frontend/src/shared/lib/api.ts`.
-- Keep feature-specific API modules thin.
-  - `src/features/*/*.api.ts` should call shared `api` and return typed domain data.
-- Preserve HttpOnly cookie auth flow.
-  - `withCredentials: true` must remain enabled.
-  - CSRF header injection for state-changing methods must remain intact.
-- Preserve 401 refresh queue behavior.
-  - Avoid parallel refresh storms; keep queue/mutex pattern intact.
-- Do not introduce duplicate axios instances or ad hoc `fetch()` wrappers for app API.
+- `.agent/rules/frontend-preserve-boundaries-and-ui-standards.md`
+- `.agent/rules/auth-token-safety.md`
 
 Typed API method pattern:
 

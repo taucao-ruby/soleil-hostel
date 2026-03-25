@@ -61,7 +61,7 @@ Start here when exploring this area:
 | `BookingCancellationTest` | Class | `backend/tests/Feature/BookingCancellationTest.php` | 16 |
 | `ApiErrorFormatTest` | Class | `backend/tests/Feature/ApiErrorFormatTest.php` | 27 |
 | `HealthServiceTest` | Class | `backend/tests/Unit/Services/HealthServiceTest.php` | 8 |
-| `UpdateBookingRequestValidationTest` | Class | `backend/tests/Unit/Requests/UpdateBookingRequestValidationTest.php` | 13 |
+| `EloquentRoomRepositoryTest` | Class | `backend/tests/Unit/Repositories/EloquentRoomRepositoryTest.php` | 31 |
 
 ## Execution Flows
 
@@ -84,7 +84,8 @@ Start here when exploring this area:
 |------|-------------|
 | Room | 42 calls |
 | Booking | 18 calls |
-| Services | 4 calls |
+| Services | 2 calls |
+| Listeners | 2 calls |
 
 ## How to Explore
 

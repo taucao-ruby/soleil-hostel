@@ -16,6 +16,15 @@ and wait for user confirmation before running gates.
 - Code touches booking or auth paths without corresponding test
 - Architecture docs appear stale relative to changes
 
+## Canonical rules
+
+- `.agent/rules/booking-integrity.md`
+- `.agent/rules/auth-token-safety.md`
+- `.agent/rules/migration-safety.md`
+- `.agent/rules/frontend-preserve-boundaries-and-ui-standards.md`
+- `.agent/rules/instruction-surface-and-task-boundaries.md`
+- `.agent/rules/gitnexus-impact-and-change-scope.md`
+
 ## Gate Sequence
 
 Run in order, stop on first failure:

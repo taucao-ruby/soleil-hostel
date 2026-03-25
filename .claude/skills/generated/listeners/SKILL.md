@@ -1,11 +1,11 @@
 ---
 name: listeners
-description: "Skill for the Listeners area of soleil-hostel. 30 symbols across 16 files."
+description: "Skill for the Listeners area of soleil-hostel. 19 symbols across 12 files."
 ---
 
 # Listeners
 
-30 symbols | 16 files | Cohesion: 76%
+19 symbols | 12 files | Cohesion: 74%
 
 ## When to Use
 
@@ -17,16 +17,16 @@ description: "Skill for the Listeners area of soleil-hostel. 30 symbols across 1
 
 | File | Symbols |
 |------|---------|
-| `backend/app/Listeners/InvalidateCacheOnBookingChange.php` | handle, handleCreated, handleUpdated, handleDeleted, handleCancelled |
-| `backend/tests/Feature/Listeners/BookingNotificationListenerTest.php` | send_booking_update_listener_sends_notification_with_changes, send_booking_update_listener_does_not_send_if_no_changes, send_booking_confirmation_listener_sends_notification, booking_created_event_triggers_confirmation_email, send_booking_cancellation_listener_sends_notification |
+| `backend/tests/Feature/Listeners/BookingNotificationListenerTest.php` | send_booking_update_listener_sends_notification_with_changes, send_booking_update_listener_does_not_send_if_no_changes, send_booking_confirmation_listener_sends_notification, booking_created_event_triggers_confirmation_email |
 | `backend/app/Listeners/SendBookingUpdateNotification.php` | SendBookingUpdateNotification, handle, normalizeDate |
-| `backend/app/Services/RoomAvailabilityService.php` | invalidateAvailability, invalidateRoomCache |
 | `backend/app/Listeners/SendBookingConfirmation.php` | SendBookingConfirmation, handle |
-| `backend/app/Listeners/SendBookingCancellation.php` | SendBookingCancellation, handle |
 | `backend/app/Listeners/QueryDebuggerListener.php` | handle, formatSql |
-| `backend/app/Services/BookingService.php` | invalidateUserBookings |
 | `backend/app/Events/BookingUpdated.php` | BookingUpdated |
 | `backend/app/Events/BookingCreated.php` | BookingCreated |
+| `backend/tests/Feature/Cache/CacheInvalidationOnBookingTest.php` | test_booking_created_event_fires |
+| `backend/app/Services/RoomService.php` | invalidateRoom |
+| `backend/app/Services/RoomAvailabilityService.php` | invalidateRoomCache |
+| `backend/app/Listeners/InvalidateRoomAvailabilityCache.php` | handle |
 
 ## Entry Points
 
@@ -36,7 +36,7 @@ Start here when exploring this area:
 - **`BookingUpdated`** (Class) — `backend/app/Events/BookingUpdated.php:7`
 - **`SendBookingConfirmation`** (Class) — `backend/app/Listeners/SendBookingConfirmation.php:15`
 - **`BookingCreated`** (Class) — `backend/app/Events/BookingCreated.php:8`
-- **`SendBookingCancellation`** (Class) — `backend/app/Listeners/SendBookingCancellation.php:20`
+- **`handle`** (Method) — `backend/app/Listeners/SendBookingUpdateNotification.php:21`
 
 ## Key Symbols
 
@@ -46,15 +46,6 @@ Start here when exploring this area:
 | `BookingUpdated` | Class | `backend/app/Events/BookingUpdated.php` | 7 |
 | `SendBookingConfirmation` | Class | `backend/app/Listeners/SendBookingConfirmation.php` | 15 |
 | `BookingCreated` | Class | `backend/app/Events/BookingCreated.php` | 8 |
-| `SendBookingCancellation` | Class | `backend/app/Listeners/SendBookingCancellation.php` | 20 |
-| `BookingDeleted` | Class | `backend/app/Events/BookingDeleted.php` | 9 |
-| `invalidateAvailability` | Method | `backend/app/Services/RoomAvailabilityService.php` | 214 |
-| `invalidateUserBookings` | Method | `backend/app/Services/BookingService.php` | 241 |
-| `handle` | Method | `backend/app/Listeners/InvalidateCacheOnBookingChange.php` | 20 |
-| `handleCreated` | Method | `backend/app/Listeners/InvalidateCacheOnBookingChange.php` | 37 |
-| `handleUpdated` | Method | `backend/app/Listeners/InvalidateCacheOnBookingChange.php` | 45 |
-| `handleDeleted` | Method | `backend/app/Listeners/InvalidateCacheOnBookingChange.php` | 59 |
-| `handleCancelled` | Method | `backend/app/Listeners/InvalidateCacheOnBookingChange.php` | 67 |
 | `handle` | Method | `backend/app/Listeners/SendBookingUpdateNotification.php` | 21 |
 | `normalizeDate` | Method | `backend/app/Listeners/SendBookingUpdateNotification.php` | 57 |
 | `send_booking_update_listener_sends_notification_with_changes` | Method | `backend/tests/Feature/Listeners/BookingNotificationListenerTest.php` | 82 |
@@ -62,19 +53,25 @@ Start here when exploring this area:
 | `handle` | Method | `backend/app/Listeners/SendBookingConfirmation.php` | 20 |
 | `send_booking_confirmation_listener_sends_notification` | Method | `backend/tests/Feature/Listeners/BookingNotificationListenerTest.php` | 30 |
 | `booking_created_event_triggers_confirmation_email` | Method | `backend/tests/Feature/Listeners/BookingNotificationListenerTest.php` | 142 |
+| `test_booking_created_event_fires` | Method | `backend/tests/Feature/Cache/CacheInvalidationOnBookingTest.php` | 32 |
+| `invalidateRoom` | Method | `backend/app/Services/RoomService.php` | 55 |
+| `invalidateRoomCache` | Method | `backend/app/Services/RoomAvailabilityService.php` | 248 |
+| `handle` | Method | `backend/app/Listeners/InvalidateRoomAvailabilityCache.php` | 37 |
+| `handle` | Method | `backend/app/Listeners/InvalidateCacheOnBookingUpdated.php` | 26 |
+| `handle` | Method | `backend/app/Listeners/InvalidateCacheOnBookingDeleted.php` | 25 |
+| `handle` | Method | `backend/app/Listeners/QueryDebuggerListener.php` | 23 |
+| `formatSql` | Method | `backend/app/Listeners/QueryDebuggerListener.php` | 59 |
 
 ## Execution Flows
 
 | Flow | Type | Steps |
 |------|------|-------|
-| `Handle → SupportsTags` | cross_community | 6 |
-| `Handle → Flush` | cross_community | 6 |
 | `Destroy → SupportsTags` | cross_community | 6 |
 | `Destroy → Flush` | cross_community | 6 |
-| `HandlePaymentIntentSucceeded → SupportsTags` | cross_community | 5 |
-| `HandlePaymentIntentSucceeded → Flush` | cross_community | 5 |
-| `Destroy → SupportsTags` | cross_community | 5 |
-| `Destroy → Flush` | cross_community | 5 |
+| `Handle → SupportsTags` | cross_community | 4 |
+| `Handle → Flush` | cross_community | 4 |
+| `Handle → SupportsTags` | cross_community | 4 |
+| `Handle → Flush` | cross_community | 4 |
 | `Handle → SupportsTags` | cross_community | 4 |
 | `Handle → Flush` | cross_community | 4 |
 
@@ -82,9 +79,9 @@ Start here when exploring this area:
 
 | Area | Connections |
 |------|-------------|
-| Services | 7 calls |
-| Room | 5 calls |
-| Notifications | 3 calls |
+| Room | 4 calls |
+| Services | 3 calls |
+| Notifications | 2 calls |
 
 ## How to Explore
 

@@ -9,22 +9,11 @@ Use this skill when changing backend behavior and needing deterministic confiden
 - You update endpoint payloads that frontend tests depend on.
 - You need to map local checks to CI expectations.
 
-## Non-negotiables
+## Canonical rules
 
-- Keep baseline quality gates green:
-  - `cd backend && php artisan test`
-  - `cd frontend && npx tsc --noEmit`
-  - `cd frontend && npx vitest run`
-  - `docker compose config`
-- Respect DB context:
-  - Local PHPUnit defaults to SQLite in-memory.
-  - PostgreSQL is production and CI backend target for critical behaviors.
-- Add or update targeted tests whenever behavior changes.
-  - Do not rely only on broad suite runs for high-risk areas.
-- Preserve domain regression coverage:
-  - Booking overlaps and same-day turnover.
-  - Token expiry/revocation/refresh.
-  - Room optimistic locking and stale version conflicts.
+- `.agent/rules/instruction-surface-and-task-boundaries.md`
+- `.agent/rules/booking-integrity.md`
+- `.agent/rules/auth-token-safety.md`
 
 ## Implementation Checklist
 

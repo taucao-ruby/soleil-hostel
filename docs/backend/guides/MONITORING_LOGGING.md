@@ -1,6 +1,6 @@
 # Monitoring & Logging Infrastructure
 
-> **Last Updated:** January 2, 2026 | **Laravel 11** | **Status:** ✅ Implemented
+> **Last Updated:** January 2, 2026 | **Laravel 12** | **Status:** ✅ Implemented
 
 ## Implementation Status
 

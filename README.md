@@ -98,7 +98,7 @@ Dự án được xây dựng như một hệ thống có thể sống lâu dài
   - Repository Pattern
 - Authentication: **Laravel Sanctum**
 - RESTful API
-- **871 automated tests** (Feature + Unit) + **226 frontend tests**
+- Comprehensive automated tests (Feature + Unit) + frontend tests
 - Security & performance-focused design
 
 ---
@@ -106,7 +106,7 @@ Dự án được xây dựng như một hệ thống có thể sống lâu dài
 ### 🛢️ Data Layer
 
 - **PostgreSQL**
-- **Redis** _(optional – cache & queue)_
+- **Redis** _(required — cache, session, queue)_
 
 ---
 
@@ -115,7 +115,7 @@ Dự án được xây dựng như một hệ thống có thể sống lâu dài
 - Docker & Docker Compose
 - GitHub Actions (CI/CD)
 - Automated test execution before merge
-- Production-ready structure
+- Docker Compose development stack
 
 ---
 
@@ -143,7 +143,7 @@ soleil-hostel/
 │   ├── resources/                    # Views & Assets
 │   ├── routes/                       # API Routes
 │   ├── storage/                      # File Storage
-│   ├── tests/                        # 871 Automated Tests
+│   ├── tests/                        # Automated Tests
 │   │   ├── Feature/                  # Feature Tests
 │   │   └── Unit/                     # Unit Tests
 
@@ -211,8 +211,8 @@ soleil-hostel/
 - Node.js **18+**
 - PHP **8.2+**
 - Composer
-- PostgreSQL **12+**
-- Redis _(optional)_
+- PostgreSQL **16+**
+- Redis **7+** _(required — cache, session, queue)_
 
 ---
 
@@ -275,7 +275,7 @@ Sau đó mở Pull Request trên GitHub.
 - Core booking flow with pessimistic locking
 - Customer management
 - CI/CD with GitHub Actions
-- Full test suite (871 backend tests, 2449 assertions + 226 frontend tests)
+- Full test suite (see [PROJECT_STATUS.md](./PROJECT_STATUS.md) for current counts)
 - Documentation consolidation & cleanup
 - Frontend documentation restructured into 12 modular files (January 2, 2026)
 - Backend documentation fully organized
@@ -289,7 +289,7 @@ Sau đó mở Pull Request trên GitHub.
 - Advanced booking calendar
 - Revenue & analytics modules
 - Customer statistics module
-- Role-based access (Admin / Staff)
+- Role-based access (admin / moderator / user)
 - UX optimization for non-technical / elderly homestay owners
 
 ---
@@ -362,7 +362,7 @@ Sau đó mở Pull Request trên GitHub.
 │                                                                 │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
 │  │   PHPUnit       │  │   PHPStan       │  │    Psalm        │ │
-│  │   871 Tests     │  │   Static Analysis│  │  Code Quality  │ │
+│  │   Test Suite    │  │   Static Analysis│  │  Code Quality  │ │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
                                     │
@@ -409,18 +409,7 @@ Sau đó mở Pull Request trên GitHub.
 
 ## 🧪 Test Suite Summary
 
-Dự án hiện có **871 backend tests** + **226 frontend tests**, bao gồm Feature Tests, Unit Tests, và UI tests.
-
-| Nhóm Test      | Số lượng | Mô tả                            |
-| -------------- | -------- | -------------------------------- |
-| Backend Tests  | 871      | Feature + Unit (2449 assertions) |
-| Frontend Tests | 226      | Vitest (21 test files)           |
-| Auth Tests     | 44       | Xác thực & token management      |
-| Booking Tests  | 60       | Đặt phòng, overlap, soft delete  |
-| Room Tests     | 151      | CRUD + Optimistic locking        |
-| RBAC Tests     | 47       | Role-based access control        |
-| Security Tests | 91       | Headers, XSS, Rate limiting      |
-| Cache Tests    | 6        | Redis cache layer                |
+Dự án có bộ test backend (PHPUnit) + frontend (Vitest) toàn diện. Xem [PROJECT_STATUS.md](./PROJECT_STATUS.md) để biết số lượng test hiện tại.
 
 ✔️ CI chạy test tự động cho mỗi Pull Request  
 ✔️ Không merge code lỗi vào `main`

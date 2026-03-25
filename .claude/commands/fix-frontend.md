@@ -18,13 +18,21 @@ CLAUDE.md is already loaded with all frontend rules. Load relevant skills:
 - Forms: `skills/react/forms-validation-skill.md`
 - Testing: `skills/react/testing-vitest-skill.md`
 
+## Canonical rules
+
+- `.agent/rules/frontend-preserve-boundaries-and-ui-standards.md`
+- `.agent/rules/auth-token-safety.md`
+- `.agent/rules/security-runtime-hygiene.md`
+- `.agent/rules/instruction-surface-and-task-boundaries.md`
+- `.agent/rules/gitnexus-impact-and-change-scope.md`
+
 ## Process
 
 1. Inspect relevant files before editing
 2. Keep diffs small and scoped
 3. Add/update tests for behavior changes
 
-## Validation (required)
+## Validation
 
 ```bash
 cd frontend && npx tsc --noEmit

@@ -1,10 +1,10 @@
 # 🎨 Soleil Hostel Frontend
 
-> **Last Updated:** January 4, 2026 | **React:** 19.0.0 | **TypeScript:** 5.x | **Status:** Production Ready ✅
+> **Last Updated:** January 4, 2026 | **React:** 19.0.0 | **TypeScript:** 5.x
 
 ## 🎯 Overview
 
-The Soleil Hostel frontend is a **modern, production-ready web application** built with React 19 and TypeScript, featuring a feature-sliced architecture for maximum maintainability and scalability.
+The Soleil Hostel frontend is a **modern web application** built with React 19 and TypeScript, featuring a feature-sliced architecture for maximum maintainability and scalability.
 
 ### Key Features
 
@@ -102,6 +102,5 @@ Full documentation available in the `docs/` folder:
 
 ---
 
-**Status**: ✅ Production Ready  
-**Frontend URL**: http://localhost:5173  
+**Frontend URL**: http://localhost:5173
 **Backend API**: http://127.0.0.1:8000

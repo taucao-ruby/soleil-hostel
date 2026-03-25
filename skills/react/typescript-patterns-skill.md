@@ -9,16 +9,9 @@ Use this skill when writing or reviewing React + TypeScript code in the frontend
 - You wire up API calls or AbortController cancellation.
 - You encounter TypeScript strict errors or `any` usage.
 
-## Non-negotiables
+## Canonical rules
 
-- **Zero `any`** — TypeScript strict is enforced; use `unknown` + narrowing or explicit types.
-- **No `console.log`** in production code — use test-only logging or remove before commit.
-- **No React Query, no Zod, no `react-hot-toast`** — project prohibits these libraries.
-- **State pattern**: `useState` + `useEffect` + `AbortController` — do not introduce a different async model.
-- **API calls**: `@/shared/lib/api` only — never create a second Axios instance.
-- **`withCredentials: true`** must remain on the shared Axios instance.
-- **Cross-feature imports**: forbidden except `bookings/` ↔ `booking/` (same domain).
-- **UI text**: Vietnamese strings for all user-facing copy.
+- `.agent/rules/frontend-preserve-boundaries-and-ui-standards.md`
 
 ## State + Effect Pattern
 

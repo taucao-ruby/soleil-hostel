@@ -20,14 +20,23 @@ CLAUDE.md and ARCHITECTURE_FACTS.md are already loaded. Load relevant skills:
 - Locking: `skills/laravel/transactions-locking-skill.md`
 - Testing: `skills/laravel/testing-skill.md`
 
+## Canonical rules
+
+- `.agent/rules/booking-integrity.md`
+- `.agent/rules/migration-safety.md`
+- `.agent/rules/backend-preserve-rbac-source-and-request-validation.md`
+- `.agent/rules/security-runtime-hygiene.md`
+- `.agent/rules/instruction-surface-and-task-boundaries.md`
+- `.agent/rules/gitnexus-impact-and-change-scope.md`
+
 ## Process
 
 1. Inspect relevant files before editing — never guess paths
 2. Keep diffs small and scoped
 3. Add/update tests for any behavior change
-4. Run validation gates after changes
+4. Run the applicable rule-mandated validation gates after changes
 
-## Validation (required)
+## Validation
 
 ```bash
 cd backend && php artisan test --bail

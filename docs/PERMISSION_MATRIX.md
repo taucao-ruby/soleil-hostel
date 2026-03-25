@@ -115,8 +115,8 @@ These restrict **when** an action is allowed, not **who** can perform it. They a
 |--------|------|-----------|-------|--------|
 | GuestDashboard | Rendered | Rendered (same as user) | Not rendered | DashboardPage.tsx |
 | AdminDashboard | Not rendered | Not rendered | Rendered | DashboardPage.tsx |
-| Admin API calls (GET /api/v1/admin/bookings*) | 403 from backend | 403 from backend | Allowed | Allowed | v1.php:57 (role:moderator) |
-| Admin API calls (restore, force-delete, restore-bulk) | 403 from backend | 403 from backend | 403 from backend | Allowed | v1.php (role:admin) |
+| Admin API calls (GET /api/v1/admin/bookings*) | 403 from backend | Allowed (backend) | Allowed | v1.php:57 (role:moderator) |
+| Admin API calls (restore, force-delete, restore-bulk) | 403 from backend | 403 from backend | Allowed | v1.php (role:admin) |
 
 **Moderator UI status**: PARTIALLY-OPERATIONAL at backend (read access to GET /api/v1/admin/bookings* via route:moderator + view-all-bookings gate); LATENT at frontend (no distinct moderator UI implemented). The frontend implements a binary model (`admin` vs `non-admin`). See Table C for remaining latent capabilities.
 

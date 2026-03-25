@@ -9,19 +9,11 @@ Use this skill for frontend auth, CSRF, sanitization, CSP-sensitive UI, and secu
 - You touch user-input rendering or sanitization.
 - You edit CSP-related frontend build behavior.
 
-## Non-negotiables
+## Canonical rules
 
-- Keep HttpOnly-cookie auth model intact.
-  - Do not move access tokens into localStorage/sessionStorage for request auth.
-- Keep CSRF handling intact for state-changing requests.
-  - Continue using shared CSRF utilities and interceptor injection.
-- Never render unsanitized user-controlled HTML.
-  - Avoid `dangerouslySetInnerHTML` unless explicitly sanitized and reviewed.
-- Keep shared input safety helpers in use.
-  - Reuse `shared/utils/security.ts` for escaping/validation utilities.
-- Preserve CSP compatibility.
-  - Keep nonce-aware build/plugin flow and avoid unsafe script patterns.
-- Avoid logging sensitive auth/session data in client console output.
+- `.agent/rules/auth-token-safety.md`
+- `.agent/rules/security-runtime-hygiene.md`
+- `.agent/rules/frontend-preserve-boundaries-and-ui-standards.md`
 
 Secure rendering checklist:
 

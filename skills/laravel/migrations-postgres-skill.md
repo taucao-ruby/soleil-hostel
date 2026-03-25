@@ -9,22 +9,10 @@ Use this skill for schema changes, indexes, constraints, enum changes, or DB por
 - You change token, booking, room, or user schema semantics.
 - You need to preserve production PostgreSQL behavior while tests run on SQLite.
 
-## Non-negotiables
+## Canonical rules
 
-- Design for PostgreSQL production first.
-  - Default runtime DB is `pgsql` in `backend/config/database.php`.
-  - CI backend jobs run PostgreSQL services.
-- Keep SQLite test caveats explicit.
-  - `backend/phpunit.xml` defaults to PostgreSQL (`pgsql`). SQLite opt-in via `phpunit.pgsql.xml`.
-  - Do not assume SQLite fully matches PostgreSQL features.
-- For PostgreSQL-specific features, guard by driver and provide safe fallback.
-  - Example: `btree_gist` extension and exclusion constraints.
-- Use idempotent migration patterns where required.
-  - Existing migrations use `Schema::hasColumn(...)` and index existence checks.
-- Ensure reversible migrations.
-  - `down()` must safely drop constraints/indexes/types added in `up()`.
-- Encode booking overlap constraints exactly when touched.
-  - `daterange(check_in, check_out, '[)')` exclusion with active status + non-deleted filter.
+- `.agent/rules/migration-safety.md`
+- `.agent/rules/booking-integrity.md`
 
 ## Implementation Checklist
 

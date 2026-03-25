@@ -82,7 +82,7 @@ Start here when exploring this area:
 
 | Area | Connections |
 |------|-------------|
-| Services | 1 calls |
+| Cache | 1 calls |
 | Booking | 1 calls |
 
 ## How to Explore

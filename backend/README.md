@@ -1,10 +1,10 @@
-# 🖥️ Soleil Hostel Backend (Laravel 11)
+# 🖥️ Soleil Hostel Backend (Laravel 12)
 
-> **Last Updated:** January 10, 2026 | **Laravel:** 11.x | **PHP:** 8.2+ | **Tests:** 537 passing ✅
+> **Last Updated:** March 25, 2026 | **Laravel:** 12.x | **PHP:** 8.2+
 
 ## 🎯 Overview
 
-The Soleil Hostel backend is a **production-ready REST API** built with Laravel 11, implementing clean architecture principles with comprehensive test coverage, security hardening, and performance optimization.
+The Soleil Hostel backend is a REST API built with Laravel 12, implementing clean architecture principles with comprehensive test coverage, security hardening, and performance optimization. The backend booking core is production-quality; the integrated product is not yet production-ready (March 2026).
 
 ### Key Features
 
@@ -18,7 +18,7 @@ The Soleil Hostel backend is a **production-ready REST API** built with Laravel 
 - ✅ **Security**: XSS protection, CSRF tokens, security headers, rate limiting
 - ✅ **Performance**: Redis caching, N+1 query prevention, database indexes
 - ✅ **Monitoring**: Correlation IDs, performance logging, health probes
-- ✅ **Testing**: 537 tests with 1445 assertions (100% pass rate)
+- ✅ **Testing**: Comprehensive test suite (run `php artisan test` for current count)
 
 ---
 
@@ -28,8 +28,8 @@ The Soleil Hostel backend is a **production-ready REST API** built with Laravel 
 
 - PHP 8.2 or higher
 - Composer
-- PostgreSQL 12+
-- Redis (optional, for caching)
+- PostgreSQL 16+
+- Redis 7+ (required — used for cache, session, and queue)
 
 ### Installation
 
@@ -97,9 +97,9 @@ backend/
 │   └── web.php          # Web routes
 ├── storage/             # File storage & logs
 ├── tests/
-│   ├── Feature/         # Feature tests (383 tests)
-│   └── Unit/            # Unit tests (105 tests)
-│       ├── Repositories/ # Repository unit tests (53 tests, zero DB)
+│   ├── Feature/         # Feature tests
+│   └── Unit/            # Unit tests
+│       ├── Repositories/ # Repository unit tests (zero DB)
 └── vendor/              # Composer dependencies
 ```
 
@@ -111,7 +111,6 @@ backend/
 
 ```bash
 php artisan test
-# ✅ 537 tests, 1445 assertions, ~48 seconds
 ```
 
 ### Run Specific Test Suites
@@ -167,8 +166,6 @@ php artisan test --coverage --min=80
 | POST   | /api/rooms           | Create room                         | Admin only    |
 | PUT    | /api/rooms/{id}      | Update room (requires lock_version) | Admin only    |
 | DELETE | /api/rooms/{id}      | Delete room                         | Admin only    |
-| GET    | /api/rooms/available | Check availability                  | No            |
-
 ### Bookings
 
 | Method | Endpoint           | Description         | Auth Required |
@@ -402,17 +399,7 @@ composer install --optimize-autoloader --no-dev
 
 ## 📊 Test Coverage
 
-| Component       | Tests   | Assertions | Status |
-| --------------- | ------- | ---------- | ------ |
-| Authentication  | 26      | 78         | ✅     |
-| Booking System  | 60      | 180        | ✅     |
-| Room Management | 151     | 453        | ✅     |
-| RBAC            | 47      | 141        | ✅     |
-| Security        | 77      | 231        | ✅     |
-| Caching         | 6       | 18         | ✅     |
-| Monitoring      | 10      | 30         | ✅     |
-| Other           | 58      | 164        | ✅     |
-| **Total**       | **435** | **1295**   | **✅** |
+Run `cd backend && php artisan test` for current test counts. See [PROJECT_STATUS.md](../PROJECT_STATUS.md) for latest verified baselines.
 
 ---
 
@@ -431,6 +418,5 @@ MIT License - see main project README for details.
 
 ---
 
-**Status**: ✅ Production Ready  
 **Backend API**: <http://127.0.0.1:8000>
 **Documentation**: [docs/README.md](../docs/README.md)

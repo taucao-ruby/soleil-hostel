@@ -9,22 +9,18 @@ Use this skill when changing booking date logic, conflict detection, booking sta
 - You change booking indexes, constraints, or soft-delete behavior.
 - You investigate double-booking bugs or false conflict bugs.
 
-## Non-negotiables
+## Canonical rules
+
+- `.agent/rules/booking-integrity.md`
+- `.agent/rules/migration-safety.md`
 
 Exact invariants (active statuses, constraint SQL, column facts): `docs/agents/ARCHITECTURE_FACTS.md` § "Booking Domain — Overlap Prevention".
-Load `.agent/rules/booking-integrity.md` for a fast-load summary before editing.
-
-- Preserve half-open interval semantics `[check_in, check_out)` — same-day turnover is valid.
-- Keep the overlap condition: `existing.check_in < new.check_out AND existing.check_out > new.check_in`.
-- Active statuses for overlap detection are defined in `Booking::ACTIVE_STATUSES` constant — do NOT hardcode status strings in queries; grep the constant.
-- `deleted_at IS NULL` required in BOTH the app-layer scope AND the DB constraint WHERE clause.
-- Overlap check and write must execute in the same transaction under lock — no exceptions.
 
 ## Implementation Checklist
 
 1. Inspect current overlap source of truth in model scope.
    - `Booking::scopeOverlappingBookings(...)`.
-2. Keep status and date predicates aligned with domain rules.
+2. Keep status and date predicates aligned with the canonical rules.
    - Never widen to cancelled/refunded statuses.
 3. Preserve soft-delete semantics in both app and DB layers.
    - If changing constraint, update `up()` and `down()` safely.

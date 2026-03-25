@@ -9,19 +9,11 @@ Use this skill when editing frontend forms, client validation logic, or API payl
 - You update error messaging or form submission behavior.
 - You need frontend validation to stay aligned with Laravel `FormRequest` rules.
 
-## Non-negotiables
+## Canonical rules
 
-- Keep client validation and backend validation in sync.
-  - Frontend validation is UX; backend validation remains source of truth.
-- Preserve booking date semantics used by backend.
-  - `check_out` must be after `check_in`.
-  - `check_in` cannot be in the past for create flow.
-- Keep user-facing error paths deterministic.
-  - Field-level errors near inputs.
-  - Submission-level errors in a clear container.
-- Use shared security utilities where applicable.
-  - Email format helpers and input sanitization patterns in shared utils.
-- Update tests whenever validation rules change.
+- `.agent/rules/backend-preserve-rbac-source-and-request-validation.md`
+- `.agent/rules/frontend-preserve-boundaries-and-ui-standards.md`
+- `.agent/rules/booking-integrity.md`
 
 Validation ownership split:
 

@@ -1,6 +1,6 @@
 # Backend Documentation
 
-> Laravel 11 + PHP 8.3 + PostgreSQL + Redis
+> Laravel 12 + PHP 8.2+ + PostgreSQL 16 + Redis 7
 >
 > Last Updated: February 12, 2026
 

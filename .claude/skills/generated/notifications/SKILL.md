@@ -1,11 +1,11 @@
 ---
 name: notifications
-description: "Skill for the Notifications area of soleil-hostel. 32 symbols across 10 files."
+description: "Skill for the Notifications area of soleil-hostel. 30 symbols across 8 files."
 ---
 
 # Notifications
 
-32 symbols | 10 files | Cohesion: 69%
+30 symbols | 8 files | Cohesion: 68%
 
 ## When to Use
 
@@ -25,8 +25,6 @@ description: "Skill for the Notifications area of soleil-hostel. 32 symbols acro
 | `backend/app/Notifications/BookingConfirmed.php` | BookingConfirmed |
 | `backend/app/Services/BookingService.php` | confirmBooking |
 | `backend/tests/Feature/Stays/StayBackfillTest.php` | test_confirming_booking_twice_does_not_create_duplicate_stay |
-| `backend/app/Http/Controllers/BookingController.php` | confirm |
-| `backend/app/Console/Commands/PruneOldSoftDeletedBookings.php` | handle |
 
 ## Entry Points
 
@@ -73,7 +71,6 @@ Start here when exploring this area:
 | `HandlePaymentIntentSucceeded → Flush` | cross_community | 5 |
 | `Handle → BookingConfirmed` | cross_community | 4 |
 | `HandlePaymentIntentSucceeded → BookingConfirmed` | cross_community | 3 |
-| `Handle → BookingResource` | cross_community | 3 |
 
 ## Connected Areas
 
@@ -81,8 +78,7 @@ Start here when exploring this area:
 |------|-------------|
 | Mail | 5 calls |
 | Room | 2 calls |
-| Services | 1 calls |
-| Controllers | 1 calls |
+| Listeners | 1 calls |
 
 ## How to Explore
 

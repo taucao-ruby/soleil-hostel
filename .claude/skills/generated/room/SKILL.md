@@ -17,7 +17,7 @@ description: "Skill for the Room area of soleil-hostel. 217 symbols across 38 fi
 
 | File | Symbols |
 |------|---------|
-| `backend/tests/Feature/Room/RoomAuthorizationTest.php` | test_admin_can_delete_room, test_guest_can_access_rooms_index, test_user_can_access_rooms_index, test_moderator_can_access_rooms_index, test_admin_can_access_rooms_index (+19) |
+| `backend/tests/Feature/Room/RoomAuthorizationTest.php` | test_user_cannot_delete_room, test_admin_can_delete_room, test_guest_can_access_rooms_index, test_user_can_access_rooms_index, test_moderator_can_access_rooms_index (+19) |
 | `backend/tests/Feature/Room/RoomValidationTest.php` | test_store_requires_name, test_store_requires_description, test_store_requires_price, test_store_requires_max_guests, test_store_requires_status (+16) |
 | `backend/tests/Feature/Booking/BookingPolicyTest.php` | test_owner_can_view_own_booking, test_non_owner_cannot_view_other_booking, test_owner_can_update_own_booking, test_non_owner_cannot_update_other_booking, test_owner_can_delete_own_booking (+8) |
 | `backend/tests/Feature/Room/RoomCrudTest.php` | test_admin_can_create_room, test_regular_user_cannot_create_room, test_admin_can_update_room, test_update_returns_404_for_nonexistent_room, test_delete_returns_404_for_nonexistent_room (+7) |
@@ -59,9 +59,9 @@ Start here when exploring this area:
 | `test_validation_error_includes_per_field_errors` | Method | `backend/tests/Feature/ApiErrorFormatTest.php` | 61 |
 | `test_403_returns_standardized_json` | Method | `backend/tests/Feature/ApiErrorFormatTest.php` | 133 |
 | `test_model_not_found_returns_standardized_404` | Method | `backend/tests/Feature/ApiErrorFormatTest.php` | 154 |
-| `test_bulk_restore_requires_ids` | Method | `backend/tests/Feature/Validation/FormRequestValidationTest.php` | 159 |
-| `test_bulk_restore_requires_ids_to_be_array` | Method | `backend/tests/Feature/Validation/FormRequestValidationTest.php` | 170 |
-| `test_bulk_restore_requires_non_empty_ids` | Method | `backend/tests/Feature/Validation/FormRequestValidationTest.php` | 181 |
+| `test_user_can_view_own_profile` | Method | `backend/tests/Feature/User/ProfileTest.php` | 42 |
+| `test_legacy_me_endpoint_returns_user_data` | Method | `backend/tests/Feature/User/ProfileTest.php` | 67 |
+| `test_unified_me_endpoint_has_transient_token_bug` | Method | `backend/tests/Feature/User/ProfileTest.php` | 98 |
 
 ## Execution Flows
 

@@ -36,7 +36,7 @@ Locations, Rooms, Bookings, Reviews, Contact Messages, Authentication.
 <!-- soleil-ai-review-engine:start -->
 # soleil-ai-review-engine — Code Intelligence
 
-This project is indexed by soleil-ai-review-engine as **soleil-hostel** (4391 symbols, 11393 relationships, 182 execution flows). Use the soleil-ai-review-engine MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by soleil-ai-review-engine as **soleil-hostel** (4395 symbols, 11397 relationships, 182 execution flows). Use the soleil-ai-review-engine MCP tools to understand code, assess impact, and navigate safely.
 
 > If any soleil-ai-review-engine tool warns the index is stale, run `npx soleil-engine-cli analyze` in terminal first.
 
@@ -133,20 +133,20 @@ To check whether embeddings exist, inspect `.soleil-ai-review-engine/meta.json` 
 | Tools, resources, schema reference | `.claude/skills/soleil-ai-review-engine/soleil-ai-review-engine-guide/SKILL.md` |
 | Index, status, clean, wiki CLI commands | `.claude/skills/soleil-ai-review-engine/soleil-ai-review-engine-cli/SKILL.md` |
 | Work in the Feature area (228 symbols) | `.claude/skills/generated/feature/SKILL.md` |
-| Work in the Booking area (164 symbols) | `.claude/skills/generated/booking/SKILL.md` |
-| Work in the Services area (163 symbols) | `.claude/skills/generated/services/SKILL.md` |
-| Work in the Room area (100 symbols) | `.claude/skills/generated/room/SKILL.md` |
+| Work in the Room area (217 symbols) | `.claude/skills/generated/room/SKILL.md` |
+| Work in the Services area (158 symbols) | `.claude/skills/generated/services/SKILL.md` |
 | Work in the Repositories area (90 symbols) | `.claude/skills/generated/repositories/SKILL.md` |
-| Work in the Cache area (67 symbols) | `.claude/skills/generated/cache/SKILL.md` |
-| Work in the Models area (67 symbols) | `.claude/skills/generated/models/SKILL.md` |
+| Work in the Cache area (71 symbols) | `.claude/skills/generated/cache/SKILL.md` |
 | Work in the Policies area (65 symbols) | `.claude/skills/generated/policies/SKILL.md` |
+| Work in the Models area (64 symbols) | `.claude/skills/generated/models/SKILL.md` |
 | Work in the Auth area (56 symbols) | `.claude/skills/generated/auth/SKILL.md` |
+| Work in the Booking area (47 symbols) | `.claude/skills/generated/booking/SKILL.md` |
 | Work in the Database area (43 symbols) | `.claude/skills/generated/database/SKILL.md` |
-| Work in the Stays area (37 symbols) | `.claude/skills/generated/stays/SKILL.md` |
 | Work in the Controllers area (36 symbols) | `.claude/skills/generated/controllers/SKILL.md` |
+| Work in the Listeners area (34 symbols) | `.claude/skills/generated/listeners/SKILL.md` |
+| Work in the Stays area (31 symbols) | `.claude/skills/generated/stays/SKILL.md` |
 | Work in the Notifications area (30 symbols) | `.claude/skills/generated/notifications/SKILL.md` |
 | Work in the Enums area (26 symbols) | `.claude/skills/generated/enums/SKILL.md` |
-| Work in the Listeners area (26 symbols) | `.claude/skills/generated/listeners/SKILL.md` |
 | Work in the Bookings area (26 symbols) | `.claude/skills/generated/bookings/SKILL.md` |
 | Work in the Authorization area (24 symbols) | `.claude/skills/generated/authorization/SKILL.md` |
 | Work in the Requests area (22 symbols) | `.claude/skills/generated/requests/SKILL.md` |

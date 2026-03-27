@@ -36,7 +36,7 @@ Start here when exploring this area:
 - **`formatDateForInput`** (Function) — `frontend/src/features/booking/booking.validation.ts:109`
 - **`getMinCheckInDate`** (Function) — `frontend/src/features/booking/booking.validation.ts:119`
 - **`getMinCheckOutDate`** (Function) — `frontend/src/features/booking/booking.validation.ts:126`
-- **`validateBookingForm`** (Function) — `frontend/src/features/booking/booking.validation.ts:20`
+- **`isValidEmail`** (Function) — `frontend/src/shared/utils/security.ts:39`
 
 ## Key Symbols
 
@@ -46,9 +46,9 @@ Start here when exploring this area:
 | `formatDateForInput` | Function | `frontend/src/features/booking/booking.validation.ts` | 109 |
 | `getMinCheckInDate` | Function | `frontend/src/features/booking/booking.validation.ts` | 119 |
 | `getMinCheckOutDate` | Function | `frontend/src/features/booking/booking.validation.ts` | 126 |
+| `isValidEmail` | Function | `frontend/src/shared/utils/security.ts` | 39 |
 | `validateBookingForm` | Function | `frontend/src/features/booking/booking.validation.ts` | 20 |
 | `createBooking` | Function | `frontend/src/features/booking/booking.api.ts` | 24 |
-| `isValidEmail` | Function | `frontend/src/shared/utils/security.ts` | 39 |
 | `getBookingById` | Function | `frontend/src/features/booking/booking.api.ts` | 58 |
 | `softDeleteWithAudit` | Method | `backend/app/Models/Booking.php` | 393 |
 | `test_admin_can_view_trashed_bookings` | Method | `backend/tests/Feature/Booking/BookingSoftDeleteTest.php` | 162 |

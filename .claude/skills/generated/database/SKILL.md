@@ -10,7 +10,7 @@ description: "Skill for the Database area of soleil-hostel. 43 symbols across 13
 ## When to Use
 
 - Working with code in `backend/`
-- Understanding how processRefund, handleRefundFailure, fromException work
+- Understanding how processRefund, finalizeCancellation, handleRefundFailure work
 - Modifying database-related functionality
 
 ## Key Files
@@ -22,20 +22,20 @@ description: "Skill for the Database area of soleil-hostel. 43 symbols across 13
 | `backend/app/Database/TransactionIsolation.php` | run, executeWithIsolation, parseErrorInfo, calculateDelay, serializable (+2) |
 | `backend/tests/Feature/Database/FkDeletePolicyTest.php` | isPgsql, test_room_deletion_blocked_when_booking_exists, test_room_deletion_succeeds_when_no_bookings, test_user_deletion_nullifies_booking_user_id, test_room_with_booking_and_review_blocks_deletion |
 | `backend/tests/Feature/Database/CheckConstraintTest.php` | isPgsql, test_room_max_guests_zero_rejected, test_room_max_guests_negative_rejected, test_room_max_guests_positive_accepted |
+| `backend/app/Services/CancellationService.php` | processRefund, finalizeCancellation, handleRefundFailure |
 | `backend/tests/Unit/Database/TransactionIsolationTest.php` | test_serializable_convenience_method, test_repeatable_read_convenience_method, test_pessimistic_lock_convenience_method |
-| `backend/app/Services/CancellationService.php` | processRefund, handleRefundFailure |
-| `backend/app/Database/TransactionMetrics.php` | recordSuccess, recordFailure |
 | `backend/app/Exceptions/RefundFailedException.php` | fromException |
 | `backend/database/factories/RoomFactory.php` | available |
+| `backend/database/factories/BookingFactory.php` | cancelled |
 
 ## Entry Points
 
 Start here when exploring this area:
 
 - **`processRefund`** (Method) — `backend/app/Services/CancellationService.php:178`
+- **`finalizeCancellation`** (Method) — `backend/app/Services/CancellationService.php:262`
 - **`handleRefundFailure`** (Method) — `backend/app/Services/CancellationService.php:288`
 - **`fromException`** (Method) — `backend/app/Exceptions/RefundFailedException.php:27`
-- **`recordSuccess`** (Method) — `backend/app/Database/TransactionMetrics.php:31`
 - **`execute`** (Method) — `backend/app/Database/IdempotencyGuard.php:73`
 
 ## Key Symbols
@@ -43,9 +43,9 @@ Start here when exploring this area:
 | Symbol | Type | File | Line |
 |--------|------|------|------|
 | `processRefund` | Method | `backend/app/Services/CancellationService.php` | 178 |
+| `finalizeCancellation` | Method | `backend/app/Services/CancellationService.php` | 262 |
 | `handleRefundFailure` | Method | `backend/app/Services/CancellationService.php` | 288 |
 | `fromException` | Method | `backend/app/Exceptions/RefundFailedException.php` | 27 |
-| `recordSuccess` | Method | `backend/app/Database/TransactionMetrics.php` | 31 |
 | `execute` | Method | `backend/app/Database/IdempotencyGuard.php` | 73 |
 | `waitForResult` | Method | `backend/app/Database/IdempotencyGuard.php` | 162 |
 | `generateKey` | Method | `backend/app/Database/IdempotencyGuard.php` | 213 |
@@ -69,8 +69,6 @@ Start here when exploring this area:
 |------|------|-------|
 | `Cancel → CalculateRefundAmount` | cross_community | 4 |
 | `Cancel → BookingCancelled` | cross_community | 4 |
-| `Store → RecordSuccess` | cross_community | 4 |
-| `Handle → RecordSuccess` | cross_community | 4 |
 | `Run → Available` | cross_community | 3 |
 | `Run → Warning` | cross_community | 3 |
 | `Cancel → GenerateKey` | cross_community | 3 |
@@ -84,6 +82,7 @@ Start here when exploring this area:
 | Room | 6 calls |
 | Feature | 3 calls |
 | Cache | 2 calls |
+| Services | 1 calls |
 | Jobs | 1 calls |
 | Enums | 1 calls |
 | Booking | 1 calls |

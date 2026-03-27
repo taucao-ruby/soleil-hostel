@@ -1,11 +1,11 @@
 ---
 name: controllers
-description: "Skill for the Controllers area of soleil-hostel. 35 symbols across 25 files."
+description: "Skill for the Controllers area of soleil-hostel. 36 symbols across 26 files."
 ---
 
 # Controllers
 
-35 symbols | 25 files | Cohesion: 85%
+36 symbols | 26 files | Cohesion: 86%
 
 ## When to Use
 
@@ -19,7 +19,7 @@ description: "Skill for the Controllers area of soleil-hostel. 35 symbols across
 |------|---------|
 | `backend/app/Http/Controllers/AdminBookingController.php` | AdminBookingController, showTrashed, restore, forceDelete, restoreBulk |
 | `backend/app/Http/Controllers/RoomController.php` | RoomController, show, store, update |
-| `backend/app/Http/Controllers/BookingController.php` | BookingController, store, cancel, buildCancellationMessage |
+| `backend/app/Http/Controllers/BookingController.php` | BookingController, confirm, cancel, buildCancellationMessage |
 | `backend/app/Http/Controllers/ReviewController.php` | ReviewController |
 | `backend/app/Http/Controllers/LocationController.php` | LocationController |
 | `backend/app/Http/Controllers/HealthController.php` | HealthController |
@@ -52,11 +52,11 @@ Start here when exploring this area:
 | `BookingController` | Class | `backend/app/Http/Controllers/BookingController.php` | 23 |
 | `AuthController` | Class | `backend/app/Http/Controllers/AuthController.php` | 23 |
 | `AdminBookingController` | Class | `backend/app/Http/Controllers/AdminBookingController.php` | 20 |
+| `CustomerController` | Class | `backend/app/Http/Controllers/Admin/CustomerController.php` | 8 |
 | `UnifiedAuthController` | Class | `backend/app/Http/Controllers/Auth/UnifiedAuthController.php` | 28 |
 | `HttpOnlyTokenController` | Class | `backend/app/Http/Controllers/Auth/HttpOnlyTokenController.php` | 22 |
 | `EmailVerificationController` | Class | `backend/app/Http/Controllers/Auth/EmailVerificationController.php` | 26 |
 | `AuthController` | Class | `backend/app/Http/Controllers/Auth/AuthController.php` | 34 |
-| `CustomerController` | Class | `backend/app/Http/Controllers/Admin/CustomerController.php` | 8 |
 | `BookingResource` | Class | `backend/app/Http/Resources/BookingResource.php` | 8 |
 | `RoomResource` | Class | `backend/app/Http/Resources/RoomResource.php` | 14 |
 | `getErrorMessage` | Function | `frontend/src/shared/utils/toast.ts` | 115 |
@@ -67,11 +67,11 @@ Start here when exploring this area:
 
 | Flow | Type | Steps |
 |------|------|-------|
-| `Store → ClassifyDatabaseError` | cross_community | 5 |
+| `Handle → SupportsTags` | cross_community | 6 |
+| `Handle → Flush` | cross_community | 6 |
 | `Store → SupportsTags` | cross_community | 5 |
 | `Store → Flush` | cross_community | 5 |
-| `Store → CreateBookingWithLocking` | cross_community | 4 |
-| `Store → RecordSuccess` | cross_community | 4 |
+| `Handle → BookingConfirmed` | cross_community | 4 |
 | `Show → SupportsTags` | cross_community | 4 |
 | `Update → StampReadinessAudit` | cross_community | 3 |
 | `Update → UpdateWithVersionCheck` | cross_community | 3 |
@@ -82,10 +82,11 @@ Start here when exploring this area:
 
 | Area | Connections |
 |------|-------------|
-| Services | 4 calls |
+| Services | 2 calls |
+| Cache | 1 calls |
 | Bookings | 1 calls |
 | Feature | 1 calls |
-| Listeners | 1 calls |
+| Notifications | 1 calls |
 
 ## How to Explore
 

@@ -1,11 +1,11 @@
 ---
 name: models
-description: "Skill for the Models area of soleil-hostel. 64 symbols across 27 files."
+description: "Skill for the Models area of soleil-hostel. 63 symbols across 26 files."
 ---
 
 # Models
 
-64 symbols | 27 files | Cohesion: 74%
+63 symbols | 26 files | Cohesion: 78%
 
 ## When to Use
 
@@ -26,7 +26,7 @@ description: "Skill for the Models area of soleil-hostel. 64 symbols across 27 f
 | `backend/app/Models/User.php` | isModerator, isAtLeast, hasAnyRole |
 | `backend/app/Http/Resources/UserResource.php` | toArray, isCurrentUser, shouldIncludeStats |
 | `backend/app/Http/Middleware/CheckHttpOnlyTokenValid.php` | handle, generateDeviceFingerprint |
-| `backend/tests/Feature/Stays/FinancialLifecycleTest.php` | invalid_deposit_and_settlement_status_values_are_rejected_by_postgresql_checks, invalid_settlement_status_value_is_rejected_by_postgresql_check_constraint |
+| `backend/app/Http/Controllers/Auth/UnifiedAuthController.php` | me, detectAuthMode |
 
 ## Entry Points
 
@@ -50,18 +50,18 @@ Start here when exploring this area:
 | `isValid` | Method | `backend/app/Models/PersonalAccessToken.php` | 204 |
 | `unrevoke` | Method | `backend/app/Models/PersonalAccessToken.php` | 236 |
 | `recordUsage` | Method | `backend/app/Models/PersonalAccessToken.php` | 256 |
+| `getMinutesUntilExpiration` | Method | `backend/app/Models/PersonalAccessToken.php` | 308 |
+| `getSecondsUntilExpiration` | Method | `backend/app/Models/PersonalAccessToken.php` | 322 |
 | `getStatus` | Method | `backend/app/Models/PersonalAccessToken.php` | 408 |
 | `test_unified_logout_works_with_httponly_cookie` | Method | `backend/tests/Feature/Auth/AuthConsolidationTest.php` | 233 |
 | `handle` | Method | `backend/app/Http/Middleware/CheckTokenNotRevokedAndNotExpired.php` | 25 |
 | `handle` | Method | `backend/app/Http/Middleware/CheckHttpOnlyTokenValid.php` | 27 |
 | `generateDeviceFingerprint` | Method | `backend/app/Http/Middleware/CheckHttpOnlyTokenValid.php` | 129 |
+| `me` | Method | `backend/app/Http/Controllers/Auth/UnifiedAuthController.php` | 48 |
+| `detectAuthMode` | Method | `backend/app/Http/Controllers/Auth/UnifiedAuthController.php` | 153 |
+| `me` | Method | `backend/app/Http/Controllers/Auth/HttpOnlyTokenController.php` | 279 |
+| `me` | Method | `backend/app/Http/Controllers/Auth/AuthController.php` | 376 |
 | `isRoomAvailable` | Method | `backend/app/Services/RoomAvailabilityService.php` | 161 |
-| `bookings` | Method | `backend/app/Models/Room.php` | 103 |
-| `activeBookings` | Method | `backend/app/Models/Room.php` | 119 |
-| `test_room_has_many_bookings` | Method | `backend/tests/Unit/Models/RoomTest.php` | 123 |
-| `test_active_bookings_relationship_filters_correctly` | Method | `backend/tests/Unit/Models/RoomTest.php` | 138 |
-| `test_single_room_availability_cache` | Method | `backend/tests/Feature/Cache/RoomAvailabilityCacheTest.php` | 132 |
-| `getRoomAvailability` | Method | `backend/app/Services/Cache/RoomAvailabilityCache.php` | 70 |
 
 ## Execution Flows
 
@@ -69,8 +69,8 @@ Start here when exploring this area:
 |------|------|-------|
 | `LogoutAll → IsExpired` | cross_community | 4 |
 | `LogoutAll → IsRevoked` | cross_community | 4 |
-| `Me → IsExpired` | cross_community | 4 |
-| `Me → IsRevoked` | cross_community | 4 |
+| `Me → IsExpired` | intra_community | 4 |
+| `Me → IsRevoked` | intra_community | 4 |
 | `Logout → IsExpired` | cross_community | 4 |
 | `Logout → IsRevoked` | cross_community | 4 |
 | `ToArray → IsAtLeast` | cross_community | 4 |
@@ -83,13 +83,12 @@ Start here when exploring this area:
 | Area | Connections |
 |------|-------------|
 | Authorization | 10 calls |
-| Room | 6 calls |
+| Stays | 5 calls |
 | Cache | 4 calls |
-| Stays | 4 calls |
+| Room | 4 calls |
 | Policies | 2 calls |
 | Auth | 2 calls |
 | Services | 1 calls |
-| Feature | 1 calls |
 
 ## How to Explore
 

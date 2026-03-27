@@ -1,11 +1,11 @@
 ---
 name: controllers
-description: "Skill for the Controllers area of soleil-hostel. 54 symbols across 29 files."
+description: "Skill for the Controllers area of soleil-hostel. 35 symbols across 25 files."
 ---
 
 # Controllers
 
-54 symbols | 29 files | Cohesion: 75%
+35 symbols | 25 files | Cohesion: 85%
 
 ## When to Use
 
@@ -17,16 +17,16 @@ description: "Skill for the Controllers area of soleil-hostel. 54 symbols across
 
 | File | Symbols |
 |------|---------|
-| `backend/app/Http/Controllers/AdminBookingController.php` | index, trashed, AdminBookingController, showTrashed, restore (+2) |
-| `backend/app/Http/Controllers/AuthController.php` | register, login, me, logout, refresh (+1) |
-| `backend/app/Http/Controllers/BookingController.php` | BookingController, cancel, buildCancellationMessage, store, update |
-| `backend/app/Http/Controllers/ContactController.php` | store, index, markAsRead, ContactController |
+| `backend/app/Http/Controllers/AdminBookingController.php` | AdminBookingController, showTrashed, restore, forceDelete, restoreBulk |
 | `backend/app/Http/Controllers/RoomController.php` | RoomController, show, store, update |
-| `backend/app/Http/Controllers/Auth/HttpOnlyTokenController.php` | login, generateDeviceFingerprint, HttpOnlyTokenController |
-| `backend/app/Services/BookingService.php` | getTrashedBookings, getTrashedBookingById |
-| `backend/app/Repositories/Contracts/BookingRepositoryInterface.php` | getAllWithTrashedPaginated, hasOverlappingBookings |
-| `backend/app/Traits/ApiResponse.php` | success |
-| `backend/app/Services/ContactMessageService.php` | getPaginated |
+| `backend/app/Http/Controllers/BookingController.php` | BookingController, store, cancel, buildCancellationMessage |
+| `backend/app/Http/Controllers/ReviewController.php` | ReviewController |
+| `backend/app/Http/Controllers/LocationController.php` | LocationController |
+| `backend/app/Http/Controllers/HealthController.php` | HealthController |
+| `backend/app/Http/Controllers/CspViolationReportController.php` | CspViolationReportController |
+| `backend/app/Http/Controllers/Controller.php` | Controller |
+| `backend/app/Http/Controllers/ContactController.php` | ContactController |
+| `backend/app/Http/Controllers/AuthController.php` | AuthController |
 
 ## Entry Points
 
@@ -57,11 +57,11 @@ Start here when exploring this area:
 | `EmailVerificationController` | Class | `backend/app/Http/Controllers/Auth/EmailVerificationController.php` | 26 |
 | `AuthController` | Class | `backend/app/Http/Controllers/Auth/AuthController.php` | 34 |
 | `CustomerController` | Class | `backend/app/Http/Controllers/Admin/CustomerController.php` | 8 |
-| `RoomResource` | Class | `backend/app/Http/Resources/RoomResource.php` | 14 |
 | `BookingResource` | Class | `backend/app/Http/Resources/BookingResource.php` | 8 |
+| `RoomResource` | Class | `backend/app/Http/Resources/RoomResource.php` | 14 |
 | `getErrorMessage` | Function | `frontend/src/shared/utils/toast.ts` | 115 |
-| `success` | Method | `backend/app/Traits/ApiResponse.php` | 11 |
-| `getPaginated` | Method | `backend/app/Services/ContactMessageService.php` | 47 |
+| `getTrashedBookingById` | Method | `backend/app/Services/BookingService.php` | 406 |
+| `hasOverlappingBookings` | Method | `backend/app/Repositories/Contracts/BookingRepositoryInterface.php` | 156 |
 
 ## Execution Flows
 
@@ -70,29 +70,25 @@ Start here when exploring this area:
 | `Store → ClassifyDatabaseError` | cross_community | 5 |
 | `Store → SupportsTags` | cross_community | 5 |
 | `Store → Flush` | cross_community | 5 |
-| `Store → GetInstance` | cross_community | 4 |
-| `Store → DoPurify` | cross_community | 4 |
 | `Store → CreateBookingWithLocking` | cross_community | 4 |
 | `Store → RecordSuccess` | cross_community | 4 |
-| `Store → GetInstance` | cross_community | 4 |
-| `Store → DoPurify` | cross_community | 4 |
-| `Update → GetInstance` | cross_community | 4 |
+| `Show → SupportsTags` | cross_community | 4 |
+| `Update → StampReadinessAudit` | cross_community | 3 |
+| `Update → UpdateWithVersionCheck` | cross_community | 3 |
+| `Update → Refresh` | cross_community | 3 |
+| `Update → ForRoom` | cross_community | 3 |
 
 ## Connected Areas
 
 | Area | Connections |
 |------|-------------|
-| Services | 3 calls |
-| Auth | 3 calls |
-| Security | 2 calls |
-| Listeners | 2 calls |
-| Feature | 1 calls |
-| Unit | 1 calls |
-| Notifications | 1 calls |
+| Services | 4 calls |
 | Bookings | 1 calls |
+| Feature | 1 calls |
+| Listeners | 1 calls |
 
 ## How to Explore
 
-1. `gitnexus_context({name: "getErrorMessage"})` — see callers and callees
-2. `gitnexus_query({query: "controllers"})` — find related execution flows
+1. `soleil-ai-review-engine_context({name: "getErrorMessage"})` — see callers and callees
+2. `soleil-ai-review-engine_query({query: "controllers"})` — find related execution flows
 3. Read key files listed above for implementation details

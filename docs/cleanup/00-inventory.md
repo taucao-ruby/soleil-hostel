@@ -34,8 +34,8 @@ unresolved_count: 0
 
 | path | current_role_inferred | truth_type | status | overlap_with | risk_level | recommended_action |
 |------|-----------------------|------------|--------|-------------|------------|-------------------|
-| claude.md | Root contract / constitution (208 lines) | SOURCE_OF_TRUTH | ACTIVE | agents.md (GitNexus section) | LOW | KEEP |
-| agents.md | Agent onboarding index (35 lines) | DERIVED | ACTIVE | claude.md (GitNexus section duplicated) | MEDIUM | MERGE |
+| claude.md | Root contract / constitution (208 lines) | SOURCE_OF_TRUTH | ACTIVE | agents.md (soleil-ai-review-engine section) | LOW | KEEP |
+| agents.md | Agent onboarding index (35 lines) | DERIVED | ACTIVE | claude.md (soleil-ai-review-engine section duplicated) | MEDIUM | MERGE |
 
 ### Settings & configuration
 
@@ -65,18 +65,18 @@ unresolved_count: 0
 | .claude/agents/docs-sync.md | Docs sync agent (56 lines) | SOURCE_OF_TRUTH | ACTIVE | — | LOW | KEEP |
 | .claude/agents/db-investigator.md | DB investigation agent (48 lines) | SOURCE_OF_TRUTH | ACTIVE | .claude/agents/security-reviewer.md (locking scope split) | LOW | KEEP |
 
-### Skills — Claude native (GitNexus)
+### Skills — Claude native (soleil-ai-review-engine)
 
 | path | current_role_inferred | truth_type | status | overlap_with | risk_level | recommended_action |
 |------|-----------------------|------------|--------|-------------|------------|-------------------|
-| .claude/skills/gitnexus/gitnexus-cli/skill.md | GitNexus CLI skill (82 lines) | SOURCE_OF_TRUTH | ACTIVE | — | LOW | KEEP |
-| .claude/skills/gitnexus/gitnexus-debugging/skill.md | GitNexus debug skill (89 lines) | SOURCE_OF_TRUTH | ACTIVE | — | LOW | KEEP |
-| .claude/skills/gitnexus/gitnexus-exploring/skill.md | GitNexus explore skill (78 lines) | SOURCE_OF_TRUTH | ACTIVE | — | LOW | KEEP |
-| .claude/skills/gitnexus/gitnexus-guide/skill.md | GitNexus guide skill (64 lines) | SOURCE_OF_TRUTH | ACTIVE | — | LOW | KEEP |
-| .claude/skills/gitnexus/gitnexus-impact-analysis/skill.md | GitNexus impact skill (97 lines) | SOURCE_OF_TRUTH | ACTIVE | — | LOW | KEEP |
-| .claude/skills/gitnexus/gitnexus-refactoring/skill.md | GitNexus refactor skill (121 lines) | SOURCE_OF_TRUTH | ACTIVE | — | LOW | KEEP |
+| .claude/skills/soleil-ai-review-engine/soleil-ai-review-engine-cli/skill.md | soleil-ai-review-engine CLI skill (82 lines) | SOURCE_OF_TRUTH | ACTIVE | — | LOW | KEEP |
+| .claude/skills/soleil-ai-review-engine/soleil-ai-review-engine-debugging/skill.md | soleil-ai-review-engine debug skill (89 lines) | SOURCE_OF_TRUTH | ACTIVE | — | LOW | KEEP |
+| .claude/skills/soleil-ai-review-engine/soleil-ai-review-engine-exploring/skill.md | soleil-ai-review-engine explore skill (78 lines) | SOURCE_OF_TRUTH | ACTIVE | — | LOW | KEEP |
+| .claude/skills/soleil-ai-review-engine/soleil-ai-review-engine-guide/skill.md | soleil-ai-review-engine guide skill (64 lines) | SOURCE_OF_TRUTH | ACTIVE | — | LOW | KEEP |
+| .claude/skills/soleil-ai-review-engine/soleil-ai-review-engine-impact-analysis/skill.md | soleil-ai-review-engine impact skill (97 lines) | SOURCE_OF_TRUTH | ACTIVE | — | LOW | KEEP |
+| .claude/skills/soleil-ai-review-engine/soleil-ai-review-engine-refactoring/skill.md | soleil-ai-review-engine refactor skill (121 lines) | SOURCE_OF_TRUTH | ACTIVE | — | LOW | KEEP |
 
-### Skills — generated (auto-managed by GitNexus)
+### Skills — generated (auto-managed by soleil-ai-review-engine)
 
 | path | current_role_inferred | truth_type | status | overlap_with | risk_level | recommended_action |
 |------|-----------------------|------------|--------|-------------|------------|-------------------|
@@ -340,7 +340,7 @@ unresolved_count: 0
 
 | Overlap | Files | Severity |
 |---------|-------|----------|
-| GitNexus documentation duplicated | claude.md ↔ agents.md (100 identical lines) | HIGH — resolved in B3 |
+| soleil-ai-review-engine documentation duplicated | claude.md ↔ agents.md (100 identical lines) | HIGH — resolved in B3 |
 | Booking invariants repeated | architecture_facts.md ↔ db_facts.md ↔ skill-os/context/invariants.md | MEDIUM — delegation headers added in B4 |
 | Quality gates duplicated | docs/agents/commands.md ↔ docs/commands_and_gates.md | MEDIUM — cross-ref added in B4 |
 | review-pr/ship command-skill duplication | .claude/commands/*.md ↔ .claude/skills/*.md | HIGH — skills deleted in B5 |

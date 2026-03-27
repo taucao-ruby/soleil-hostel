@@ -46,7 +46,7 @@ human_countersign: ""
 
 ## Contracts intact?
 
-YES. All 78 invariants from `03-invariant-baseline.md` are tracked in `02-invariant-delta.md` with preservation enums. No invariant is unaccounted for. The GitNexus duplicate (15 instructions in agents.md) was `INTENTIONALLY_REMOVED` with justification (canonical copy in claude.md).
+YES. All 78 invariants from `03-invariant-baseline.md` are tracked in `02-invariant-delta.md` with preservation enums. No invariant is unaccounted for. The soleil-ai-review-engine duplicate (15 instructions in agents.md) was `INTENTIONALLY_REMOVED` with justification (canonical copy in claude.md).
 
 ## Silent deletions detected?
 
@@ -68,7 +68,7 @@ NO. B6 verified no command references the deleted skill files.
 
 | ID | Batch | Summary | Blocks |
 |----|-------|---------|--------|
-| UNRESOLVED-B3-1 | B3 | GitNexus markers removed from agents.md — re-injection risk | no |
+| UNRESOLVED-B3-1 | B3 | soleil-ai-review-engine markers removed from agents.md — re-injection risk | no |
 | UNRESOLVED-B4-1 | B4 | db_facts.md invariant text not deduplicated | no |
 | UNRESOLVED-B4-2 | B4 | development_hooks.md not deleted — pending link audit | no |
 | UNRESOLVED-B4-3 | B4 | Downstream consumers not enumerated | no |

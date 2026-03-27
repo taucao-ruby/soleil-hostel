@@ -24,7 +24,7 @@ CLAUDE.md is already loaded with all frontend rules. Load relevant skills:
 - `.agent/rules/auth-token-safety.md`
 - `.agent/rules/security-runtime-hygiene.md`
 - `.agent/rules/instruction-surface-and-task-boundaries.md`
-- `.agent/rules/gitnexus-impact-and-change-scope.md`
+- `.agent/rules/soleil-ai-review-engine-impact-and-change-scope.md`
 
 ## Process
 

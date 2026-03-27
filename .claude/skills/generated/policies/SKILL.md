@@ -73,11 +73,10 @@ Start here when exploring this area:
 
 | Area | Connections |
 |------|-------------|
-| Authorization | 1 calls |
-| Models | 1 calls |
+| Authorization | 2 calls |
 
 ## How to Explore
 
-1. `gitnexus_context({name: "Booking"})` — see callers and callees
-2. `gitnexus_query({query: "policies"})` — find related execution flows
+1. `soleil-ai-review-engine_context({name: "Booking"})` — see callers and callees
+2. `soleil-ai-review-engine_query({query: "policies"})` — find related execution flows
 3. Read key files listed above for implementation details

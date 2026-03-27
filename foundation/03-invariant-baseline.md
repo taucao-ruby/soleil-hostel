@@ -80,21 +80,21 @@
 - I-58: COMPACT.md — edit §1 in-place, append history; keep §1 under 12 lines
 - I-59: backend/ — request validation in *Request.php, not controllers; no env() in controllers/services
 
-### Section: GitNexus (lines 106-206) — auto-managed by <!-- gitnexus:start/end -->
+### Section: soleil-ai-review-engine (lines 106-206) — auto-managed by <!-- soleil-ai-review-engine:start/end -->
 - I-60: MUST run impact analysis before editing any symbol
-- I-61: MUST run gitnexus_detect_changes() before committing
+- I-61: MUST run soleil-ai-review-engine_detect_changes() before committing
 - I-62: MUST warn user if impact analysis returns HIGH or CRITICAL risk
-- I-63: Use gitnexus_query for exploration instead of grepping
-- I-64: Use gitnexus_context for full symbol context
-- I-65: NEVER edit without gitnexus_impact first
+- I-63: Use soleil-ai-review-engine_query for exploration instead of grepping
+- I-64: Use soleil-ai-review-engine_context for full symbol context
+- I-65: NEVER edit without soleil-ai-review-engine_impact first
 - I-66: NEVER ignore HIGH/CRITICAL warnings
-- I-67: NEVER rename with find-and-replace — use gitnexus_rename
-- I-68: NEVER commit without gitnexus_detect_changes
+- I-67: NEVER rename with find-and-replace — use soleil-ai-review-engine_rename
+- I-68: NEVER commit without soleil-ai-review-engine_detect_changes
 - I-69: Tools reference table (query, context, impact, detect_changes, rename, cypher)
 - I-70: Impact risk levels (d=1, d=2, d=3)
 - I-71: Resources table (context, clusters, processes, process/{name})
 - I-72: Self-check before finishing (4-point checklist)
-- I-73: Index freshness — run npx gitnexus analyze after commits
+- I-73: Index freshness — run npx soleil-ai-review-engine analyze after commits
 - I-74: CLI skill file reference table (6 skills)
 
 ## AGENTS.md — Agent Onboarding (lines 1-35, unique content)
@@ -104,7 +104,7 @@
 - A-03: Primary business risks (double-booking, token security, cancellation state machine)
 - A-04: Repo layout (backend/, frontend/, docs/, skills/, mcp/, .claude/)
 
-## AGENTS.md — GitNexus (lines 36-136, DUPLICATE of CLAUDE.md lines 106-206)
+## AGENTS.md — soleil-ai-review-engine (lines 36-136, DUPLICATE of CLAUDE.md lines 106-206)
 
 - DUPLICATE of I-60 through I-74 — identical content
 
@@ -114,5 +114,5 @@
 
 - **74 unique instructions** from CLAUDE.md (I-01 through I-74)
 - **4 unique instructions** from AGENTS.md (A-01 through A-04)
-- **15 duplicated instructions** (GitNexus section in AGENTS.md)
+- **15 duplicated instructions** (soleil-ai-review-engine section in AGENTS.md)
 - **Total unique: 78 instructions**

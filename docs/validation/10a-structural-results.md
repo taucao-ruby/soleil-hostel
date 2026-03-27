@@ -69,7 +69,7 @@ unresolved_count: 0
 | `.claude/agents/` | 4 subagent files | 4 files | PASS |
 | `.claude/hooks/` | 3 hook scripts | 3 files | PASS |
 | `.claude/output-styles/` | 2 style files | 2 files | PASS |
-| `.claude/skills/gitnexus/` | 6 skill dirs | 6 dirs | PASS |
+| `.claude/skills/soleil-ai-review-engine/` | 6 skill dirs | 6 dirs | PASS |
 | `.claude/skills/generated/` | 20 skill dirs | 20 dirs | PASS |
 | `.agent/rules/` | 3 rule files | 3 files | PASS |
 | `skills/laravel/` | 7 skill files | 7 files | PASS |

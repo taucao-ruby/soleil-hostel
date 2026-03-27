@@ -23,7 +23,7 @@ NO — All references in audit reports verified against file system.
 From Phase A/B (carried):
 | id | description | evidence_missing | blocks_batch |
 |----|-------------|-----------------|-------------|
-| UNRESOLVED-B3-1 | GitNexus markers removed from agents.md | GitNexus CLI re-injection behavior | — |
+| UNRESOLVED-B3-1 | soleil-ai-review-engine markers removed from agents.md | soleil-ai-review-engine CLI re-injection behavior | — |
 | UNRESOLVED-B4-1 | db_facts.md §2 not deduplicated | Isolation risk assessment | — |
 | UNRESOLVED-B4-2 | development_hooks.md not deleted | Link audit | — |
 | UNRESOLVED-B5-1 | Reference library skills template conformance | Template audit | — |

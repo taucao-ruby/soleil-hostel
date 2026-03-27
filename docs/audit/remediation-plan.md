@@ -109,7 +109,7 @@ Gate RC1 specifically requires:
 1. Countersign this gate
 2. Countersign Gates A, B, C
 3. Acknowledge REM-1 (control plane gap)
-4. Test B3-1 (`npx gitnexus analyze` re-injection)
+4. Test B3-1 (`npx soleil-ai-review-engine analyze` re-injection)
 5. Delete `docs/DEVELOPMENT_HOOKS.md`
 6. Plan WORKLOG archive at ~250 lines
 7. Next refactor cycle starts from Phase 0

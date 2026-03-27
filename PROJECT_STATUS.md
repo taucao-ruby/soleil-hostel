@@ -2,7 +2,7 @@
 
 **Last Updated:** March 20, 2026
 **Current Branch:** `main`
-**Latest Commit:** `5ec58dd` — chore: merge dev into main — add gitnexus skills + .gitnexus gitignore
+**Latest Commit:** `5ec58dd` — chore: merge dev into main — add soleil-ai-review-engine skills + .soleil-ai-review-engine gitignore
 
 ## Current Status: Repo Health Green
 

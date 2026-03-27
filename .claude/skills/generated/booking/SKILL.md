@@ -1,11 +1,11 @@
 ---
 name: booking
-description: "Skill for the Booking area of soleil-hostel. 179 symbols across 39 files."
+description: "Skill for the Booking area of soleil-hostel. 47 symbols across 14 files."
 ---
 
 # Booking
 
-179 symbols | 39 files | Cohesion: 62%
+47 symbols | 14 files | Cohesion: 71%
 
 ## When to Use
 
@@ -17,16 +17,16 @@ description: "Skill for the Booking area of soleil-hostel. 179 symbols across 39
 
 | File | Symbols |
 |------|---------|
-| `backend/tests/Feature/Booking/BookingSoftDeleteTest.php` | test_delete_uses_soft_delete_and_preserves_data, test_soft_deleted_bookings_excluded_from_index, test_soft_delete_records_audit_trail, test_admin_delete_records_admin_as_deleter, test_regular_user_cannot_view_trashed (+21) |
-| `backend/tests/Feature/Room/RoomValidationTest.php` | test_store_requires_name, test_store_requires_description, test_store_requires_price, test_store_requires_max_guests, test_store_requires_status (+12) |
-| `backend/tests/Feature/Booking/AdminBookingCoverageTest.php` | test_moderator_can_access_admin_booking_index, test_user_cannot_access_admin_booking_index, test_moderator_can_access_admin_trashed_index, test_user_cannot_access_admin_trashed_index, createTrashedBooking (+9) |
-| `backend/tests/Feature/Booking/BookingPolicyTest.php` | test_owner_can_view_own_booking, test_non_owner_cannot_view_other_booking, test_owner_can_update_own_booking, test_non_owner_cannot_update_other_booking, test_owner_can_delete_own_booking (+8) |
-| `backend/tests/Feature/Audit/AdminAuditLogTest.php` | test_force_delete_creates_audit_log, test_force_delete_preserves_audit_after_record_destroyed, test_restore_creates_audit_log, test_bulk_restore_creates_audit_logs_per_booking, test_room_create_creates_audit_log (+6) |
-| `backend/tests/Feature/CreateBookingConcurrencyTest.php` | test_normal_booking_creation_succeeds, test_fully_overlapping_booking_is_rejected, test_same_day_checkin_checkout_boundary_is_allowed, test_partial_overlap_at_start_is_rejected, test_partial_overlap_at_end_is_rejected (+5) |
-| `backend/tests/Feature/Health/HealthEndpointTest.php` | test_detailed_requires_admin_role, test_detailed_returns_full_health_for_admin, test_db_endpoint_returns_healthy_for_admin, test_cache_endpoint_returns_healthy_for_admin, test_queue_endpoint_returns_healthy_for_admin (+1) |
-| `backend/tests/Feature/Contact/ContactAuthorizationTest.php` | test_moderator_can_access_contact_index, test_user_cannot_access_contact_index, test_admin_can_access_contact_index, test_moderator_can_mark_contact_as_read, test_user_cannot_mark_contact_as_read (+1) |
-| `backend/tests/Feature/RoomOptimisticLockingTest.php` | test_post_rooms_creates_room_with_lock_version_1, test_put_room_with_correct_version_succeeds_and_increments_version, test_put_room_with_stale_version_returns_409_conflict, test_put_room_without_lock_version_uses_backward_compatible_mode, test_concurrent_api_updates_second_request_fails_with_409 |
-| `backend/tests/Feature/User/ProfileTest.php` | test_user_can_view_own_profile, test_legacy_me_endpoint_returns_user_data, test_unified_me_endpoint_has_transient_token_bug, test_profile_update_endpoint_not_implemented, test_password_change_endpoint_not_implemented |
+| `backend/tests/Feature/Booking/BookingSoftDeleteTest.php` | test_admin_can_view_trashed_bookings, test_admin_can_restore_trashed_booking, test_regular_user_cannot_restore, test_admin_can_force_delete_trashed_booking, test_regular_user_cannot_force_delete (+11) |
+| `backend/tests/Feature/Booking/AdminBookingCoverageTest.php` | createTrashedBooking, test_admin_can_view_trashed_booking_via_v1, test_moderator_can_view_trashed_booking_via_v1, test_user_cannot_view_trashed_booking_via_v1, test_user_cannot_restore_booking (+5) |
+| `frontend/src/features/booking/booking.validation.ts` | calculateNights, formatDateForInput, getMinCheckInDate, getMinCheckOutDate, validateBookingForm |
+| `frontend/src/features/booking/BookingList.tsx` | BookingList, loadBookings, getStatusBadge |
+| `frontend/src/features/booking/booking.validation.test.ts` | getFutureDateStr, getPastDateStr |
+| `frontend/src/features/booking/BookingForm.tsx` | BookingForm, handleSubmit |
+| `frontend/src/features/booking/booking.api.ts` | createBooking, getBookingById |
+| `backend/app/Models/Booking.php` | softDeleteWithAudit |
+| `backend/database/factories/BookingFactory.php` | forUser |
+| `backend/app/Providers/HorizonServiceProvider.php` | gate |
 
 ## Entry Points
 
@@ -36,7 +36,7 @@ Start here when exploring this area:
 - **`formatDateForInput`** (Function) — `frontend/src/features/booking/booking.validation.ts:109`
 - **`getMinCheckInDate`** (Function) — `frontend/src/features/booking/booking.validation.ts:119`
 - **`getMinCheckOutDate`** (Function) — `frontend/src/features/booking/booking.validation.ts:126`
-- **`useMyBookingsQuery`** (Function) — `frontend/src/features/bookings/useMyBookings.ts:11`
+- **`validateBookingForm`** (Function) — `frontend/src/features/booking/booking.validation.ts:20`
 
 ## Key Symbols
 
@@ -46,22 +46,22 @@ Start here when exploring this area:
 | `formatDateForInput` | Function | `frontend/src/features/booking/booking.validation.ts` | 109 |
 | `getMinCheckInDate` | Function | `frontend/src/features/booking/booking.validation.ts` | 119 |
 | `getMinCheckOutDate` | Function | `frontend/src/features/booking/booking.validation.ts` | 126 |
-| `useMyBookingsQuery` | Function | `frontend/src/features/bookings/useMyBookings.ts` | 11 |
-| `fetchMyBookings` | Function | `frontend/src/features/booking/booking.api.ts` | 36 |
-| `isValidEmail` | Function | `frontend/src/shared/utils/security.ts` | 39 |
 | `validateBookingForm` | Function | `frontend/src/features/booking/booking.validation.ts` | 20 |
 | `createBooking` | Function | `frontend/src/features/booking/booking.api.ts` | 24 |
+| `isValidEmail` | Function | `frontend/src/shared/utils/security.ts` | 39 |
 | `getBookingById` | Function | `frontend/src/features/booking/booking.api.ts` | 58 |
-| `actingAs` | Method | `backend/tests/TestCase.php` | 36 |
-| `assertConflictResponse` | Method | `backend/tests/Traits/RoomTestAssertions.php` | 60 |
-| `test_post_rooms_creates_room_with_lock_version_1` | Method | `backend/tests/Feature/RoomOptimisticLockingTest.php` | 320 |
-| `test_put_room_with_correct_version_succeeds_and_increments_version` | Method | `backend/tests/Feature/RoomOptimisticLockingTest.php` | 338 |
-| `test_put_room_with_stale_version_returns_409_conflict` | Method | `backend/tests/Feature/RoomOptimisticLockingTest.php` | 366 |
-| `test_put_room_without_lock_version_uses_backward_compatible_mode` | Method | `backend/tests/Feature/RoomOptimisticLockingTest.php` | 400 |
-| `test_concurrent_api_updates_second_request_fails_with_409` | Method | `backend/tests/Feature/RoomOptimisticLockingTest.php` | 428 |
-| `actingAsAdmin` | Method | `backend/tests/Feature/MonitoringLoggingTest.php` | 16 |
-| `test_detailed_health_endpoint_returns_correct_structure` | Method | `backend/tests/Feature/MonitoringLoggingTest.php` | 66 |
-| `test_normal_booking_creation_succeeds` | Method | `backend/tests/Feature/CreateBookingConcurrencyTest.php` | 56 |
+| `softDeleteWithAudit` | Method | `backend/app/Models/Booking.php` | 393 |
+| `test_admin_can_view_trashed_bookings` | Method | `backend/tests/Feature/Booking/BookingSoftDeleteTest.php` | 162 |
+| `test_admin_can_restore_trashed_booking` | Method | `backend/tests/Feature/Booking/BookingSoftDeleteTest.php` | 220 |
+| `test_regular_user_cannot_restore` | Method | `backend/tests/Feature/Booking/BookingSoftDeleteTest.php` | 241 |
+| `test_admin_can_force_delete_trashed_booking` | Method | `backend/tests/Feature/Booking/BookingSoftDeleteTest.php` | 283 |
+| `test_regular_user_cannot_force_delete` | Method | `backend/tests/Feature/Booking/BookingSoftDeleteTest.php` | 316 |
+| `test_soft_deleted_bookings_dont_block_new_bookings` | Method | `backend/tests/Feature/Booking/BookingSoftDeleteTest.php` | 331 |
+| `test_admin_can_view_specific_trashed_booking` | Method | `backend/tests/Feature/Booking/BookingSoftDeleteTest.php` | 400 |
+| `test_deleted_by_relationship` | Method | `backend/tests/Feature/Booking/BookingSoftDeleteTest.php` | 441 |
+| `test_moderator_can_view_trashed` | Method | `backend/tests/Feature/Booking/BookingSoftDeleteTest.php` | 466 |
+| `test_moderator_cannot_restore` | Method | `backend/tests/Feature/Booking/BookingSoftDeleteTest.php` | 476 |
+| `test_moderator_cannot_force_delete` | Method | `backend/tests/Feature/Booking/BookingSoftDeleteTest.php` | 486 |
 
 ## Execution Flows
 
@@ -71,21 +71,17 @@ Start here when exploring this area:
 | `BookingForm → GetRooms` | cross_community | 3 |
 | `BookingForm → FormatDateForInput` | intra_community | 3 |
 | `HandleSubmit → IsValidEmail` | intra_community | 3 |
-| `GuestDashboard → FetchMyBookings` | cross_community | 3 |
-| `GuestDashboard → FetchBookings` | cross_community | 3 |
-| `BookingList → FetchMyBookings` | intra_community | 3 |
 
 ## Connected Areas
 
 | Area | Connections |
 |------|-------------|
+| Room | 27 calls |
 | Feature | 3 calls |
 | Rooms | 2 calls |
-| Room | 2 calls |
-| Auth | 1 calls |
 
 ## How to Explore
 
-1. `gitnexus_context({name: "calculateNights"})` — see callers and callees
-2. `gitnexus_query({query: "booking"})` — find related execution flows
+1. `soleil-ai-review-engine_context({name: "calculateNights"})` — see callers and callees
+2. `soleil-ai-review-engine_query({query: "booking"})` — find related execution flows
 3. Read key files listed above for implementation details

@@ -23,7 +23,7 @@ and wait for user confirmation before running gates.
 - `.agent/rules/migration-safety.md`
 - `.agent/rules/frontend-preserve-boundaries-and-ui-standards.md`
 - `.agent/rules/instruction-surface-and-task-boundaries.md`
-- `.agent/rules/gitnexus-impact-and-change-scope.md`
+- `.agent/rules/soleil-ai-review-engine-impact-and-change-scope.md`
 
 ## Gate Sequence
 

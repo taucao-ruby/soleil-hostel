@@ -72,9 +72,9 @@ The combined footprint of the pipeline execution, retroactive remediation, and R
 | Validation | `docs/validation/structural-checklist.md` (1 file) |
 | Tooling | `scripts/assemble-rc1.ps1` (1 file) |
 
-### GitNexus Auto-Generated (Not RC1 Work)
+### soleil-ai-review-engine Auto-Generated (Not RC1 Work)
 
-21 `.claude/skills/generated/` files modified + 2 deleted + 2 new directories = 25 files. These are artifacts of `npx gitnexus analyze` post-commit hooks, not RC1 remediation output.
+21 `.claude/skills/generated/` files modified + 2 deleted + 2 new directories = 25 files. These are artifacts of `npx soleil-ai-review-engine analyze` post-commit hooks, not RC1 remediation output.
 
 ---
 
@@ -178,7 +178,7 @@ The artifact corpus is substantively sound. All 78 invariants are preserved and 
 
 2. **Acknowledge UNRESOLVED-REM-1.** Human must explicitly acknowledge that Phase D artifacts are accepted as valid despite the control plane gap, and that next cycle must run strictly from Phase 0. *Owner: human operator.*
 
-3. **Triage remaining 2 OPEN items.** B3-1 (GitNexus re-injection risk) requires human testing. REM-1 requires human acknowledgment. *Owner: human operator.*
+3. **Triage remaining 2 OPEN items.** B3-1 (soleil-ai-review-engine re-injection risk) requires human testing. REM-1 requires human acknowledgment. *Owner: human operator.*
 
 4. **Monitor 3 DEFERRED items.** B8-2 and B8-3 are self-correcting (next code session). B8-4 (WORKLOG archive) needs action by ~April 10. *Owner: human operator / next code session.*
 

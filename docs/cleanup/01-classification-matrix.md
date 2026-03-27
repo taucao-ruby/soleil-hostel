@@ -26,8 +26,8 @@ note: >
 
 | path | observed_bucket | correct_bucket | mismatch | mixed_responsibilities | tie_break_applied | recommended_action |
 |------|----------------|---------------|----------|----------------------|-------------------|-------------------|
-| CLAUDE.md | CONSTITUTION | CONSTITUTION | NO | YES — contains GitNexus section (BOUNDARY_CONTRACT scope) and generated skill index (SKILLS scope) | — | SPLIT — extract GitNexus + skill index to dedicated references |
-| AGENTS.md | CONSTITUTION | CONSTITUTION | NO | YES — agent onboarding index (CONSTITUTION) + GitNexus documentation (BOUNDARY_CONTRACT, ~120 lines duplicated from CLAUDE.md) | — | MERGE — deduplicate GitNexus into single location |
+| CLAUDE.md | CONSTITUTION | CONSTITUTION | NO | YES — contains soleil-ai-review-engine section (BOUNDARY_CONTRACT scope) and generated skill index (SKILLS scope) | — | SPLIT — extract soleil-ai-review-engine + skill index to dedicated references |
+| AGENTS.md | CONSTITUTION | CONSTITUTION | NO | YES — agent onboarding index (CONSTITUTION) + soleil-ai-review-engine documentation (BOUNDARY_CONTRACT, ~120 lines duplicated from CLAUDE.md) | — | MERGE — deduplicate soleil-ai-review-engine into single location |
 
 ### Settings & configuration (3 files)
 
@@ -57,16 +57,16 @@ note: >
 | .claude/agents/docs-sync.md | AGENTS | AGENTS | NO | NO | — | KEEP |
 | .claude/agents/db-investigator.md | AGENTS | AGENTS | NO | NO | — | KEEP |
 
-### Skills — Claude native GitNexus (6 files)
+### Skills — Claude native soleil-ai-review-engine (6 files)
 
 | path | observed_bucket | correct_bucket | mismatch | mixed_responsibilities | tie_break_applied | recommended_action |
 |------|----------------|---------------|----------|----------------------|-------------------|-------------------|
-| .claude/skills/gitnexus/gitnexus-cli/SKILL.md | SKILLS | SKILLS | NO | NO | — | KEEP |
-| .claude/skills/gitnexus/gitnexus-debugging/SKILL.md | SKILLS | SKILLS | NO | NO | — | KEEP |
-| .claude/skills/gitnexus/gitnexus-exploring/SKILL.md | SKILLS | SKILLS | NO | NO | — | KEEP |
-| .claude/skills/gitnexus/gitnexus-guide/SKILL.md | SKILLS | SKILLS | NO | NO | — | KEEP |
-| .claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md | SKILLS | SKILLS | NO | NO | — | KEEP |
-| .claude/skills/gitnexus/gitnexus-refactoring/SKILL.md | SKILLS | SKILLS | NO | NO | — | KEEP |
+| .claude/skills/soleil-ai-review-engine/soleil-ai-review-engine-cli/SKILL.md | SKILLS | SKILLS | NO | NO | — | KEEP |
+| .claude/skills/soleil-ai-review-engine/soleil-ai-review-engine-debugging/SKILL.md | SKILLS | SKILLS | NO | NO | — | KEEP |
+| .claude/skills/soleil-ai-review-engine/soleil-ai-review-engine-exploring/SKILL.md | SKILLS | SKILLS | NO | NO | — | KEEP |
+| .claude/skills/soleil-ai-review-engine/soleil-ai-review-engine-guide/SKILL.md | SKILLS | SKILLS | NO | NO | — | KEEP |
+| .claude/skills/soleil-ai-review-engine/soleil-ai-review-engine-impact-analysis/SKILL.md | SKILLS | SKILLS | NO | NO | — | KEEP |
+| .claude/skills/soleil-ai-review-engine/soleil-ai-review-engine-refactoring/SKILL.md | SKILLS | SKILLS | NO | NO | — | KEEP |
 
 ### Skills — generated (20 inventory entries; 17 exist, 3 deleted)
 
@@ -336,8 +336,8 @@ All 17 skill-os markdown files were deleted in commit `3b57cf2` (2026-03-22 23:4
 
 | path | responsibility_a | responsibility_b | split_recommendation |
 |------|-----------------|-----------------|---------------------|
-| CLAUDE.md | CONSTITUTION (root contract, invariants, decision order, doc map) | BOUNDARY_CONTRACT (GitNexus MCP section ~100 lines) + SKILLS (generated skill index ~30 lines) | Extract GitNexus section to a referenced file; extract skill CLI table to skill index. Keep CLAUDE.md as pure constitution. |
-| AGENTS.md | CONSTITUTION (agent onboarding index) | BOUNDARY_CONTRACT (GitNexus documentation, ~120 lines duplicated from CLAUDE.md) | Remove GitNexus section entirely — already present in CLAUDE.md. Deduplicate to single source. |
+| CLAUDE.md | CONSTITUTION (root contract, invariants, decision order, doc map) | BOUNDARY_CONTRACT (soleil-ai-review-engine MCP section ~100 lines) + SKILLS (generated skill index ~30 lines) | Extract soleil-ai-review-engine section to a referenced file; extract skill CLI table to skill index. Keep CLAUDE.md as pure constitution. |
+| AGENTS.md | CONSTITUTION (agent onboarding index) | BOUNDARY_CONTRACT (soleil-ai-review-engine documentation, ~120 lines duplicated from CLAUDE.md) | Remove soleil-ai-review-engine section entirely — already present in CLAUDE.md. Deduplicate to single source. |
 | docs/agents/COMMANDS.md | RULES (agent framework reference, setup commands, artisan commands) | COMMANDS (slash command table, quality gate commands) | Add delegation header: gate definitions owned by docs/COMMANDS_AND_GATES.md. Keep as unified reference. |
 | docs/COMMANDS_AND_GATES.md | RULES (gate definitions, pass/fail criteria) | COMMANDS (runnable command strings) | Acceptable mix — the commands exist to enforce the rules. No split needed. |
 | docs/DB_FACTS.md | RULES (DB invariants, constraints, FK policies) | SKILLS (query patterns, migration conventions) | Split: invariant sections → remain here with delegation to ARCHITECTURE_FACTS.md; query patterns → link to skills. |
@@ -398,7 +398,7 @@ All 17 skill-os markdown files were deleted in commit `3b57cf2` (2026-03-22 23:4
 
 ### Conflicts detected
 
-1. **GitNexus duplication**: CLAUDE.md and AGENTS.md both contain ~120 lines of identical GitNexus documentation (BOUNDARY_CONTRACT content embedded in CONSTITUTION files)
+1. **soleil-ai-review-engine duplication**: CLAUDE.md and AGENTS.md both contain ~120 lines of identical soleil-ai-review-engine documentation (BOUNDARY_CONTRACT content embedded in CONSTITUTION files)
 2. **Bucket model gap**: No REFERENCE/DOCUMENTATION bucket exists. ~60 reference docs forced into RULES or SKILLS based on best-fit heuristics
 3. **Dated snapshots misclassified in inventory**: `docs/AUDIT_2026_02_21.md`, `docs/AUDIT_2026_03_12_STRUCTURE.md`, `docs/frontend/RBAC_UX_AUDIT.md`, `audit_report.md`, `prompt_audit_fix.md` were all classified as RULES in the prior matrix but function as COMPACT_SNAPSHOT (point-in-time evidence, not enforcement rules)
 4. **.agent/ layer mismatch**: `.agent/scripts/*.sh` are HOOKS (enforcement scripts) and `.agent/workflows/*.md` are SKILLS (procedures), but they're co-located with `.agent/rules/*.md` (RULES)
@@ -406,7 +406,7 @@ All 17 skill-os markdown files were deleted in commit `3b57cf2` (2026-03-22 23:4
 ### Refactor plan proposed
 
 Batch 2 is classification-only. No content changes. The classifications above inform subsequent batches:
-- B3 (CLAUDE.md refactor): must address GitNexus duplication, must not reference 21 deleted files
+- B3 (CLAUDE.md refactor): must address soleil-ai-review-engine duplication, must not reference 21 deleted files
 - B4 (rules normalization): must resolve docs/DB_FACTS.md split
 - B5 (skills normalization): .agent/workflows/ are SKILLS candidates
 - B7 (hooks audit): .agent/scripts/ and .github/workflows/ are HOOKS candidates
@@ -439,14 +439,14 @@ See Unresolved items table above (4 items: UNRESOLVED-B2-1 through UNRESOLVED-B2
 
 **Files Batch 3 must read:**
 - `CLAUDE.md` — primary refactor target
-- `AGENTS.md` — GitNexus deduplication partner
+- `AGENTS.md` — soleil-ai-review-engine deduplication partner
 - `docs/agents/ARCHITECTURE_FACTS.md` — authority level 2, must not be silently altered
 - `docs/agents/CONTRACT.md` — authority level 3, referenced by CLAUDE.md
 
 **Conflicts Batch 3 must resolve in CLAUDE.md:**
-1. GitNexus section (~100 lines) is BOUNDARY_CONTRACT content embedded in CONSTITUTION — extract or reference
+1. soleil-ai-review-engine section (~100 lines) is BOUNDARY_CONTRACT content embedded in CONSTITUTION — extract or reference
 2. Generated skill CLI index table (~30 lines) is SKILLS content embedded in CONSTITUTION — extract or reference
-3. AGENTS.md GitNexus duplication must be resolved in coordination (same content in both files)
+3. AGENTS.md soleil-ai-review-engine duplication must be resolved in coordination (same content in both files)
 4. 21 deleted files must not be referenced in the refactored CLAUDE.md
 
 **Structural risk:**

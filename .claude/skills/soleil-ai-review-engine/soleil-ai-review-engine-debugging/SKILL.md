@@ -1,9 +1,9 @@
 ---
-name: gitnexus-debugging
+name: soleil-ai-review-engine-debugging
 description: "Use when the user is debugging a bug, tracing an error, or asking why something fails. Examples: \"Why is X failing?\", \"Where does this error come from?\", \"Trace this bug\""
 ---
 
-# Debugging with GitNexus
+# Debugging with soleil-ai-review-engine
 
 ## When to Use
 
@@ -16,31 +16,31 @@ description: "Use when the user is debugging a bug, tracing an error, or asking 
 ## Workflow
 
 ```
-1. gitnexus_query({query: "<error or symptom>"})            → Find related execution flows
-2. gitnexus_context({name: "<suspect>"})                    → See callers/callees/processes
-3. READ gitnexus://repo/{name}/process/{name}                → Trace execution flow
-4. gitnexus_cypher({query: "MATCH path..."})                 → Custom traces if needed
+1. soleil-ai-review-engine_query({query: "<error or symptom>"})            → Find related execution flows
+2. soleil-ai-review-engine_context({name: "<suspect>"})                    → See callers/callees/processes
+3. READ soleil-ai-review-engine://repo/{name}/process/{name}                → Trace execution flow
+4. soleil-ai-review-engine_cypher({query: "MATCH path..."})                 → Custom traces if needed
 ```
 
-> If "Index is stale" → run `npx gitnexus analyze` in terminal.
+> If "Index is stale" → run `npx soleil-ai-review-engine analyze` in terminal.
 
 ## Checklist
 
 ```
 - [ ] Understand the symptom (error message, unexpected behavior)
-- [ ] gitnexus_query for error text or related code
+- [ ] soleil-ai-review-engine_query for error text or related code
 - [ ] Identify the suspect function from returned processes
-- [ ] gitnexus_context to see callers and callees
+- [ ] soleil-ai-review-engine_context to see callers and callees
 - [ ] Trace execution flow via process resource if applicable
-- [ ] gitnexus_cypher for custom call chain traces if needed
+- [ ] soleil-ai-review-engine_cypher for custom call chain traces if needed
 - [ ] Read source files to confirm root cause
 ```
 
 ## Debugging Patterns
 
-| Symptom              | GitNexus Approach                                          |
+| Symptom              | soleil-ai-review-engine Approach                                          |
 | -------------------- | ---------------------------------------------------------- |
-| Error message        | `gitnexus_query` for error text → `context` on throw sites |
+| Error message        | `soleil-ai-review-engine_query` for error text → `context` on throw sites |
 | Wrong return value   | `context` on the function → trace callees for data flow    |
 | Intermittent failure | `context` → look for external calls, async deps            |
 | Performance issue    | `context` → find symbols with many callers (hot paths)     |
@@ -48,24 +48,24 @@ description: "Use when the user is debugging a bug, tracing an error, or asking 
 
 ## Tools
 
-**gitnexus_query** — find code related to error:
+**soleil-ai-review-engine_query** — find code related to error:
 
 ```
-gitnexus_query({query: "payment validation error"})
+soleil-ai-review-engine_query({query: "payment validation error"})
 → Processes: CheckoutFlow, ErrorHandling
 → Symbols: validatePayment, handlePaymentError, PaymentException
 ```
 
-**gitnexus_context** — full context for a suspect:
+**soleil-ai-review-engine_context** — full context for a suspect:
 
 ```
-gitnexus_context({name: "validatePayment"})
+soleil-ai-review-engine_context({name: "validatePayment"})
 → Incoming calls: processCheckout, webhookHandler
 → Outgoing calls: verifyCard, fetchRates (external API!)
 → Processes: CheckoutFlow (step 3/7)
 ```
 
-**gitnexus_cypher** — custom call chain traces:
+**soleil-ai-review-engine_cypher** — custom call chain traces:
 
 ```cypher
 MATCH path = (a)-[:CodeRelation {type: 'CALLS'}*1..2]->(b:Function {name: "validatePayment"})
@@ -75,14 +75,14 @@ RETURN [n IN nodes(path) | n.name] AS chain
 ## Example: "Payment endpoint returns 500 intermittently"
 
 ```
-1. gitnexus_query({query: "payment error handling"})
+1. soleil-ai-review-engine_query({query: "payment error handling"})
    → Processes: CheckoutFlow, ErrorHandling
    → Symbols: validatePayment, handlePaymentError
 
-2. gitnexus_context({name: "validatePayment"})
+2. soleil-ai-review-engine_context({name: "validatePayment"})
    → Outgoing calls: verifyCard, fetchRates (external API!)
 
-3. READ gitnexus://repo/my-app/process/CheckoutFlow
+3. READ soleil-ai-review-engine://repo/my-app/process/CheckoutFlow
    → Step 3: validatePayment → calls fetchRates (external)
 
 4. Root cause: fetchRates calls external API without proper timeout

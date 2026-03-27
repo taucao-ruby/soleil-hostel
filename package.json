@@ -19,6 +19,7 @@
     "concurrently": "^8.2.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
-    "minimatch": "^10.1.2"
+    "minimatch": "^10.1.2",
+    "soleil-engine-cli": "file:../../ai-tools/soleil-ai-review-engine/soleil-ai-review-engine/soleil-engine-cli-1.4.0.tgz"
   }
 }

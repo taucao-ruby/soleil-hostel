@@ -48,7 +48,7 @@ This pipeline execution did not run strictly from Phase 0 in sequence. The origi
 | Commands | 6 | `.claude/commands/` | Modified (escalation sections added) |
 | Agents | 2 | `.claude/agents/` | Modified (linked protocols added) |
 | MCP | 1 | `mcp/soleil-mcp/` | Modified (schema_version added) |
-| GitNexus (auto) | 21 | `.claude/skills/generated/` | Auto-generated (not pipeline work) |
+| soleil-ai-review-engine (auto) | 21 | `.claude/skills/generated/` | Auto-generated (not pipeline work) |
 | Session/misc | 3 | various | COMPACT, README, assembly script |
 | **Total** | **67** | | **66 pre-existing + 1 closure document** |
 
@@ -58,7 +58,7 @@ This pipeline execution did not run strictly from Phase 0 in sequence. The origi
 |--------|-------|-------|
 | CLOSED | 15 | 14 from RC1 + 1 RESIDUAL-1 from FFP-S1 |
 | DEFERRED | 3 | B8-2 (frontend test count), B8-3 (branch state), B8-4 (WORKLOG archive ~April 10) |
-| OPEN | 2 | B3-1 (GitNexus re-injection — human test), REM-1 (control plane acknowledgment — human action) |
+| OPEN | 2 | B3-1 (soleil-ai-review-engine re-injection — human test), REM-1 (control plane acknowledgment — human action) |
 | Blocking | 0 | No items have `blocks_next_batch: yes` |
 
 **Total: 20** (19 original + 1 RESIDUAL-1 appended by FFP-S3)
@@ -86,7 +86,7 @@ This pipeline execution did not run strictly from Phase 0 in sequence. The origi
 
 2. **UNRESOLVED-REM-1 acknowledged.** Human must explicitly accept that Phase D artifacts are valid despite the control plane gap and that the next cycle runs from Phase 0. *Owner: human operator.*
 
-3. **B3-1 tested.** Run `npx gitnexus analyze` and confirm no marker re-injection into `AGENTS.md`. Close or escalate B3-1 based on results. *Owner: human operator.*
+3. **B3-1 tested.** Run `npx soleil-ai-review-engine analyze` and confirm no marker re-injection into `AGENTS.md`. Close or escalate B3-1 based on results. *Owner: human operator.*
 
 4. **Orphan file deleted.** Remove `docs/DEVELOPMENT_HOOKS.md` (link audit complete, all references updated). *Owner: human operator.*
 

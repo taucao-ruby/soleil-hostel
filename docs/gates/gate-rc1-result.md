@@ -26,7 +26,7 @@ contract_breaks: []
 silent_delete_findings: []
 naming_drift_findings: []
 required_remediation: >
-  B3-1 (GitNexus markers) remains open — requires human testing of `npx gitnexus analyze`.
+  B3-1 (soleil-ai-review-engine markers) remains open — requires human testing of `npx soleil-ai-review-engine analyze`.
   REM-1 (gate countersigns + control plane acknowledgment) remains open — requires human action.
   B8-2, B8-3 are deferred (self-correcting via next code session).
   B8-4 (worklog archive) is deferred until ~April 2026.
@@ -98,7 +98,7 @@ NO. Link audit (R1-LNK) confirmed all references valid after docs/README.md upda
 | B9B-2 | R3-AGP | api-handoff-protocol.md created; both agents linked | CLOSED |
 | B9B-3 | R3-VRF | Rule files already have verified-against frontmatter | CLOSED |
 | B4-1 | R3-DB | Accepted as redundancy with delegation header mitigation | CLOSED |
-| B3-1 | — | Not targeted; requires human testing of GitNexus CLI | OPEN |
+| B3-1 | — | Not targeted; requires human testing of soleil-ai-review-engine CLI | OPEN |
 | B8-2 | — | Not targeted; self-correcting via next code session | DEFERRED |
 | B8-3 | — | Not targeted; self-correcting via next code session | DEFERRED |
 | REM-1 | — | Not targeted; requires human acknowledgment of control plane gap | OPEN |
@@ -133,7 +133,7 @@ NO. Link audit (R1-LNK) confirmed all references valid after docs/README.md upda
 1. **Countersign this gate**: Review the checklist below, sign `human_countersign` field → transitions verdict to PASS
 2. **Countersign Gates A, B, C**: All three have empty `human_countersign` fields
 3. **Acknowledge REM-1**: Sign the audit verdict countersign record
-4. **Test B3-1**: Run `npx gitnexus analyze` and confirm no re-injection into agents.md
+4. **Test B3-1**: Run `npx soleil-ai-review-engine analyze` and confirm no re-injection into agents.md
 5. **Delete orphan**: `docs/DEVELOPMENT_HOOKS.md` (link audit complete, safe to remove)
 6. **WORKLOG archive**: B8-4 — plan when approaching 250 lines (~April 10)
 7. **Next refactor cycle**: Must run strictly from Phase 0 with all foundation files present

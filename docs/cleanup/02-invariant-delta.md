@@ -33,9 +33,9 @@ input_artifacts:
   - .agent/rules/booking-integrity.md
   - .agent/rules/auth-token-safety.md
   - .agent/rules/migration-safety.md
-  - .claude/skills/gitnexus/gitnexus-guide/SKILL.md
-  - .claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md
-  - .claude/skills/gitnexus/gitnexus-refactoring/SKILL.md
+  - .claude/skills/soleil-ai-review-engine/soleil-ai-review-engine-guide/SKILL.md
+  - .claude/skills/soleil-ai-review-engine/soleil-ai-review-engine-impact-analysis/SKILL.md
+  - .claude/skills/soleil-ai-review-engine/soleil-ai-review-engine-refactoring/SKILL.md
 authority_order_applied: true
 unresolved_count: 0
 ---
@@ -72,7 +72,7 @@ or repeated the same rule in more than one place. Distinct-invariant count after
 21. `I-21` `CLAUDE.md:102` — Frontend routing keeps `PublicLayout` on `/`, `ProtectedRoute` + `Suspense` on protected routes, and `DashboardPage` lazy loaded with internal role routing.
 22. `I-22` `CLAUDE.md:103` — `frontend/src/features/booking/booking.api.ts` stays on `/v1/` and must not call legacy unversioned endpoints.
 23. `I-23` `CLAUDE.md:104` — `docs/COMPACT.md` remains a volatile handoff log; section 1 is edited in place, history appends, and section 1 stays under 12 lines.
-24. `I-24` `CLAUDE.md:114-140,170-176` — GitNexus safety workflow governs impact analysis, refactor workflow, and pre-commit scope checks.
+24. `I-24` `CLAUDE.md:114-140,170-176` — soleil-ai-review-engine safety workflow governs impact analysis, refactor workflow, and pre-commit scope checks.
 
 ## Invariant tracking table
 
@@ -101,7 +101,7 @@ or repeated the same rule in more than one place. Distinct-invariant count after
 | I-21 — Frontend routing keeps `PublicLayout`, `ProtectedRoute`, `Suspense`, and lazy `DashboardPage` role routing | `CLAUDE.md:102` | RELOCATED_WITH_REFERENCE | `docs/frontend/RBAC.md`; `docs/frontend/APP_LAYER.md` | Router-layout specifics are frontend reference material, not root-contract text. |
 | I-22 — `frontend/src/features/booking/booking.api.ts` stays `/v1/`-only and avoids legacy endpoints | `CLAUDE.md:103` | RELOCATED_WITH_REFERENCE | `skills/react/api-client-skill.md`; `docs/frontend/SERVICES_LAYER.md` | This is a file-level API client rule and was reduced to references. |
 | I-23 — `docs/COMPACT.md` stays a volatile handoff log with section-1 editing limits | `CLAUDE.md:104` | RELOCATED_WITH_REFERENCE | `docs/COMPACT.md` | Compact lifecycle rules belong to the compact surface itself, not the constitution. |
-| I-24 — GitNexus safety workflow governs impact analysis, refactor workflow, and pre-commit checks | `CLAUDE.md:114-140,170-176` | RELOCATED_WITH_REFERENCE | `docs/MCP.md`; `.claude/skills/gitnexus/gitnexus-guide/SKILL.md`; `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md`; `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` | Boundary/tooling workflow was removed from the constitution and replaced with explicit references. |
+| I-24 — soleil-ai-review-engine safety workflow governs impact analysis, refactor workflow, and pre-commit checks | `CLAUDE.md:114-140,170-176` | RELOCATED_WITH_REFERENCE | `docs/MCP.md`; `.claude/skills/soleil-ai-review-engine/soleil-ai-review-engine-guide/SKILL.md`; `.claude/skills/soleil-ai-review-engine/soleil-ai-review-engine-impact-analysis/SKILL.md`; `.claude/skills/soleil-ai-review-engine/soleil-ai-review-engine-refactoring/SKILL.md` | Boundary/tooling workflow was removed from the constitution and replaced with explicit references. |
 
 ## Content relocation map (source → destination for all moved content)
 
@@ -113,7 +113,7 @@ or repeated the same rule in more than one place. Distinct-invariant count after
 - `CLAUDE.md:78-85` Commit Format -> moved by reference to `docs/HOOKS.md`.
 - `CLAUDE.md:87-97` Editing Boundaries -> moved into `CLAUDE.md — ## Escalation rules`.
 - `CLAUDE.md:99-105` File-Specific Rules -> removed from the constitution and replaced with references to `docs/frontend/SERVICES_LAYER.md`, `docs/frontend/RBAC.md`, `docs/frontend/APP_LAYER.md`, `docs/COMPACT.md`, `skills/laravel/api-endpoints-skill.md`, and `skills/react/api-client-skill.md`.
-- `CLAUDE.md:107-225` GitNexus section -> moved by reference to `docs/MCP.md` and `.claude/skills/gitnexus/`; generated skill index content moved by reference to `skills/README.md` and `.claude/skills/generated/`.
+- `CLAUDE.md:107-225` soleil-ai-review-engine section -> moved by reference to `docs/MCP.md` and `.claude/skills/soleil-ai-review-engine/`; generated skill index content moved by reference to `skills/README.md` and `.claude/skills/generated/`.
 
 ## CLAUDE.md structure after refactor (section headers only)
 

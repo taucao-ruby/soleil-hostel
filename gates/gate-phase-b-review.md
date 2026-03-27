@@ -4,7 +4,7 @@
 
 ## Contracts intact?
 
-YES — claude.md modified minimally (+2 on-demand references). All 78 pre-refactor instructions preserved (verified via invariant tracking table in 02-invariant-delta.md). agents.md modified (GitNexus duplication removed, -101 lines) — all 4 unique agent instructions preserved.
+YES — claude.md modified minimally (+2 on-demand references). All 78 pre-refactor instructions preserved (verified via invariant tracking table in 02-invariant-delta.md). agents.md modified (soleil-ai-review-engine duplication removed, -101 lines) — all 4 unique agent instructions preserved.
 
 ## Silent deletions detected?
 
@@ -28,7 +28,7 @@ NO — All references in modified files (claude.md, agents.md) verified. New ref
 |----|-------------|-----------------|-------------|
 | UNRESOLVED-B1-1 | docs/database.md overlap not line-diffed | Line-level diff | — |
 | UNRESOLVED-B2-1 | docs/db_facts.md mixed responsibilities | Line-level boundary | — |
-| UNRESOLVED-B3-1 | GitNexus markers removed from agents.md — re-injection risk | GitNexus CLI behavior on markerless files | — |
+| UNRESOLVED-B3-1 | soleil-ai-review-engine markers removed from agents.md — re-injection risk | soleil-ai-review-engine CLI behavior on markerless files | — |
 | UNRESOLVED-B4-1 | db_facts.md §2 invariant text not deduplicated | Risk of removing text agents read in isolation | — |
 | UNRESOLVED-B4-2 | development_hooks.md not deleted | Link audit pending | — |
 | UNRESOLVED-B4-3 | Downstream consumers not enumerated | Full reference grep | — |

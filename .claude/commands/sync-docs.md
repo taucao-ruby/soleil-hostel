@@ -30,7 +30,7 @@ routes, frontend features, `docker-compose.yml`, `package.json`, `composer.json`
 - `.agent/rules/backend-preserve-rbac-source-and-request-validation.md`
 - `.agent/rules/frontend-preserve-boundaries-and-ui-standards.md`
 - `.agent/rules/security-runtime-hygiene.md`
-- `.agent/rules/gitnexus-impact-and-change-scope.md`
+- `.agent/rules/soleil-ai-review-engine-impact-and-change-scope.md`
 
 ## Review boundaries
 

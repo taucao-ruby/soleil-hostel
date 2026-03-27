@@ -84,7 +84,7 @@ The audit baseline uses conceptual bucket names (e.g., `soleil-prompts/foundatio
 | `auth-token-safety.md` | RULES | All 7 sections | None | YES | PASS |
 | `migration-safety.md` | RULES | All 7 sections | None | YES | PASS |
 | `security-runtime-hygiene.md` | RULES | All 7 sections | None | YES | PASS |
-| `gitnexus-impact-and-change-scope.md` | RULES | All 7 sections | None | YES | PASS |
+| `soleil-ai-review-engine-impact-and-change-scope.md` | RULES | All 7 sections | None | YES | PASS |
 | `instruction-surface-and-task-boundaries.md` | RULES | All 7 sections | None | YES | PASS |
 | `frontend-preserve-boundaries-and-ui-standards.md` | RULES | All 7 sections | None | YES | PASS |
 | `backend-preserve-rbac-source-and-request-validation.md` | RULES | All 7 sections | None | YES | PASS |
@@ -174,7 +174,7 @@ The MCP boundary contract was created during RC1. It covers Capability, Request/
 | I-21: Frontend routing layout structure | RELOCATED_WITH_REFERENCE | ✅ `docs/frontend/RBAC.md` and `docs/frontend/APP_LAYER.md` exist; CLAUDE.md references them | — |
 | I-22: booking.api.ts stays /v1/ only | RELOCATED_WITH_REFERENCE | ✅ `skills/react/api-client-skill.md` and `docs/frontend/SERVICES_LAYER.md` exist; CLAUDE.md references them | — |
 | I-23: COMPACT.md is volatile handoff log | RELOCATED_WITH_REFERENCE | ✅ `docs/COMPACT.md` exists with lifecycle block | — |
-| I-24: GitNexus safety workflow | RELOCATED_WITH_REFERENCE | ✅ `docs/MCP.md` and `.claude/skills/gitnexus/` exist; CLAUDE.md references them at line 28 | — |
+| I-24: soleil-ai-review-engine safety workflow | RELOCATED_WITH_REFERENCE | ✅ `docs/MCP.md` and `.claude/skills/soleil-ai-review-engine/` exist; CLAUDE.md references them at line 28 | — |
 
 **Invariant integrity verdict**: 24/24 invariants verified. Zero losses. Zero silent drops.
 
@@ -359,7 +359,7 @@ From `docs/cleanup/unresolved-registry.md` (20 total items):
 
 | ID | Description | Status | Blocks Readiness | Resolution Needed |
 |----|-------------|--------|-----------------|-------------------|
-| UNRESOLVED-B3-1 | GitNexus markers removed from AGENTS.md — re-injection risk | **OPEN** | NO | Human must test `npx gitnexus analyze` |
+| UNRESOLVED-B3-1 | soleil-ai-review-engine markers removed from AGENTS.md — re-injection risk | **OPEN** | NO | Human must test `npx soleil-ai-review-engine analyze` |
 | UNRESOLVED-B4-1 | DB_FACTS.md §2 redundancy | CLOSED | NO | Accepted with delegation header |
 | UNRESOLVED-B4-2 | DEVELOPMENT_HOOKS.md redirect stub | CLOSED | NO | Safe to delete |
 | UNRESOLVED-B4-3 | Downstream consumer grep | CLOSED | NO | No broken links |

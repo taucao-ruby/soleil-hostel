@@ -38,7 +38,7 @@ The instruction system has **150 governance files** across **14 layers**, totali
 │  └── .agent/rules/*.md (subagent fast-load) │
 ├─────────────────────────────────────────────┤
 │  Skills                                     │ ← Task execution
-│  ├── .claude/skills/gitnexus/ (6 skills)    │
+│  ├── .claude/skills/soleil-ai-review-engine/ (6 skills)    │
 │  ├── .claude/skills/generated/ (20, auto)   │
 │  ├── skills/ (17 reference skills)          │
 │  └── skill-os/ (4 verification skills)      │
@@ -60,7 +60,7 @@ The instruction system has **150 governance files** across **14 layers**, totali
 | Task | Owner | Automation |
 |------|-------|-----------|
 | Update COMPACT.md §1 if code changed | Agent | Manual (per lifecycle policy) |
-| Run `gitnexus_detect_changes()` before commit | Agent | CLAUDE.md mandate |
+| Run `soleil-ai-review-engine_detect_changes()` before commit | Agent | CLAUDE.md mandate |
 | Verify gates pass | Agent | Pre-push hook |
 
 ### Weekly
@@ -77,7 +77,7 @@ The instruction system has **150 governance files** across **14 layers**, totali
 |------|-----|--------|
 | Semantic drift check | Run drift fixtures (RC-001, SE-001, CD-001) | Log drift in FINDINGS_BACKLOG.md |
 | Boundary validation | Run boundary-checklist.md checks | Update checklist |
-| Skill freshness | Check if generated skills need re-analysis | Run `npx gitnexus analyze` if stale |
+| Skill freshness | Check if generated skills need re-analysis | Run `npx soleil-ai-review-engine analyze` if stale |
 | WORKLOG size check | `wc -l docs/WORKLOG.md` | Archive if >300 lines |
 
 ### Quarterly
@@ -121,7 +121,7 @@ When files disagree, this is the resolution order:
 | Date | Phase | Changes | Lines Changed |
 |------|-------|---------|---------------|
 | 2026-03-22 | A | Inventory (147→150 files) + classification (8 conflicts, 6 redundancies) | 0 (audit-only) |
-| 2026-03-22 | B | CLAUDE.md +2 refs, AGENTS.md -101 (GitNexus dedup), DB_FACTS +3 (header), COMMANDS +2 (xref), deleted 2 skill wrappers | -156 lines |
+| 2026-03-22 | B | CLAUDE.md +2 refs, AGENTS.md -101 (soleil-ai-review-engine dedup), DB_FACTS +3 (header), COMMANDS +2 (xref), deleted 2 skill wrappers | -156 lines |
 | 2026-03-22 | C | Hooks/compact/MCP/agents audited; .agent/rules/ gap found | 0 (audit-only) |
 | 2026-03-22 | D | Structural + semantic + boundary validation; 1 drift found (frontend test count) | 0 (validation-only) |
 

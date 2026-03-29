@@ -82,8 +82,7 @@ Start here when exploring this area:
 
 | Area | Connections |
 |------|-------------|
-| Services | 2 calls |
-| Cache | 1 calls |
+| Services | 3 calls |
 | Bookings | 1 calls |
 | Feature | 1 calls |
 | Notifications | 1 calls |

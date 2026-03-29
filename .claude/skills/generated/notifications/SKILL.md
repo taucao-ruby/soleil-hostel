@@ -78,7 +78,7 @@ Start here when exploring this area:
 |------|-------------|
 | Mail | 5 calls |
 | Room | 2 calls |
-| Listeners | 1 calls |
+| Services | 1 calls |
 
 ## How to Explore
 

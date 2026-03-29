@@ -4,12 +4,14 @@ import userEvent from '@testing-library/user-event'
 import type { BookingDetailRaw } from '@/features/booking/booking.types'
 
 // ── Hoist mock before vi.mock() factory ──────────────────────
-const { mockGetBookingById } = vi.hoisted(() => ({
+const { mockGetBookingById, mockSubmitReview } = vi.hoisted(() => ({
   mockGetBookingById: vi.fn<(id: number, signal?: AbortSignal) => Promise<BookingDetailRaw>>(),
+  mockSubmitReview: vi.fn(),
 }))
 
 vi.mock('@/features/booking/booking.api', () => ({
   getBookingById: mockGetBookingById,
+  submitReview: mockSubmitReview,
 }))
 
 import BookingDetailPanel from './BookingDetailPanel'
@@ -208,5 +210,255 @@ describe('BookingDetailPanel', () => {
     rerender(<BookingDetailPanel bookingId={1} open={true} onClose={vi.fn()} />)
 
     await waitFor(() => expect(mockGetBookingById).toHaveBeenCalledTimes(2))
+  })
+
+  // ── PR-4B.1: Review form eligibility ─────────────────────
+
+  it('shows review form trigger when booking is confirmed and check_out is past', async () => {
+    mockGetBookingById.mockResolvedValue(
+      makeDetail({
+        status: 'confirmed',
+        status_label: 'Đã xác nhận',
+        check_in: '2020-01-01',
+        check_out: '2020-01-03',
+      })
+    )
+    renderPanel()
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Mở form viết đánh giá' })).toBeInTheDocument()
+    })
+  })
+
+  it('hides review form when booking is confirmed but check_out is in the future', async () => {
+    mockGetBookingById.mockResolvedValue(
+      makeDetail({
+        status: 'confirmed',
+        status_label: 'Đã xác nhận',
+        check_in: '2099-06-01',
+        check_out: '2099-06-03',
+      })
+    )
+    renderPanel()
+
+    await waitFor(() => {
+      expect(screen.getByText('Đã xác nhận')).toBeInTheDocument()
+    })
+
+    expect(screen.queryByRole('button', { name: 'Mở form viết đánh giá' })).not.toBeInTheDocument()
+  })
+
+  it('hides review form when booking is not confirmed', async () => {
+    mockGetBookingById.mockResolvedValue(
+      makeDetail({
+        status: 'cancelled',
+        status_label: 'Đã hủy',
+        check_in: '2020-01-01',
+        check_out: '2020-01-03',
+      })
+    )
+    renderPanel()
+
+    await waitFor(() => {
+      expect(screen.getByText('Đã hủy')).toBeInTheDocument()
+    })
+
+    expect(screen.queryByRole('button', { name: 'Mở form viết đánh giá' })).not.toBeInTheDocument()
+  })
+
+  it('expands review form when trigger button is clicked', async () => {
+    mockGetBookingById.mockResolvedValue(
+      makeDetail({
+        status: 'confirmed',
+        check_in: '2020-01-01',
+        check_out: '2020-01-03',
+      })
+    )
+    renderPanel()
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Mở form viết đánh giá' })).toBeInTheDocument()
+    })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Mở form viết đánh giá' }))
+
+    expect(screen.getByText('Viết đánh giá')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Gửi đánh giá' })).toBeInTheDocument()
+  })
+
+  it('shows success state after review is submitted', async () => {
+    mockGetBookingById.mockResolvedValue(
+      makeDetail({
+        status: 'confirmed',
+        check_in: '2020-01-01',
+        check_out: '2020-01-03',
+      })
+    )
+    mockSubmitReview.mockResolvedValue({ success: true, message: '...' })
+    renderPanel()
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Mở form viết đánh giá' })).toBeInTheDocument()
+    })
+
+    // Open form
+    await userEvent.click(screen.getByRole('button', { name: 'Mở form viết đánh giá' }))
+
+    // Select a star rating
+    await userEvent.click(screen.getByRole('radio', { name: '4 sao' }))
+
+    // Fill title
+    await userEvent.type(screen.getByRole('textbox', { name: /Tiêu đề/ }), 'Rất tốt')
+
+    // Fill content
+    await userEvent.type(
+      screen.getByRole('textbox', { name: /Nội dung/ }),
+      'Không gian sạch sẽ, thân thiện.'
+    )
+
+    // Submit
+    await userEvent.click(screen.getByRole('button', { name: 'Gửi đánh giá' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Đánh giá của bạn đã được gửi thành công.')).toBeInTheDocument()
+    })
+
+    expect(mockSubmitReview).toHaveBeenCalledWith({
+      booking_id: 1,
+      title: 'Rất tốt',
+      content: 'Không gian sạch sẽ, thân thiện.',
+      rating: 4,
+    })
+  })
+
+  it('shows validation error from backend on 422', async () => {
+    mockGetBookingById.mockResolvedValue(
+      makeDetail({
+        status: 'confirmed',
+        check_in: '2020-01-01',
+        check_out: '2020-01-03',
+      })
+    )
+    const err = Object.assign(new Error('Validation'), {
+      response: { status: 422, data: { errors: { title: ['The title field is required.'] } } },
+    })
+    mockSubmitReview.mockRejectedValue(err)
+    renderPanel()
+
+    await waitFor(() => screen.getByRole('button', { name: 'Mở form viết đánh giá' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Mở form viết đánh giá' }))
+    await userEvent.click(screen.getByRole('radio', { name: '3 sao' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Gửi đánh giá' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('The title field is required.')
+    })
+  })
+
+  it('shows policy denial message on 403 (duplicate review)', async () => {
+    mockGetBookingById.mockResolvedValue(
+      makeDetail({
+        status: 'confirmed',
+        check_in: '2020-01-01',
+        check_out: '2020-01-03',
+      })
+    )
+    const err = Object.assign(new Error('Forbidden'), {
+      response: {
+        status: 403,
+        data: { message: 'Review already exists for this booking.' },
+      },
+    })
+    mockSubmitReview.mockRejectedValue(err)
+    renderPanel()
+
+    await waitFor(() => screen.getByRole('button', { name: 'Mở form viết đánh giá' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Mở form viết đánh giá' }))
+    await userEvent.click(screen.getByRole('radio', { name: '5 sao' }))
+    await userEvent.type(screen.getByRole('textbox', { name: /Tiêu đề/ }), 'Test')
+    await userEvent.type(screen.getByRole('textbox', { name: /Nội dung/ }), 'Test content')
+    await userEvent.click(screen.getByRole('button', { name: 'Gửi đánh giá' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Review already exists for this booking.')
+    })
+  })
+
+  it('shows error when rating is 0 on submit', async () => {
+    mockGetBookingById.mockResolvedValue(
+      makeDetail({
+        status: 'confirmed',
+        check_in: '2020-01-01',
+        check_out: '2020-01-03',
+      })
+    )
+    renderPanel()
+
+    await waitFor(() => screen.getByRole('button', { name: 'Mở form viết đánh giá' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Mở form viết đánh giá' }))
+    // Do NOT select a star, just submit
+    await userEvent.click(screen.getByRole('button', { name: 'Gửi đánh giá' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Vui lòng chọn số sao đánh giá.')
+    })
+
+    expect(mockSubmitReview).not.toHaveBeenCalled()
+  })
+
+  // ── PR-4B.2: refund_failed support notice ─────────────────
+
+  it('shows refund_failed support notice for refund_failed bookings', async () => {
+    mockGetBookingById.mockResolvedValue(
+      makeDetail({
+        status: 'refund_failed',
+        status_label: 'Hoàn tiền thất bại',
+        check_in: '2020-01-01',
+        check_out: '2020-01-03',
+      })
+    )
+    renderPanel()
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+      expect(screen.getByRole('alert')).toHaveTextContent('Hoàn tiền thất bại')
+      expect(screen.getByRole('alert')).toHaveTextContent('đội ngũ sẽ xử lý hoàn tiền thủ công')
+    })
+  })
+
+  it('does NOT show refund_failed notice for cancelled bookings', async () => {
+    mockGetBookingById.mockResolvedValue(
+      makeDetail({
+        status: 'cancelled',
+        status_label: 'Đã hủy',
+        check_in: '2020-01-01',
+        check_out: '2020-01-03',
+      })
+    )
+    renderPanel()
+
+    await waitFor(() => {
+      expect(screen.getByText('Đã hủy')).toBeInTheDocument()
+    })
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('does NOT show refund_failed notice for refund_pending bookings', async () => {
+    mockGetBookingById.mockResolvedValue(
+      makeDetail({
+        status: 'refund_pending',
+        status_label: 'Đang hoàn tiền',
+        check_in: '2020-01-01',
+        check_out: '2020-01-03',
+      })
+    )
+    renderPanel()
+
+    await waitFor(() => {
+      expect(screen.getByText('Đang hoàn tiền')).toBeInTheDocument()
+    })
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })

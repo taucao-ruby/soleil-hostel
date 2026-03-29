@@ -68,7 +68,7 @@ export const getTodayArrivals = async (locationId?: number): Promise<BookingDeta
       status: 'confirmed',
     },
   })
-  return response.data.data
+  return response.data.data.bookings
 }
 
 export const getTodayDepartures = async (locationId?: number): Promise<BookingDetailRaw[]> => {
@@ -81,5 +81,5 @@ export const getTodayDepartures = async (locationId?: number): Promise<BookingDe
       status: 'confirmed',
     },
   })
-  return response.data.data
+  return response.data.data.bookings
 }

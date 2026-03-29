@@ -48,13 +48,22 @@ const api = axios.create({
 /**
  * Request Interceptor
  *
- * Adds X-XSRF-TOKEN header for CSRF protection on state-changing requests.
+ * Adds X-XSRF-TOKEN header on state-changing requests.
+ *
+ * CSRF protection model: The httpOnly soleil_token cookie is scoped
+ * SameSite=Strict, which prevents cross-origin state-changing requests from
+ * carrying the authentication cookie. That is the active CSRF defence.
+ *
+ * The X-XSRF-TOKEN header (sourced from sessionStorage) is sent for
+ * defence-in-depth but is NOT currently validated server-side. It does
+ * provide a supplementary XSS barrier: a cross-origin attacker cannot read
+ * sessionStorage and therefore cannot forge the header value.
  *
  * Flow:
  * 1. Login returns csrf_token in response body
  * 2. Save to sessionStorage via setCsrfToken()
- * 3. This interceptor adds it to non-GET requests
- * 4. Backend validates CSRF token + httpOnly cookie
+ * 3. This interceptor adds it as X-XSRF-TOKEN on non-GET requests
+ * 4. Backend CSRF protection is provided by SameSite=Strict on the cookie
  */
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {

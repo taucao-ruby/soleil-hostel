@@ -64,11 +64,21 @@ const BookingList: React.FC = () => {
           </span>
         )
       case 'cancelled':
-      case 'refund_pending':
-      case 'refund_failed':
         return (
           <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
             Đã hủy
+          </span>
+        )
+      case 'refund_pending':
+        return (
+          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+            Đang hoàn tiền
+          </span>
+        )
+      case 'refund_failed':
+        return (
+          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+            Hoàn tiền thất bại
           </span>
         )
       default:

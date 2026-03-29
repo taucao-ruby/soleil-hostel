@@ -4,6 +4,7 @@ import type { BookingDetailRaw } from '@/features/booking/booking.types'
 import { getStatusConfig, formatDateVN } from '@/shared/lib/booking.utils'
 import Skeleton from '@/shared/components/ui/Skeleton'
 import Button from '@/shared/components/ui/Button'
+import ReviewForm from './ReviewForm'
 
 // ── Props ────────────────────────────────────────────────────
 interface BookingDetailPanelProps {
@@ -25,88 +26,111 @@ const DetailContent: React.FC<DetailContentProps> = ({ booking }) => {
   const createdAtDate = new Date(booking.created_at)
 
   return (
-    <dl className="space-y-4 text-sm">
-      {/* Room */}
-      {booking.room && (
+    <>
+      <dl className="space-y-4 text-sm">
+        {/* Room */}
+        {booking.room && (
+          <div className="flex justify-between gap-4">
+            <dt className="text-gray-500 shrink-0">Phòng</dt>
+            <dd className="font-medium text-right text-gray-900">
+              {booking.room.name}
+              {booking.room.room_number ? ` (#${booking.room.room_number})` : ''}
+            </dd>
+          </div>
+        )}
+
+        {/* Dates */}
         <div className="flex justify-between gap-4">
-          <dt className="text-gray-500 shrink-0">Phòng</dt>
-          <dd className="text-gray-900 text-right font-medium">
-            {booking.room.name}
-            {booking.room.room_number ? ` (#${booking.room.room_number})` : ''}
+          <dt className="text-gray-500 shrink-0">Nhận phòng</dt>
+          <dd className="text-right text-gray-900">{formatDateVN(checkInDate)}</dd>
+        </div>
+        <div className="flex justify-between gap-4">
+          <dt className="text-gray-500 shrink-0">Trả phòng</dt>
+          <dd className="text-right text-gray-900">{formatDateVN(checkOutDate)}</dd>
+        </div>
+
+        {/* Nights */}
+        <div className="flex justify-between gap-4">
+          <dt className="text-gray-500 shrink-0">Số đêm</dt>
+          <dd className="text-right text-gray-900">{booking.nights} đêm</dd>
+        </div>
+
+        {/* Status */}
+        <div className="flex justify-between gap-4">
+          <dt className="text-gray-500 shrink-0">Trạng thái</dt>
+          <dd>
+            <span
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusConfig.colorClass}`}
+            >
+              {booking.status_label ?? statusConfig.label}
+            </span>
           </dd>
         </div>
-      )}
 
-      {/* Dates */}
-      <div className="flex justify-between gap-4">
-        <dt className="text-gray-500 shrink-0">Nhận phòng</dt>
-        <dd className="text-gray-900 text-right">{formatDateVN(checkInDate)}</dd>
-      </div>
-      <div className="flex justify-between gap-4">
-        <dt className="text-gray-500 shrink-0">Trả phòng</dt>
-        <dd className="text-gray-900 text-right">{formatDateVN(checkOutDate)}</dd>
-      </div>
-
-      {/* Nights */}
-      <div className="flex justify-between gap-4">
-        <dt className="text-gray-500 shrink-0">Số đêm</dt>
-        <dd className="text-gray-900 text-right">{booking.nights} đêm</dd>
-      </div>
-
-      {/* Status */}
-      <div className="flex justify-between gap-4">
-        <dt className="text-gray-500 shrink-0">Trạng thái</dt>
-        <dd>
-          <span
-            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusConfig.colorClass}`}
-          >
-            {booking.status_label ?? statusConfig.label}
-          </span>
-        </dd>
-      </div>
-
-      {/* Guest */}
-      <div className="flex justify-between gap-4">
-        <dt className="text-gray-500 shrink-0">Khách</dt>
-        <dd className="text-gray-900 text-right">{booking.guest_name}</dd>
-      </div>
-      <div className="flex justify-between gap-4">
-        <dt className="text-gray-500 shrink-0">Email</dt>
-        <dd className="text-gray-900 text-right break-all">{booking.guest_email}</dd>
-      </div>
-
-      {/* Amount */}
-      {booking.amount_formatted && (
+        {/* Guest */}
         <div className="flex justify-between gap-4">
-          <dt className="text-gray-500 shrink-0">Tổng tiền</dt>
-          <dd className="text-gray-900 text-right font-medium">{booking.amount_formatted}</dd>
+          <dt className="text-gray-500 shrink-0">Khách</dt>
+          <dd className="text-right text-gray-900">{booking.guest_name}</dd>
+        </div>
+        <div className="flex justify-between gap-4">
+          <dt className="text-gray-500 shrink-0">Email</dt>
+          <dd className="text-right text-gray-900 break-all">{booking.guest_email}</dd>
+        </div>
+
+        {/* Amount */}
+        {booking.amount_formatted && (
+          <div className="flex justify-between gap-4">
+            <dt className="text-gray-500 shrink-0">Tổng tiền</dt>
+            <dd className="font-medium text-right text-gray-900">{booking.amount_formatted}</dd>
+          </div>
+        )}
+
+        {/* Refund (cancelled with refund) */}
+        {booking.refund_amount_formatted && (
+          <div className="flex justify-between gap-4">
+            <dt className="text-gray-500 shrink-0">Hoàn tiền</dt>
+            <dd className="text-right text-gray-900">{booking.refund_amount_formatted}</dd>
+          </div>
+        )}
+
+        {/* Cancelled at */}
+        {booking.cancelled_at && (
+          <div className="flex justify-between gap-4">
+            <dt className="text-gray-500 shrink-0">Hủy lúc</dt>
+            <dd className="text-right text-gray-900">
+              {formatDateVN(new Date(booking.cancelled_at))}
+            </dd>
+          </div>
+        )}
+
+        {/* Created at */}
+        <div className="flex justify-between gap-4 pt-2 border-t border-gray-100">
+          <dt className="text-gray-500 shrink-0">Ngày đặt</dt>
+          <dd className="text-right text-gray-900">{formatDateVN(createdAtDate)}</dd>
+        </div>
+      </dl>
+
+      {/* PR-4B.2 — refund_failed support notice */}
+      {booking.status === 'refund_failed' && (
+        <div
+          className="p-3 mt-4 border border-red-200 rounded-lg bg-red-50"
+          role="alert"
+          aria-live="polite"
+        >
+          <p className="text-sm font-medium text-red-800">Hoàn tiền thất bại</p>
+          <p className="mt-1 text-xs text-red-700">
+            Đặt phòng đã được đánh dấu hủy và đội ngũ sẽ xử lý hoàn tiền thủ công. Nếu cần hỗ trợ,
+            vui lòng liên hệ nhân viên lễ tân.
+          </p>
         </div>
       )}
 
-      {/* Refund (cancelled with refund) */}
-      {booking.refund_amount_formatted && (
-        <div className="flex justify-between gap-4">
-          <dt className="text-gray-500 shrink-0">Hoàn tiền</dt>
-          <dd className="text-gray-900 text-right">{booking.refund_amount_formatted}</dd>
-        </div>
-      )}
-
-      {/* Cancelled at */}
-      {booking.cancelled_at && (
-        <div className="flex justify-between gap-4">
-          <dt className="text-gray-500 shrink-0">Hủy lúc</dt>
-          <dd className="text-gray-900 text-right">
-            {formatDateVN(new Date(booking.cancelled_at))}
-          </dd>
-        </div>
-      )}
-
-      {/* Created at */}
-      <div className="flex justify-between gap-4 pt-2 border-t border-gray-100">
-        <dt className="text-gray-500 shrink-0">Ngày đặt</dt>
-        <dd className="text-gray-900 text-right">{formatDateVN(createdAtDate)}</dd>
-      </div>
-    </dl>
+      {/* PR-4B.1 — Review form (eligible: confirmed + check_out in the past) */}
+      {booking.status === 'confirmed' &&
+        booking.check_out < new Date().toISOString().split('T')[0] && (
+          <ReviewForm bookingId={booking.id} />
+        )}
+    </>
   )
 }
 
@@ -178,7 +202,7 @@ const BookingDetailPanel: React.FC<BookingDetailPanelProps> = ({ bookingId, open
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -201,8 +225,8 @@ const BookingDetailPanel: React.FC<BookingDetailPanelProps> = ({ bookingId, open
           {isLoading && <DetailSkeleton />}
 
           {isError && !isLoading && (
-            <div className="text-center py-4">
-              <p className="text-red-600 mb-3">Không thể tải chi tiết đặt phòng.</p>
+            <div className="py-4 text-center">
+              <p className="mb-3 text-red-600">Không thể tải chi tiết đặt phòng.</p>
               <Button variant="outline" size="sm" onClick={() => setRetryCount(c => c + 1)}>
                 Thử lại
               </Button>

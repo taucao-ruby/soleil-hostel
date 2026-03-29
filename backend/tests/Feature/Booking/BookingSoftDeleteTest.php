@@ -385,7 +385,9 @@ class BookingSoftDeleteTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.restored_count', 3);
+            ->assertJsonPath('data.restored_count', 3)
+            ->assertJsonPath('data.success_count', 3)
+            ->assertJsonPath('data.failure_count', 0);
 
         // All should be active
         $this->assertNotNull(Booking::find($this->booking->id));

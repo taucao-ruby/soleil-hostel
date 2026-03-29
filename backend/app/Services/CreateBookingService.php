@@ -307,8 +307,12 @@ class CreateBookingService
             }
 
             // Step 4: Insert new booking (still within transaction; lock is still held)
+            // location_id is set explicitly here from room->location_id so the application
+            // path is self-sufficient. The PostgreSQL trigger (trg_booking_set_location)
+            // and BookingObserver remain as independent backstops.
             $booking = Booking::create([
                 'room_id' => $roomId,
+                'location_id' => $room->location_id,
                 'check_in' => $checkIn,
                 'check_out' => $checkOut,
                 'guest_name' => $guestName,

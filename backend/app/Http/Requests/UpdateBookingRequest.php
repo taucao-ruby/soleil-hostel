@@ -44,4 +44,35 @@ class UpdateBookingRequest extends FormRequest
             'check_out.after' => 'Check-out date must be after check-in date.',
         ];
     }
+
+    /**
+     * Get the validated data from the request.
+     *
+     * Purify HTML fields (guest_name) to prevent XSS. Mirrors the sanitization
+     * applied in StoreBookingRequest — update path must not be weaker than create.
+     *
+     * Only guest_name is purified. IDs, dates, statuses, and numeric fields are
+     * domain-sensitive and must not be transformed here.
+     *
+     * Signature must match the parent `FormRequest::validated($key = null, $default = null)`.
+     *
+     * @param  mixed  $key
+     * @param  mixed  $default
+     * @return mixed
+     */
+    public function validated($key = null, $default = null)
+    {
+        $data = parent::validated($key, $default);
+
+        // If a specific key was requested, return it directly (parent handles default)
+        if ($key !== null) {
+            return $data;
+        }
+
+        if (is_array($data) && array_key_exists('guest_name', $data) && $data['guest_name'] !== null) {
+            $data['guest_name'] = \App\Services\HtmlPurifierService::purify($data['guest_name']);
+        }
+
+        return $data;
+    }
 }

@@ -59,12 +59,13 @@ class Location extends Model
     ];
 
     protected $casts = [
-        'amenities' => 'array',
-        'images' => 'array',
-        'is_active' => 'boolean',
-        'latitude' => 'decimal:8',
-        'longitude' => 'decimal:8',
-        'total_rooms' => 'integer',
+        'amenities'    => 'array',
+        'images'       => 'array',
+        'is_active'    => 'boolean',
+        'latitude'     => 'decimal:8',
+        'longitude'    => 'decimal:8',
+        'total_rooms'  => 'integer',
+        'lock_version' => 'integer',
     ];
 
     // ===== RELATIONSHIPS =====

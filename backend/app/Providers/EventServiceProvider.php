@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Events\BookingCancelled;
 use App\Events\BookingCreated;
 use App\Events\BookingDeleted;
+use App\Events\BookingRestored;
 use App\Events\BookingUpdated;
 use App\Listeners\InvalidateCacheOnBookingChange;
 use App\Listeners\QueryDebuggerListener;
@@ -53,6 +54,11 @@ class EventServiceProvider extends ServiceProvider
         BookingCancelled::class => [
             InvalidateCacheOnBookingChange::class,
             SendBookingCancellation::class,  // ← Send cancellation email with refund info
+        ],
+
+        // Restore: room availability must be re-blocked (booking is active again)
+        BookingRestored::class => [
+            InvalidateCacheOnBookingChange::class,
         ],
     ];
 

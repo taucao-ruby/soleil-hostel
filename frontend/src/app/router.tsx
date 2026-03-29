@@ -213,11 +213,23 @@ export const router = createBrowserRouter([
           },
           {
             path: 'rooms/new',
-            element: withSuspense(RoomForm),
+            element: (
+              <AdminRoute minRole="admin">
+                <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Loading..." />}>
+                  <RoomForm />
+                </Suspense>
+              </AdminRoute>
+            ),
           },
           {
             path: 'rooms/:id/edit',
-            element: withSuspense(RoomForm),
+            element: (
+              <AdminRoute minRole="admin">
+                <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Loading..." />}>
+                  <RoomForm />
+                </Suspense>
+              </AdminRoute>
+            ),
           },
           {
             path: 'bookings',

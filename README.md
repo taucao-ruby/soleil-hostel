@@ -501,4 +501,4 @@ nhưng **AI không thay thế tư duy kỹ thuật và trách nhiệm của con 
 
 ## 📄 License
 
-This project is licensed under the **[MIT License](./LICENSE)**.
+This project is licensed under the **[MIT License](https://github.com/taucao-ruby/soleil-hostel/blob/main/LICENSE)**.

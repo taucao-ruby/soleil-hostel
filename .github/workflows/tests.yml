@@ -134,10 +134,15 @@ jobs:
           extensions: redis,pdo_pgsql
           coverage: xdebug
       - name: Restore vendor
+        id: restore-vendor
         uses: actions/cache/restore@v4
         with:
           path: backend/vendor
           key: backend-vendor-${{ needs.setup.outputs.composer-hash }}
+      - name: Install Composer dependencies (cache miss fallback)
+        if: steps.restore-vendor.outputs.cache-hit != 'true'
+        working-directory: ./backend
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
       - name: Setup environment
         working-directory: ./backend
         env:
@@ -234,10 +239,15 @@ jobs:
           php-version: ${{ env.PHP_VERSION }}
           extensions: redis,pdo_pgsql
       - name: Restore vendor
+        id: restore-vendor
         uses: actions/cache/restore@v4
         with:
           path: backend/vendor
           key: backend-vendor-${{ needs.setup.outputs.composer-hash }}
+      - name: Install Composer dependencies (cache miss fallback)
+        if: steps.restore-vendor.outputs.cache-hit != 'true'
+        working-directory: ./backend
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
       - name: Setup environment
         working-directory: ./backend
         env:
@@ -319,10 +329,15 @@ jobs:
           extensions: pdo_pgsql, redis, curl, mbstring
           tools: composer:v2
       - name: Restore vendor
+        id: restore-vendor
         uses: actions/cache/restore@v4
         with:
           path: backend/vendor
           key: backend-vendor-${{ needs.setup.outputs.composer-hash }}
+      - name: Install Composer dependencies (cache miss fallback)
+        if: steps.restore-vendor.outputs.cache-hit != 'true'
+        working-directory: ./backend
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
       - name: Setup Laravel
         run: |
           cd backend
@@ -380,10 +395,15 @@ jobs:
           extensions: redis,pdo_pgsql
           tools: phpstan
       - name: Restore vendor
+        id: restore-vendor
         uses: actions/cache/restore@v4
         with:
           path: backend/vendor
           key: backend-vendor-${{ needs.setup.outputs.composer-hash }}
+      - name: Install Composer dependencies (cache miss fallback)
+        if: steps.restore-vendor.outputs.cache-hit != 'true'
+        working-directory: ./backend
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
       - name: PHPStan analysis (Level 5)
         working-directory: ./backend
         run: phpstan analyse --error-format=github
@@ -404,10 +424,15 @@ jobs:
           extensions: redis,pdo_pgsql
           tools: psalm
       - name: Restore vendor
+        id: restore-vendor
         uses: actions/cache/restore@v4
         with:
           path: backend/vendor
           key: backend-vendor-${{ needs.setup.outputs.composer-hash }}
+      - name: Install Composer dependencies (cache miss fallback)
+        if: steps.restore-vendor.outputs.cache-hit != 'true'
+        working-directory: ./backend
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
       - name: Psalm analysis
         working-directory: ./backend
         run: |
@@ -430,10 +455,15 @@ jobs:
         with:
           php-version: ${{ env.PHP_VERSION }}
       - name: Restore vendor
+        id: restore-vendor
         uses: actions/cache/restore@v4
         with:
           path: backend/vendor
           key: backend-vendor-${{ needs.setup.outputs.composer-hash }}
+      - name: Install Composer dependencies (cache miss fallback)
+        if: steps.restore-vendor.outputs.cache-hit != 'true'
+        working-directory: ./backend
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
       - name: Check code style
         working-directory: ./backend
         run: vendor/bin/pint --test
@@ -453,10 +483,15 @@ jobs:
           extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo
           tools: composer:v2
       - name: Restore vendor
+        id: restore-vendor
         uses: actions/cache/restore@v4
         with:
           path: backend/vendor
           key: backend-vendor-${{ needs.setup.outputs.composer-hash }}
+      - name: Install Composer dependencies (cache miss fallback)
+        if: steps.restore-vendor.outputs.cache-hit != 'true'
+        working-directory: ./backend
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
       - name: Check PHP syntax (parallel scan)
         run: |
           cd backend
@@ -477,10 +512,15 @@ jobs:
           php-version: ${{ env.PHP_VERSION }}
           tools: composer
       - name: Restore vendor
+        id: restore-vendor
         uses: actions/cache/restore@v4
         with:
           path: backend/vendor
           key: backend-vendor-${{ needs.setup.outputs.composer-hash }}
+      - name: Install Composer dependencies (cache miss fallback)
+        if: steps.restore-vendor.outputs.cache-hit != 'true'
+        working-directory: ./backend
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
       - name: Audit Composer dependencies
         working-directory: ./backend
         run: composer audit

@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Booking;
 
-use App\Enums\BookingStatus;
 use App\Enums\UserRole;
 use App\Events\BookingRestored;
 use App\Exceptions\BookingRestoreConflictException;

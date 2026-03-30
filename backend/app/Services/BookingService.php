@@ -10,7 +10,6 @@ use App\Models\Booking;
 use App\Models\Stay;
 use App\Notifications\BookingConfirmed;
 use App\Repositories\Contracts\BookingRepositoryInterface;
-use App\Services\RoomAvailabilityService;
 use App\Traits\HasCacheTagSupport;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;

@@ -47,13 +47,13 @@ class AdminBookingController extends Controller
         Gate::authorize('view-all-bookings');
 
         $filters = array_filter([
-            'check_in_start'  => $request->query('check_in_start'),
-            'check_in_end'    => $request->query('check_in_end'),
+            'check_in_start' => $request->query('check_in_start'),
+            'check_in_end' => $request->query('check_in_end'),
             'check_out_start' => $request->query('check_out_start'),
-            'check_out_end'   => $request->query('check_out_end'),
-            'status'          => $request->query('status'),
-            'location_id'     => $request->query('location_id') !== null ? (int) $request->query('location_id') : null,
-            'search'          => $request->query('search'),
+            'check_out_end' => $request->query('check_out_end'),
+            'status' => $request->query('status'),
+            'location_id' => $request->query('location_id') !== null ? (int) $request->query('location_id') : null,
+            'search' => $request->query('search'),
         ], fn ($v) => $v !== null && $v !== '');
 
         $bookings = $this->bookingRepository->getAdminPaginated($filters, [

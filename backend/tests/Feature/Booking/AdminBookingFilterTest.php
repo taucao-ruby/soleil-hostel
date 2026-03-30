@@ -46,11 +46,11 @@ class AdminBookingFilterTest extends TestCase
     private function booking(array $overrides = []): Booking
     {
         return Booking::factory()->create(array_merge([
-            'room_id'    => $this->room->id,
-            'user_id'    => $this->admin->id,
-            'check_in'   => Carbon::today()->addDays(5)->toDateString(),
-            'check_out'  => Carbon::today()->addDays(7)->toDateString(),
-            'status'     => 'confirmed',
+            'room_id' => $this->room->id,
+            'user_id' => $this->admin->id,
+            'check_in' => Carbon::today()->addDays(5)->toDateString(),
+            'check_out' => Carbon::today()->addDays(7)->toDateString(),
+            'status' => 'confirmed',
         ], $overrides));
     }
 
@@ -125,14 +125,14 @@ class AdminBookingFilterTest extends TestCase
         $tomorrow = Carbon::tomorrow()->toDateString();
 
         $todayArrival = $this->booking([
-            'check_in'  => $today,
+            'check_in' => $today,
             'check_out' => $tomorrow,
-            'status'    => 'confirmed',
+            'status' => 'confirmed',
         ]);
         $otherArrival = $this->booking([
-            'check_in'  => Carbon::today()->addDays(3)->toDateString(),
+            'check_in' => Carbon::today()->addDays(3)->toDateString(),
             'check_out' => Carbon::today()->addDays(5)->toDateString(),
-            'status'    => 'confirmed',
+            'status' => 'confirmed',
         ]);
 
         $response = $this->asAdmin()->getJson(
@@ -152,14 +152,14 @@ class AdminBookingFilterTest extends TestCase
         $today = Carbon::today()->toDateString();
 
         $todayDeparture = $this->booking([
-            'check_in'  => Carbon::yesterday()->toDateString(),
+            'check_in' => Carbon::yesterday()->toDateString(),
             'check_out' => $today,
-            'status'    => 'confirmed',
+            'status' => 'confirmed',
         ]);
         $otherDeparture = $this->booking([
-            'check_in'  => Carbon::today()->addDays(2)->toDateString(),
+            'check_in' => Carbon::today()->addDays(2)->toDateString(),
             'check_out' => Carbon::today()->addDays(4)->toDateString(),
-            'status'    => 'confirmed',
+            'status' => 'confirmed',
         ]);
 
         $response = $this->asAdmin()->getJson(
@@ -177,8 +177,8 @@ class AdminBookingFilterTest extends TestCase
     public function test_status_filter_returns_only_matching_status(): void
     {
         $confirmed = $this->booking(['status' => 'confirmed']);
-        $pending   = $this->booking(['status' => 'pending',
-            'check_in'  => Carbon::today()->addDays(10)->toDateString(),
+        $pending = $this->booking(['status' => 'pending',
+            'check_in' => Carbon::today()->addDays(10)->toDateString(),
             'check_out' => Carbon::today()->addDays(12)->toDateString(),
         ]);
 
@@ -193,8 +193,8 @@ class AdminBookingFilterTest extends TestCase
     public function test_status_filter_pending_excludes_confirmed(): void
     {
         $confirmed = $this->booking(['status' => 'confirmed']);
-        $pending   = $this->booking(['status' => 'pending',
-            'check_in'  => Carbon::today()->addDays(10)->toDateString(),
+        $pending = $this->booking(['status' => 'pending',
+            'check_in' => Carbon::today()->addDays(10)->toDateString(),
             'check_out' => Carbon::today()->addDays(12)->toDateString(),
         ]);
 
@@ -219,18 +219,18 @@ class AdminBookingFilterTest extends TestCase
         $roomB = Room::factory()->create(['location_id' => $locationB->id]);
 
         $bookingA = Booking::factory()->create([
-            'room_id'   => $roomA->id,
-            'user_id'   => $this->admin->id,
-            'check_in'  => Carbon::today()->addDays(5)->toDateString(),
+            'room_id' => $roomA->id,
+            'user_id' => $this->admin->id,
+            'check_in' => Carbon::today()->addDays(5)->toDateString(),
             'check_out' => Carbon::today()->addDays(7)->toDateString(),
-            'status'    => 'confirmed',
+            'status' => 'confirmed',
         ]);
         $bookingB = Booking::factory()->create([
-            'room_id'   => $roomB->id,
-            'user_id'   => $this->admin->id,
-            'check_in'  => Carbon::today()->addDays(10)->toDateString(),
+            'room_id' => $roomB->id,
+            'user_id' => $this->admin->id,
+            'check_in' => Carbon::today()->addDays(10)->toDateString(),
             'check_out' => Carbon::today()->addDays(12)->toDateString(),
-            'status'    => 'confirmed',
+            'status' => 'confirmed',
         ]);
 
         // After creation, observer assigns location_id from room
@@ -272,9 +272,9 @@ class AdminBookingFilterTest extends TestCase
 
     public function test_trashed_bookings_are_included_in_admin_index(): void
     {
-        $active  = $this->booking();
+        $active = $this->booking();
         $trashed = $this->booking([
-            'check_in'  => Carbon::today()->addDays(10)->toDateString(),
+            'check_in' => Carbon::today()->addDays(10)->toDateString(),
             'check_out' => Carbon::today()->addDays(12)->toDateString(),
         ]);
         $trashed->delete();

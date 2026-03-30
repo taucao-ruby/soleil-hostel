@@ -299,7 +299,7 @@ class EloquentBookingRepository implements BookingRepositoryInterface
         }
 
         // Location filter (bookings.location_id is denormalized)
-        if (isset($filters['location_id']) && $filters['location_id'] !== null) {
+        if (isset($filters['location_id'])) {
             $query->where('location_id', (int) $filters['location_id']);
         }
 

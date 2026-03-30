@@ -74,3 +74,27 @@ export interface BookingDetailResponse {
   success: boolean
   data: BookingDetailRaw
 }
+
+export interface ReviewSubmitData {
+  booking_id: number
+  title: string
+  content: string
+  rating: number
+}
+
+export interface ReviewSubmitResponse {
+  success: boolean
+  message: string
+  data: {
+    id: number
+    title: string
+    content: string
+    rating: number
+    booking_id: number
+    room_id: number
+    user_id: number
+    approved: boolean
+    created_at: string
+    updated_at: string
+  }
+}

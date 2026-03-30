@@ -6,6 +6,7 @@ import RoomTable from './RoomTable'
 import RoomStatusBoard from './RoomStatusBoard'
 import api from '@/shared/lib/api'
 import LoadingSpinner from '@/shared/components/feedback/LoadingSpinner'
+import { useAuth } from '@/features/auth/AuthContext'
 
 // Minimal Location type for the selector
 interface LocationOption {
@@ -14,6 +15,8 @@ interface LocationOption {
 }
 
 const AdminRoomDashboard: React.FC = () => {
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
   const [locations, setLocations] = useState<LocationOption[]>([])
   const [selectedLocationId, setSelectedLocationId] = useState<number | ''>('')
   const [rooms, setRooms] = useState<AdminRoom[]>([])
@@ -72,12 +75,14 @@ const AdminRoomDashboard: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Quản lý phòng</h1>
         <div className="flex mt-4 space-x-3 sm:mt-0">
-          <Link
-            to="/admin/rooms/new"
-            className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700"
-          >
-            + Thêm phòng mới
-          </Link>
+          {isAdmin && (
+            <Link
+              to="/admin/rooms/new"
+              className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700"
+            >
+              + Thêm phòng mới
+            </Link>
+          )}
         </div>
       </div>
 
@@ -158,7 +163,7 @@ const AdminRoomDashboard: React.FC = () => {
           Chưa có phòng nào được cấu hình cho cơ sở này.
         </div>
       ) : viewMode === 'table' ? (
-        <RoomTable rooms={rooms} />
+        <RoomTable rooms={rooms} isAdmin={isAdmin} />
       ) : (
         <RoomStatusBoard rooms={rooms} />
       )}

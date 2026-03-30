@@ -72,15 +72,26 @@ export interface BookingsResponse extends ApiResponse {
 export interface Review {
   id: number
   user_id: number
+  booking_id: number
   room_id?: number
   rating: number
+  title: string
   content: string
+  guest_name: string
+  guest_email: string
+  approved: boolean
   created_at?: string
   updated_at?: string
 }
 
 export interface ReviewsResponse extends ApiResponse {
   data: Review[]
+}
+
+export interface ReviewSubmitResponse extends ApiResponse {
+  success: boolean
+  message: string
+  data: Review
 }
 
 /**

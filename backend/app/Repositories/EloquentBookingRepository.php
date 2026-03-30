@@ -268,6 +268,58 @@ class EloquentBookingRepository implements BookingRepositoryInterface
 
     /**
      * {@inheritDoc}
+     */
+    public function getAdminPaginated(array $filters = [], array $relations = [], int $perPage = 50): \Illuminate\Contracts\Pagination\LengthAwarePaginator
+    {
+        $query = Booking::withTrashed();
+
+        if (! empty($relations)) {
+            $query->with($relations);
+        }
+
+        // Date range filters — check_in (DATE column, inclusive bounds)
+        if (! empty($filters['check_in_start'])) {
+            $query->where('check_in', '>=', $filters['check_in_start']);
+        }
+        if (! empty($filters['check_in_end'])) {
+            $query->where('check_in', '<=', $filters['check_in_end']);
+        }
+
+        // Date range filters — check_out (DATE column, inclusive bounds)
+        if (! empty($filters['check_out_start'])) {
+            $query->where('check_out', '>=', $filters['check_out_start']);
+        }
+        if (! empty($filters['check_out_end'])) {
+            $query->where('check_out', '<=', $filters['check_out_end']);
+        }
+
+        // Status filter
+        if (! empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
+
+        // Location filter (bookings.location_id is denormalized)
+        if (isset($filters['location_id'])) {
+            $query->where('location_id', (int) $filters['location_id']);
+        }
+
+        // Search: guest name, guest email, or numeric booking ID
+        if (! empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function (Builder $q) use ($search) {
+                $q->where('guest_name', 'ILIKE', "%{$search}%")
+                    ->orWhere('guest_email', 'ILIKE', "%{$search}%");
+                if (is_numeric($search)) {
+                    $q->orWhere('id', '=', (int) $search);
+                }
+            });
+        }
+
+        return $query->orderBy('created_at', 'desc')->paginate($perPage);
+    }
+
+    /**
+     * {@inheritDoc}
      *
      * NOTE: Relies on existing Booking::withCommonRelations() scope
      * defined in App\Models\Booking (lines 71-82).

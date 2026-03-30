@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\BookingRestoreConflictException;
 use App\Http\Requests\BulkRestoreBookingsRequest;
 use App\Http\Resources\BookingResource;
 use App\Repositories\Contracts\BookingRepositoryInterface;
 use App\Services\AdminAuditService;
 use App\Services\BookingService;
 use App\Traits\ApiResponse;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -33,13 +35,28 @@ class AdminBookingController extends Controller
      *
      * GET /api/admin/bookings
      *
-     * Returns all bookings with their deletion status for admin overview.
+     * Supports optional query filters:
+     *   check_in_start, check_in_end   — filter by check_in date (inclusive)
+     *   check_out_start, check_out_end — filter by check_out date (inclusive)
+     *   status                         — exact status match (e.g., 'confirmed')
+     *   location_id                    — filter by denormalized location_id
+     *   search                         — guest_name, guest_email, or booking id
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         Gate::authorize('view-all-bookings');
 
-        $bookings = $this->bookingRepository->getAllWithTrashedPaginated([
+        $filters = array_filter([
+            'check_in_start' => $request->query('check_in_start'),
+            'check_in_end' => $request->query('check_in_end'),
+            'check_out_start' => $request->query('check_out_start'),
+            'check_out_end' => $request->query('check_out_end'),
+            'status' => $request->query('status'),
+            'location_id' => $request->query('location_id') !== null ? (int) $request->query('location_id') : null,
+            'search' => $request->query('search'),
+        ], fn ($v) => $v !== null && $v !== '');
+
+        $bookings = $this->bookingRepository->getAdminPaginated($filters, [
             'room' => fn ($q) => $q->select(['id', 'name', 'price', 'created_at', 'updated_at']),
             'user' => fn ($q) => $q->select(['id', 'name', 'email', 'role', 'created_at', 'updated_at']),
             'deletedBy' => fn ($q) => $q->select(['id', 'name', 'email', 'role', 'created_at', 'updated_at']),
@@ -98,10 +115,13 @@ class AdminBookingController extends Controller
     /**
      * Restore a soft deleted booking.
      *
-     * POST /api/admin/bookings/{id}/restore
+     * POST /api/v1/admin/bookings/{id}/restore
      *
-     * Restores booking to active state, clears deleted_at and deleted_by.
-     * Booking will appear again in normal queries.
+     * The overlap check and the restore execute atomically inside a DB transaction
+     * with a pessimistic lock (see BookingService::restore). Two possible conflict
+     * responses are mapped here:
+     *  - 422: sequential overlap detected inside the transaction (before restore)
+     *  - 409: concurrent overlap detected by the PostgreSQL exclusion constraint
      */
     public function restore(int $id): JsonResponse
     {
@@ -113,19 +133,16 @@ class AdminBookingController extends Controller
             return $this->error(__('booking.trashed_not_found'), 404);
         }
 
-        // Check for overlapping active bookings before restoring
-        $hasOverlap = $this->bookingRepository->hasOverlappingBookings(
-            roomId: $booking->room_id,
-            checkIn: $booking->check_in,
-            checkOut: $booking->check_out,
-            excludeBookingId: $booking->id
-        );
-
-        if ($hasOverlap) {
+        try {
+            $result = $this->bookingService->restore($booking);
+        } catch (BookingRestoreConflictException) {
             return $this->error(__('booking.restore_conflict'), 422);
+        } catch (QueryException $e) {
+            if ($e->getCode() === '23P01') {
+                return $this->error(__('booking.restore_concurrent_conflict'), 409);
+            }
+            throw $e;
         }
-
-        $result = $this->bookingService->restore($booking);
 
         if ($result) {
             $this->auditService->log('booking.restore', 'booking', $id, [
@@ -187,9 +204,16 @@ class AdminBookingController extends Controller
     /**
      * Bulk restore multiple trashed bookings.
      *
-     * POST /api/admin/bookings/restore-bulk
+     * POST /api/v1/admin/bookings/restore-bulk
      *
-     * @param  array  $ids  Array of booking IDs to restore
+     * Atomicity: each booking is restored independently inside its own transaction.
+     * A conflict on one item does not roll back successfully restored items.
+     *
+     * Response shape:
+     *   success_count  int   — number of bookings successfully restored
+     *   failure_count  int   — number of bookings not restored
+     *   restored_count int   — alias for success_count (backward compat)
+     *   failed[]       array — per-item failure details: { id, reason }
      */
     public function restoreBulk(BulkRestoreBookingsRequest $request): JsonResponse
     {
@@ -197,7 +221,7 @@ class AdminBookingController extends Controller
 
         $ids = $request->validated('ids');
 
-        $restored = 0;
+        $successCount = 0;
         $failed = [];
 
         foreach ($ids as $id) {
@@ -209,34 +233,34 @@ class AdminBookingController extends Controller
                 continue;
             }
 
-            // Check for overlapping bookings
-            $hasOverlap = $this->bookingRepository->hasOverlappingBookings(
-                roomId: $booking->room_id,
-                checkIn: $booking->check_in,
-                checkOut: $booking->check_out,
-                excludeBookingId: $booking->id
-            );
+            try {
+                $restored = $this->bookingService->restore($booking);
 
-            if ($hasOverlap) {
+                if ($restored) {
+                    $successCount++;
+                    $this->auditService->log('booking.restore', 'booking', $id, [
+                        'room_id' => $booking->room_id,
+                        'bulk' => true,
+                    ]);
+                } else {
+                    $failed[] = ['id' => $id, 'reason' => __('booking.bulk_restore_failed')];
+                }
+            } catch (BookingRestoreConflictException) {
                 $failed[] = ['id' => $id, 'reason' => __('booking.bulk_date_conflict')];
-
-                continue;
-            }
-
-            if ($this->bookingService->restore($booking)) {
-                $restored++;
-                $this->auditService->log('booking.restore', 'booking', $id, [
-                    'room_id' => $booking->room_id,
-                    'bulk' => true,
-                ]);
-            } else {
-                $failed[] = ['id' => $id, 'reason' => __('booking.bulk_restore_failed')];
+            } catch (QueryException $e) {
+                if ($e->getCode() === '23P01') {
+                    $failed[] = ['id' => $id, 'reason' => __('booking.bulk_date_conflict')];
+                } else {
+                    $failed[] = ['id' => $id, 'reason' => __('booking.bulk_restore_failed')];
+                }
             }
         }
 
         return $this->success([
-            'restored_count' => $restored,
+            'success_count' => $successCount,
+            'failure_count' => count($failed),
+            'restored_count' => $successCount,  // backward compat alias
             'failed' => $failed,
-        ], __('booking.bulk_restored', ['count' => $restored]));
+        ], __('booking.bulk_restored', ['count' => $successCount]));
     }
 }

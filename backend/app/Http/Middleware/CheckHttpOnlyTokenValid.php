@@ -12,7 +12,11 @@ use Illuminate\Http\Request;
  *
  * CRITICAL SECURITY:
  * - Token is always in the httpOnly cookie, NOT in the Authorization header
- * - XSS cannot access, CSRF mitigated by SameSite=Strict
+ * - XSS cannot access httpOnly cookies; JavaScript-readable value cannot be forged
+ * - CSRF protection: soleil_token cookie is SameSite=Strict — browsers block
+ *   cross-origin requests from carrying the cookie (active server-side defence)
+ * - X-XSRF-TOKEN header is sent by the frontend but is NOT validated here;
+ *   it provides a supplementary XSS barrier, not the primary CSRF control
  * - Validates: Existence, expiration, revocation, suspicious activity
  * - Sets resolved user on $request attributes for use in controllers
  *

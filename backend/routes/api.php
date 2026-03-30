@@ -64,9 +64,6 @@ Route::prefix('health')->middleware(['auth:sanctum', 'role:admin'])->group(funct
     Route::get('/queue', [HealthController::class, 'queue'])->name('health.queue');
 });
 
-// TODO: Add ReviewController route when ReviewController is implemented
-// Route::apiResource('reviews', ReviewController::class);
-
 // ========== LEGACY AUTH ENDPOINTS (Deprecated — Sunset July 2026) ==========
 // These endpoints are maintained for backward compatibility only.
 // New clients SHOULD use -v2, -httponly, or /auth/unified/ variants.

@@ -1,11 +1,11 @@
 ---
 name: auth
-description: "Skill for the Auth area of soleil-hostel. 56 symbols across 19 files."
+description: "Skill for the Auth area of soleil-hostel. 58 symbols across 19 files."
 ---
 
 # Auth
 
-56 symbols | 19 files | Cohesion: 86%
+58 symbols | 19 files | Cohesion: 85%
 
 ## When to Use
 
@@ -19,10 +19,10 @@ description: "Skill for the Auth area of soleil-hostel. 56 symbols across 19 fil
 |------|---------|
 | `backend/tests/Feature/Auth/EmailVerificationTest.php` | unverified_user_cannot_access_verified_routes, can_check_verification_status_for_unverified_user, user_can_verify_email_with_valid_signed_url, expired_verification_link_is_rejected, verification_link_expires_after_configured_time (+8) |
 | `backend/tests/Feature/Auth/SoleilTokenCookieEncryptionTest.php` | test_soleil_token_cookie_is_plain_uuid_not_encrypted, test_control_cookie_remains_encrypted, extractCookieValue, test_revoked_token_cookie_returns_401_on_v1_endpoint, test_expired_token_cookie_returns_401_on_v1_endpoint (+1) |
+| `backend/app/Models/PersonalAccessToken.php` | revoke, incrementRefreshCount, revokeOtherDevices, revokeAllUserTokens, isValid |
+| `backend/app/Http/Controllers/Auth/HttpOnlyTokenController.php` | refresh, logout, me, login, generateDeviceFingerprint |
 | `backend/tests/Unit/Requests/Auth/LoginRequestValidationTest.php` | rules, test_password_requires_minimum_8_characters, test_password_passes_with_8_characters, test_password_is_required, test_email_is_required |
-| `backend/app/Models/PersonalAccessToken.php` | revoke, incrementRefreshCount, revokeOtherDevices, revokeAllUserTokens |
-| `backend/app/Http/Controllers/Auth/HttpOnlyTokenController.php` | refresh, logout, login, generateDeviceFingerprint |
-| `backend/app/Http/Controllers/Auth/UnifiedAuthController.php` | me, logout, logoutAll, detectAuthMode |
+| `backend/app/Http/Controllers/Auth/UnifiedAuthController.php` | logoutAll, me, logout, detectAuthMode |
 | `backend/app/Http/Controllers/Auth/AuthController.php` | refresh, logout, logoutAll |
 | `frontend/src/shared/utils/csrf.ts` | setCsrfToken, clearCsrfToken |
 | `frontend/src/features/auth/AuthContext.tsx` | AuthProvider, validateToken |
@@ -82,8 +82,9 @@ Start here when exploring this area:
 
 | Area | Connections |
 |------|-------------|
-| Room | 11 calls |
-| Models | 4 calls |
+| Room | 8 calls |
+| Models | 6 calls |
+| Booking | 3 calls |
 
 ## How to Explore
 

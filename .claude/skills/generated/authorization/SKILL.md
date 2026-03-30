@@ -62,7 +62,8 @@ Start here when exploring this area:
 
 | Area | Connections |
 |------|-------------|
-| Room | 20 calls |
+| Room | 15 calls |
+| Booking | 5 calls |
 
 ## How to Explore
 

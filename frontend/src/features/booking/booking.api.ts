@@ -8,6 +8,8 @@ import {
   BookingResponse,
   BookingsListResponse,
   CancelBookingResponse,
+  ReviewSubmitData,
+  ReviewSubmitResponse,
 } from './booking.types'
 
 /**
@@ -59,4 +61,19 @@ export async function cancelBooking(id: number): Promise<CancelBookingResponse> 
 export async function getBookingById(id: number, signal?: AbortSignal): Promise<BookingDetailRaw> {
   const response = await api.get<BookingDetailResponse>(`/v1/bookings/${id}`, { signal })
   return response.data.data
+}
+
+/**
+ * Submit a review for a booking
+ *
+ * POST /v1/reviews
+ * Requires authentication. Policy enforced server-side:
+ * - booking must be owned by authenticated user
+ * - booking status must be confirmed
+ * - check_out must be in the past
+ * - one review per booking (DB unique constraint enforced)
+ */
+export async function submitReview(data: ReviewSubmitData): Promise<ReviewSubmitResponse> {
+  const response = await api.post<ReviewSubmitResponse>('/v1/reviews', data)
+  return response.data
 }

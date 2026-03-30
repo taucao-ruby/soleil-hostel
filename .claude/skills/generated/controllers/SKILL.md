@@ -52,11 +52,11 @@ Start here when exploring this area:
 | `BookingController` | Class | `backend/app/Http/Controllers/BookingController.php` | 23 |
 | `AuthController` | Class | `backend/app/Http/Controllers/AuthController.php` | 23 |
 | `AdminBookingController` | Class | `backend/app/Http/Controllers/AdminBookingController.php` | 20 |
-| `CustomerController` | Class | `backend/app/Http/Controllers/Admin/CustomerController.php` | 8 |
 | `UnifiedAuthController` | Class | `backend/app/Http/Controllers/Auth/UnifiedAuthController.php` | 28 |
 | `HttpOnlyTokenController` | Class | `backend/app/Http/Controllers/Auth/HttpOnlyTokenController.php` | 22 |
 | `EmailVerificationController` | Class | `backend/app/Http/Controllers/Auth/EmailVerificationController.php` | 26 |
 | `AuthController` | Class | `backend/app/Http/Controllers/Auth/AuthController.php` | 34 |
+| `CustomerController` | Class | `backend/app/Http/Controllers/Admin/CustomerController.php` | 8 |
 | `BookingResource` | Class | `backend/app/Http/Resources/BookingResource.php` | 8 |
 | `RoomResource` | Class | `backend/app/Http/Resources/RoomResource.php` | 14 |
 | `getErrorMessage` | Function | `frontend/src/shared/utils/toast.ts` | 115 |
@@ -82,8 +82,7 @@ Start here when exploring this area:
 
 | Area | Connections |
 |------|-------------|
-| Services | 2 calls |
-| Cache | 1 calls |
+| Services | 3 calls |
 | Bookings | 1 calls |
 | Feature | 1 calls |
 | Notifications | 1 calls |

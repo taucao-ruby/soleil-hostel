@@ -24,6 +24,7 @@ return [
     'trashed_not_found' => 'Không tìm thấy đặt phòng đã xóa.',
     'trashed_not_found_force' => 'Không tìm thấy đặt phòng đã xóa. Chỉ có thể xóa vĩnh viễn các đặt phòng đã bị xóa mềm.',
     'restore_conflict' => 'Không thể khôi phục: khoảng thời gian xung đột với đặt phòng hiện có.',
+    'restore_concurrent_conflict' => 'Không thể khôi phục: một thao tác khôi phục đồng thời đã tạo xung đột. Vui lòng thử lại.',
     'restored' => 'Khôi phục đặt phòng thành công.',
     'restore_failed' => 'Khôi phục đặt phòng thất bại.',
     'permanently_deleted' => 'Đã xóa vĩnh viễn đặt phòng.',

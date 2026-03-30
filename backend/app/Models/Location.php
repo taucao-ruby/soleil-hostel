@@ -65,6 +65,7 @@ class Location extends Model
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
         'total_rooms' => 'integer',
+        'lock_version' => 'integer',
     ];
 
     // ===== RELATIONSHIPS =====

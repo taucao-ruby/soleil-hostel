@@ -303,4 +303,30 @@ class CreateBookingServiceTest extends TestCase
 
         $this->assertEquals(BookingStatus::CONFIRMED, $booking->status);
     }
+
+    /**
+     * PR-3B: Service sets location_id from room->location_id at the application layer.
+     *
+     * The service must populate location_id explicitly so the create path is
+     * self-sufficient. The PostgreSQL trigger and BookingObserver remain as
+     * independent backstops; this test verifies the application path itself.
+     */
+    public function test_service_sets_location_id_from_room(): void
+    {
+        $booking = $this->service->create(
+            roomId: $this->room->id,
+            checkIn: Carbon::tomorrow(),
+            checkOut: Carbon::tomorrow()->addDays(3),
+            guestName: 'Test Guest',
+            guestEmail: 'test@example.com',
+            userId: $this->user->id,
+        );
+
+        $this->assertNotNull($booking->location_id, 'location_id must be set after creation');
+        $this->assertEquals(
+            $this->room->location_id,
+            $booking->location_id,
+            'location_id must match the room\'s location_id'
+        );
+    }
 }

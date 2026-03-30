@@ -55,6 +55,23 @@ class LocationTest extends TestCase
         $this->assertContains('pool', $location->amenities);
     }
 
+    /**
+     * PR-3D: lock_version must be cast to integer.
+     *
+     * Without the cast, PostgreSQL drivers return lock_version as a string,
+     * which breaks optimistic-locking CAS integer comparisons silently.
+     * Room.php already has this cast; Location.php now matches.
+     *
+     * @test
+     */
+    public function it_casts_lock_version_as_integer(): void
+    {
+        $location = Location::factory()->create();
+        $location->refresh();
+
+        $this->assertIsInt($location->lock_version);
+    }
+
     /** @test */
     public function it_returns_full_address_accessor(): void
     {

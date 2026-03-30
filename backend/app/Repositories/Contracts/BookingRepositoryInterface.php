@@ -273,6 +273,19 @@ interface BookingRepositoryInterface
     public function getAllWithTrashedPaginated(array $relations = [], int $perPage = 50): \Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
     /**
+     * Get bookings including trashed with optional filters, paginated (for admin listing).
+     *
+     * Supports filtering by check_in range, check_out range, status, location_id, and search.
+     * Date filters use DATE column comparisons (inclusive on both ends).
+     *
+     * @param  array  $filters  Supported keys: check_in_start, check_in_end, check_out_start,
+     *                          check_out_end, status, location_id (int), search (string)
+     * @param  array  $relations  Relations to eager load
+     * @param  int  $perPage  Items per page
+     */
+    public function getAdminPaginated(array $filters = [], array $relations = [], int $perPage = 50): \Illuminate\Contracts\Pagination\LengthAwarePaginator;
+
+    /**
      * Get bookings with common relations loaded (room, user).
      * Uses optimized column selection to prevent N+1.
      *

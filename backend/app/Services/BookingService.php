@@ -4,9 +4,12 @@ namespace App\Services;
 
 use App\Enums\BookingStatus;
 use App\Enums\StayStatus;
+use App\Events\BookingRestored;
+use App\Exceptions\BookingRestoreConflictException;
 use App\Models\Booking;
 use App\Models\Stay;
 use App\Notifications\BookingConfirmed;
+use App\Repositories\Contracts\BookingRepositoryInterface;
 use App\Traits\HasCacheTagSupport;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -66,6 +69,11 @@ class BookingService
     {
         return [...self::BOOKING_COLUMNS, ...self::BOOKING_PAYMENT_REFUND_COLUMNS];
     }
+
+    public function __construct(
+        private readonly BookingRepositoryInterface $bookingRepository,
+        private readonly RoomAvailabilityService $roomAvailabilityService
+    ) {}
 
     /**
      * Confirm a pending booking and trigger confirmation email notification.
@@ -302,11 +310,21 @@ class BookingService
     /**
      * Restore a soft deleted booking.
      *
-     * Clears the audit trail (deleted_by, deleted_at) and makes booking active again.
-     * Only authorized admins should call this method.
+     * Executes the overlap check and the restore inside a single DB transaction
+     * using a pessimistic lock on any overlapping rows. This eliminates the
+     * TOCTOU window where two concurrent restores could both pass the pre-lock
+     * check and then race to the exclusion constraint.
+     *
+     * The PostgreSQL exclusion constraint (no_overlapping_bookings) remains the
+     * final backstop. If a concurrent restore slips through the lock window
+     * (e.g. both started before any overlapping row existed), a QueryException
+     * with SQLSTATE 23P01 will propagate to the controller which maps it to 409.
      *
      * @param  Booking  $booking  The trashed booking to restore
-     * @return bool Success status
+     * @return bool Success status (false only if booking was not trashed)
+     *
+     * @throws BookingRestoreConflictException When an overlapping active booking is detected
+     * @throws \Illuminate\Database\QueryException If the DB exclusion constraint fires (23P01)
      */
     public function restore(Booking $booking): bool
     {
@@ -314,15 +332,36 @@ class BookingService
             return false;
         }
 
-        $result = $booking->restoreWithAudit();
+        $restored = DB::transaction(function () use ($booking) {
+            // Lock-aware overlap check: acquires FOR UPDATE on any conflicting rows,
+            // preventing concurrent transactions from restoring into the same slot.
+            $hasOverlap = $this->bookingRepository->hasOverlappingBookingsWithLock(
+                roomId: $booking->room_id,
+                checkIn: $booking->check_in,
+                checkOut: $booking->check_out,
+                excludeBookingId: $booking->id
+            );
 
-        if ($result) {
+            if ($hasOverlap) {
+                throw new BookingRestoreConflictException($booking);
+            }
+
+            return $booking->restoreWithAudit();
+        });
+
+        if ($restored) {
+            // Invalidate booking-specific caches synchronously
             $this->invalidateBooking($booking->id, $booking->user_id);
             $this->invalidateTrashedBookings();
+            // Invalidate room availability cache synchronously so the
+            // restored booking immediately re-blocks the room slot
+            $this->roomAvailabilityService->invalidateAvailability($booking->room_id);
+            // Fire event for queued listener (notification hooks etc.)
+            event(new BookingRestored($booking));
             Log::info("Booking {$booking->id} restored by user ".auth()->id());
         }
 
-        return $result;
+        return $restored;
     }
 
     /**

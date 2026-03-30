@@ -82,7 +82,8 @@ Start here when exploring this area:
 
 | Area | Connections |
 |------|-------------|
-| Room | 51 calls |
+| Room | 44 calls |
+| Booking | 7 calls |
 | Services | 2 calls |
 | Listeners | 2 calls |
 

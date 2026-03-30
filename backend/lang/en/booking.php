@@ -24,6 +24,7 @@ return [
     'trashed_not_found' => 'Trashed booking not found.',
     'trashed_not_found_force' => 'Trashed booking not found. Only soft-deleted bookings can be permanently deleted.',
     'restore_conflict' => 'Cannot restore booking: date range conflicts with existing bookings.',
+    'restore_concurrent_conflict' => 'Cannot restore booking: a concurrent restore operation created a conflicting booking. Please retry.',
     'restored' => 'Booking restored successfully.',
     'restore_failed' => 'Failed to restore booking.',
     'permanently_deleted' => 'Booking permanently deleted.',

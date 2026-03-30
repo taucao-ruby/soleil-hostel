@@ -1,11 +1,11 @@
 ---
 name: cluster-1
-description: "Skill for the Cluster_1 area of soleil-hostel. 19 symbols across 1 files."
+description: "Skill for the Cluster_1 area of soleil-hostel. 18 symbols across 1 files."
 ---
 
 # Cluster_1
 
-19 symbols | 1 files | Cohesion: 94%
+18 symbols | 1 files | Cohesion: 94%
 
 ## When to Use
 
@@ -16,7 +16,7 @@ description: "Skill for the Cluster_1 area of soleil-hostel. 19 symbols across 1
 
 | File | Symbols |
 |------|---------|
-| `deploy.php` | run, preflight, runGateChecks, runDeployOperations, runVerification (+14) |
+| `deploy.php` | run, preflight, runGateChecks, runDeployOperations, runVerification (+13) |
 
 ## Entry Points
 
@@ -48,7 +48,6 @@ Start here when exploring this area:
 | `printList` | Method | `deploy.php` | 468 |
 | `printBlock` | Method | `deploy.php` | 481 |
 | `recordSuccess` | Method | `deploy.php` | 489 |
-| `recordWarning` | Method | `deploy.php` | 495 |
 | `recordError` | Method | `deploy.php` | 501 |
 | `line` | Method | `deploy.php` | 507 |
 

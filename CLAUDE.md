@@ -54,6 +54,9 @@ Root contract for the Soleil Hostel instruction system. This file defines consti
 - Session and ledger surfaces: `docs/COMPACT.md`, `docs/WORKLOG.md`, `PROJECT_STATUS.md`, `BACKLOG.md`
 - Governance and onboarding: `docs/AI_GOVERNANCE.md`, `AGENTS.md`
 - Findings: `docs/FINDINGS_BACKLOG.md`
+- Agent self-learning: `docs/agents/AGENT_LEARNINGS_OPERATING_RULES.md` — read/write rules for booking, migration, RBAC, and API contract tasks.
+- Active failure patterns: `docs/agents/AGENT_LEARNINGS.md` — tag-scoped reads only (see R-01–R-04 in operating rules).
+- Schema examples: `docs/agents/AGENT_LEARNINGS_EXAMPLES.md` — illustrative entries only; do not cite as historical facts (G-06).
 
 ## Escalation rules
 

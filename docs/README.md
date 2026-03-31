@@ -1,6 +1,6 @@
 # Soleil Hostel Documentation
 
-> **Last Updated:** March 20, 2026 | **Tests:** 989 backend tests (2677 assertions) + 226 frontend unit tests | **Status:** Phases 0-5 Complete + DevSecOps + Quality Hardening + RBAC Hardening + DB Hardening + Stay Domain
+> **Last Updated:** March 31, 2026 | **Tests:** 1047 backend tests (2875 assertions) + 261 frontend unit tests | **Status:** Phases 0-5 Complete + DevSecOps + Quality Hardening + RBAC Hardening + DB Hardening + Stay Domain + Operational Completion
 
 ## Quick Navigation
 
@@ -126,7 +126,7 @@ docs/
 
 See [PROJECT_STATUS.md](../PROJECT_STATUS.md) for full status snapshot with gate results and roadmap.
 
-**Current baselines** (verified March 20, 2026): 989 backend tests, 226 frontend tests, 283 Pint files, 0 open critical/high findings.
+**Current baselines** (verified March 31, 2026): 1047 backend tests, 261 frontend tests, 283 Pint files, PHPStan Level 5 0 errors, 0 open critical/high findings.
 
 ## Tech Stack
 

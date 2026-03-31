@@ -1,8 +1,8 @@
 # Soleil Hostel - Project Status
 
-**Last Updated:** March 20, 2026
-**Current Branch:** `main`
-**Latest Commit:** `5ec58dd` — chore: merge dev into main — add soleil-ai-review-engine skills + .soleil-ai-review-engine gitignore
+**Last Updated:** March 31, 2026
+**Current Branch:** `dev`
+**Latest Commit:** `a2da01b` — Update license link to point to GitHub
 
 ## Current Status: Repo Health Green
 
@@ -10,15 +10,15 @@
 > Batches 1–12 + DevSecOps + quality hardening + DB hardening + v3.1 stay domain complete.
 > See [docs/AUDIT_2026_02_21.md](./docs/AUDIT_2026_02_21.md) for detailed audit history.
 
-Gates (verified March 20, 2026):
+Gates (verified March 31, 2026):
 
-- Backend tests PASS: **989 tests**, **2677 assertions** (`cd backend && php artisan test`)
+- Backend tests PASS: **1047 tests**, **2875 assertions** (`cd backend && php artisan test`)
 - Frontend typecheck PASS: 0 errors (`cd frontend && npx tsc --noEmit`)
-- Frontend unit tests PASS: **21 files**, **226 tests** (`cd frontend && npx vitest run`)
+- Frontend unit tests PASS: **25 files**, **261 tests** (`cd frontend && npx vitest run`)
 - Compose config PASS (`docker compose config`)
 - Pint style PASS: **283 files**, 0 violations (`cd backend && vendor/bin/pint --test`)
-- PHPStan Level 5 installed with Larastan (baseline: 151 pre-existing errors)
-- Psalm: 0 blocking errors (v1 routes)
+- PHPStan Level 5 PASS: **0 errors** (no baseline, no ignores — Larastan)
+- Psalm: Level 1, 0 blocking errors
 
 Open Findings: F-23 (MD lint, low), F-25 (CSRF path, low), F-26–F-62 (2026-03-20 audit — 37 findings, no code changed)
 Blocked Items: M-11 (migration squash — needs human approval)
@@ -32,16 +32,16 @@ Previous audits: [docs/AUDIT_2026_02_21.md](./docs/AUDIT_2026_02_21.md)
 
 ```text
 Backend (Laravel)  ██████████████████████░  99%
-Frontend (React)   ████████████████████░░  96%
+Frontend (React)   █████████████████████░░  97%
 Testing            ██████████████████████  99%
 Audits (v1–v4)     █████████████████████░ 100% ✅ 179/179
 Quality batches    █████████████████████░ 100% ✅ Batches 1–12
 DevSecOps          █████████████████████░ 100% ✅ Docker/Redis/Caddy + CI gates
 Payment bootstrap  ██████████████░░░░░░░░  65% ✅ Cashier + webhooks (checkout UI pending)
-Documentation      ████████████████████░░  95%
+Documentation      █████████████████████░  97%
 Deployment         ███████████████░░░░░░░  60%
 ─────────────────────────────────────────────
-Total Progress     █████████████████████░  92%
+Total Progress     █████████████████████░  93%
 ```
 
 ---
@@ -51,16 +51,16 @@ Total Progress     ████████████████████�
 ### Backend (PHPUnit/Pest)
 
 ```text
-989 tests passed
-2677 assertions
-Duration: ~210s (verified March 20, 2026)
+1047 tests passed
+2875 assertions
+Duration: ~237s (verified March 31, 2026)
 ```
 
 ### Frontend (Vitest)
 
 ```text
-226 tests passed (21 test files)
-Duration: ~30s (verified March 11, 2026)
+261 tests passed (25 test files)
+Duration: ~42s (verified March 31, 2026)
 ```
 
 ### E2E (Playwright)
@@ -115,12 +115,12 @@ The following confirmed limitations affect operator-facing or guest-facing funct
 | ID | Limitation | Impact | Remediation |
 |----|-----------|--------|-------------|
 | TL-01 | Admin booking screens (arrivals/departures, calendar) parse `response.data.data` but backend returns `data.bookings` + `data.meta` — bookings may not render correctly | High | Batch 1 |
-| TL-02 | Admin booking list filters (location, status, search, date range) are sent by the SPA but ignored server-side — backend returns unfiltered global dataset | High | Batch 1 |
+| ~~TL-02~~ | ~~Admin booking list filters ignored server-side~~ | ~~High~~ | ✅ Fixed Mar 29 — `getAdminPaginated()` now applies all 7 filter params (check_in, check_out, status, location_id, search) |
 | TL-03 | Booking form submits `number_of_guests` and `special_requests` but backend does not validate or persist these fields — guest data is silently discarded | Medium | Batch 2 |
 | TL-04 | Admin sidebar links to `/admin/reviews` and `/admin/messages` are non-functional — routes not defined in frontend router | Low | Batch 2 |
-| TL-05 | Moderator role has confirmed backend read access to `/v1/admin/bookings` but the SPA redirects all non-admin users away from `/admin/*` routes — moderator capability is inaccessible via shipped UI | Medium | Batch 2 |
+| ~~TL-05~~ | ~~Moderator capability inaccessible via SPA (`/admin/*` routes redirected all non-admin users)~~ | ~~Medium~~ | ✅ Fixed Mar 29 — `AdminRoute.tsx` now accepts `minRole` prop (default `'moderator'`); room edit/new routes remain admin-only |
 
-See also: `docs/PERMISSION_MATRIX.md` Table E and Moderator Status Assessment for TL-05 detail.
+See also: `docs/PERMISSION_MATRIX.md` Table E for current moderator access surface.
 
 ---
 
@@ -132,7 +132,12 @@ See also: `docs/PERMISSION_MATRIX.md` Table E and Moderator Status Assessment fo
 | **RBAC Hardening**              | ✅ Done  | Defense-in-depth, phases 1-3, moderator activation, mobile guard, password complexity (Mar 10-14) |
 | **Booking Detail Panel**        | ✅ Done  | Guest read-only panel with 14 tests (Feb 27)                                         |
 | **Admin Pagination**            | ✅ Done  | All 3 tabs paginated with Trước/Sau controls (Feb 27)                                |
-| **Four-Layer Operational Domain** | ✅ Done | stays, room_assignments, service_recovery_cases + backfill command (Mar 20)         |
+| **Four-Layer Operational Domain** | ✅ Done | stays, room_assignments, service_recovery_cases, readiness, classification, deposit, settlement, escalation engine (Mar 20–23) |
+| **Admin Booking Filters**       | ✅ Done  | 7 server-side filter params (check_in, check_out, status, location_id, search) with ILIKE (Mar 29) |
+| **Moderator SPA Access**        | ✅ Done  | `AdminRoute.tsx` `minRole` prop; room edit/new remain admin-only (Mar 29)            |
+| **Restore Path Integrity**      | ✅ Done  | `BookingService::restore()` in transaction with `FOR UPDATE`; TOCTOU race eliminated (Mar 29) |
+| **Review Submission (Guest)**   | ✅ Done  | `ReviewForm.tsx` with star rating, Vietnamese UI, 403/422 handling (Mar 29)          |
+| **PHPStan Level 5 Clean**       | ✅ Done  | 0 errors, no baseline, no ignores (was 151 pre-existing — Mar 21)                   |
 | **RBAC Follow-ups (FU-1..5)**   | Medium   | Legacy test migration, coverage gaps, config verification — see PERMISSION_MATRIX.md |
 | **E2E Test Suite (Playwright)** | Medium   | Scaffolded; blocked on stable staging environment                                    |
 | **2FA (TOTP)**                  | Low      | Force-logout-all on 2FA enable already wired in `logoutAll()`; TOTP issuance pending |
@@ -161,6 +166,12 @@ All audit and batch details are preserved in [AUDIT_REPORT.md](./AUDIT_REPORT.md
 | Mar 13-14, 2026 | RBAC mobile guard, password complexity, EmailVerificationTest, CVE fixes (flatted/undici) | — |
 | Mar 17, 2026 | DB hardening: FK delete policy hardening + CHECK constraints + DB tests | +53 backend tests (901→954), 3 migrations, 2 test files |
 | Mar 20, 2026 | v3.1 stay domain: stays/room_assignments/service_recovery_cases + BackfillOperationalStays command | +35 backend tests (954→989), 3 migrations, 4 test files, 3 models, 9 enums, 3 factories |
+| Mar 21, 2026 | v3.2 operations: room readiness, blockage resolver, financial ops | 1009 tests |
+| Mar 21, 2026 | v3.3 static analysis: Psalm 35→0, PHPStan 151→0 (no baseline, no ignores) | 1037 tests |
+| Mar 23, 2026 | v3.4 operational completion: readiness, classification, deposit lifecycle, settlement, escalation engine, OperationalDashboardService (16 metrics) | 1014 tests at that point |
+| Mar 29, 2026 | Restore path integrity (Wave 1), admin filters (Wave 2), CSRF clarity (Wave 3), ReviewForm (Wave 4), governance docs (Wave 5) | +40 backend tests, +35 frontend tests; TL-02/TL-05 resolved |
+| Mar 30, 2026 | picomatch ReDoS CVE fix (GHSA-c2c7-rcm5-vvqj), Pint cleanup (8 files), null-safe RoomResource fix, AGENT_LEARNINGS scaffold | — |
+| Mar 31, 2026 | Docs sync v3: 5 confirmed docs updated, 9 findings patched (F-01, F-02, F-03, F-04, F-05, F-07, F-09) | — |
 
 ---
 
@@ -174,4 +185,10 @@ RBAC mobile guard + password complexity (Mar 13-14): admin route guard on fronte
 CVE fix (Mar 14): flatted >=3.4.0, undici >=7.24.0 (ef138cc). Logout-401 investigation: no code bug (stale cookie).
 DB hardening (Mar 17): FK CASCADE→SET NULL/RESTRICT on 4 FKs (bookings.user_id, bookings.room_id, reviews.user_id, reviews.room_id). CHECK constraints added: chk_rooms_max_guests, chk_bookings_status. All PG-only, runtime-gated. 954 tests, 0 failures.
 v3.1 stay domain (Mar 20): four-layer operational model (stays, room_assignments, service_recovery_cases). BackfillOperationalStays command. Booking.stay() hasOne relationship added. 989 tests, 0 failures.
+v3.2 operations (Mar 21): room readiness, blockage resolver, financial ops. 1009 tests.
+v3.3 static analysis (Mar 21): Psalm 35→0, PHPStan 151→0 (no baseline, no ignores). 1037 tests.
+v3.4 operational completion (Mar 23): readiness, classification, deposit, settlement, escalation engine, OperationalDashboardService. 1014 tests at that point.
+Restore path integrity + product completeness (Mar 29): 5-wave execution — restore TOCTOU fix, admin booking filters, CSRF clarity, ReviewForm.tsx, governance docs. TL-02 and TL-05 resolved.
+picomatch ReDoS CVE fix (Mar 30): GHSA-c2c7-rcm5-vvqj via pnpm overrides.
+Docs sync v3 (Mar 31): 9 findings patched across 5 canonical docs. Backend 1047 tests, frontend 261 tests confirmed.
 Findings backlog: [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md)

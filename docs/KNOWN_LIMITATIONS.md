@@ -1,6 +1,21 @@
 # Known Limitations
 
 > Current system constraints, technical debt, and planned improvements
+>
+> **UI DESIGN CONTEXT (Google Stitch):**
+> Use this document to identify intentionally incomplete flows. Do NOT design UI for these surfaces.
+>
+> | # | What to skip | Why |
+> |---|---|---|
+> | TL-01 | Payment checkout form, Stripe UI | LIM-002: frontend payment UI not started |
+> | TL-02 | `/admin/reviews` route | Route does not exist — no backend controller wired |
+> | TL-03 | `number_of_guests` and `special_requests` form persistence | LIM-003 variant: these fields exist on the form but are not reliably read/stored by backend |
+> | TL-04 | `/admin/messages` (contact messages route) | Route does not exist — contact messages only appear in legacy AdminDashboard tabs |
+> | TL-05 | Frontend i18n language switcher | LIM-008: no `react-i18next`; strings hardcoded Vietnamese |
+> | TL-06 | PWA / offline mode | No service worker implemented |
+> | TL-07 | "Confirm booking" admin button | Backend endpoint exists (`POST /v1/bookings/{id}/confirm`) but no frontend UI button |
+
+---
 
 ## Overview
 

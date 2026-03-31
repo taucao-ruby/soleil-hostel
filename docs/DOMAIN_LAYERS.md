@@ -2,7 +2,21 @@
 
 Added: 2026-03-20. Describes the operational domain tables introduced in migration batch `2026_03_20_*`.
 
-## Layer Overview
+> **UI DESIGN CONTEXT (Google Stitch):**
+> Use this document to design PM/BM operational dashboard screens: room readiness board, arrival resolution flow, deposit lifecycle, and service recovery case views.
+> **Layer 1 (`bookings`)**: drives booking list screens and status badges — colors defined in BOOKING_SEMANTICS.md.
+> **Layer 2 (`stays`)**: drives check-in/check-out timeline and in-house guest indicators.
+> **Layer 3 (`room_assignments`)**: drives room assignment history and swap/upgrade flow screens.
+> **Layer 4 (`service_recovery_cases`)**: drives incident log, compensation workflow, and settlement tracking.
+>
+> Key readiness status badge map (for `rooms.readiness_status`):
+> - `ready` → green · `occupied` → blue · `dirty` → orange · `cleaning` → yellow · `inspected` → teal · `out_of_service` → red/muted
+>
+> Key stay status values (for `stays.stay_status`): `expected` → gray · `in_house` → green · `late_checkout` → amber · `checked_out` → muted · `no_show` → red · `relocated_internal` → blue · `relocated_external` → purple
+>
+> Amount fields (`refund_amount`, `voucher_amount`, `cost_delta_absorbed`, `bookings.amount`) are stored in **VND cents** (integer). Divide by 100 for display with `.toLocaleString('vi-VN')` formatting.
+
+---
 
 | Table | Domain | Purpose |
 |-------|--------|---------|

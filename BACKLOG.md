@@ -1,7 +1,7 @@
 # BACKLOG.md — Soleil Hostel
 
 > **Product backlog — prioritized by implementation order**
-> Last updated: 2026-03-17 | Source: COMPACT.md + KNOWN_LIMITATIONS.md + FINDINGS_BACKLOG.md + PERMISSION_MATRIX.md
+> Last updated: 2026-03-31 | Source: COMPACT.md + KNOWN_LIMITATIONS.md + FINDINGS_BACKLOG.md + PERMISSION_MATRIX.md
 
 ---
 
@@ -410,7 +410,7 @@ FEAT-002 (Group Booking) → requires a new ADR before coding
 | FE-004 Booking History          | —        | 🟡 Next                                   |
 | I18N-002 Frontend i18n          | —        | 🟢 When time permits                      |
 | TD-004 Audit Log Retention      | —        | 🟡 Next                                   |
-| F-25 api.ts CSRF path fix       | —        | 🟢 Non-critical, when time permits        |
+| F-25 api.ts CSRF path fix       | —        | 🟢 Non-critical (CSRF architecture clarified Mar 29; path discrepancy remains low-risk) |
 | rooms.status normalization + RoomStatus enum | —  | 🟡 Prerequisite for rooms.status DB CHECK  |
 | Legacy migration gating cleanup (2026_02_09_000000) | — | 🟢 Standardize config→DB::getDriverName() |
 
@@ -462,6 +462,15 @@ FEAT-002 (Group Booking) → requires a new ADR before coding
 | ✅ DB hardening: FK delete policies (4 FKs CASCADE→SET NULL/RESTRICT)                          | Mar 17, 2026      | 3 migrations, 8 tests |
 | ✅ DB hardening: chk_rooms_max_guests CHECK constraint                                         | Mar 17, 2026      | PG-only   |
 | ✅ DB hardening: chk_bookings_status CHECK constraint                                          | Mar 17, 2026      | PG-only   |
+| ✅ v3.2 operations: room readiness, blockage resolver, financial ops                           | Mar 21, 2026      | 1009 tests |
+| ✅ v3.3 static analysis: Psalm 35→0, PHPStan 151→0 (Level 5, no baseline, no ignores)         | Mar 21, 2026      | 1037 tests |
+| ✅ v3.4 operational completion: readiness, classification, deposit, settlement, escalation engine, OperationalDashboardService (16 metrics) | Mar 23, 2026 | — |
+| ✅ Restore path integrity: `BookingService::restore()` in transaction with FOR UPDATE (TOCTOU-safe) | Mar 29, 2026 | 16 tests |
+| ✅ Admin booking filters: 7 server-side filter params + ILIKE search (fixes TL-02)             | Mar 29, 2026      | 24 tests  |
+| ✅ Moderator SPA access: `AdminRoute.tsx` `minRole` prop; room routes admin-only (fixes TL-05) | Mar 29, 2026      | —         |
+| ✅ ReviewForm.tsx: star-rating review form, Vietnamese UI, 403/422 handling                    | Mar 29, 2026      | 10 tests  |
+| ✅ picomatch ReDoS CVE fix (GHSA-c2c7-rcm5-vvqj) via pnpm overrides                           | Mar 30, 2026      | —         |
+| ✅ Docs sync v3: 9 findings patched, F-02 resolved via live test run (1047 tests confirmed)    | Mar 31, 2026      | —         |
 
 ---
 

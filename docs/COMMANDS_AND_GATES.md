@@ -113,7 +113,9 @@ Expected: `Found 0 errors.` (implicit — no output means pass)
 cd frontend && npx vitest run
 ```
 
-Expected: 226 tests passed, 0 failed (verified 2026-03-11).
+<!-- SYNC-EDIT: DRIFT-06 F-05 -->
+<!-- SOURCE: frontend/package.json, verified 2026-03-11 -->
+Expected: 226 tests passed, 0 failed <!-- AS OF: 2026-03-11 -->.
 
 CI variant:
 
@@ -167,20 +169,33 @@ npm run hooks:run:prepush  # Dry-run pre-push
 
 Triggers: PR to `main`/`dev`, push to `main`/`dev`.
 
-| Job                 | Commands                                                                 | Expected                     | Blocking               |
-| ------------------- | ------------------------------------------------------------------------ | ---------------------------- | ---------------------- |
-| backend-tests       | `php artisan test --parallel --processes=4 --min-coverage-percentage=95` | Pass + 95% coverage          | Yes                    |
-| booking-stress-test | `php backend/tests/stubs/concurrent_booking_test.php` (50 concurrent)    | No double-bookings           | Yes                    |
-| nplusone-detection  | `php artisan test tests/Feature/NPlusOneQueriesTest.php`                 | Query count within threshold | Yes                    |
-| phpstan             | `phpstan analyse --error-format=github` (Level 5)                        | 0 errors                     | Yes                    |
-| psalm               | `psalm --output-format=github` (Level 1)                                 | Advisory                     | No (continue-on-error) |
-| pint                | `vendor/bin/pint --test`                                                 | 0 style violations           | Yes                    |
-| lint (PHP)          | `find app tests -name "*.php" \| xargs php -l`                           | 0 syntax errors              | Yes                    |
-| composer-audit      | `composer audit`                                                         | Advisory                     | No (continue-on-error) |
-| npm-audit           | `pnpm audit --audit-level=high`                                          | Advisory                     | No (continue-on-error) |
-| security-scan       | Gitleaks action                                                          | No exposed secrets           | Yes                    |
-| frontend-unit-tests | `pnpm test:unit --coverage`                                              | 0 failures                   | Yes                    |
-| frontend-lint       | `pnpm run build` + `pnpm run lint`                                       | 0 errors                     | Yes                    |
+<!-- SYNC-EDIT: DRIFT-01 F-03 — composer-audit is blocking (continue-on-error: false) in tests.yml -->
+<!-- SYNC-EDIT: DRIFT-04 F-04 — added missing frontend-typecheck and docker-compose-validate jobs -->
+<!-- SOURCE: .github/workflows/tests.yml -->
+| Job                       | Commands                                                                 | Expected                     | Blocking               |
+| ------------------------- | ------------------------------------------------------------------------ | ---------------------------- | ---------------------- |
+| backend-tests             | `php artisan test --parallel --processes=4 --min-coverage-percentage=95` | Pass + 95% coverage          | Yes                    |
+| booking-stress-test       | `php backend/tests/stubs/concurrent_booking_test.php` (50 concurrent)    | No double-bookings           | Yes                    |
+| nplusone-detection        | `php artisan test tests/Feature/NPlusOneQueriesTest.php`                 | Query count within threshold | Yes                    |
+| phpstan                   | `phpstan analyse --error-format=github` (Level 5)                        | 0 errors                     | Yes                    |
+| psalm                     | `psalm --output-format=github` (Level 1)                                 | Advisory                     | No (continue-on-error) |
+| pint                      | `vendor/bin/pint --test`                                                 | 0 style violations           | Yes                    |
+| lint (PHP)                | `find app tests -name "*.php" \| xargs php -l`                           | 0 syntax errors              | Yes                    |
+| composer-audit            | `composer audit`                                                         | 0 advisories                 | Yes                    |
+| npm-audit                 | `pnpm audit --audit-level=high`                                          | Advisory                     | No (continue-on-error) |
+| security-scan             | Gitleaks action                                                          | No exposed secrets           | Yes                    |
+| frontend-typecheck        | `npx tsc --noEmit`                                                       | 0 type errors                | Yes                    |
+| frontend-unit-tests       | `pnpm test:unit --coverage`                                              | 0 failures                   | Yes                    |
+| frontend-lint             | `pnpm run build` + `pnpm run lint`                                       | 0 errors                     | Yes                    |
+| docker-compose-validate   | `docker compose config`                                                  | Valid YAML                   | Yes                    |
+
+### hygiene.yml (CI)
+
+Triggers: PR to `main`/`dev`, push to `main`/`dev`.
+
+| Job     | Commands                      | Expected          | Blocking |
+| ------- | ----------------------------- | ----------------- | -------- |
+| hygiene | `sh scripts/check-hygiene.sh` | H-01..H-05 pass   | Yes      |
 
 ### deploy.yml (CD)
 

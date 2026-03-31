@@ -1,3 +1,21 @@
+> **UPDATED: 2026-03-31. Stale notices resolved.**
+>
+> Key corrections applied vs the 2026-03-09 audit:
+>
+> 1. **Router updated.** `/admin/*` route tree now exists with `AdminRoute` (minRole='moderator'). Routes: `/admin/bookings`, `/admin/bookings/calendar`, `/admin/bookings/today`, `/admin/customers`, `/admin/customers/:email`, `/admin/rooms`, `/admin/rooms/new` (admin-only), `/admin/rooms/:id/edit` (admin-only). Public/auth routes added: `/my-bookings`, `/my-bookings/:id`.
+>
+> 2. **Moderator is no longer invisible in the SPA.** `AdminRoute` (default minRole='moderator') now gates `/admin/*`. Moderator can access booking views, customer views, and room read. Room CUD, trashed bookings, and booking write operations remain admin-only.
+>
+> 3. **INV-3 updated.** Moderator has backend access to `GET /v1/admin/bookings*` via `role:moderator` middleware (rows A7/A8/A9 in PERMISSION_MATRIX.md). `role:admin` still gates all write operations. INV-3 in the body below replaced accordingly.
+>
+> 4. **G-01 status changed to LOW (substantially resolved).** Moderator now has `/admin/bookings`, `/admin/customers`, `/admin/rooms` (read-only). Only gap remaining: `/dashboard` still renders GuestDashboard for moderator with no navigation prompt to `/admin`.
+>
+> 5. **Source table row 10** corrected: `role:moderator` middleware gates GET `/v1/admin/bookings*` (see PERMISSION_MATRIX.md A7/A8/A9). Row 10 VERIFIED claim was outdated.
+>
+> **UI DESIGN CONTEXT (Google Stitch):**
+> This audit identifies what NOT to copy from the current implementation. Use the findings and anti-patterns list when designing improved screens.
+> Critical anti-patterns: no dedicated moderator landing page, no admin self-booking view, no 403 error page, no role badge in nav.
+
 # RBAC UX/UI AUDIT — Soleil Hostel Frontend
 
 > Audit date: 2026-03-09 | Branch: `dev` | Commit: `99cb0a3`
@@ -51,7 +69,7 @@ This audit examines the frontend role-based access control (RBAC) implementation
 |---|-----------|------|--------|------------|--------|
 | INV-1 | ProtectedRoute checks only `isAuthenticated`, never `user.role` | RBAC | `ProtectedRoute.tsx` → line 24: `{ isAuthenticated, loading }` | VERIFIED | HOLDS |
 | INV-2 | DashboardPage uses strict equality `user?.role === 'admin'` — binary, not hierarchical | RBAC | `DashboardPage.tsx` → line 10 | VERIFIED | HOLDS |
-| INV-3 | All admin API endpoints require `role:admin` middleware (moderator cannot pass) | RBAC | `v1.php` → lines 57, 67: `middleware('role:admin')` + `EnsureUserHasRole.php` → `isAtLeast()` | VERIFIED | HOLDS |
+| INV-3 | All booking write admin API endpoints require `role:admin` middleware; GET admin/bookings* endpoints accept `role:moderator` | RBAC | `v1.php` lines 57 (`role:moderator` on GET routes A7/A8/A9), lines 57+ (`role:admin` on restore/force-delete); `EnsureUserHasRole.php` → `isAtLeast()` | VERIFIED | UPDATED — moderator can read, cannot write |
 | INV-4 | Frontend Axios has no 403 response handler — all non-401 errors reject generically | auth | `api.ts` → line 178: `return Promise.reject(error)` | VERIFIED | HOLDS |
 | INV-5 | Logout clears both HttpOnly cookie (server-side POST) and sessionStorage CSRF token | session | `AuthContext.tsx` → `logoutHttpOnly()`: POST `/auth/logout-httponly` + `clearCsrfToken()` | VERIFIED | HOLDS |
 | INV-6 | `withCredentials: true` is set on the shared Axios instance | auth | `api.ts` → line 45 | VERIFIED | HOLDS |
@@ -74,7 +92,7 @@ This audit examines the frontend role-based access control (RBAC) implementation
 | **Intent → implementation delta** | None detected — frontend correctly scopes user to own bookings |
 | **Intent → runtime delta** | BLOCKED |
 | **First destination after login** | `/dashboard` (hardcoded in LoginPage line 70) |
-| **Main navigation items visible** | Trang chủ, Phòng, Chi nhánh, Đặt phòng, Bảng điều khiển |
+| **Main navigation items visible** | Trang chủ, Phòng, Chi nhánh, Đặt phòng, Trang quản lý |
 | **Mobile experience** | Header.tsx has mobile hamburger menu; dashboard uses `p-8` padding which may be generous on small screens but not layout-breaking |
 | **Confidence** | VERIFIED (source) |
 
@@ -82,15 +100,15 @@ This audit examines the frontend role-based access control (RBAC) implementation
 
 | Aspect | Detail |
 |--------|--------|
-| **Intended capability scope** | View all bookings, moderate content, approve reviews (per backend RBAC docs) |
-| **Implemented frontend scope** | IDENTICAL to user — GuestDashboard renders (DashboardPage line 10: `'moderator' !== 'admin'` → else branch) |
+| **Intended capability scope** | View all bookings, view customer profiles, view rooms (read-only); no booking write operations |
+| **Implemented frontend scope** | GuestDashboard at `/dashboard` (same as user). **Additionally**: full `/admin/*` tree readable via `AdminRoute` (minRole='moderator'): `/admin/bookings`, `/admin/bookings/calendar`, `/admin/bookings/today`, `/admin/customers`, `/admin/customers/:email`, `/admin/rooms`. Room CUD routes (`/admin/rooms/new`, `/admin/rooms/:id/edit`) are admin-only via `AdminRoute` (minRole='admin'). |
 | **Observed runtime scope** | BLOCKED — no runtime |
-| **Intent → implementation delta** | **SIGNIFICANT**: Backend defines moderator as level 2 with expanded capabilities, but frontend provides zero moderator-specific UI. Moderator sees GuestDashboard with "Quản lý đặt phòng của bạn" ("manage your bookings") — a guest-context message for a staff member. |
+| **Intent → implementation delta** | **MINOR (substantially resolved)**: Moderator has dedicated `/admin/*` access. Remaining gap: `/dashboard` still renders GuestDashboard with "Quản lý đặt phòng của bạn" context — no navigation prompt forwarding to `/admin/bookings`. |
 | **Intent → runtime delta** | BLOCKED |
-| **First destination after login** | `/dashboard` → GuestDashboard |
-| **Main navigation items visible** | Same as user — no staff/moderator indicators |
-| **Mobile experience** | Same guest dashboard — inappropriate context for staff operational tasks |
-| **Confidence** | VERIFIED (source) |
+| **First destination after login** | `/dashboard` → GuestDashboard (no auto-redirect to `/admin`) |
+| **Main navigation items visible** | Same as user — no staff/moderator indicators in Header nav |
+| **Mobile experience** | `/admin/*` routes render AdminLayout with AdminSidebar; sidebar behavior on mobile not audited |
+| **Confidence** | VERIFIED (source) — updated 2026-03-31 |
 
 ### Admin (system manager)
 
@@ -174,13 +192,13 @@ This audit examines the frontend role-based access control (RBAC) implementation
 
 ## KNOWN GAP VERIFICATION
 
-### G-01: No moderator frontend UI
+### G-01: No dedicated moderator landing page
 
 - **Prior statement**: Moderator has zero dedicated frontend UI — treated identically to user
-- **Current status**: VERIFIED
-- **Evidence**: `DashboardPage.tsx` line 10: `user?.role === 'admin'` — moderator falls to else branch (GuestDashboard). No component, route, or conditional in the entire frontend references `'moderator'` for UI branching.
-- **Updated severity**: MEDIUM (same)
-- **New information**: Backend also has NO `role:moderator` routes — all admin/* routes use `role:admin`. Moderator cannot even access the data via API that the missing UI would display. The gap is symmetric: neither frontend nor backend exposes moderator-specific surfaces.
+- **Current status**: SUBSTANTIALLY RESOLVED (updated 2026-03-31)
+- **Evidence**: Moderator now has access to the full `/admin/*` route tree via `AdminRoute` (minRole='moderator'). Booking views (`/admin/bookings`), customer views (`/admin/customers`), and room read (`/admin/rooms`) are all accessible to moderator. Room CUD and booking write ops remain admin-only.
+- **Remaining gap**: `/dashboard` still renders `GuestDashboard` for moderator (same as user), with no navigation prompt to `/admin/bookings`. A moderator landing experience or redirect is still missing.
+- **Updated severity**: LOW (was MEDIUM)
 
 ### G-02: No 403 handling
 

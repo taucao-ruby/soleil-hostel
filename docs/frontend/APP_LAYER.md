@@ -1,6 +1,15 @@
 # App Layer (`src/app/`)
 
 > Core application layer - routing, layout, and provider wiring
+>
+> **UI DESIGN CONTEXT (Google Stitch):**
+> Use this document to understand navigation structure, layout zones, and route guards.
+> Three layout zones:
+> - **PublicLayout** (`/` only): `HeaderMobile` (sticky top) + page + `BottomNav` (sticky bottom) — mobile-first chrome for homepage
+> - **Layout** (all other routes): standard `Header` (dark, top) + `<main>` + `Footer` — desktop-first reflow
+> - **AdminLayout** (`/admin/*`): `AdminSidebar` (left rail, desktop) + `<Outlet>` content — no BottomNav
+> Route guard hierarchy: `ProtectedRoute` (auth check) → `AdminRoute` (role check) → page component.
+> Use the Route Table in Section 2 to design navigation, breadcrumbs, and back-links.
 
 ## Overview
 
@@ -118,54 +127,40 @@ const NavigationSetter: React.FC = () => {
 
 ### Route Configuration
 
-```typescript
-export const router = createBrowserRouter([
-  {
-    element: <AuthLayout />,
-    children: [
-      // Homepage — mobile-first chrome (HeaderMobile + BottomNav)
-      {
-        element: <PublicLayout />,
-        children: [{ path: '/', element: <HomePage /> }],
-      },
-      // All other routes — dark Header + Footer via Layout
-      {
-        element: <Layout />,
-        children: [
-          { path: 'login', element: withSuspense(LoginPage) },
-          { path: 'register', element: withSuspense(RegisterPage) },
-          { path: 'rooms', element: withSuspense(RoomList) },
-          { path: 'locations', element: withSuspense(LocationList) },
-          { path: 'locations/:slug', element: withSuspense(LocationDetail) },
-          {
-            path: 'booking',
-            element: <ProtectedRoute>{withSuspense(BookingForm)}</ProtectedRoute>,
-          },
-          {
-            path: 'dashboard',
-            element: <ProtectedRoute>{withSuspense(DashboardPage)}</ProtectedRoute>,
-          },
-          { path: '*', element: <NotFoundPage /> },
-        ],
-      },
-    ],
-  },
-])
+**Guard hierarchy for admin routes:**
 ```
+ProtectedRoute (auth check)
+  └── AdminRoute (role check: moderator or admin by default)
+        └── AdminLayout (sidebar + outlet)
+              └── [page component]
+```
+Room CUD routes nest a second `AdminRoute` with `minRole="admin"` inside the `AdminLayout` outlet.
 
 ### Routes Summary
 
-| Path               | Component      | Layout      | Auth Required | Loading |
-| ------------------ | -------------- | ----------- | ------------- | ------- |
-| `/`                | HomePage       | PublicLayout| No            | Eager   |
-| `/login`           | LoginPage      | Layout      | No            | Lazy    |
-| `/register`        | RegisterPage   | Layout      | No            | Lazy    |
-| `/rooms`           | RoomList       | Layout      | No            | Lazy    |
-| `/locations`       | LocationList   | Layout      | No            | Lazy    |
-| `/locations/:slug` | LocationDetail | Layout      | No            | Lazy    |
-| `/booking`         | BookingForm    | Layout      | Yes           | Lazy    |
-| `/dashboard`       | DashboardPage  | Layout      | Yes           | Lazy    |
-| `*`                | NotFoundPage   | Layout      | No            | Eager   |
+| Path | Component | Layout | Auth Required | Role Required | Loading |
+|------|-----------|--------|---------------|---------------|---------|
+| `/` | HomePage | PublicLayout | No | None | Eager |
+| `/login` | LoginPage | Layout | No | None | Lazy |
+| `/register` | RegisterPage | Layout | No | None | Lazy |
+| `/rooms` | RoomList | Layout | No | None | Lazy |
+| `/locations` | LocationList | Layout | No | None | Lazy |
+| `/locations/:slug` | LocationDetail | Layout | No | None | Lazy |
+| `/booking` | BookingForm | Layout | Yes | None | Lazy |
+| `/my-bookings` | BookingList | Layout | Yes | None | Lazy |
+| `/my-bookings/:id` | BookingDetailPage | Layout | Yes | None | Lazy |
+| `/dashboard` | DashboardPage | Layout | Yes | None (role check inside) | Lazy |
+| `/admin` | AdminDashboard | AdminLayout | Yes | moderator or admin | Lazy |
+| `/admin/rooms` | AdminRoomDashboard | AdminLayout | Yes | moderator or admin | Lazy |
+| `/admin/rooms/new` | RoomForm | AdminLayout | Yes | **admin only** | Lazy |
+| `/admin/rooms/:id/edit` | RoomForm | AdminLayout | Yes | **admin only** | Lazy |
+| `/admin/bookings` | AdminBookingDashboard | AdminLayout | Yes | moderator or admin | Lazy |
+| `/admin/bookings/calendar` | BookingCalendar | AdminLayout | Yes | moderator or admin | Lazy |
+| `/admin/bookings/today` | TodayOperations | AdminLayout | Yes | moderator or admin | Lazy |
+| `/admin/bookings/:id` | BookingDetailPage | AdminLayout | Yes | moderator or admin | Lazy |
+| `/admin/customers` | CustomerList | AdminLayout | Yes | moderator or admin | Lazy |
+| `/admin/customers/:email` | CustomerProfile | AdminLayout | Yes | moderator or admin | Lazy |
+| `*` | NotFoundPage | Layout | No | None | Eager |
 
 ---
 

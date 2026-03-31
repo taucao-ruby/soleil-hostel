@@ -5,7 +5,16 @@
 > For backend enforcement truth, see: [docs/PERMISSION_MATRIX.md](../PERMISSION_MATRIX.md)
 >
 > Role-Based Access Control as implemented in the React 19 frontend.
-> Grounded in repo truth as of 2026-03-09. All claims verified against source unless marked otherwise.
+> Grounded in repo truth as of 2026-03-31. All claims verified against source unless marked otherwise.
+>
+> **UI DESIGN CONTEXT (Google Stitch):**
+> Use Sections 8 and 9 as the definitive per-role rendering rules.
+> Three roles — Guest (`user`), Staff (`moderator`), Admin (`admin`).
+> Moderator = read-only across `/admin/*` except room CUD and booking write ops.
+> Key rule: trashed bookings tab and restore/force-delete actions are **admin-only** (not moderator).
+> Key rule: Header navigation is identical for all roles — no admin-specific nav links in the top bar.
+> Key rule: `AdminSidebar` is rendered for both moderator and admin inside `/admin/*` layout.
+> Language: all labels, buttons, and status badges in **Vietnamese**.
 
 ---
 
@@ -24,6 +33,7 @@ This document serves frontend engineers, reviewers, UX contributors, and auditor
 | `frontend/src/shared/types/api.ts:35` | Canonical `User` interface with `role` union type | VERIFIED |
 | `frontend/src/features/auth/AuthContext.tsx` | Auth state, login/logout flow, role source | VERIFIED |
 | `frontend/src/features/auth/ProtectedRoute.tsx` | Route guard implementation | VERIFIED |
+| `frontend/src/features/auth/AdminRoute.tsx` | Admin/moderator route guard | VERIFIED |
 | `frontend/src/pages/DashboardPage.tsx` | Role-based dashboard rendering | VERIFIED |
 | `frontend/src/app/router.tsx` | Route tree, layout nesting, guard placement | VERIFIED |
 | `frontend/src/features/admin/AdminDashboard.tsx` | Admin-only UI and actions | VERIFIED |
@@ -99,13 +109,18 @@ interface User {
 }
 ```
 
-| Role | Frontend Scope | Backend Scope (reference only) |
-|---|---|---|
-| `user` | Own bookings, booking creation, GuestDashboard | Own bookings only |
-| `moderator` | **Same as `user` in current frontend** | View all bookings, moderate content, approve reviews |
-| `admin` | AdminDashboard, manage all bookings, view contacts | Full system access |
+**Current reality**: The frontend now implements a **ternary model**:
+- `user` → GuestDashboard at `/dashboard`; own bookings only
+- `moderator` → GuestDashboard at `/dashboard` AND read-only access to `/admin/*` (bookings, customers, rooms view)
+- `admin` → AdminDashboard at `/dashboard` AND full `/admin/*` access including room CUD
 
-**Current reality**: The frontend implements a **binary model** — `admin` vs. `non-admin`. The `moderator` role exists in the type system but has zero dedicated frontend UI, routes, or logic. A moderator sees the same frontend as a `user`.
+The moderator role now has a dedicated frontend surface via the `/admin/*` route tree. `AdminRoute` (default `minRole='moderator'`) guards this tree. Room write routes (`/admin/rooms/new`, `/admin/rooms/:id/edit`) require `minRole="admin"`.
+
+| Role | `/dashboard` | `/admin/*` | Room CUD (`/admin/rooms/new`, `/admin/rooms/:id/edit`) |
+|------|-------------|------------|-------------------------------------------------------|
+| `user` | GuestDashboard | Redirected (403 from backend) | Redirected (403 from backend) |
+| `moderator` | GuestDashboard | Allowed | Redirected by AdminRoute |
+| `admin` | AdminDashboard | Allowed | Allowed |
 
 ---
 
@@ -118,9 +133,9 @@ interface User {
 **INV-2**: Role is derived from `AuthContext.user.role`, never from localStorage/sessionStorage.
 - The role travels inside the httpOnly cookie session — the frontend reads it only from the `/auth/me-httponly` response.
 
-**INV-3**: Admin detection uses strict equality: `user?.role === 'admin'`.
+**INV-3**: Admin detection at `/dashboard` uses strict equality: `user?.role === 'admin'`.
 - Source: `frontend/src/pages/DashboardPage.tsx`
-- No hierarchy check. A moderator does NOT get admin UI.
+- The `/admin/*` route tree uses `AdminRoute` with `minRole='moderator'` (default), allowing both admin and moderator access. Room CUD routes use `minRole='admin'` (admin-only).
 
 **INV-4**: Frontend role gating is UX-only, not a security boundary.
 - Admin API calls (`/v1/admin/*`) are protected by backend `role:admin` middleware.
@@ -129,6 +144,9 @@ interface User {
 **INV-5**: Email verification is an independent guard, orthogonal to role.
 - GuestDashboard blocks unverified users with a verification notice.
 - Source: `frontend/src/features/bookings/GuestDashboard.tsx`
+
+**INV-5a**: `AdminRoute` guards the `/admin/*` route tree. Default `minRole='moderator'` allows both admin and moderator. Room CUD paths use `minRole='admin'`.
+- Source: `frontend/src/features/auth/AdminRoute.tsx`
 
 ---
 
@@ -158,31 +176,43 @@ interface User {
 
 #### Route Table
 
-| Path | Layout | Guard | Auth Required | Role Required | Component |
-|---|---|---|---|---|---|
-| `/` | PublicLayout | None | No | None | HomePage |
-| `/login` | Layout | None | No | None | LoginPage |
-| `/register` | Layout | None | No | None | RegisterPage |
-| `/rooms` | Layout | None | No | None | RoomListPage |
-| `/locations` | Layout | None | No | None | LocationListPage |
-| `/locations/:slug` | Layout | None | No | None | LocationDetailPage |
-| `/booking` | Layout | ProtectedRoute | Yes | None | BookingPage |
-| `/dashboard` | Layout | ProtectedRoute | Yes | None (role checked inside) | DashboardPage |
-| `*` | Layout | None | No | None | NotFoundPage |
+| Path | Component | Layout | Auth Required | Role Required | Loading |
+|------|-----------|--------|---------------|---------------|---------|
+| `/` | HomePage | PublicLayout | No | None | Eager |
+| `/login` | LoginPage | Layout | No | None | Lazy |
+| `/register` | RegisterPage | Layout | No | None | Lazy |
+| `/rooms` | RoomList | Layout | No | None | Lazy |
+| `/locations` | LocationList | Layout | No | None | Lazy |
+| `/locations/:slug` | LocationDetail | Layout | No | None | Lazy |
+| `/booking` | BookingForm | Layout | Yes | None | Lazy |
+| `/my-bookings` | BookingList | Layout | Yes | None | Lazy |
+| `/my-bookings/:id` | BookingDetailPage | Layout | Yes | None | Lazy |
+| `/dashboard` | DashboardPage | Layout | Yes | None (role check inside) | Lazy |
+| `/admin` | AdminDashboard | AdminLayout | Yes | moderator or admin | Lazy |
+| `/admin/rooms` | AdminRoomDashboard | AdminLayout | Yes | moderator or admin | Lazy |
+| `/admin/rooms/new` | RoomForm | AdminLayout | Yes | **admin only** | Lazy |
+| `/admin/rooms/:id/edit` | RoomForm | AdminLayout | Yes | **admin only** | Lazy |
+| `/admin/bookings` | AdminBookingDashboard | AdminLayout | Yes | moderator or admin | Lazy |
+| `/admin/bookings/calendar` | BookingCalendar | AdminLayout | Yes | moderator or admin | Lazy |
+| `/admin/bookings/today` | TodayOperations | AdminLayout | Yes | moderator or admin | Lazy |
+| `/admin/bookings/:id` | BookingDetailPage | AdminLayout | Yes | moderator or admin | Lazy |
+| `/admin/customers` | CustomerList | AdminLayout | Yes | moderator or admin | Lazy |
+| `/admin/customers/:email` | CustomerProfile | AdminLayout | Yes | moderator or admin | Lazy |
+| `*` | NotFoundPage | Layout | No | None | Eager |
 
 Source: `frontend/src/app/router.tsx`
 
 #### Guard behavior
 
-**ProtectedRoute** (wraps `/booking` and `/dashboard`):
+**ProtectedRoute** (wraps protected routes):
 - Loading → spinner
 - Not authenticated → `Navigate to /login?from={currentPath}`
 - Authenticated → render children
 
-**No RoleGuard component exists.** Role-based rendering is handled inside DashboardPage, not at the router level. This means:
-- A `user` can navigate to `/dashboard` and will see GuestDashboard
-- An `admin` can navigate to `/dashboard` and will see AdminDashboard
-- There is no `/admin/*` route prefix — admin UI lives inside `/dashboard`
+**AdminRoute** (wraps `/admin/*` routes):
+- Default `minRole='moderator'`: allows admin and moderator
+- `minRole='admin'`: allows admin only
+- Source: `frontend/src/features/auth/AdminRoute.tsx`
 
 ---
 
@@ -231,14 +261,19 @@ Source: `frontend/src/features/home/components/BottomNav.tsx`
 | Location List | LocationListPage | Public | Public | Public | |
 | Location Detail | LocationDetailPage | Public | Public | Public | |
 | Booking Form | BookingPage | Yes | Yes | Yes | Requires auth; email verification enforced by backend |
-| Dashboard (guest view) | GuestDashboard | Yes | Yes | No | Rendered when `role !== 'admin'` |
-| Dashboard (admin view) | AdminDashboard | No | No | Yes | Rendered when `role === 'admin'` |
+| My Bookings List | BookingList (`/my-bookings`) | Yes | Yes | Yes | Auth required |
+| Booking Detail | BookingDetailPage (`/my-bookings/:id`) | Yes | Yes | Yes | Auth required |
+| Dashboard (guest view) | GuestDashboard | Yes | Yes | No | Rendered when `role !== 'admin'` at `/dashboard` |
+| Dashboard (admin view) | AdminDashboard | No | No | Yes | Rendered when `role === 'admin'` at `/dashboard` |
+| Admin Overview | AdminDashboard at `/admin` | No | Yes | Yes | AdminRoute minRole='moderator' |
+| Admin Bookings | AdminBookingDashboard | No | Yes | Yes | AdminRoute minRole='moderator' |
+| Admin Booking Calendar | BookingCalendar | No | Yes | Yes | AdminRoute minRole='moderator' |
+| Admin Today's Ops | TodayOperations | No | Yes | Yes | AdminRoute minRole='moderator' |
+| Admin Customers | CustomerList | No | Yes | Yes | AdminRoute minRole='moderator' |
+| Admin Customer Profile | CustomerProfile | No | Yes | Yes | AdminRoute minRole='moderator' |
+| Admin Rooms | AdminRoomDashboard | No | Yes | Yes | AdminRoute minRole='moderator' (read-only for moderator) |
+| Room Create/Edit | RoomForm | No | No | Yes | AdminRoute minRole='admin' |
 | Not Found | NotFoundPage | Public | Public | Public | |
-
-**Key observations**:
-- A `moderator` sees GuestDashboard (same as `user`), not AdminDashboard
-- An `admin` sees AdminDashboard only; they do NOT see GuestDashboard (their own bookings, if any, are not shown)
-- There is no screen exclusively for moderators
 
 ---
 
@@ -253,16 +288,25 @@ Source: `frontend/src/features/home/components/BottomNav.tsx`
 | Cancel own booking | `POST /v1/bookings/{id}/cancel` | Yes | Yes | N/A | Confirm dialog | Ownership check; no role middleware |
 | Filter by tab (All/Upcoming/Past) | Client-side | Yes | Yes | N/A | — | N/A |
 
-#### AdminDashboard Actions
+**Admin Overview (`/admin`) and Booking Management (`/admin/bookings`)**
 
-| Action | Endpoint | user | moderator | admin | UI When Denied | Backend Enforcement |
+| Action | Endpoint | user | moderator | admin | Backend Enforcement |
+|---|---|---|---|---|---|
+| View all bookings (filtered) | `GET /v1/admin/bookings` | No | Yes | Yes | `role:moderator` middleware |
+| View trashed bookings | `GET /v1/admin/bookings/trashed` | No | **No** | Yes | `role:admin` middleware — moderator is denied at API level |
+| Restore booking | `POST /v1/admin/bookings/{id}/restore` | No | No | Yes | `role:admin` middleware |
+| Force-delete booking | `DELETE /v1/admin/bookings/{id}/force` | No | No | Yes | `role:admin` middleware |
+| View contact messages | `GET /v1/admin/contact-messages` | No | No | Yes | `role:admin` middleware |
+| View all customers | `GET /v1/admin/customers` | No | Yes | Yes | `role:moderator` middleware |
+
+**Room Management (`/admin/rooms`)**
+
+| Action | Endpoint | user | moderator | admin | UI Enforcement | Backend Enforcement |
 |---|---|---|---|---|---|---|
-| View all bookings | `GET /v1/admin/bookings` | No | No | Yes | Never shown (screen-level gate) | `role:admin` middleware → 403 |
-| View trashed bookings | `GET /v1/admin/bookings/trashed` | No | No | Yes | Never shown | `role:admin` middleware → 403 |
-| Restore booking | `POST /v1/admin/bookings/{id}/restore` | No | No | Yes | Never shown | `role:admin` middleware → 403 |
-| Force-delete booking | `DELETE /v1/admin/bookings/{id}/force` | No | No | Yes | Never shown | `role:admin` middleware → 403 |
-| View contact messages | `GET /v1/admin/contact-messages` | No | No | Yes | Never shown | `role:admin` middleware → 403 |
-| Confirm booking | `POST /v1/bookings/{id}/confirm` | No | No | Yes | No frontend UI exists | `role:admin` middleware → 403 |
+| View rooms list | `GET /v1/rooms` or admin rooms | No | Yes (view only) | Yes | AdminRoute minRole='moderator' | `role:admin` for CUD |
+| Create room | `POST /v1/rooms` | No | No | Yes | AdminRoute minRole='admin' | `role:admin` middleware |
+| Update room | `PUT/PATCH /v1/rooms/{id}` | No | No | Yes | AdminRoute minRole='admin' | `role:admin` middleware |
+| Delete room | `DELETE /v1/rooms/{id}` | No | No | Yes | AdminRoute minRole='admin' | `role:admin` middleware |
 
 #### Shared Actions (DashboardPage quick actions)
 
@@ -288,6 +332,8 @@ Source: `frontend/src/features/home/components/BottomNav.tsx`
 | Admin API call by non-admin | API returns 403; component shows generic error state | No explicit 403 handler |
 | Direct URL `/dashboard` by user | GuestDashboard renders | DashboardPage.tsx (role check inside) |
 | Direct URL `/dashboard` by admin | AdminDashboard renders | DashboardPage.tsx |
+| Direct URL `/admin/*` by moderator | Admin views render | AdminRoute.tsx (minRole='moderator') |
+| Direct URL `/admin/rooms/new` by moderator | Redirected by AdminRoute | AdminRoute.tsx (minRole='admin') |
 | Session expired (401) | Auto-refresh attempt; if fails, redirect to `/login` | api.ts interceptor |
 | Email not verified (user) | Inline message: "Email chua duoc xac minh" | GuestDashboard.tsx |
 | No bookings | Empty state message | GuestDashboard.tsx / AdminDashboard.tsx |
@@ -321,7 +367,7 @@ Source: `frontend/src/features/home/components/BottomNav.tsx`
 
 1. **Admin has no access to their own bookings**: An admin who books a room cannot view or cancel their own booking via GuestDashboard because DashboardPage renders AdminDashboard exclusively for `role === 'admin'`.
 
-2. **Moderator is invisible**: A moderator has the same frontend experience as a regular user. If backend adds moderator-specific APIs, the frontend has no UI surface for them.
+2. **Moderator has no exclusive UI**: Moderator sees GuestDashboard at /dashboard (same as user). Admin booking views are accessible to moderator via /admin/bookings but the main /dashboard entry point does not differentiate. Consider adding a navigation prompt for moderators.
 
 3. **No visual role badge**: There is no badge, icon, or label indicating the user's current role anywhere in the UI. This can cause confusion during testing or for users with multiple accounts.
 
@@ -329,7 +375,7 @@ Source: `frontend/src/features/home/components/BottomNav.tsx`
 
 - Show role badge next to username in Header
 - Give admin a toggle or tab to view their own bookings
-- Plan moderator UI surface if backend moderator features are activated
+- Add moderator-specific navigation prompt or landing indicator
 
 ---
 
@@ -359,6 +405,14 @@ Source: `frontend/src/features/home/components/BottomNav.tsx`
          │                  │                 validates every request
          ▼                  ▼                            │
     403 if not admin   returns own bookings   ◄──────────┘
+
+  /admin/* ──► ProtectedRoute (auth only)
+                   │
+                   ▼
+               AdminRoute (role: moderator or admin)
+                   │
+                   ▼
+               AdminLayout → [page component]
 ```
 
 **Enforcement summary**:
@@ -367,7 +421,8 @@ Source: `frontend/src/features/home/components/BottomNav.tsx`
 |---|---|---|
 | Is user authenticated? | ProtectedRoute redirects to `/login` | Auth middleware returns 401 |
 | Is user admin? | DashboardPage conditional rendering | `role:admin` middleware returns 403 |
-| Is user moderator? | Not checked | `role:moderator` middleware returns 403 |
+| Is user moderator or admin? | AdminRoute (minRole='moderator') redirects | `role:moderator` middleware returns 403 |
+| Is user admin for room CUD? | AdminRoute (minRole='admin') redirects | `role:admin` middleware returns 403 |
 | Is email verified? | GuestDashboard inline guard | `verified` middleware on booking endpoints |
 | Owns this booking? | Not checked (API returns own only) | Scoped query + ownership check |
 
@@ -379,7 +434,7 @@ Source: `frontend/src/features/home/components/BottomNav.tsx`
 
 | ID | Gap | Severity | Details |
 |---|---|---|---|
-| G-01 | **No moderator frontend UI** | Medium | Backend defines moderator permissions (view all bookings, moderate content, approve reviews). Frontend has zero moderator-specific logic. Moderators see GuestDashboard. |
+| G-01 | **No dedicated moderator dashboard** | Low | Moderator now has access to /admin/* booking and customer views via AdminRoute. However, /dashboard still renders GuestDashboard for moderator (same as user). No moderator-specific landing page or navigation prompt exists. |
 | G-02 | **No 403 handling** | Medium | When admin API returns 403 (e.g., non-admin crafts request), the frontend shows a generic error. No user-friendly "access denied" message or redirect. |
 | G-03 | **No role-based route guard** | Low | Role enforcement is inside page components, not at router level. Not a security issue (backend enforces), but a UX gap — a user who manipulates client state could briefly see admin UI skeleton before API calls fail. |
 | G-04 | **Admin cannot view own bookings** | Low | Admin role renders AdminDashboard exclusively. No path to GuestDashboard for self-service booking management. |
@@ -398,16 +453,16 @@ Source: `frontend/src/features/home/components/BottomNav.tsx`
 1. Run `npx tsc --noEmit` — confirms `User.role` type is still a 3-value union
 2. Read `frontend/src/pages/DashboardPage.tsx` — confirm `user?.role === 'admin'` check
 3. Read `frontend/src/features/auth/ProtectedRoute.tsx` — confirm auth-only guard
-4. Read `frontend/src/app/router.tsx` — confirm route table matches Section 6
-5. Read `frontend/src/shared/components/layout/Header.tsx` — confirm nav visibility matches Section 7
-6. Grep `moderator` in `frontend/src/` — confirm zero moderator-specific logic
+4. Read `frontend/src/features/auth/AdminRoute.tsx` — confirm minRole logic
+5. Read `frontend/src/app/router.tsx` — confirm route table matches Section 6
+6. Read `frontend/src/shared/components/layout/Header.tsx` — confirm nav visibility matches Section 7
 
 **When to update this document**:
 
 - New role added to `User.role` type
 - New protected route added to router
-- Role-based guard added to ProtectedRoute
-- Moderator-specific frontend UI implemented
+- Role-based guard added to ProtectedRoute or AdminRoute
+- New admin sub-routes added
 - Admin self-service booking view added
 - 403 error handling implemented
 - Navigation made role-aware
@@ -415,13 +470,13 @@ Source: `frontend/src/features/home/components/BottomNav.tsx`
 **Automated checks** (suggested, not yet implemented):
 
 ```bash
-# Verify no moderator UI drift
-grep -r "moderator" frontend/src/ --include="*.tsx" --include="*.ts" | grep -v "types/api.ts" | grep -v ".test."
-# Should return 0 results if moderator frontend remains unimplemented
+# Verify AdminRoute minRole usage
+grep -rn "minRole" frontend/src/ --include="*.tsx"
+# Should show: AdminRoute.tsx (definition), router.tsx (rooms/new, rooms/:id/edit use minRole="admin")
 
-# Verify admin check pattern
-grep -rn "role.*admin" frontend/src/ --include="*.tsx" --include="*.ts"
-# Should show only DashboardPage and test files
+# Verify admin route guard
+grep -rn "AdminRoute" frontend/src/app/router.tsx
+# Should show AdminRoute wrapping /admin tree and room CUD routes
 ```
 
 **Test coverage for RBAC**:
@@ -439,11 +494,12 @@ grep -rn "role.*admin" frontend/src/ --include="*.tsx" --include="*.ts"
 
 | Check | Result | Evidence |
 |---|---|---|
-| Route table matches `router.tsx` | Pass | 9 routes verified against source |
+| Route table matches `router.tsx` | Pass | 21 routes verified against source |
 | ProtectedRoute is auth-only | Pass | No role check in component |
-| Admin detection is `=== 'admin'` | Pass | `DashboardPage.tsx` line ~12 |
-| No moderator frontend logic | Pass | Grep returns 0 non-type results |
-| Admin APIs use `role:admin` middleware | Pass | `backend/routes/api/v1.php` lines 57-70 |
+| Admin detection is `=== 'admin'` at `/dashboard` | Pass | `DashboardPage.tsx` line ~12 |
+| AdminRoute gates `/admin/*` with minRole='moderator' | Pass | `AdminRoute.tsx` + `router.tsx` |
+| Room CUD uses minRole='admin' | Pass | `router.tsx` |
+| Admin APIs use `role:moderator` or `role:admin` middleware | Pass | `backend/routes/api/v1.php` |
 | Navigation is not role-aware | Pass | Header.tsx uses `isAuthenticated` only |
 | 403 handling exists | **Fail** | No 403 interceptor or error component found |
 | Tests cover role routing | Partial | DashboardPage tested; no moderator edge case |
@@ -454,8 +510,8 @@ grep -rn "role.*admin" frontend/src/ --include="*.tsx" --include="*.ts"
 
 | Risk | Why It Remains | Recommended Follow-Up |
 |---|---|---|
-| Moderator role is a no-op in frontend | Backend moderator status is DEFINED-BUT-LATENT (see [PERMISSION_MATRIX.md](../PERMISSION_MATRIX.md) Table C). No Tier 1 moderator-specific capability is CURRENT. Frontend correctly reflects this by treating moderator same as user. | Re-evaluate if/when moderator capabilities are activated at backend Tier 1 |
 | No 403 error boundary | A malicious or misconfigured client hitting admin endpoints gets raw error instead of graceful UX | Add 403 interceptor in `api.ts` that shows a toast or redirects |
 | Brief admin UI flash for non-admins | Client-side role mutation could show AdminDashboard skeleton before API calls fail with 403 | Add role guard at router level or in ProtectedRoute |
 | Admin loses self-service booking view | Admin users who also book rooms cannot manage their own bookings | Add "My Bookings" tab to AdminDashboard or allow role-based dashboard toggle |
 | Stale role on demotion | No mechanism to detect server-side role change mid-session | Add periodic `me()` refresh or check role on navigation |
+| Moderator has no /dashboard differentiation | Moderator sees same GuestDashboard as user; no prompt to navigate to /admin | Add moderator-aware navigation hint or landing prompt |

@@ -6,6 +6,39 @@
 > Last verified: OPUS-01, OPUS-02R, OPUS-03R, OPUS-HARDEN-01, OPUS-VERIFY-01
 > Verification status: **PASS WITH FOLLOW-UPS**
 > Open follow-ups: **5** — see [Open Follow-Ups](#open-follow-ups)
+>
+> **UI DESIGN CONTEXT (Google Stitch):**
+> This is the role-to-screen/action mapping used to drive every conditional UI element.
+> Three roles: `user` (Guest), `moderator` (Staff/read-only admin), `admin` (Full control).
+> Use this table to decide which buttons appear, which tabs exist, which routes are accessible.
+> **Critical**: Moderator has read-only access to `/admin/*` (bookings, customers, rooms view).
+> Room CUD and booking write operations (restore, force-delete) are **admin-only**.
+
+---
+
+## Table F — UI Role Summary (Stitch Reference)
+
+Quick-reference for UI conditional rendering. Derived from Tables A–E below.
+
+| Screen / Action | Guest (user) | Staff (moderator) | Admin |
+|---|---|---|---|
+| Homepage, Rooms, Locations | ✅ | ✅ | ✅ |
+| Booking Form (`/booking`) | ✅ (auth required) | ✅ | ✅ |
+| My Bookings (`/my-bookings`) | ✅ | ✅ | ✅ |
+| Cancel own booking | ✅ | ✅ | ✅ |
+| Guest Dashboard (`/dashboard`) | ✅ | ✅ | ❌ (sees Admin Dashboard) |
+| Admin Dashboard (`/dashboard` for admin) | ❌ | ❌ | ✅ |
+| Admin Bookings (`/admin/bookings`) | ❌ | ✅ read-only | ✅ full |
+| Admin Trashed Bookings (`/admin/bookings/trashed`) | ❌ | ❌ | ✅ |
+| Restore Booking | ❌ | ❌ | ✅ |
+| Force-Delete Booking | ❌ | ❌ | ✅ |
+| Admin Customers (`/admin/customers`) | ❌ | ✅ read-only | ✅ |
+| Admin Rooms (`/admin/rooms`) | ❌ | ✅ view-only | ✅ |
+| Room Create/Edit/Delete | ❌ | ❌ | ✅ |
+| Contact Messages | ❌ | ❌ | ✅ |
+| ReviewForm (for own past confirmed booking) | ✅ | ✅ | ✅ |
+
+> **Status badge color guide**: `pending` → yellow/amber · `confirmed` → green · `cancelled` → red/muted · `refund_failed` → orange + escalation · `refund_pending` → blue/info
 
 ---
 
@@ -71,6 +104,7 @@ Capabilities that exist in code but are NOT currently enforced in any active exe
 | C4 | Gate `moderate-content` | LATENT-UNUSED | AuthServiceProvider.php:65 | N/A — never invoked | Any controller calls `Gate::authorize('moderate-content')` | OPUS-01 C3 |
 | C5 | Moderator cancel-any | NO-PATH-FOUND | — | N/A | No route, controller branch, or policy path grants moderator cancel on others' bookings | OPUS-03R |
 | C6 | Moderator admin booking read access | ROUTE-ACCESSIBLE | v1.php:57, AdminBookingController | N/A — active path | Route `role:moderator` + gate `view-all-bookings` both grant moderator read access to A7/A8/A9; no longer latent or shadowed. | OPUS-VERIFY-01 CLAIM-L1 |
+| C7 | Moderator frontend admin access | CURRENT | router.tsx + AdminRoute.tsx | N/A — active path | AdminRoute default minRole='moderator' gates all /admin/* routes; room CUD uses minRole='admin'. Both align with backend enforcement. | 2026-03-29 Wave 2 |
 
 ---
 
@@ -111,14 +145,24 @@ These restrict **when** an action is allowed, not **who** can perform it. They a
 > For backend enforcement truth, see Tables A and B above.
 > All claims below are Tier 5 — UX gating only, not backend enforcement.
 
-| Screen | User | Moderator | Admin | Source |
-|--------|------|-----------|-------|--------|
-| GuestDashboard | Rendered | Rendered (same as user) | Not rendered | DashboardPage.tsx |
-| AdminDashboard | Not rendered | Not rendered | Rendered | DashboardPage.tsx |
-| Admin API calls (GET /api/v1/admin/bookings*) | 403 from backend | Allowed (backend) | Allowed | v1.php:57 (role:moderator) |
-| Admin API calls (restore, force-delete, restore-bulk) | 403 from backend | 403 from backend | Allowed | v1.php (role:admin) |
+| Screen / Action | user | moderator | admin | Source |
+|-----------------|------|-----------|-------|--------|
+| GuestDashboard at `/dashboard` | Rendered | Rendered (same as user) | Not rendered | `DashboardPage.tsx` |
+| AdminDashboard at `/dashboard` | Not rendered | Not rendered | Rendered | `DashboardPage.tsx` |
+| `/admin/*` route tree | Redirected (AdminRoute) | **Allowed** (AdminRoute minRole='moderator') | Allowed | `AdminRoute.tsx` + `router.tsx` |
+| `/admin/bookings` (view all, filtered) | Blocked | **Allowed** | Allowed | AdminRoute + `role:moderator` backend |
+| `/admin/bookings/trashed` (view) | Blocked | **Allowed** | Allowed | AdminRoute + `role:moderator` backend |
+| `/admin/bookings/{id}/restore` | Blocked | Blocked | Allowed | AdminRoute routes to backend; `role:admin` blocks |
+| `/admin/rooms` (view) | Blocked | **Allowed** (read-only) | Allowed | AdminRoute minRole='moderator' |
+| `/admin/rooms/new` | Blocked | **Blocked** (AdminRoute minRole='admin') | Allowed | `AdminRoute.tsx` minRole="admin" |
+| `/admin/rooms/:id/edit` | Blocked | **Blocked** (AdminRoute minRole='admin') | Allowed | `AdminRoute.tsx` minRole="admin" |
+| `/admin/customers` | Blocked | **Allowed** | Allowed | AdminRoute minRole='moderator' |
+| Admin API calls (GET /api/v1/admin/bookings*) | 403 from backend | Allowed (backend) | Allowed | `v1.php` (role:moderator) |
+| Admin API calls (restore, force-delete) | 403 from backend | 403 from backend | Allowed | `v1.php` (role:admin) |
 
-**Moderator UI status**: PARTIALLY-OPERATIONAL at backend (read access to GET /api/v1/admin/bookings* via route:moderator + view-all-bookings gate); LATENT at frontend (no distinct moderator UI implemented). The frontend implements a binary model (`admin` vs `non-admin`). See Table C for remaining latent capabilities.
+**Moderator UI status**: OPERATIONAL (admin booking/customer read) + RESTRICTED (room CUD, restore, force-delete)
+
+Moderator now has dedicated SPA access via `/admin/*` route tree (AdminRoute minRole='moderator'). Booking views, customer views, and room read are accessible. Room CUD and booking write operations remain admin-only at both frontend (AdminRoute minRole='admin') and backend (role:admin middleware) layers. At `/dashboard`, moderator still sees GuestDashboard (no change).
 
 For full frontend RBAC documentation, see `docs/frontend/RBAC.md` (Tier 5 source).
 
@@ -126,7 +170,7 @@ For full frontend RBAC documentation, see `docs/frontend/RBAC.md` (Tier 5 source
 
 ## Moderator Status Assessment
 
-**Status: PARTIALLY-OPERATIONAL**
+**Status: OPERATIONAL (admin booking/customer read) + RESTRICTED (room CUD, restore, force-delete)**
 
 From Tier 1-3 evidence only:
 
@@ -134,6 +178,7 @@ From Tier 1-3 evidence only:
 2. `BookingPolicy::viewAny()` grants moderator (Tier 1d — policy); policy is LATENT (not invoked), but consistent with route and gate enforcement, which both independently allow moderator
 3. Moderator cancel-own is CURRENT but UNRESOLVED INTENT — no documentation specifies whether this is intended behavior or a side effect of the ownership-based policy
 4. Moderator read access to `GET /api/v1/admin/bookings*` (A7/A8/A9) is ROUTE-ACCESSIBLE via `role:moderator` middleware + `view-all-bookings` gate — not shared with the `user` role
+5. Moderator now has dedicated SPA access via `/admin/*` route tree (AdminRoute minRole='moderator'). Booking views, customer views, and room read are accessible. Room CUD and booking write operations remain admin-only at both frontend (AdminRoute minRole='admin') and backend (role:admin middleware) layers.
 
 ---
 
@@ -204,3 +249,4 @@ Actual gates defined in `AuthServiceProvider.php` and their invocation status:
 | C3 | `POLICIES.md` gate list vs actual AuthServiceProvider | DOC DRIFT — AuthServiceProvider is canonical. POLICIES.md updated. | RESOLVED |
 | C4 | Room CUD route comment vs actual enforcement | Moot — route hardening makes comment accurate. | RESOLVED |
 | C5 | Moderator role declared but not operationalized | DEFINED-BUT-LATENT — unchanged. No moderator capabilities made CURRENT. | STATUS QUO |
+| C7 | Moderator frontend admin access | CURRENT | router.tsx + AdminRoute.tsx | N/A — active path | AdminRoute default minRole='moderator' gates all /admin/* routes; room CUD uses minRole='admin'. Both align with backend enforcement. | 2026-03-29 Wave 2 |

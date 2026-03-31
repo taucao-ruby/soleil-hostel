@@ -1,6 +1,43 @@
 # Features Layer (`src/features/`)
 
 > Business features - auth, booking, bookings (guest dashboard), admin (admin dashboard), rooms, locations, home
+>
+> **UI DESIGN CONTEXT (Google Stitch):**
+> This is the screen and component inventory. Use it as your screen list.
+> Every component listed is implemented and live. Do NOT design screens not listed here.
+> All user-facing copy is **Vietnamese**. Status badges follow the color guide in PERMISSION_MATRIX.md.
+> Layout: `BottomNav` + `HeaderMobile` on `/` only. All other routes: `Header` + `Footer`.
+> Admin routes (`/admin/*`): `AdminLayout` with `AdminSidebar` (left-rail on desktop, collapsed on mobile).
+
+---
+
+## Screen → Component Map (Quick Reference for Stitch)
+
+| Route | Primary Component | Feature | Persona |
+|---|---|---|---|
+| `/` | `HomePage` (+ `SearchCard`, `Hero`, `FilterChips`, `BottomNav`, `HeaderMobile`) | `home/` | All |
+| `/rooms` | `RoomList` | `rooms/` | All |
+| `/locations` | `LocationList` | `locations/` | All |
+| `/locations/:slug` | `LocationDetail` | `locations/` | All |a
+| `/booking` | `BookingForm` | `booking/` | Auth |
+| `/my-bookings` | `BookingList` | `booking/` | Auth |
+| `/my-bookings/:id` | `BookingDetailPage` + `BookingDetailPanel` + `ReviewForm` | `bookings/` | Auth |
+| `/dashboard` (user/moderator) | `GuestDashboard` | `bookings/` | Guest, Moderator |
+| `/dashboard` (admin) | `AdminDashboard` | `admin/` | Admin |
+| `/admin` | `AdminDashboard` in `AdminLayout` | `admin/` | Moderator, Admin |
+| `/admin/bookings` | `AdminBookingDashboard` in `AdminLayout` | `admin/bookings/` | Moderator, Admin |
+| `/admin/bookings/calendar` | `BookingCalendar` in `AdminLayout` | `admin/bookings/` | Moderator, Admin |
+| `/admin/bookings/today` | `TodayOperations` in `AdminLayout` | `admin/bookings/` | Moderator, Admin |
+| `/admin/bookings/:id` | `BookingDetailPage` in `AdminLayout` | `bookings/` | Moderator, Admin |
+| `/admin/customers` | `CustomerList` in `AdminLayout` | `admin/customers/` | Moderator, Admin |
+| `/admin/customers/:email` | `CustomerProfile` + `StayJournal` in `AdminLayout` | `admin/customers/` | Moderator, Admin |
+| `/admin/rooms` | `AdminRoomDashboard` in `AdminLayout` | `admin/rooms/` | Moderator (view-only), Admin |
+| `/admin/rooms/new` | `RoomForm` in `AdminLayout` | `admin/rooms/` | **Admin only** |
+| `/admin/rooms/:id/edit` | `RoomForm` in `AdminLayout` | `admin/rooms/` | **Admin only** |
+
+> **NOT implemented — do not design**: `/admin/reviews`, `/admin/messages`
+
+---
 
 ## Overview
 
@@ -14,20 +51,38 @@ src/features/
 │   └── AdminRoute.tsx          # Admin-only auth guard (+test)
 ├── booking/
 │   ├── BookingForm.tsx         # Booking creation form (+test) — URL params pre-fill, Vietnamese UI
-│   ├── booking.api.ts          # createBooking, fetchMyBookings, cancelBooking
-│   ├── booking.types.ts        # BookingFormData, Booking, BookingApiRaw, BookingsListResponse, CancelBookingResponse
+│   ├── BookingList.tsx         # Paginated booking list page (at /my-bookings)
+│   ├── booking.api.ts          # createBooking, fetchMyBookings, cancelBooking, submitReview
+│   ├── booking.types.ts        # BookingFormData, Booking, ..., ReviewSubmitData, ReviewSubmitResponse
 │   └── booking.validation.ts   # Client-side validation (+test)
 ├── bookings/
-│   ├── GuestDashboard.tsx      # Guest "My Bookings" with filter tabs & cancel (+test)
-│   ├── useMyBookings.ts        # useMyBookingsQuery + useCancelBookingMutation hooks
-│   ├── bookingViewModel.ts     # toBookingViewModel, isUpcoming, isPast (+test)
-│   ├── BookingDetailPanel.tsx  # Booking detail panel component (+test)
-│   └── BookingDetailPage.tsx   # Booking detail page
+│   ├── GuestDashboard.tsx
+│   ├── useMyBookings.ts
+│   ├── bookingViewModel.ts
+│   ├── BookingDetailPanel.tsx  # Detail panel; shows ReviewForm for confirmed past bookings (+test)
+│   ├── BookingDetailPage.tsx   # Booking detail page (also used at /admin/bookings/:id)
+│   └── ReviewForm.tsx          # Star-rating review submission form (+test, 10 tests)
 ├── admin/
-│   ├── AdminDashboard.tsx      # Admin 3-tab view: Bookings / Trashed / Contacts (+test)
-│   ├── AdminSidebar.tsx        # Admin navigation sidebar (+test)
-│   ├── admin.api.ts            # fetchAdminBookings, fetchTrashedBookings, fetchContactMessages
-│   └── admin.types.ts          # AdminBookingRaw, ContactMessageRaw, response wrappers
+│   ├── AdminDashboard.tsx   # Legacy 3-tab view: Bookings / Trashed / Contacts (+test)
+│   ├── AdminLayout.tsx      # Admin shell: AdminSidebar + content <Outlet />
+│   ├── AdminSidebar.tsx     # Admin nav sidebar (+test)
+│   ├── admin.api.ts         # fetchAdminBookings, fetchTrashedBookings, fetchContactMessages
+│   ├── admin.types.ts       # AdminBookingRaw, ContactMessageRaw
+│   ├── bookings/
+│   │   ├── AdminBookingDashboard.tsx  # Booking list + 7 server-side filters (+test)
+│   │   ├── AdminBookingTable.tsx      # Booking data table component
+│   │   ├── BookingCalendar.tsx        # Calendar view of bookings
+│   │   └── TodayOperations.tsx        # Today's arrivals/departures
+│   ├── customers/
+│   │   ├── CustomerList.tsx           # Guest list with search
+│   │   ├── CustomerProfile.tsx        # Guest profile + booking history
+│   │   └── StayJournal.tsx            # Stay history log per guest
+│   └── rooms/
+│       ├── AdminRoomDashboard.tsx     # Room list + location filter (+test)
+│       ├── RoomForm.tsx               # Create/edit room form (admin-only write)
+│       ├── RoomStatusBadge.tsx        # Room status indicator
+│       ├── RoomStatusBoard.tsx        # Board view of all room statuses
+│       └── RoomTable.tsx             # Room data table
 ├── locations/
 │   ├── LocationList.tsx        # Locations grid page with city filter
 │   ├── LocationDetail.tsx      # Single location + rooms page with availability search
@@ -46,8 +101,8 @@ src/features/
         ├── Hero.tsx            # Homepage hero section
         ├── FilterChips.tsx     # Filter chip row (+test)
         ├── RoomCard.tsx        # Room preview card
-        ├── BottomNav.tsx       # Mobile bottom nav tabs
-        ├── HeaderMobile.tsx    # Mobile sticky header (+test)
+        ├── BottomNav.tsx       # Mobile bottom nav tabs (homepage only)
+        ├── HeaderMobile.tsx    # Mobile sticky header (homepage only) (+test)
         ├── PromoBanner.tsx     # Promotional banner
         └── ReviewsCarousel.tsx # Reviews display
 ```
@@ -55,11 +110,55 @@ src/features/
 ### Key Patterns
 
 - **No Zod or runtime validation** - All validation is plain TypeScript functions
-- **No react-hot-toast** - Auth pages use inline error/success states from AuthContext
+- **No react-hot-toast** - Auth pages use inline error/success states from `AuthContext`. Non-auth pages use `react-toastify` via `utils/toast.ts`
 - **No DatePicker library** - Uses native `<input type="date">`
 - **No shared UI components for forms** - Auth pages use native `<input>` with custom styling (not the shared `Input` component)
 - **API imports** from `@/shared/lib/api` (not `@/services/api`)
 - Each feature has its own types file (not importing from `@/types/api` for feature-specific types)
+
+---
+
+## Core Data Shapes (Stitch: use for realistic field labels and form layouts)
+
+### User
+```typescript
+{ id, name, email, role: 'user'|'moderator'|'admin', email_verified_at: string|null }
+```
+
+### Booking
+```typescript
+{
+  id, reference, status: 'pending'|'confirmed'|'cancelled'|'refund_pending'|'refund_failed',
+  room_id, room: Room,
+  guest_name, guest_email,
+  check_in: 'YYYY-MM-DD', check_out: 'YYYY-MM-DD',
+  amount: number,        // in VND cents
+  location_id,
+  created_at, updated_at, deleted_at: string|null,
+  cancelled_at: string|null, cancellation_reason: string|null
+}
+```
+
+### Room
+```typescript
+{
+  id, name, slug, status: 'available'|'occupied'|'maintenance',
+  price: number,          // per night, VND
+  capacity: number,
+  location_id,
+  readiness_status: 'ready'|'occupied'|'dirty'|'cleaning'|'inspected'|'out_of_service'
+}
+```
+
+### Location
+```typescript
+{ id, name, slug, city, address, amenities: string[], images: string[] }
+```
+
+### Review
+```typescript
+{ id, booking_id, rating: 1|2|3|4|5, comment: string, created_at }
+```
 
 ---
 
@@ -181,7 +280,14 @@ export async function fetchMyBookings(signal?: AbortSignal): Promise<BookingApiR
 
 // POST /v1/bookings/:id/cancel — cancels a booking; CSRF auto-attached by interceptor
 export async function cancelBooking(id: number): Promise<CancelBookingResponse>
+
+// POST /v1/reviews — submits a star-rating review for a booking
+export async function submitReview(data: ReviewSubmitData): Promise<ReviewSubmitResponse>
 ```
+
+### BookingList.tsx
+
+Standalone paginated booking list page rendered at `/my-bookings`. Displays the authenticated user's bookings with pagination. Separate from `GuestDashboard` (which is rendered inside `/dashboard`).
 
 ### booking.types.ts
 
@@ -245,6 +351,14 @@ export interface CancelBookingResponse {
   success: boolean
   message: string
   data: BookingApiRaw
+}
+
+export interface ReviewSubmitData {
+  // review submission payload
+}
+
+export interface ReviewSubmitResponse {
+  // review submission response
 }
 ```
 
@@ -507,71 +621,95 @@ export function isUpcoming(booking: BookingViewModel): boolean  // checkIn >= to
 export function isPast(booking: BookingViewModel): boolean      // checkOut < today
 ```
 
+### BookingDetailPanel.tsx
+
+Guest-facing booking detail panel. For confirmed bookings past checkout, renders `ReviewForm` inline.
+
+### ReviewForm.tsx
+
+Star-rating review submission form shown inside `BookingDetailPanel` for eligible bookings (confirmed + past checkout). Features:
+- 1–5 star rating with Vietnamese labels
+- Comment textarea
+- 403 handling (already reviewed)
+- 422 handling (validation errors)
+- Submits to `POST /v1/reviews` via `booking.api.ts::submitReview()`
+- 10 tests (`ReviewForm.test.tsx`)
+
 ---
 
 ## 6. Admin Feature (`features/admin/`)
 
-Admin dashboard for managing bookings and contact messages.
+Admin panel for managing bookings, rooms, contacts, and customers.
+Accessible to both `admin` and `moderator` roles (via `AdminRoute` default `minRole='moderator'`).
+Room CUD routes require `minRole="admin"`.
 
-### AdminDashboard.tsx
+### AdminLayout.tsx
 
-3-tab view with lazy-per-tab data fetching.
+Shell component wrapping all `/admin/*` routes. Renders `AdminSidebar` on the left and a `<Outlet />` for page content on the right. Lazy-loaded.
 
-**Tabs:**
+### AdminSidebar.tsx
 
-| Tab        | Label     | API                               | Data type          |
-| ---------- | --------- | --------------------------------- | ------------------ |
-| `bookings` | Đặt phòng | `GET /v1/admin/bookings`          | `AdminBookingRaw`  |
-| `trashed`  | Đã xóa    | `GET /v1/admin/bookings/trashed`  | `AdminBookingRaw`  |
-| `contacts` | Liên hệ   | `GET /v1/admin/contact-messages`  | `ContactMessageRaw`|
+Admin navigation sidebar. Links to:
+- `/admin` (dashboard overview)
+- `/admin/bookings` (booking management)
+- `/admin/rooms` (room management)
+- `/admin/customers` (guest management)
 
-**Data fetching:** `useAdminFetch<T>` — generic hook that fetches on first tab activation (`hasFetched` flag prevents re-fetch on tab switch).
+### AdminDashboard.tsx (legacy 3-tab view)
 
-**Card components:**
+Original 3-tab view. Still accessible at `/admin` index. Tabs: Đặt phòng / Đã xóa / Liên hệ.
+See `bookings/AdminBookingDashboard.tsx` for the full-featured booking management screen.
 
-- `AdminBookingCard` — shows guest name, date range, nights, amount, status badge; shows deleted-at + deleted-by metadata for trashed items
-- `ContactCard` — shows name, email, subject, message snippet; highlights unread (blue border + "Mới" badge)
+### bookings/AdminBookingDashboard.tsx
+
+Full booking management screen at `/admin/bookings`. Features:
+- 7 server-side filter params: `check_in_start`, `check_in_end`, `check_out_start`, `check_out_end`, `status`, `location_id`, `search` (ILIKE)
+- `AdminBookingTable` renders the filtered result
+- Accessible to moderator and admin
+
+### bookings/BookingCalendar.tsx
+
+Calendar view of bookings at `/admin/bookings/calendar`. Accessible to moderator and admin.
+
+### bookings/TodayOperations.tsx
+
+Today's arrivals and departures operational view at `/admin/bookings/today`. Accessible to moderator and admin.
+
+### customers/CustomerList.tsx
+
+Guest list with search at `/admin/customers`. Accessible to moderator and admin.
+
+### customers/CustomerProfile.tsx
+
+Individual guest profile with full booking history at `/admin/customers/:email`. Accessible to moderator and admin.
+
+### customers/StayJournal.tsx
+
+Stay history log per guest. Rendered inside `CustomerProfile`.
+
+### rooms/AdminRoomDashboard.tsx
+
+Room list with location filter at `/admin/rooms`. Accessible to moderator and admin (read-only for moderator).
+
+### rooms/RoomForm.tsx
+
+Create/edit room form. Used at both `/admin/rooms/new` and `/admin/rooms/:id/edit`. **Admin-only** (`minRole="admin"`).
+
+### rooms/RoomStatusBadge.tsx, RoomStatusBoard.tsx, RoomTable.tsx
+
+Room status display components used by `AdminRoomDashboard`.
 
 ### admin.api.ts
 
 ```typescript
-// GET /v1/admin/bookings (paginated 50/page; V1 returns page 1 only)
+// GET /v1/admin/bookings?page=N — paginated; includes 7 filter params in full feature
 export async function fetchAdminBookings(signal?: AbortSignal): Promise<AdminBookingRaw[]>
 
 // GET /v1/admin/bookings/trashed
 export async function fetchTrashedBookings(signal?: AbortSignal): Promise<AdminBookingRaw[]>
 
-// GET /v1/admin/contact-messages (paginated 15/page; V1 returns page 1 only)
+// GET /v1/admin/contact-messages
 export async function fetchContactMessages(signal?: AbortSignal): Promise<ContactMessageRaw[]>
-```
-
-### admin.types.ts
-
-```typescript
-// Extends BookingApiRaw with optional trashed/refund fields
-export interface AdminBookingRaw extends BookingApiRaw {
-  is_trashed?: boolean
-  deleted_at?: string | null
-  deleted_by?: { id: number; name: string; email: string } | null
-  cancelled_at?: string | null
-  cancelled_by?: { id: number; name: string } | null
-  refund_amount?: number
-  refund_amount_formatted?: string
-  refund_status?: string
-  refund_percentage?: number
-}
-
-// Raw model — no ContactResource in backend; direct paginator response
-export interface ContactMessageRaw {
-  id: number
-  name: string
-  email: string
-  subject: string | null
-  message: string
-  read_at: string | null
-  created_at: string
-  updated_at: string
-}
 ```
 
 ---
@@ -608,3 +746,5 @@ Previously documented but not present in the actual codebase:
 - **No `bookingApi.getAll/getById/update`** — `createBooking`, `fetchMyBookings`, `cancelBooking` implemented only
 - **No `roomsApi.getByStatus/search`** — Only `getRooms` exists
 - **No `AvailabilityResponse` type** — Removed; `/v1/locations/:slug/availability` endpoint exists in backend but is not called by the frontend (frontend uses the show endpoint with params instead)
+- **No `/admin/reviews` route** — AdminSidebar may link to it but no route or component is implemented
+- **No `/admin/messages` route** — same as above; ContactMessages accessible only via legacy AdminDashboard tab

@@ -1,6 +1,14 @@
 # Frontend Architecture
 
 > React 19 + TypeScript + Vite with Feature-Sliced Design
+>
+> **UI DESIGN CONTEXT (Google Stitch):**
+> Use this document to understand the component hierarchy and layout system for producing component-tree sketches.
+> Three top-level layout zones drive all screens — see the Layout System section below.
+> Import direction is strictly one-way: `pages/` and `features/` import from `shared/`; features do not import from each other.
+> Component names referenced in FEATURES_LAYER.md map directly to `src/features/` subdirectories listed here.
+
+---
 
 ## Overview
 
@@ -58,6 +66,48 @@ Zod, React Hook Form, Framer Motion, React DatePicker, date-fns, DOMPurify, reac
 
 ---
 
+## Layout System (Component Hierarchy for Stitch)
+
+```
+App
+├── ErrorBoundary
+├── RouterProvider
+│   └── AuthLayout (AuthProvider + NavigationSetter)
+│       ├── PublicLayout  — route: /
+│       │   ├── HeaderMobile (sticky top, mobile)
+│       │   ├── HomePage (Hero, SearchCard, FilterChips, RoomCard grid, PromoBanner, ReviewsCarousel)
+│       │   └── BottomNav (sticky bottom, mobile)
+│       │
+│       ├── Layout  — all routes except / and /admin/*
+│       │   ├── Header (dark, sticky top — shows auth-conditional nav links)
+│       │   ├── <Outlet> (page content)
+│       │   └── Footer
+│       │
+│       └── AdminLayout  — routes: /admin/*
+│           ├── AdminSidebar (left rail; desktop visible, mobile overlay)
+│           └── <Outlet> (admin page content)
+│               ├── AdminBookingDashboard / BookingCalendar / TodayOperations
+│               ├── CustomerList / CustomerProfile + StayJournal
+│               └── AdminRoomDashboard / RoomForm
+└── ToastContainer (portal, z-index top)
+```
+
+### Shared UI Components (`src/shared/components/`)
+
+| Component | Usage |
+|---|---|
+| `Button` | All CTA buttons (variant: primary / outline / danger) |
+| `Card` | Content container cards |
+| `Input`, `Label` | Shared form fields (NOT used in auth forms — auth uses native inputs) |
+| `Skeleton`, `SkeletonCard` | Loading placeholder states |
+| `LoadingSpinner` | Full-page loading (ProtectedRoute, Suspense) |
+| `ErrorBoundary` | Runtime error fallback |
+| `Header` | Top navigation bar (uses `useAuth()` for conditional links) |
+| `Footer` | Bottom footer |
+| `ConfirmDialog` | Reusable cancel/restore confirm dialog (full a11y: `role=dialog`, Escape key) |
+
+---
+
 ## Architecture Layers
 
 ### App Layer (`src/app/`)
@@ -72,15 +122,18 @@ Entry point and routing. See [APP_LAYER.md](APP_LAYER.md).
 
 Business logic organized by domain. See [FEATURES_LAYER.md](FEATURES_LAYER.md).
 
-| Feature      | Components                                                               |
-| ------------ | ------------------------------------------------------------------------ |
-| `auth/`      | AuthContext, LoginPage, RegisterPage, ProtectedRoute                     |
-| `booking/`   | BookingForm, booking.api, booking.validation, booking.types              |
-| `bookings/`  | GuestDashboard, useMyBookings, bookingViewModel, booking.constants       |
-| `admin/`     | AdminDashboard, admin.api, admin.types                                   |
-| `rooms/`     | RoomList, room.api, room.types                                           |
+| Feature | Components |
+|---|---|
+| `auth/` | AuthContext, LoginPage, RegisterPage, ProtectedRoute, AdminRoute |
+| `booking/` | BookingForm, BookingList, booking.api, booking.validation, booking.types |
+| `bookings/` | GuestDashboard, BookingDetailPanel, BookingDetailPage, ReviewForm, useMyBookings, bookingViewModel |
+| `admin/` | AdminDashboard, AdminLayout, AdminSidebar, admin.api, admin.types |
+| `admin/bookings/` | AdminBookingDashboard (7 filters), AdminBookingTable, BookingCalendar, TodayOperations |
+| `admin/customers/` | CustomerList, CustomerProfile, StayJournal |
+| `admin/rooms/` | AdminRoomDashboard, RoomForm, RoomStatusBadge, RoomStatusBoard, RoomTable |
+| `rooms/` | RoomList, room.api, room.types |
 | `locations/` | LocationList, LocationDetail, LocationCard, location.api, location.types |
-| `home/`      | SearchCard, Hero, FilterChips, RoomCard, BottomNav, HeaderMobile         |
+| `home/` | SearchCard, Hero, FilterChips, RoomCard, BottomNav, HeaderMobile, PromoBanner, ReviewsCarousel |
 
 ### Shared Layer (`src/shared/`)
 
@@ -148,7 +201,7 @@ See [CONFIGURATION.md](CONFIGURATION.md).
 
 See [TESTING.md](TESTING.md).
 
-- **Unit**: Vitest + @testing-library/react (19 files, 194 tests)
+- **Unit**: Vitest + @testing-library/react (261 tests across 25 suites — verified 2026-03-31)
 - **E2E**: Playwright (scaffolded, 1 spec)
 
 ---

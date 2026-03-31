@@ -132,7 +132,9 @@ Stay lifecycle guard: `App\Enums\StayStatus::canTransitionTo()` + `App\Models\St
 
 ### Pessimistic Locking
 - `SELECT ... FOR UPDATE` via `lockForUpdate()` in booking/cancellation flows
-- Source: `CancellationService.php:118,318`, `Booking.php:340`
+<!-- SYNC-EDIT: DRIFT-01 F-01 -->
+<!-- SOURCE: backend/app/Models/Booking.php:374-376, backend/app/Services/CancellationService.php:118,318 -->
+- Source: `CancellationService.php:118,318`, `Booking.php:376` (`scopeWithLock`)
 
 ## Authentication
 
@@ -210,7 +212,9 @@ Critical indexes:
 
 ## Admin Resources
 
-- Customer management: `GET /api/v1/admin/customers/*` (index, show, update, destroy) — gated by `role:moderator` middleware — `App\Http\Controllers\Admin\CustomerController`
+<!-- SYNC-EDIT: DRIFT-01 F-09 -->
+<!-- SOURCE: backend/routes/api/v1.php:80-85 -->
+- Customer management: `GET /api/v1/admin/customers/*` (stats, index, show, bookings) — gated by `role:moderator` middleware — `App\Http\Controllers\Admin\CustomerController`
 
 ## RBAC Permission Baseline
 
@@ -251,4 +255,6 @@ Deferred:
 - `rooms.status` DB CHECK — legacy room status values are still inconsistent across codebase; physical readiness is now enforced separately via `rooms.readiness_status`
 - Legacy migration `2026_02_09_000000` uses `config('database.default')` gating (weaker than `DB::getDriverName()`); cleanup deferred
 
-Test coverage: `FkDeletePolicyTest.php` (5 tests), `CheckConstraintTest.php` (3 tests — covers `chk_rooms_max_guests` only), plus PM/BM operational tests for room readiness, arrival resolution, financial lifecycle, and dashboard queries. Backend suite: 1014 tests, 0 failures (verified 2026-03-23).
+Test coverage: `FkDeletePolicyTest.php` (5 tests), `CheckConstraintTest.php` (3 tests — covers `chk_rooms_max_guests` only), plus PM/BM operational tests for room readiness, arrival resolution, financial lifecycle, and dashboard queries. <!-- SYNC-EDIT: DRIFT-06 F-02 -->
+<!-- SOURCE: php artisan test output — 1047 passed, 2875 assertions -->
+Backend suite: 1047 tests, 0 failures <!-- AS OF: 2026-03-31 -->.

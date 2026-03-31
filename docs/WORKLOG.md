@@ -1,5 +1,43 @@
 # WORKLOG — Soleil Hostel (Append-only)
 
+## 2026-03-31
+
+- Change: Docs sync v3 (evidence-gated pass across 5 canonical docs) + PROJECT_STATUS / README / PRODUCT_GOAL / BACKLOG refresh.
+- Docs sync: 9 findings patched (F-01 through F-09). Key corrections: `Booking.php` lockForUpdate line ref `:340`→`:376 (scopeWithLock)`; composer-audit documented as blocking gate (was advisory); `frontend-typecheck`, `docker-compose-validate`, `hygiene.yml` CI jobs added to COMMANDS_AND_GATES.md; customer endpoint list pruned (no `update`/`destroy` in source); F-02 (test count discrepancy D01 vs D03) resolved via live `php artisan test` run.
+- Project docs: PROJECT_STATUS.md, PRODUCT_GOAL.md, BACKLOG.md, docs/README.md all updated: test counts (backend 989→1047, frontend 226→261), PHPStan "151 baseline"→"Level 5 0 errors", TL-02/TL-05 marked resolved, completed work rows added through Mar 31.
+- Verification: `php artisan test` 1047/2875 PASS (2026-03-31). `npx vitest run` 261/25 PASS (2026-03-31).
+
+## 2026-03-30
+
+- Change: picomatch ReDoS CVE fix + Pint style cleanup + null-safe guard + AGENT_LEARNINGS scaffold + CI fallback.
+- CVE: GHSA-c2c7-rcm5-vvqj — picomatch `<2.3.1` ReDoS; fixed via `pnpm overrides` (commit `0fb8c54`).
+- Fix: Removed redundant null check in `EloquentBookingRepository` (`5bbb768`). Fixed 8 Pint style violations (`00ca18f`).
+- Docs: Added AGENT_LEARNINGS scaffold Phase 1 (`9fc8b41`). Updated soleil-ai-review-engine index stats (`ac7cc3b`). Added composer install fallback for CI cache misses (`34dc7d3`). Updated license link to GitHub (`a2da01b`).
+
+## 2026-03-29
+
+- Change: 5-wave execution — restore path integrity, moderator access, hardening, product completeness (commit `263f929`).
+- Wave 1 — Restore path: `BookingService::restore()` wrapped in `DB::transaction()` with `hasOverlappingBookingsWithLock()` (FOR UPDATE). Eliminates TOCTOU race on concurrent restore. Post-restore: `roomAvailabilityService::invalidateAvailability()` + `BookingRestored` event → `InvalidateCacheOnBookingChange` listener. `BookingRestoreConflictException` → 422; PG `23P01` → 409. New: `BookingRestored` event, `BookingRestoreConflictException`, `EloquentBookingRepository::hasOverlappingBookingsWithLock()`. Tests: `RestoreIntegrityTest` (16 tests).
+- Wave 2 — Admin operational paths: `AdminBookingController::index()` now extracts 7 filter params (`check_in_start/end`, `check_out_start/end`, `status`, `location_id`, `search`). `EloquentBookingRepository::getAdminPaginated()` applies all filters with ILIKE search and inclusive date bounds (fixes TL-02). `AdminRoute.tsx`: `minRole` prop (default `'moderator'`); `router.tsx` gates rooms/new and rooms/:id/edit with `minRole="admin"` (fixes TL-05). Tests: `AdminBookingFilterTest` (11 tests), `AdminBookingCoverageTest` (13 tests).
+- Wave 3 — Hardening: `api.ts` CSRF architecture comments corrected (SameSite=Strict is active defence; X-XSRF-TOKEN is defence-in-depth). `CreateBookingService`: explicit `location_id` from `room->location_id`. `UpdateBookingRequest::validated()` override purifies `guest_name` via HtmlPurifierService.
+- Wave 4 — Product completeness: `ReviewForm.tsx` — full star-rating review form with 403/422 error handling, Vietnamese UI; integrated into `BookingDetailPanel` for confirmed bookings past checkout. `booking.api.ts::submitReview()`, new `ReviewSubmitData`/`ReviewResponse` types. `BookingDetailPanel`: `refund_failed` escalation alert. Tests: `ReviewForm.test.tsx` (10 tests).
+- Wave 5 — Governance: `docs/api/BOOKING_SEMANTICS.md` created (409/422 contract, PUT/PATCH equivalence, bulk restore response shape). `docs/api/LEGACY_AUTH_SUNSET.md` created (sunset date 2026-07-01). `docs/decisions/wave-0-decision-lock.md` (moderator scope, TodayOperations semantics, password reset launch mode).
+- Verification: `php artisan test` and `npx vitest run` both PASS post-merge.
+
+## 2026-03-23
+
+- Change: v3.4 operational completion — five workstreams completing the four-layer operational model (commit `3263e43`).
+- Workstreams: (1) Room readiness tracking (`rooms.readiness_status`, 6 canonical states, CHECK constraint, audit fields, indexes). (2) Room classification (`room_type_code` + `room_tier` for equivalence/upgrade routing). (3) Deposit lifecycle on bookings (`deposit_amount`, `deposit_collected_at`, `deposit_status`). (4) Settlement lifecycle on `service_recovery_cases` (`settlement_status`, `settled_amount`, `settled_at`, `settlement_notes`). (5) Blocked-arrival escalation engine (`ArrivalResolutionService` — 5-step resolver, recommendation-only; operator-gated writes via `applyAcceptedRecommendation()`).
+- Also: `OperationalDashboardService` with 16 PM/BM operational metrics. `reviews.room_id` FK corrected SET NULL→RESTRICT (migration `_000005`). `StayStatus` state machine with `canTransitionTo()` guard. Type safety tightened in `RoomResource` and `ArrivalResolutionService` (null-safe access).
+- Tests: schema, financial lifecycle, dashboard, arrival resolution. 1014 tests at this point.
+- Docs: DATABASE.md, DOMAIN_LAYERS.md, ARCHITECTURE_FACTS.md updated.
+
+## 2026-03-21
+
+- Change: v3.2 operations + v3.3 static analysis.
+- v3.2: Room readiness infrastructure, blockage resolver, financial operations domain. 1009 tests, 4 skipped.
+- v3.3: Full static analysis clean pass. Psalm 35→0 errors. PHPStan 151→0 errors (Level 5, no baseline, no ignores). 1037 tests, 0 failures.
+
 ## 2026-03-20
 
 - Change: v3.1 remediation — four-layer operational domain model + docs sync.

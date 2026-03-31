@@ -9,22 +9,20 @@
 >
 > **Lifetime metadata** (per master contract)
 > - generated_from: ARCHITECTURE_FACTS.md, CONTRACT.md, COMMANDS_AND_GATES.md, FINDINGS_BACKLOG.md
-> - last_verified_at: 2026-03-21
+> - last_verified_at: 2026-03-31
 > - scope: AI session handoff state (current snapshot, active work, known warnings, pointers)
 > - expiry_trigger: any code task, gate run, or milestone change
 
 ## 1) Current Snapshot (keep under 12 lines)
 
-- Date updated: 2026-03-21
-- Current branch: `main` + `dev` (synced; main=`bb3332e`, dev=`3f59d86`)
-- Latest commit: `bb3332e` — chore: merge dev into main — Psalm + PHPStan fixes, operational domain
-- Backend test baseline: **1037 passed, 2803 assertions** — verified 2026-03-21 (static analysis pass)
-- Frontend test baseline: 226 tests, 21 suites — verified 2026-03-11
+- Date updated: 2026-03-31
+- Current branch: `dev` (main=`f43804b`, dev=`a2da01b`)
+- Latest commit: `a2da01b` — Update license link to point to GitHub
+- Backend test baseline: **1047 passed, 2875 assertions** — verified 2026-03-31
+- Frontend test baseline: **261 tests, 25 suites** — verified 2026-03-31
 - Pint: 283 files, 0 style issues. **PHPStan: Level 5, 0 errors (no baseline, no ignores).** Psalm: Level 1, 0 blocking.
-- **v3.1 remediation (2026-03-20)**: four-layer domain model — stays, room_assignments, service_recovery_cases + BackfillOperationalStays command. 35 new tests. 989 total, 0 failures.
-- **v3.2 operations (2026-03-21)**: room readiness, blockage resolver, financial ops. 1009 tests, 4 skipped.
-- **v3.3 static analysis (2026-03-21)**: Psalm 35→0, PHPStan 151→0. 1037 tests, 0 failures.
-- Open findings: F-23 (MD lint), F-25 (CSRF path), F-26–F-62 (2026-03-20 audit). See FINDINGS_BACKLOG.md.
+- TL-02 ✅ Fixed (admin booking filters server-side). TL-05 ✅ Fixed (moderator SPA access via `minRole` prop).
+- Open findings: F-23 (MD lint), F-25 (CSRF path — architecture clarified, path remains), F-26–F-62 (2026-03-20 audit). See FINDINGS_BACKLOG.md.
 - **H-06**: `phpunit.xml` defaults to PostgreSQL; run `docker compose up -d db` before `php artisan test`.
 
 ## 2) Invariants
@@ -38,14 +36,14 @@ This section intentionally left as a pointer — do not duplicate invariants her
 
 - PAY-001 Phase 2: Stripe checkout session + frontend payment UI
 - TD-005 RBAC Follow-ups (FU-1..FU-5) — legacy test migration, coverage gaps, config verification (see `docs/PERMISSION_MATRIX.md`)
-- OPS-001: SSH deploy step + automated health check post-deploy
+- OPS-001: SSH deploy step + automated health check + automatic rollback on health failure
 
 ### Next
 
 - M-11: Migration squash — BLOCKED, needs human-approved `php artisan schema:dump --prune` process
-- H-06 CI alignment: update `.github/workflows/` to start PostgreSQL before `php artisan test`
 - I18N-002: Frontend i18n
 - FE-004: Booking modification history (guest)
+- TD-004: Audit log retention policy (`bookings:archive --older-than=2y`, log rotation)
 
 ## 4) Verification commands
 

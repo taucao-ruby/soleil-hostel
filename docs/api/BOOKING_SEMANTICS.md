@@ -2,7 +2,58 @@
 
 Authoritative reference for booking update and restore response contracts as shipped.
 Derived from `BookingController`, `AdminBookingController`, `UpdateBookingRequest`, and
-`BookingService`. Last verified: 2026-03-29.
+`BookingService`. Last verified: 2026-03-31.
+
+> **UI DESIGN CONTEXT (Google Stitch):**
+> Use this document to design booking status badges, timeline steps, and alert variants.
+> The booking state machine governs which actions are available in the UI at any point.
+> Status color guide: `pending` → yellow/amber · `confirmed` → green · `cancelled` → red/muted · `refund_pending` → blue/info · `refund_failed` → orange + escalation alert.
+> 409 vs 422 distinction matters for conflict UI: 422 = overlap detected before commit; 409 = concurrent race condition (show "try again" vs "conflict" message accordingly).
+
+---
+
+## 0. Booking State Machine
+
+```
+                  ┌─────────────────────────────┐
+                  │                             │
+  [create] ──► pending ──► confirmed ──► cancelled
+                  │              │              │
+                  │              ▼              │
+                  │        refund_pending        │
+                  │              │              │
+                  │         ┌───┴───┐           │
+                  │         ▼       ▼           │
+                  │    refund_failed  cancelled  │
+                  │         │                   │
+                  └─────────┘ (admin can cancel from refund_failed)
+```
+
+### Status Definitions
+
+| Status | Label (Vietnamese) | Color Signal | Cancellable? | Restorable? | Notes |
+|---|---|---|---|---|---|
+| `pending` | Chờ xác nhận | yellow/amber badge | ✅ (all roles) | N/A | Booking created, awaiting confirmation |
+| `confirmed` | Đã xác nhận | green badge | ✅ (time-limited for non-admin) | N/A | Confirmed; guest arrival expected |
+| `cancelled` | Đã hủy | red/muted badge | ❌ | ✅ (admin: restore) | Soft-deleted; shows in trashed view |
+| `refund_pending` | Hoàn tiền đang xử lý | blue/info badge | ✅ (admin) | N/A | Stripe refund in progress |
+| `refund_failed` | Hoàn tiền thất bại | orange badge + escalation | ✅ (admin) | N/A | Refund failed; requires admin action |
+
+### Cancellation Rules (for UI action visibility)
+
+| Condition | User/Moderator | Admin |
+|---|---|---|
+| Status IN `[pending, confirmed, refund_failed]` | ✅ Can cancel | ✅ Can cancel |
+| Status NOT IN above | ❌ Button hidden | ❌ Button hidden |
+| After `check_in` date (booking started) | ❌ Button hidden | ✅ Can still cancel |
+
+> **UI note**: "Cancel" button should be hidden (not disabled) when `canCancel = false`. Confirmation dialog required before calling cancel endpoint.
+
+### Restore Rules (admin only)
+
+- Only soft-deleted (cancelled) bookings appear in the trashed view
+- Restore re-runs availability overlap check — can fail with 409 or 422
+- Show conflict message if restore fails; do not auto-retry
 
 ---
 

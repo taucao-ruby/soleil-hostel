@@ -362,7 +362,7 @@ const BookingForm: React.FC = () => {
                   {loadingRooms ? (
                     <option value="">Đang tải danh sách phòng...</option>
                   ) : rooms.length === 0 ? (
-                    <option value="">Không có phòng nào còn trống</option>
+                    <option value="">—</option>
                   ) : (
                     <>
                       <option value="">Chọn phòng phù hợp</option>
@@ -381,6 +381,11 @@ const BookingForm: React.FC = () => {
                   <div className="mt-2">
                     <InlineSpinner label="Đang tải danh sách phòng..." />
                   </div>
+                )}
+                {!loadingRooms && rooms.length === 0 && (
+                  <p role="status" className="mt-2 text-xs font-medium text-amber-700">
+                    Không có phòng nào còn trống
+                  </p>
                 )}
                 {fieldErrors.room_id && (
                   <p id="booking-room-error" className="mt-2 text-xs font-medium text-red-700">

@@ -158,7 +158,7 @@ describe('BookingForm', () => {
       expect(screen.getByRole('combobox')).toBeDisabled()
     })
 
-    expect(screen.getByRole('option', { name: 'Không có phòng nào còn trống' })).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Không có phòng nào còn trống')
   })
 
   it('renders validation errors returned by the validator', async () => {

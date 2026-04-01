@@ -1,172 +1,256 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getRoomsByLocation } from './adminRoom.api'
+import { deleteRoom, getRoomsByLocation } from './adminRoom.api'
 import type { AdminRoom } from './adminRoom.types'
-import RoomTable from './RoomTable'
 import RoomStatusBoard from './RoomStatusBoard'
-import api from '@/shared/lib/api'
-import LoadingSpinner from '@/shared/components/feedback/LoadingSpinner'
+import RoomTable from './RoomTable'
 import { useAuth } from '@/features/auth/AuthContext'
+import LoadingSpinner from '@/shared/components/feedback/LoadingSpinner'
+import { getLocations } from '@/shared/lib/location.api'
+import { getErrorMessage, showToast } from '@/shared/utils/toast'
 
-// Minimal Location type for the selector
 interface LocationOption {
   id: number
   name: string
+}
+
+interface RoomDashboardVariantProps {
+  variant: 'admin' | 'moderator'
+  canManage: boolean
+  deletingRoomId: number | null
+  isLoading: boolean
+  locations: LocationOption[]
+  onDelete: (room: AdminRoom) => void | Promise<void>
+  onLocationChange: (value: string) => void
+  rooms: AdminRoom[]
+  selectedLocationId: string
+}
+
+const isAbortError = (error: unknown) => {
+  if (error instanceof DOMException) {
+    return error.name === 'AbortError'
+  }
+
+  return (
+    typeof error === 'object' && error !== null && 'code' in error && error.code === 'ERR_CANCELED'
+  )
+}
+
+const RoomDashboardVariant: React.FC<RoomDashboardVariantProps> = ({
+  variant,
+  canManage,
+  deletingRoomId,
+  isLoading,
+  locations,
+  onDelete,
+  onLocationChange,
+  rooms,
+  selectedLocationId,
+}) => {
+  const isAdminVariant = variant === 'admin'
+  const filterId = `${variant}-location-filter`
+
+  return (
+    <section
+      data-testid={`room-variant-${variant}`}
+      className="rounded-[28px] border border-stone-200 bg-white/95 p-5 shadow-lg shadow-stone-200/50"
+    >
+      <div className="space-y-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-2">
+            <span
+              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${
+                isAdminVariant ? 'bg-amber-100 text-amber-900' : 'bg-sky-100 text-sky-800'
+              }`}
+            >
+              {isAdminVariant ? 'Admin · Toàn quyền CUD' : 'Moderator · Chỉ xem'}
+            </span>
+            <h1 className="text-2xl font-semibold text-stone-900">Phòng</h1>
+            {isAdminVariant && !canManage ? (
+              <p className="text-xs text-amber-700">
+                Bản xem trước admin. Tài khoản moderator vẫn không có quyền CUD.
+              </p>
+            ) : null}
+          </div>
+
+          {isAdminVariant ? (
+            canManage ? (
+              <Link
+                to="/admin/rooms/new"
+                className="inline-flex items-center justify-center rounded-xl bg-amber-400 px-4 py-2 text-sm font-semibold text-stone-950 transition hover:bg-amber-300"
+              >
+                Thêm phòng mới +
+              </Link>
+            ) : (
+              <span
+                aria-disabled="true"
+                className="inline-flex items-center justify-center rounded-xl bg-amber-200 px-4 py-2 text-sm font-semibold text-stone-600"
+              >
+                Thêm phòng mới +
+              </span>
+            )
+          ) : null}
+        </div>
+
+        <div className="space-y-3">
+          <label htmlFor={filterId} className="sr-only">
+            Lọc theo chi nhánh
+          </label>
+          <select
+            id={filterId}
+            aria-label="Lọc theo chi nhánh"
+            value={selectedLocationId}
+            onChange={event => onLocationChange(event.target.value)}
+            className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm text-stone-700 shadow-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200 md:w-48"
+          >
+            <option value="all">Tất cả chi nhánh</option>
+            {locations.map(location => (
+              <option key={location.id} value={String(location.id)}>
+                {location.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {isLoading ? (
+          <div className="flex justify-center py-16">
+            <LoadingSpinner size="lg" message="Đang tải danh sách phòng..." />
+          </div>
+        ) : rooms.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50/70 p-10 text-center text-sm text-stone-500">
+            Chưa có phòng nào khớp với bộ lọc hiện tại.
+          </div>
+        ) : (
+          <>
+            <RoomStatusBoard rooms={rooms} />
+            <RoomTable
+              rooms={rooms}
+              showActions={isAdminVariant}
+              actionsEnabled={isAdminVariant && canManage}
+              deletingRoomId={deletingRoomId}
+              onDelete={onDelete}
+            />
+          </>
+        )}
+      </div>
+    </section>
+  )
 }
 
 const AdminRoomDashboard: React.FC = () => {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
   const [locations, setLocations] = useState<LocationOption[]>([])
-  const [selectedLocationId, setSelectedLocationId] = useState<number | ''>('')
+  const [selectedLocationId, setSelectedLocationId] = useState('all')
   const [rooms, setRooms] = useState<AdminRoom[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [viewMode, setViewMode] = useState<'table' | 'board'>('board')
+  const [deletingRoomId, setDeletingRoomId] = useState<number | null>(null)
 
-  // Fetch locations on mount
   useEffect(() => {
+    const controller = new AbortController()
+
     const fetchLocations = async () => {
       try {
-        const response = await api.get('/v1/locations')
-        const items = response.data.data
-        setLocations(items)
-        if (items.length > 0) {
-          setSelectedLocationId(items[0].id)
+        const items = await getLocations(controller.signal)
+
+        if (!controller.signal.aborted) {
+          setLocations(items.map(location => ({ id: location.id, name: location.name })))
         }
-      } catch {
-        // fetch error handled silently
-      } finally {
-        setIsLoading(false)
+      } catch (error) {
+        if (!isAbortError(error)) {
+          showToast.error('Không thể tải danh sách chi nhánh.')
+        }
       }
     }
+
     fetchLocations()
+
+    return () => controller.abort()
   }, [])
 
-  // Fetch rooms when location changes
   useEffect(() => {
-    if (selectedLocationId === '') return
+    const controller = new AbortController()
 
     const fetchRooms = async () => {
       setIsLoading(true)
+
       try {
-        const data = await getRoomsByLocation(Number(selectedLocationId))
-        setRooms(data)
-      } catch {
-        // fetch error handled silently
+        const data = await getRoomsByLocation(
+          selectedLocationId === 'all' ? undefined : Number(selectedLocationId),
+          controller.signal
+        )
+
+        if (!controller.signal.aborted) {
+          setRooms(data)
+        }
+      } catch (error) {
+        if (!isAbortError(error)) {
+          showToast.error('Không thể tải danh sách phòng.')
+        }
       } finally {
-        setIsLoading(false)
+        if (!controller.signal.aborted) {
+          setIsLoading(false)
+        }
       }
     }
+
     fetchRooms()
+
+    return () => controller.abort()
   }, [selectedLocationId])
 
-  // Calculate stats
-  const totalRooms = rooms.length
-  const availableRooms = rooms.filter(r => r.status === 'available').length
-  const occupiedRooms = rooms.filter(r => r.status === 'occupied').length
-  const maintenanceRooms = rooms.filter(r => r.status === 'maintenance').length
+  const handleDeleteRoom = async (room: AdminRoom) => {
+    if (!isAdmin) {
+      return
+    }
 
-  if (isLoading && locations.length === 0) {
+    const roomLabel = room.room_number || room.display_name || room.name
+
+    if (!window.confirm(`Bạn có chắc muốn xóa ${roomLabel}?`)) {
+      return
+    }
+
+    setDeletingRoomId(room.id)
+
+    try {
+      await deleteRoom(room.id)
+      setRooms(currentRooms => currentRooms.filter(currentRoom => currentRoom.id !== room.id))
+      showToast.success('Đã xóa phòng.')
+    } catch (error) {
+      showToast.error(getErrorMessage(error))
+    } finally {
+      setDeletingRoomId(null)
+    }
+  }
+
+  if (isLoading && rooms.length === 0 && locations.length === 0) {
     return <LoadingSpinner fullScreen />
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Quản lý phòng</h1>
-        <div className="flex mt-4 space-x-3 sm:mt-0">
-          {isAdmin && (
-            <Link
-              to="/admin/rooms/new"
-              className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700"
-            >
-              + Thêm phòng mới
-            </Link>
-          )}
-        </div>
-      </div>
-
-      {/* Controls Bar */}
-      <div className="flex flex-col items-center justify-between p-4 space-y-4 bg-white border border-gray-200 rounded-lg shadow-sm md:flex-row md:space-y-0">
-        <div className="flex items-center w-full space-x-4 md:w-auto">
-          <label
-            htmlFor="locationSelect"
-            className="text-sm font-medium text-gray-700 whitespace-nowrap"
-          >
-            Cơ sở:
-          </label>
-          <select
-            id="locationSelect"
-            className="block w-full py-2 pl-3 pr-10 text-base border-gray-300 rounded-md md:w-64 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            value={selectedLocationId}
-            onChange={e => setSelectedLocationId(Number(e.target.value))}
-          >
-            {locations.map(loc => (
-              <option key={loc.id} value={loc.id}>
-                {loc.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex w-full p-1 space-x-2 overflow-hidden bg-gray-100 rounded-lg md:w-auto">
-          <button
-            onClick={() => setViewMode('board')}
-            className={`flex-1 md:flex-none px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              viewMode === 'board'
-                ? 'bg-white shadow text-gray-900'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Sơ đồ phòng
-          </button>
-          <button
-            onClick={() => setViewMode('table')}
-            className={`flex-1 md:flex-none px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              viewMode === 'table'
-                ? 'bg-white shadow text-gray-900'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Danh sách
-          </button>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div className="p-4 overflow-hidden bg-white border border-gray-200 rounded-lg shadow-sm">
-          <dt className="text-sm font-medium text-gray-500 truncate">Tổng số phòng</dt>
-          <dd className="mt-1 text-2xl font-semibold text-gray-900">{totalRooms}</dd>
-        </div>
-        <div className="p-4 overflow-hidden bg-white border border-gray-200 rounded-lg shadow-sm">
-          <dt className="text-sm font-medium text-green-600 truncate">Phòng trống</dt>
-          <dd className="mt-1 text-2xl font-semibold text-gray-900">{availableRooms}</dd>
-        </div>
-        <div className="p-4 overflow-hidden bg-white border border-red-200 rounded-lg shadow-sm bg-red-50">
-          <dt className="text-sm font-medium text-red-600 truncate">Đã có khách</dt>
-          <dd className="mt-1 text-2xl font-semibold text-gray-900">{occupiedRooms}</dd>
-        </div>
-        <div className="p-4 overflow-hidden bg-white border border-yellow-200 rounded-lg shadow-sm bg-yellow-50">
-          <dt className="text-sm font-medium text-yellow-600 truncate">Đang bảo trì/dọn</dt>
-          <dd className="mt-1 text-2xl font-semibold text-gray-900">{maintenanceRooms}</dd>
-        </div>
-      </div>
-
-      {/* Main Content Area */}
-      {isLoading ? (
-        <div className="flex justify-center py-12">
-          <LoadingSpinner size="lg" message="Đang tải dữ liệu phòng..." />
-        </div>
-      ) : rooms.length === 0 ? (
-        <div className="p-12 text-center text-gray-500 bg-white border border-gray-200 rounded-lg shadow-sm">
-          Chưa có phòng nào được cấu hình cho cơ sở này.
-        </div>
-      ) : viewMode === 'table' ? (
-        <RoomTable rooms={rooms} isAdmin={isAdmin} />
-      ) : (
-        <RoomStatusBoard rooms={rooms} />
-      )}
+    <div className="grid gap-6 xl:grid-cols-2">
+      <RoomDashboardVariant
+        variant="admin"
+        canManage={isAdmin}
+        deletingRoomId={deletingRoomId}
+        isLoading={isLoading}
+        locations={locations}
+        onDelete={handleDeleteRoom}
+        onLocationChange={setSelectedLocationId}
+        rooms={rooms}
+        selectedLocationId={selectedLocationId}
+      />
+      <RoomDashboardVariant
+        variant="moderator"
+        canManage={false}
+        deletingRoomId={null}
+        isLoading={isLoading}
+        locations={locations}
+        onDelete={handleDeleteRoom}
+        onLocationChange={setSelectedLocationId}
+        rooms={rooms}
+        selectedLocationId={selectedLocationId}
+      />
     </div>
   )
 }

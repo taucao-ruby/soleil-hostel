@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import {
+  MAX_STAY_DAYS,
   validateBookingForm,
   calculateNights,
   formatDateForInput,
   getMinCheckOutDate,
+  getMaxCheckOutDate,
 } from './booking.validation'
 
 describe('Booking Validation', () => {
@@ -49,18 +51,18 @@ describe('Booking Validation', () => {
     // Guest name
     it('requires guest name', () => {
       const errors = validateBookingForm({ ...validData, guest_name: '' })
-      expect(errors.guest_name).toBe('Vui lòng nhập tên khách')
+      expect(errors.guest_name).toBe('Vui lòng nhập họ và tên')
     })
 
     it('requires guest name at least 2 characters', () => {
       const errors = validateBookingForm({ ...validData, guest_name: 'A' })
-      expect(errors.guest_name).toBe('Tên khách phải có ít nhất 2 ký tự')
+      expect(errors.guest_name).toBe('Họ và tên phải có ít nhất 2 ký tự')
     })
 
     // Guest email
     it('requires guest email', () => {
       const errors = validateBookingForm({ ...validData, guest_email: '' })
-      expect(errors.guest_email).toBe('Vui lòng nhập email')
+      expect(errors.guest_email).toBe('Vui lòng nhập địa chỉ email')
     })
 
     it('validates email format', () => {
@@ -147,6 +149,21 @@ describe('Booking Validation', () => {
       const tomorrow = new Date()
       tomorrow.setDate(tomorrow.getDate() + 1)
       expect(getMinCheckOutDate()).toBe(formatDateForInput(tomorrow))
+    })
+  })
+
+  describe('getMaxCheckOutDate', () => {
+    it('returns max checkout date based on the stay limit', () => {
+      const result = getMaxCheckOutDate('2026-03-10')
+      expect(result).toBe('2026-04-09')
+    })
+
+    it('returns undefined when check-in is missing', () => {
+      expect(getMaxCheckOutDate()).toBeUndefined()
+    })
+
+    it('exports the configured stay limit', () => {
+      expect(MAX_STAY_DAYS).toBe(30)
     })
   })
 })

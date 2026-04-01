@@ -14,8 +14,8 @@ vi.mock('@/features/booking/booking.api', () => ({
 import ReviewForm from './ReviewForm'
 
 // ── Render helper ────────────────────────────────────────────
-function renderForm(bookingId = 1) {
-  return render(<ReviewForm bookingId={bookingId} />)
+function renderForm(props: Partial<React.ComponentProps<typeof ReviewForm>> = {}) {
+  return render(<ReviewForm bookingId={1} {...props} />)
 }
 
 // ── Setup ────────────────────────────────────────────────────
@@ -83,7 +83,7 @@ describe('ReviewForm', () => {
 
   it('shows success state after successful submission', async () => {
     mockSubmitReview.mockResolvedValue({ success: true, message: 'OK' })
-    renderForm(42)
+    renderForm({ bookingId: 42 })
 
     await userEvent.click(screen.getByRole('button', { name: 'Mở form viết đánh giá' }))
     await userEvent.click(screen.getByRole('radio', { name: '5 sao' }))
@@ -189,5 +189,36 @@ describe('ReviewForm', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Mở form viết đánh giá' }))
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('renders the detail variant expanded by default', () => {
+    renderForm({ variant: 'detail', defaultOpen: true })
+
+    expect(screen.queryByRole('button', { name: 'Mở form viết đánh giá' })).not.toBeInTheDocument()
+    expect(screen.getByRole('radiogroup', { name: 'Xếp hạng sao' })).toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: /Tiêu đề/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: /Chia sẻ trải nghiệm của bạn/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Gửi đánh giá' })).toBeInTheDocument()
+  })
+
+  it('auto-generates a title in the detail variant when submitting', async () => {
+    mockSubmitReview.mockResolvedValue({ success: true, message: 'OK' })
+    renderForm({ bookingId: 9, variant: 'detail', defaultOpen: true })
+
+    await userEvent.click(screen.getByRole('radio', { name: '5 sao' }))
+    await userEvent.type(
+      screen.getByRole('textbox', { name: /Chia sẻ trải nghiệm của bạn/ }),
+      'Phòng sạch và nhân viên hỗ trợ rất nhiệt tình.'
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Gửi đánh giá' }))
+
+    await waitFor(() => {
+      expect(mockSubmitReview).toHaveBeenCalledWith({
+        booking_id: 9,
+        title: 'Xuất sắc',
+        content: 'Phòng sạch và nhân viên hỗ trợ rất nhiệt tình.',
+        rating: 5,
+      })
+    })
   })
 })

@@ -10,6 +10,8 @@ export interface HomeRoom {
   reviewCount: number
   amenities: string[] // e.g. ['AC', 'Bath', 'Wifi']
   imageUrl: string
+  location: string // e.g. "Soleil House" — shown as badge on card image
+  available: boolean // controls "Đặt ngay" button visibility
 }
 
 export interface HomeReview {

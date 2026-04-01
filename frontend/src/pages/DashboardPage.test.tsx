@@ -59,6 +59,8 @@ describe('DashboardPage', () => {
     expect(screen.getByTestId('guest-dashboard')).toBeInTheDocument()
     expect(screen.queryByTestId('admin-dashboard')).not.toBeInTheDocument()
     expect(screen.getByText('Trang quản lý')).toBeInTheDocument()
+    expect(screen.getByText('Quản lý đặt phòng của bạn tại đây.')).toBeInTheDocument()
+    expect(screen.getByText('Xin chào, Alice!')).toBeInTheDocument()
   })
 
   it('renders AdminDashboard for admin user', () => {
@@ -84,9 +86,10 @@ describe('DashboardPage', () => {
     renderDashboard()
     expect(screen.getByTestId('guest-dashboard')).toBeInTheDocument()
     expect(screen.queryByTestId('admin-dashboard')).not.toBeInTheDocument()
+    expect(screen.getByText('Xin chào, Moderator!')).toBeInTheDocument()
   })
 
-  it('shows quick actions links for both roles', () => {
+  it('shows quick actions links on the dashboard shell', () => {
     mockUseAuth.mockReturnValue({
       user: { id: 1, name: 'Admin', email: 'admin@b.com', role: 'admin' },
       loading: false,
@@ -94,8 +97,8 @@ describe('DashboardPage', () => {
     })
 
     renderDashboard()
-    expect(screen.getByRole('link', { name: 'Xem phòng' })).toHaveAttribute('href', '/rooms')
-    expect(screen.getByRole('link', { name: 'Xem chi nhánh' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /Xem phòng/ })).toHaveAttribute('href', '/rooms')
+    expect(screen.getByRole('link', { name: /Xem chi nhánh/ })).toHaveAttribute(
       'href',
       '/locations'
     )

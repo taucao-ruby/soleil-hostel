@@ -4,6 +4,13 @@
  * Cross-feature booking types used by admin, bookings, and booking features.
  */
 
+export interface BookingRoomSummary {
+  id: number
+  name: string
+  display_name?: string | null
+  room_number?: string | null
+}
+
 /**
  * Booking API raw shape from GET /v1/bookings (BookingResource)
  *
@@ -23,6 +30,7 @@ export interface BookingApiRaw {
   nights: number
   amount?: number
   amount_formatted?: string
+  room?: BookingRoomSummary
   created_at: string
   updated_at: string
 }

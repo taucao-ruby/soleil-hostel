@@ -7,8 +7,10 @@ interface FilterChipsProps {
 }
 
 /**
- * FilterChips — horizontal scrollable single-select filter chips.
- * Active chip uses literal bg-[#D4622A] so regression tests can assert className.
+ * FilterChips — horizontal scrollable single-select amenity filter chips.
+ *
+ * Active chip: bg-amber-100 text-amber-800 border-amber-300 (PROMPT_0 tokens).
+ * Inactive chip: bg-gray-100 text-gray-700 border-transparent.
  */
 const FilterChips: React.FC<FilterChipsProps> = ({ chips, onFilter }) => {
   const [activeId, setActiveId] = useState<string>(chips[0]?.id ?? '')
@@ -23,7 +25,7 @@ const FilterChips: React.FC<FilterChipsProps> = ({ chips, onFilter }) => {
       className="flex gap-2 overflow-x-auto px-4 py-3"
       style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       role="group"
-      aria-label="Lọc phòng"
+      aria-label="Lọc phòng theo tiện nghi"
     >
       {chips.map(chip => {
         const isActive = chip.id === activeId
@@ -34,11 +36,11 @@ const FilterChips: React.FC<FilterChipsProps> = ({ chips, onFilter }) => {
             aria-pressed={isActive}
             className={[
               'flex-shrink-0 px-4 py-2 rounded-full text-sm font-sans font-medium whitespace-nowrap',
-              'transition-colors duration-150',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4622A] focus-visible:ring-offset-1',
+              'transition-colors duration-150 border',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9973A] focus-visible:ring-offset-1',
               isActive
-                ? 'bg-[#D4622A] text-white'
-                : 'bg-[#F5EFE0] text-[#5C3D1E] border border-[#E2D5C3] hover:border-[#D4622A]',
+                ? 'bg-amber-100 text-amber-800 border-amber-300'
+                : 'bg-gray-100 text-gray-700 border-transparent hover:border-[#C9973A]',
             ].join(' ')}
           >
             {chip.label}

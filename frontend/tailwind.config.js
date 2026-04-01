@@ -26,7 +26,7 @@ export default {
         },
       },
       colors: {
-        // Soleil brand tokens
+        // Soleil brand tokens (legacy — kept for non-home components)
         cream: '#F5EFE0',
         warmWhite: '#FDFAF3',
         orangeCTA: '#D4622A',
@@ -36,6 +36,12 @@ export default {
         brandGold: '#F5A623',
         navy: '#1A2744',
         soleilBorder: '#E2D5C3',
+        // PROMPT_0 design system tokens
+        brandAmber: '#C9973A',
+        hueSurface: '#F7F3EE',
+        hueBlack: '#1C1A17',
+        hueMuted: '#6B6760',
+        hueBorder: '#E2DDD6',
         primary: {
           50: '#f0f9ff',
           100: '#e0f2fe',

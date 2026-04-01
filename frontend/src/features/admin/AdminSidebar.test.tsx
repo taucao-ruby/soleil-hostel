@@ -1,118 +1,76 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import AdminSidebar from './AdminSidebar'
 
-// ── Setup ───────────────────────────────────────────────
+const baseProps = {
+  isMobileOpen: false,
+  onCloseMobile: vi.fn(),
+  onLogout: vi.fn(),
+  userInitials: 'NA',
+  userName: 'Nguyen Admin',
+}
 
-beforeEach(() => {
-  vi.clearAllMocks()
-  document.body.style.overflow = ''
-})
+function renderSidebar(overrides: Partial<typeof baseProps> = {}) {
+  const props = { ...baseProps, ...overrides }
 
-function renderSidebar(initialEntries: string[] = ['/admin']) {
   return render(
-    <MemoryRouter initialEntries={initialEntries}>
-      <AdminSidebar />
+    <MemoryRouter initialEntries={['/admin']}>
+      <AdminSidebar {...props} />
     </MemoryRouter>
   )
 }
 
-// ── Tests ───────────────────────────────────────────────
+beforeEach(() => {
+  vi.clearAllMocks()
+})
 
 describe('AdminSidebar', () => {
-  describe('desktop sidebar', () => {
-    it('renders all nav links in desktop sidebar', () => {
-      renderSidebar()
-      // Desktop sidebar has hidden md:flex — always in DOM
-      expect(screen.getAllByText('Tổng quan').length).toBeGreaterThanOrEqual(1)
-      expect(screen.getAllByText('Quản lý phòng').length).toBeGreaterThanOrEqual(1)
-      expect(screen.getAllByText('Đặt phòng').length).toBeGreaterThanOrEqual(1)
-      expect(screen.getAllByText('Khách hàng').length).toBeGreaterThanOrEqual(1)
-      expect(screen.getAllByText('Đánh giá').length).toBeGreaterThanOrEqual(1)
-      expect(screen.getAllByText('Tin nhắn').length).toBeGreaterThanOrEqual(1)
-    })
+  it('renders the shared admin navigation and account footer', () => {
+    renderSidebar()
 
-    it('renders "Về trang chủ" link pointing to /', () => {
-      renderSidebar()
-      const homeLinks = screen.getAllByText(/Về trang chủ/)
-      expect(homeLinks.length).toBeGreaterThanOrEqual(1)
-    })
+    expect(screen.getByText('Soleil Admin')).toBeInTheDocument()
+    expect(screen.getAllByText('Tổng quan').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Đặt phòng').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Phòng').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Khách hàng').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('Nguyen Admin')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Đăng xuất' })).toBeInTheDocument()
   })
 
-  describe('mobile hamburger trigger', () => {
-    it('renders hamburger button with correct aria-label', () => {
-      renderSidebar()
-      const hamburger = screen.getByRole('button', { name: 'Mở menu quản trị' })
-      expect(hamburger).toBeInTheDocument()
-      expect(hamburger).toHaveAttribute('aria-expanded', 'false')
-    })
+  it('renders a mobile drawer and closes it from the backdrop button', async () => {
+    const user = userEvent.setup()
+    const onCloseMobile = vi.fn()
 
-    it('opens drawer when hamburger is clicked', async () => {
-      renderSidebar()
-      const user = userEvent.setup()
-      const hamburger = screen.getByRole('button', { name: 'Mở menu quản trị' })
+    renderSidebar({ isMobileOpen: true, onCloseMobile })
 
-      await user.click(hamburger)
+    const drawer = screen.getByRole('dialog', { name: 'Điều hướng quản trị' })
+    expect(drawer).toBeInTheDocument()
 
-      expect(hamburger).toHaveAttribute('aria-expanded', 'true')
-      expect(screen.getByRole('dialog', { name: 'Menu quản trị' })).toBeInTheDocument()
-    })
+    await user.click(screen.getByRole('button', { name: 'Đóng điều hướng quản trị' }))
+    expect(onCloseMobile).toHaveBeenCalledTimes(1)
   })
 
-  describe('mobile slide-over drawer', () => {
-    it('shows all nav items when drawer is open', async () => {
-      renderSidebar()
-      const user = userEvent.setup()
+  it('closes the mobile drawer when a nav item is selected', async () => {
+    const user = userEvent.setup()
+    const onCloseMobile = vi.fn()
 
-      await user.click(screen.getByRole('button', { name: 'Mở menu quản trị' }))
+    renderSidebar({ isMobileOpen: true, onCloseMobile })
 
-      const dialog = screen.getByRole('dialog')
-      expect(dialog).toBeInTheDocument()
-      // Drawer duplicates nav items — check at least 2 instances of each
-      expect(screen.getAllByText('Tổng quan').length).toBe(2)
-      expect(screen.getAllByText('Quản lý phòng').length).toBe(2)
-    })
+    const drawer = screen.getByRole('dialog', { name: 'Điều hướng quản trị' })
+    await user.click(within(drawer).getByRole('link', { name: 'Khách hàng' }))
 
-    it('closes drawer when backdrop is clicked', async () => {
-      renderSidebar()
-      const user = userEvent.setup()
+    expect(onCloseMobile).toHaveBeenCalledTimes(1)
+  })
 
-      await user.click(screen.getByRole('button', { name: 'Mở menu quản trị' }))
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
+  it('calls logout from the footer action', async () => {
+    const user = userEvent.setup()
+    const onLogout = vi.fn()
 
-      // Click backdrop (aria-hidden div inside dialog)
-      const dialog = screen.getByRole('dialog')
-      const backdrop = dialog.querySelector('[aria-hidden="true"]')
-      expect(backdrop).toBeTruthy()
-      fireEvent.click(backdrop!)
+    renderSidebar({ onLogout })
 
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    })
-
-    it('closes drawer on Escape key', async () => {
-      renderSidebar()
-      const user = userEvent.setup()
-
-      await user.click(screen.getByRole('button', { name: 'Mở menu quản trị' }))
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
-
-      await user.keyboard('{Escape}')
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    })
-
-    it('locks body scroll when drawer is open', async () => {
-      renderSidebar()
-      const user = userEvent.setup()
-
-      expect(document.body.style.overflow).toBe('')
-
-      await user.click(screen.getByRole('button', { name: 'Mở menu quản trị' }))
-      expect(document.body.style.overflow).toBe('hidden')
-
-      await user.keyboard('{Escape}')
-      expect(document.body.style.overflow).toBe('')
-    })
+    await user.click(screen.getByRole('button', { name: 'Đăng xuất' }))
+    expect(onLogout).toHaveBeenCalledTimes(1)
   })
 })

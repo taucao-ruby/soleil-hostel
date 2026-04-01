@@ -1,4 +1,5 @@
 import type { BookingApiRaw } from '@/features/booking/booking.types'
+import { formatVND } from '@/shared/lib/formatCurrency'
 
 /**
  * Booking ViewModel
@@ -13,6 +14,7 @@ export interface BookingViewModel {
   id: number
   status: string
   statusLabel: string
+  roomName: string
   checkIn: Date
   checkOut: Date
   guestName: string
@@ -22,16 +24,34 @@ export interface BookingViewModel {
   createdAt: Date
 }
 
+function formatCompactVND(amount: number): string {
+  return formatVND(amount).replace(/\s?₫/, '₫')
+}
+
+function getRoomName(raw: BookingApiRaw): string {
+  const roomName = raw.room?.display_name ?? raw.room?.name
+  return roomName && roomName.trim().length > 0 ? roomName : `Phòng #${raw.room_id}`
+}
+
+function getAmountFormatted(raw: BookingApiRaw): string | undefined {
+  if (raw.amount_formatted) {
+    return raw.amount_formatted.replace(/\s?₫/, '₫')
+  }
+
+  return typeof raw.amount === 'number' ? formatCompactVND(raw.amount) : undefined
+}
+
 export function toBookingViewModel(raw: BookingApiRaw): BookingViewModel {
   return {
     id: raw.id,
     status: raw.status,
     statusLabel: raw.status_label ?? raw.status,
+    roomName: getRoomName(raw),
     checkIn: new Date(raw.check_in),
     checkOut: new Date(raw.check_out),
     guestName: raw.guest_name,
     nights: raw.nights,
-    amountFormatted: raw.amount_formatted,
+    amountFormatted: getAmountFormatted(raw),
     canCancel: CANCELLABLE_STATUSES.includes(raw.status),
     createdAt: new Date(raw.created_at),
   }

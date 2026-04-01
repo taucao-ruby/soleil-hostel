@@ -83,10 +83,10 @@ Start here when exploring this area:
 |------|-------------|
 | Room | 6 calls |
 | Feature | 3 calls |
-| Cache | 2 calls |
+| Booking | 2 calls |
 | Jobs | 1 calls |
+| Cache | 1 calls |
 | Enums | 1 calls |
-| Booking | 1 calls |
 | Unit | 1 calls |
 
 ## How to Explore

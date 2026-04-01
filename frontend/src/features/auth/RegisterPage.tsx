@@ -1,82 +1,146 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useEffect, useRef, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthContext'
-/**
- * RegisterPage Component
- *
- * Full-featured registration form with:
- * - Name, email, password, password confirmation
- * - Client-side validation
- * - Loading/error/success states
- * - Redirect after successful registration
- * - Link to login
- */
+
+const FALLBACK_AUTH_ERROR = 'Đăng ký thất bại. Vui lòng thử lại.'
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
+
+type FormState = {
+  name: string
+  email: string
+  password: string
+  passwordConfirmation: string
+}
+
+type FormErrors = Partial<Record<keyof FormState, string>>
+
+const validateName = (name: string) => (name.trim().length >= 2 ? '' : 'Tên cần ít nhất 2 ký tự')
+
+const validateEmail = (email: string) =>
+  EMAIL_REGEX.test(email.trim()) ? '' : 'Địa chỉ email không hợp lệ'
+
+const validatePassword = (password: string) =>
+  PASSWORD_REGEX.test(password) ? '' : 'Mật khẩu cần ít nhất 8 ký tự, 1 chữ hoa, 1 số'
+
+const validatePasswordConfirmation = (password: string, passwordConfirmation: string) =>
+  passwordConfirmation && password === passwordConfirmation ? '' : 'Mật khẩu xác nhận không khớp'
+
+const getPasswordStrength = (password: string) => {
+  if (!password) {
+    return 0
+  }
+
+  let score = 0
+
+  if (password.length >= 8) {
+    score += 1
+  }
+
+  if (/[A-Z]/.test(password) && /[a-z]/.test(password)) {
+    score += 1
+  }
+
+  if (/\d/.test(password)) {
+    score += 1
+  }
+
+  return Math.max(1, score)
+}
+
+const getStrengthLabel = (strength: number) => {
+  if (strength >= 3) {
+    return 'Mạnh'
+  }
+
+  if (strength === 2) {
+    return 'Trung bình'
+  }
+
+  if (strength === 1) {
+    return 'Yếu'
+  }
+
+  return 'Chưa nhập mật khẩu'
+}
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate()
   const { registerHttpOnly, error: authError, clearError } = useAuth()
+  const redirectTimeoutRef = useRef<number | null>(null)
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormState>({
     name: '',
     email: '',
     password: '',
     passwordConfirmation: '',
   })
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [errors, setErrors] = useState<FormErrors>({})
   const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
+  const [redirecting, setRedirecting] = useState(false)
+  const [showFallbackError, setShowFallbackError] = useState(false)
 
-  /**
-   * Validate form data
-   */
-  const validate = (): boolean => {
-    const newErrors: Record<string, string> = {}
+  const passwordStrength = getPasswordStrength(formData.password)
+  const isBusy = loading || redirecting
+  const errorMessage = authError ?? (showFallbackError ? FALLBACK_AUTH_ERROR : null)
 
-    // Name validation
-    if (!formData.name.trim()) {
-      newErrors.name = 'Vui lòng nhập họ tên'
-    } else if (formData.name.trim().length < 2) {
-      newErrors.name = 'Họ tên phải có ít nhất 2 ký tự'
+  useEffect(() => {
+    return () => {
+      if (redirectTimeoutRef.current !== null) {
+        window.clearTimeout(redirectTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!authError || !redirecting) {
+      return
     }
 
-    // Email validation
-    if (!formData.email.trim()) {
-      newErrors.email = 'Vui lòng nhập email'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Email không hợp lệ'
+    if (redirectTimeoutRef.current !== null) {
+      window.clearTimeout(redirectTimeoutRef.current)
+      redirectTimeoutRef.current = null
     }
 
-    // Password validation
-    if (!formData.password) {
-      newErrors.password = 'Vui lòng nhập mật khẩu'
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Mật khẩu phải có ít nhất 8 ký tự'
-    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
-      newErrors.password = 'Mật khẩu phải chứa chữ hoa, chữ thường và số'
+    setRedirecting(false)
+  }, [authError, redirecting])
+
+  const validate = () => {
+    const nextErrors: FormErrors = {
+      name: validateName(formData.name),
+      email: validateEmail(formData.email),
+      password: validatePassword(formData.password),
+      passwordConfirmation: validatePasswordConfirmation(
+        formData.password,
+        formData.passwordConfirmation
+      ),
     }
 
-    // Password confirmation validation
-    if (!formData.passwordConfirmation) {
-      newErrors.passwordConfirmation = 'Vui lòng xác nhận mật khẩu'
-    } else if (formData.password !== formData.passwordConfirmation) {
-      newErrors.passwordConfirmation = 'Mật khẩu không khớp'
-    }
+    const filteredErrors = Object.fromEntries(
+      Object.entries(nextErrors).filter(([, value]) => Boolean(value))
+    ) as FormErrors
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+    setErrors(filteredErrors)
+    return Object.keys(filteredErrors).length === 0
   }
 
-  /**
-   * Handle form submission
-   */
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    clearError()
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
 
-    if (!validate()) return
+    clearError()
+    setShowFallbackError(false)
+    setRedirecting(false)
+
+    if (redirectTimeoutRef.current !== null) {
+      window.clearTimeout(redirectTimeoutRef.current)
+      redirectTimeoutRef.current = null
+    }
+
+    if (!validate()) {
+      return
+    }
 
     setLoading(true)
-    setSuccess(false)
 
     try {
       await registerHttpOnly(
@@ -86,221 +150,247 @@ const RegisterPage: React.FC = () => {
         formData.passwordConfirmation
       )
 
-      setSuccess(true)
-
-      // Redirect to dashboard after successful registration
-      setTimeout(() => {
+      setRedirecting(true)
+      redirectTimeoutRef.current = window.setTimeout(() => {
         navigate('/dashboard')
       }, 1000)
     } catch {
-      // Error is handled by AuthContext and displayed via authError
+      setShowFallbackError(true)
     } finally {
       setLoading(false)
     }
   }
 
-  /**
-   * Handle input changes
-   */
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target
+
+    setFormData(current => ({
+      ...current,
       [name]: value,
     }))
-    // Clear error for this field
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }))
+
+    if (errors[name as keyof FormErrors]) {
+      setErrors(current => {
+        const nextErrors = { ...current }
+        delete nextErrors[name as keyof FormErrors]
+        return nextErrors
+      })
+    }
+
+    if (authError || showFallbackError) {
+      clearError()
+      setShowFallbackError(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-50 px-4 py-12">
-      <div className="max-w-md w-full">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Tạo tài khoản</h1>
-          <p className="text-gray-600">Tham gia cộng đồng Soleil Hostel</p>
-        </div>
+    <section className="bg-hueSurface px-4 py-14 sm:px-6 sm:py-16">
+      <div className="mx-auto flex min-h-[70vh] w-full max-w-sm flex-col justify-center">
+        <div className="rounded-lg border border-hueBorder bg-white p-6 shadow-[0_20px_45px_rgba(28,26,23,0.08)] sm:p-8">
+          <div className="mb-8">
+            <p className="text-sm font-medium uppercase tracking-[0.2em] text-brandAmber">
+              Soleil Hostel
+            </p>
+            <h1 className="mt-3 text-3xl font-medium text-hueBlack">Tạo tài khoản</h1>
+            <p className="mt-3 text-sm leading-6 text-hueMuted">
+              Đặt phòng nhanh hơn với tài khoản Soleil
+            </p>
+          </div>
 
-        {/* Registration Form Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <form onSubmit={handleSubmit} noValidate>
-            {/* Success Message */}
-            {success && (
-              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-green-800 text-sm font-medium">
-                  ✓ Đăng ký thành công! Đang chuyển hướng...
-                </p>
-              </div>
-            )}
+          {redirecting && !errorMessage && (
+            <div
+              className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3"
+              role="status"
+            >
+              <p className="text-sm font-medium text-emerald-800">
+                Tài khoản đã được tạo! Đang chuyển hướng...
+              </p>
+            </div>
+          )}
 
-            {/* Error Message */}
-            {authError && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-800 text-sm font-medium">{authError}</p>
-              </div>
-            )}
+          {errorMessage && (
+            <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3" role="alert">
+              <p className="text-sm font-medium text-red-800">{errorMessage}</p>
+            </div>
+          )}
 
-            {/* Name Field */}
-            <div className="mb-5">
-              <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-2">
+          <form className="space-y-5" noValidate onSubmit={handleSubmit}>
+            <div>
+              <label htmlFor="name" className="mb-2 block text-sm font-medium text-hueBlack">
                 Họ và tên
               </label>
               <input
-                type="text"
+                autoComplete="name"
+                className={`w-full rounded-lg border bg-white px-4 py-3 text-sm text-hueBlack outline-none transition focus:border-brandAmber focus:ring-2 focus:ring-brandAmber/20 ${
+                  errors.name ? 'border-red-400' : 'border-hueBorder'
+                } ${isBusy ? 'cursor-not-allowed bg-stone-50 text-hueMuted' : ''}`}
+                disabled={isBusy}
                 id="name"
                 name="name"
-                value={formData.name}
                 onChange={handleChange}
-                disabled={loading}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-colors ${
-                  errors.name
-                    ? 'border-red-300 focus:ring-red-500'
-                    : 'border-gray-300 focus:ring-blue-500'
-                } ${loading ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}`}
                 placeholder="Nguyễn Văn A"
-                aria-required="true"
-                aria-invalid={!!errors.name}
-                aria-describedby={errors.name ? 'name-error' : undefined}
+                type="text"
+                value={formData.name}
+                aria-describedby={errors.name ? 'register-name-error' : undefined}
+                aria-invalid={errors.name ? 'true' : 'false'}
               />
               {errors.name && (
-                <p id="name-error" className="mt-2 text-sm text-red-600">
+                <p id="register-name-error" className="mt-2 text-sm font-medium text-red-700">
                   {errors.name}
                 </p>
               )}
             </div>
 
-            {/* Email Field */}
-            <div className="mb-5">
-              <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
-                Địa chỉ email
+            <div>
+              <label htmlFor="email" className="mb-2 block text-sm font-medium text-hueBlack">
+                Email
               </label>
               <input
-                type="email"
+                autoComplete="email"
+                className={`w-full rounded-lg border bg-white px-4 py-3 text-sm text-hueBlack outline-none transition focus:border-brandAmber focus:ring-2 focus:ring-brandAmber/20 ${
+                  errors.email ? 'border-red-400' : 'border-hueBorder'
+                } ${isBusy ? 'cursor-not-allowed bg-stone-50 text-hueMuted' : ''}`}
+                disabled={isBusy}
                 id="email"
                 name="email"
-                value={formData.email}
                 onChange={handleChange}
-                disabled={loading}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-colors ${
-                  errors.email
-                    ? 'border-red-300 focus:ring-red-500'
-                    : 'border-gray-300 focus:ring-blue-500'
-                } ${loading ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}`}
-                placeholder="you@example.com"
-                aria-required="true"
-                aria-invalid={!!errors.email}
-                aria-describedby={errors.email ? 'email-error' : undefined}
+                placeholder="user@example.com"
+                type="email"
+                value={formData.email}
+                aria-describedby={errors.email ? 'register-email-error' : undefined}
+                aria-invalid={errors.email ? 'true' : 'false'}
               />
               {errors.email && (
-                <p id="email-error" className="mt-2 text-sm text-red-600">
+                <p id="register-email-error" className="mt-2 text-sm font-medium text-red-700">
                   {errors.email}
                 </p>
               )}
             </div>
 
-            {/* Password Field */}
-            <div className="mb-5">
-              <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">
+            <div>
+              <label htmlFor="password" className="mb-2 block text-sm font-medium text-hueBlack">
                 Mật khẩu
               </label>
               <input
-                type="password"
+                autoComplete="new-password"
+                className={`w-full rounded-lg border bg-white px-4 py-3 text-sm text-hueBlack outline-none transition focus:border-brandAmber focus:ring-2 focus:ring-brandAmber/20 ${
+                  errors.password ? 'border-red-400' : 'border-hueBorder'
+                } ${isBusy ? 'cursor-not-allowed bg-stone-50 text-hueMuted' : ''}`}
+                disabled={isBusy}
                 id="password"
                 name="password"
-                value={formData.password}
                 onChange={handleChange}
-                disabled={loading}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-colors ${
-                  errors.password
-                    ? 'border-red-300 focus:ring-red-500'
-                    : 'border-gray-300 focus:ring-blue-500'
-                } ${loading ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}`}
-                placeholder="••••••••"
-                aria-required="true"
-                aria-invalid={!!errors.password}
+                placeholder="Tối thiểu 8 ký tự"
+                type="password"
+                value={formData.password}
                 aria-describedby={
-                  errors.password ? 'password-error password-help' : 'password-help'
+                  errors.password
+                    ? 'register-password-error register-password-strength'
+                    : 'register-password-strength'
                 }
+                aria-invalid={errors.password ? 'true' : 'false'}
               />
+              <div
+                id="register-password-strength"
+                className="mt-3"
+                aria-live="polite"
+                aria-label={`Độ mạnh mật khẩu: ${getStrengthLabel(passwordStrength)}`}
+              >
+                <div className="grid grid-cols-3 gap-2">
+                  {[0, 1, 2].map(index => {
+                    const active = index < passwordStrength
+                    const activeClass =
+                      passwordStrength >= 3
+                        ? 'bg-emerald-500'
+                        : passwordStrength === 2
+                          ? 'bg-amber-400'
+                          : 'bg-red-500'
+
+                    return (
+                      <span
+                        key={index}
+                        data-testid={`password-strength-segment-${index}`}
+                        className={`block h-1 rounded-full transition ${
+                          active ? activeClass : 'bg-stone-200'
+                        }`}
+                      />
+                    )
+                  })}
+                </div>
+                <p className="mt-2 text-xs font-medium text-hueMuted">
+                  {passwordStrength ? getStrengthLabel(passwordStrength) : 'Mật khẩu chưa đủ mạnh'}
+                </p>
+              </div>
               {errors.password && (
-                <p id="password-error" className="mt-2 text-sm text-red-600">
+                <p id="register-password-error" className="mt-2 text-sm font-medium text-red-700">
                   {errors.password}
                 </p>
               )}
-              <p id="password-help" className="mt-2 text-xs text-gray-500">
-                Tối thiểu 8 ký tự, bao gồm chữ hoa, chữ thường và số
-              </p>
             </div>
 
-            {/* Password Confirmation Field */}
-            <div className="mb-6">
+            <div>
               <label
                 htmlFor="passwordConfirmation"
-                className="block text-sm font-semibold text-gray-700 mb-2"
+                className="mb-2 block text-sm font-medium text-hueBlack"
               >
                 Xác nhận mật khẩu
               </label>
               <input
-                type="password"
+                autoComplete="new-password"
+                className={`w-full rounded-lg border bg-white px-4 py-3 text-sm text-hueBlack outline-none transition focus:border-brandAmber focus:ring-2 focus:ring-brandAmber/20 ${
+                  errors.passwordConfirmation ? 'border-red-400' : 'border-hueBorder'
+                } ${isBusy ? 'cursor-not-allowed bg-stone-50 text-hueMuted' : ''}`}
+                disabled={isBusy}
                 id="passwordConfirmation"
                 name="passwordConfirmation"
-                value={formData.passwordConfirmation}
                 onChange={handleChange}
-                disabled={loading}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-colors ${
-                  errors.passwordConfirmation
-                    ? 'border-red-300 focus:ring-red-500'
-                    : 'border-gray-300 focus:ring-blue-500'
-                } ${loading ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}`}
-                placeholder="••••••••"
-                aria-required="true"
-                aria-invalid={!!errors.passwordConfirmation}
+                placeholder="Nhập lại mật khẩu"
+                type="password"
+                value={formData.passwordConfirmation}
                 aria-describedby={
-                  errors.passwordConfirmation ? 'password-confirmation-error' : undefined
+                  errors.passwordConfirmation ? 'register-password-confirmation-error' : undefined
                 }
+                aria-invalid={errors.passwordConfirmation ? 'true' : 'false'}
               />
               {errors.passwordConfirmation && (
-                <p id="password-confirmation-error" className="mt-2 text-sm text-red-600">
+                <p
+                  id="register-password-confirmation-error"
+                  className="mt-2 text-sm font-medium text-red-700"
+                >
                   {errors.passwordConfirmation}
                 </p>
               )}
             </div>
 
-            {/* Submit Button */}
             <button
+              aria-busy={isBusy}
+              className="flex w-full items-center justify-center rounded-lg bg-brandAmber px-4 py-3 text-sm font-medium text-hueBlack transition hover:bg-[#b88933] focus:outline-none focus:ring-2 focus:ring-brandAmber/30 disabled:cursor-not-allowed disabled:bg-[#d6b173] disabled:text-hueBlack/75"
+              disabled={isBusy}
               type="submit"
-              disabled={loading}
-              className={`w-full py-3 px-4 rounded-lg font-semibold text-white transition-all ${
-                loading
-                  ? 'bg-blue-400 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 hover:shadow-lg'
-              }`}
-              aria-busy={loading}
             >
               {loading ? (
-                <span className="flex items-center justify-center">
+                <span className="flex items-center gap-2">
                   <svg
-                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                    className="h-4 w-4 animate-spin"
                     fill="none"
                     viewBox="0 0 24 24"
-                    aria-hidden="true"
                   >
                     <circle
-                      className="opacity-25"
+                      className="opacity-30"
                       cx="12"
                       cy="12"
                       r="10"
                       stroke="currentColor"
                       strokeWidth="4"
-                    ></circle>
+                    />
                     <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
+                      className="opacity-80"
+                      d="M22 12a10 10 0 00-10-10"
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeWidth="4"
+                    />
                   </svg>
                   Đang tạo tài khoản...
                 </span>
@@ -310,31 +400,20 @@ const RegisterPage: React.FC = () => {
             </button>
           </form>
 
-          {/* Login Link */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
+          <div className="mt-6 text-sm">
+            <p className="text-center text-hueMuted">
               Đã có tài khoản?{' '}
-              <button
-                onClick={() => navigate('/login')}
-                className="text-blue-600 font-semibold hover:text-blue-700 transition-colors"
+              <Link
+                className="font-medium text-brandAmber transition hover:text-hueBlack"
+                to="/login"
               >
-                Đăng nhập tại đây
-              </button>
+                Đăng nhập
+              </Link>
             </p>
           </div>
         </div>
-
-        {/* Back to Home */}
-        <div className="mt-6 text-center">
-          <button
-            onClick={() => navigate('/')}
-            className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            ← Về trang chủ
-          </button>
-        </div>
       </div>
-    </div>
+    </section>
   )
 }
 

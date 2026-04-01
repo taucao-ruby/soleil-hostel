@@ -5,31 +5,29 @@ import RoomCard from './RoomCard'
 import { MOCK_ROOMS, FILTER_CHIPS } from '../home.mock'
 
 /**
- * RoomsSection — composes FilterChips + RoomCard list, spec § 04.
+ * RoomsSection — amenity filter chips + 2-col room card grid (PROMPT_1A spec).
  *
- * Section header: "Phòng nổi bật" (left) + "Xem tất cả →" link (right).
- * Filter chips: Tất cả | Dorm | Phòng riêng | Deluxe (single-select).
- * Room cards: vertical stack from MOCK_ROOMS.
+ * Spec: 2-col grid, 16px gap.
  */
 const RoomsSection: React.FC = () => {
   return (
-    <section aria-label="Phòng nổi bật">
+    <section aria-label="Phòng nổi bật" className="mt-8">
       {/* Header row */}
-      <div className="flex justify-between items-center px-4 mt-8">
-        <h2 className="font-serif font-semibold text-[#5C3D1E] text-xl">Phòng nổi bật</h2>
+      <div className="flex justify-between items-center px-4 mb-1">
+        <h2 className="font-serif font-medium text-[#1C1A17] text-xl">Phòng nổi bật</h2>
         <Link
           to="/rooms"
-          className="font-sans text-sm font-medium text-[#D4622A] hover:text-[#E8845A] transition-colors focus-visible:outline-none focus-visible:underline"
+          className="font-sans text-sm font-medium text-[#C9973A] hover:text-[#B8872A] transition-colors focus-visible:outline-none focus-visible:underline"
         >
           Xem tất cả →
         </Link>
       </div>
 
-      {/* Filter chips */}
+      {/* Amenity filter chips */}
       <FilterChips chips={FILTER_CHIPS} />
 
-      {/* Room cards */}
-      <div className="px-4 mt-4 flex flex-col gap-4">
+      {/* 2-col room card grid — 16px gap */}
+      <div className="px-4 grid grid-cols-2 gap-4">
         {MOCK_ROOMS.map(room => (
           <RoomCard key={room.id} room={room} />
         ))}

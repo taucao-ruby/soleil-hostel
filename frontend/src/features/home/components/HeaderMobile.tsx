@@ -1,29 +1,22 @@
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/features/auth/AuthContext'
 
 /**
- * HeaderMobile — sticky top header for the public homepage.
- * Transitions from transparent to warmWhite/blur as user scrolls.
+ * HeaderMobile — sticky top header for the public homepage (PROMPT_1A).
  *
- * Auth-aware (M-03 fix):
- *   Unauthenticated → Xem phòng | Đăng nhập | Đăng ký
- *   Authenticated   → Xem phòng | Bảng điều khiển | Đăng xuất
+ * Design:
+ *   - Always dark bg #1C1A17 (no scroll transition)
+ *   - Left: "Soleil" wordmark in brand amber + "HOSTEL" label
+ *   - Right: 3 compact ghost links — no hamburger, no VI|EN badge
+ *   - Unauthenticated: Phòng | Đăng nhập | Đăng ký
+ *   - Authenticated:   Phòng | Bảng điều khiển | Đăng xuất
  */
 const HeaderMobile: React.FC = () => {
-  const [scrolled, setScrolled] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
-  const { isAuthenticated, user, logoutHttpOnly } = useAuth()
+  const { isAuthenticated, logoutHttpOnly } = useAuth()
   const navigate = useNavigate()
 
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 40)
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
-
   const handleLogout = async () => {
-    setMenuOpen(false)
     try {
       await logoutHttpOnly()
       navigate('/')
@@ -33,131 +26,57 @@ const HeaderMobile: React.FC = () => {
   }
 
   return (
-    <header
-      className={[
-        'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
-        scrolled ? 'bg-warmWhite/90 backdrop-blur-md shadow-sm' : 'bg-transparent',
-      ].join(' ')}
-    >
-      <div className="flex items-center justify-between px-4 h-14">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2">
-          <span
-            className={[
-              'font-serif font-bold text-xl leading-none transition-colors duration-300',
-              scrolled ? 'text-woodDark' : 'text-warmWhite',
-            ].join(' ')}
-          >
-            Soleil
-          </span>
-          <span
-            className={[
-              'text-xs font-sans tracking-wider uppercase transition-colors duration-300',
-              scrolled ? 'text-orangeCTA' : 'text-brandGold',
-            ].join(' ')}
-          >
-            Hostel
+    <header className="fixed top-0 left-0 right-0 z-50 bg-[#1C1A17] h-14">
+      <div className="flex items-center justify-between px-4 h-full">
+        {/* Wordmark */}
+        <Link to="/" className="flex items-center gap-1.5">
+          <span className="font-serif font-bold text-xl text-[#C9973A] leading-none">Soleil</span>
+          <span className="text-[10px] font-sans tracking-widest uppercase text-white/50 mt-0.5">
+            HOSTEL
           </span>
         </Link>
 
-        {/* Right controls */}
-        <div className="flex items-center gap-3">
-          {/* VI | EN language badge */}
-          <button
-            aria-label="Chuyển ngôn ngữ"
-            className={[
-              'text-xs font-sans font-medium px-2 py-1 rounded border transition-colors duration-300',
-              scrolled
-                ? 'text-woodDark border-soleilBorder hover:border-orangeCTA'
-                : 'text-warmWhite border-warmWhite/40 hover:border-warmWhite',
-            ].join(' ')}
-          >
-            VI&nbsp;|&nbsp;EN
-          </button>
-
-          {/* Hamburger */}
-          <button
-            aria-label="Mở menu"
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen(o => !o)}
-            className={[
-              'flex flex-col justify-center items-center w-8 h-8 gap-1.5 transition-colors duration-300',
-              scrolled ? 'text-woodDark' : 'text-warmWhite',
-            ].join(' ')}
-          >
-            <span
-              className={[
-                'block h-0.5 w-5 bg-current transition-transform duration-200',
-                menuOpen ? 'translate-y-2 rotate-45' : '',
-              ].join(' ')}
-            />
-            <span
-              className={[
-                'block h-0.5 w-5 bg-current transition-opacity duration-200',
-                menuOpen ? 'opacity-0' : '',
-              ].join(' ')}
-            />
-            <span
-              className={[
-                'block h-0.5 w-5 bg-current transition-transform duration-200',
-                menuOpen ? '-translate-y-2 -rotate-45' : '',
-              ].join(' ')}
-            />
-          </button>
-        </div>
-      </div>
-
-      {/* Slide-down nav menu */}
-      {menuOpen && (
-        <nav className="bg-warmWhite border-t border-soleilBorder px-4 py-3 flex flex-col gap-1">
+        {/* Right nav — 3 compact ghost links, no hamburger */}
+        <nav className="flex items-center gap-4" aria-label="Điều hướng chính">
           <Link
             to="/rooms"
-            className="py-2 text-sm font-sans text-woodDark hover:text-orangeCTA transition-colors"
-            onClick={() => setMenuOpen(false)}
+            className="text-[13px] font-sans text-white/80 hover:text-white transition-colors"
           >
-            Xem phòng
+            Phòng
           </Link>
           {isAuthenticated ? (
             <>
               <Link
                 to="/dashboard"
-                className="py-2 text-sm font-sans text-woodDark hover:text-orangeCTA transition-colors"
-                onClick={() => setMenuOpen(false)}
+                className="text-[13px] font-sans text-white/80 hover:text-white transition-colors"
               >
                 Bảng điều khiển
               </Link>
-              <div className="border-t border-soleilBorder mt-1 pt-2 flex items-center justify-between">
-                <span className="text-xs text-woodDark/60 font-sans truncate">
-                  {user?.name ?? user?.email}
-                </span>
-                <button
-                  onClick={handleLogout}
-                  className="text-sm font-sans font-medium text-orangeCTA hover:text-orangeHover transition-colors"
-                >
-                  Đăng xuất
-                </button>
-              </div>
+              <button
+                onClick={handleLogout}
+                className="text-[13px] font-sans text-white/80 hover:text-white transition-colors"
+              >
+                Đăng xuất
+              </button>
             </>
           ) : (
             <>
               <Link
                 to="/login"
-                className="py-2 text-sm font-sans text-woodDark hover:text-orangeCTA transition-colors"
-                onClick={() => setMenuOpen(false)}
+                className="text-[13px] font-sans text-white/80 hover:text-white transition-colors"
               >
                 Đăng nhập
               </Link>
               <Link
                 to="/register"
-                className="py-2 text-sm font-sans text-woodDark hover:text-orangeCTA transition-colors"
-                onClick={() => setMenuOpen(false)}
+                className="text-[13px] font-sans text-[#C9973A] border border-[#C9973A] rounded-lg px-3 py-1 hover:bg-[#C9973A] hover:text-white transition-colors"
               >
                 Đăng ký
               </Link>
             </>
           )}
         </nav>
-      )}
+      </div>
     </header>
   )
 }

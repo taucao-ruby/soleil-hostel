@@ -17,8 +17,10 @@ export interface AdminBookingsResponse {
 export interface AdminBookingFilters {
   location_id?: number
   status?: string
-  date_start?: string
-  date_end?: string
+  check_in_start?: string
+  check_in_end?: string
+  check_out_start?: string
+  check_out_end?: string
   search?: string
   page?: number
 }
@@ -28,9 +30,10 @@ export interface AdminBookingFilters {
 // ----------------------------------------------------
 
 export const getAllBookings = async (
-  filters?: AdminBookingFilters
+  filters?: AdminBookingFilters,
+  signal?: AbortSignal
 ): Promise<AdminBookingsResponse> => {
-  const response = await api.get('/v1/admin/bookings', { params: filters })
+  const response = await api.get('/v1/admin/bookings', { params: filters, signal })
   return response.data.data
 }
 

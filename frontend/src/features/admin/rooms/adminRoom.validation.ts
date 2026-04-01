@@ -5,7 +5,10 @@ import type {
   UpdateRoomData,
 } from './adminRoom.types'
 
-export interface RoomFormValidationInput extends Partial<CreateRoomData>, Partial<UpdateRoomData> {
+export interface RoomFormValidationInput
+  extends
+    Omit<Partial<CreateRoomData>, 'location_id'>,
+    Omit<Partial<UpdateRoomData>, 'location_id'> {
   slug?: string
   location_id?: number | string
   price?: number | null

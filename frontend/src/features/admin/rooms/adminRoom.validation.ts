@@ -5,18 +5,19 @@ import type {
   UpdateRoomData,
 } from './adminRoom.types'
 
-export interface RoomFormValidationInput
-  extends
-    Omit<Partial<CreateRoomData>, 'location_id'>,
-    Omit<Partial<UpdateRoomData>, 'location_id'> {
-  slug?: string
-  location_id?: number | string
-  price?: number | null
-  max_guests?: number | null
-  room_tier?: number | null
-  status?: RoomStatus
-  readiness_status?: RoomReadinessStatus
-}
+export type RoomFormValidationInput = Omit<
+  Partial<CreateRoomData>,
+  'location_id' | 'price' | 'max_guests'
+> &
+  Omit<Partial<UpdateRoomData>, 'location_id' | 'price' | 'max_guests'> & {
+    slug?: string
+    location_id?: number | string
+    price?: number | null
+    max_guests?: number | null
+    room_tier?: number | null
+    status?: RoomStatus
+    readiness_status?: RoomReadinessStatus
+  }
 
 export const validateRoomData = (data: RoomFormValidationInput) => {
   const errors: Record<string, string> = {}

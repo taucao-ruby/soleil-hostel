@@ -46,10 +46,10 @@ class AdminBookingConfirmTest extends TestCase
     {
         parent::setUp();
 
-        $this->admin     = User::factory()->admin()->create();
+        $this->admin = User::factory()->admin()->create();
         $this->moderator = User::factory()->moderator()->create();
-        $this->user      = User::factory()->create();
-        $this->room      = Room::factory()->create();
+        $this->user = User::factory()->create();
+        $this->room = Room::factory()->create();
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -61,7 +61,7 @@ class AdminBookingConfirmTest extends TestCase
             ->for($this->room)
             ->pending()
             ->create(array_merge([
-                'check_in'  => Carbon::now()->addDays(5)->startOfDay(),
+                'check_in' => Carbon::now()->addDays(5)->startOfDay(),
                 'check_out' => Carbon::now()->addDays(7)->startOfDay(),
             ], $overrides));
     }
@@ -85,7 +85,7 @@ class AdminBookingConfirmTest extends TestCase
             ->assertJsonPath('data.status', BookingStatus::CONFIRMED->value);
 
         $this->assertDatabaseHas('bookings', [
-            'id'     => $booking->id,
+            'id' => $booking->id,
             'status' => BookingStatus::CONFIRMED->value,
         ]);
     }
@@ -138,7 +138,7 @@ class AdminBookingConfirmTest extends TestCase
             ->for($this->room)
             ->confirmed()
             ->create([
-                'check_in'  => Carbon::now()->addDays(5)->startOfDay(),
+                'check_in' => Carbon::now()->addDays(5)->startOfDay(),
                 'check_out' => Carbon::now()->addDays(7)->startOfDay(),
             ]);
 
@@ -156,7 +156,7 @@ class AdminBookingConfirmTest extends TestCase
             ->for($this->room)
             ->cancelled()
             ->create([
-                'check_in'  => Carbon::now()->addDays(5)->startOfDay(),
+                'check_in' => Carbon::now()->addDays(5)->startOfDay(),
                 'check_out' => Carbon::now()->addDays(7)->startOfDay(),
             ]);
 
@@ -174,7 +174,7 @@ class AdminBookingConfirmTest extends TestCase
             ->for($this->room)
             ->refundPending()
             ->create([
-                'check_in'  => Carbon::now()->addDays(5)->startOfDay(),
+                'check_in' => Carbon::now()->addDays(5)->startOfDay(),
                 'check_out' => Carbon::now()->addDays(7)->startOfDay(),
             ]);
 
@@ -198,7 +198,7 @@ class AdminBookingConfirmTest extends TestCase
 
         // Status must not have changed
         $this->assertDatabaseHas('bookings', [
-            'id'     => $booking->id,
+            'id' => $booking->id,
             'status' => BookingStatus::PENDING->value,
         ]);
     }
@@ -225,7 +225,7 @@ class AdminBookingConfirmTest extends TestCase
     public function test_unverified_admin_cannot_confirm_booking(): void
     {
         $unverifiedAdmin = User::factory()->admin()->unverified()->create();
-        $booking         = $this->pendingBooking();
+        $booking = $this->pendingBooking();
 
         $response = $this->actingAs($unverifiedAdmin)
             ->postJson($this->confirmUrl($booking));

@@ -57,7 +57,7 @@ class BookingApiContractTest extends TestCase
             ->for($this->room)
             ->pending()
             ->create(array_merge([
-                'check_in'  => Carbon::now()->addDays(5)->startOfDay(),
+                'check_in' => Carbon::now()->addDays(5)->startOfDay(),
                 'check_out' => Carbon::now()->addDays(7)->startOfDay(),
             ], $overrides));
     }
@@ -98,7 +98,7 @@ class BookingApiContractTest extends TestCase
             ->for($this->room)
             ->pending()
             ->create([
-                'check_in'  => Carbon::now()->addDays(20)->startOfDay(),
+                'check_in' => Carbon::now()->addDays(20)->startOfDay(),
                 'check_out' => Carbon::now()->addDays(22)->startOfDay(),
             ]);
 
@@ -182,11 +182,11 @@ class BookingApiContractTest extends TestCase
         // Note: getNightsAttribute() uses Carbon::diffInDays() which is signed in Carbon 3.
         // The sign behaviour is tracked as a model bug in FINDINGS_BACKLOG.
         // This test asserts the field CONTRACT (present, integer type) only.
-        $checkIn  = Carbon::now()->addDays(5)->startOfDay();
+        $checkIn = Carbon::now()->addDays(5)->startOfDay();
         $checkOut = $checkIn->clone()->addDays(3);
 
         $booking = $this->futureBooking([
-            'check_in'  => $checkIn,
+            'check_in' => $checkIn,
             'check_out' => $checkOut,
         ]);
 
@@ -220,7 +220,7 @@ class BookingApiContractTest extends TestCase
             ->for($this->room)
             ->withPayment(25000)
             ->create([
-                'check_in'  => Carbon::now()->addDays(5)->startOfDay(),
+                'check_in' => Carbon::now()->addDays(5)->startOfDay(),
                 'check_out' => Carbon::now()->addDays(7)->startOfDay(),
             ]);
 
@@ -252,7 +252,7 @@ class BookingApiContractTest extends TestCase
             ->for($this->room)
             ->withRefund(10000)
             ->create([
-                'check_in'  => Carbon::now()->addDays(5)->startOfDay(),
+                'check_in' => Carbon::now()->addDays(5)->startOfDay(),
                 'check_out' => Carbon::now()->addDays(7)->startOfDay(),
             ]);
 
@@ -278,15 +278,15 @@ class BookingApiContractTest extends TestCase
 
     public function test_store_returns_201_with_correct_shape(): void
     {
-        $checkIn  = Carbon::now()->addDays(5)->format('Y-m-d');
+        $checkIn = Carbon::now()->addDays(5)->format('Y-m-d');
         $checkOut = Carbon::now()->addDays(7)->format('Y-m-d');
 
         $response = $this->actingAs($this->user)
             ->postJson('/api/v1/bookings', [
-                'room_id'     => $this->room->id,
-                'check_in'    => $checkIn,
-                'check_out'   => $checkOut,
-                'guest_name'  => 'Phạm Thị E',
+                'room_id' => $this->room->id,
+                'check_in' => $checkIn,
+                'check_out' => $checkOut,
+                'guest_name' => 'Phạm Thị E',
                 'guest_email' => 'pham.thi.e@example.com',
             ]);
 
@@ -311,10 +311,10 @@ class BookingApiContractTest extends TestCase
     {
         $response = $this->actingAs($this->user)
             ->postJson('/api/v1/bookings', [
-                'room_id'     => $this->room->id,
-                'check_in'    => Carbon::now()->addDays(5)->format('Y-m-d'),
-                'check_out'   => Carbon::now()->addDays(7)->format('Y-m-d'),
-                'guest_name'  => 'Vũ Minh F',
+                'room_id' => $this->room->id,
+                'check_in' => Carbon::now()->addDays(5)->format('Y-m-d'),
+                'check_out' => Carbon::now()->addDays(7)->format('Y-m-d'),
+                'guest_name' => 'Vũ Minh F',
                 'guest_email' => 'vu.minh.f@example.com',
             ]);
 
@@ -326,10 +326,10 @@ class BookingApiContractTest extends TestCase
     {
         $response = $this->actingAs($this->user)
             ->postJson('/api/v1/bookings', [
-                'room_id'     => $this->room->id,
-                'check_in'    => Carbon::now()->addDays(5)->format('Y-m-d'),
-                'check_out'   => Carbon::now()->addDays(7)->format('Y-m-d'),
-                'guest_name'  => 'Đặng Thị G',
+                'room_id' => $this->room->id,
+                'check_in' => Carbon::now()->addDays(5)->format('Y-m-d'),
+                'check_out' => Carbon::now()->addDays(7)->format('Y-m-d'),
+                'guest_name' => 'Đặng Thị G',
                 'guest_email' => 'dang.thi.g@example.com',
             ]);
 

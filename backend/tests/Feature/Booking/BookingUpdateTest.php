@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Booking;
 
-use App\Enums\BookingStatus;
 use App\Events\BookingUpdated;
 use App\Models\Booking;
 use App\Models\Room;
@@ -45,9 +44,9 @@ class BookingUpdateTest extends TestCase
     {
         parent::setUp();
 
-        $this->user  = User::factory()->create();
+        $this->user = User::factory()->create();
         $this->admin = User::factory()->admin()->create();
-        $this->room  = Room::factory()->create();
+        $this->room = Room::factory()->create();
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -56,9 +55,9 @@ class BookingUpdateTest extends TestCase
     private function payload(array $overrides = []): array
     {
         return array_merge([
-            'check_in'    => Carbon::tomorrow()->format('Y-m-d'),
-            'check_out'   => Carbon::tomorrow()->addDays(2)->format('Y-m-d'),
-            'guest_name'  => 'Nguyễn Văn B',
+            'check_in' => Carbon::tomorrow()->format('Y-m-d'),
+            'check_out' => Carbon::tomorrow()->addDays(2)->format('Y-m-d'),
+            'guest_name' => 'Nguyễn Văn B',
             'guest_email' => 'nguyen.van.b@example.com',
         ], $overrides);
     }
@@ -71,7 +70,7 @@ class BookingUpdateTest extends TestCase
             ->for($this->room)
             ->pending()
             ->create(array_merge([
-                'check_in'  => Carbon::now()->addDays(5)->startOfDay(),
+                'check_in' => Carbon::now()->addDays(5)->startOfDay(),
                 'check_out' => Carbon::now()->addDays(7)->startOfDay(),
             ], $overrides));
     }
@@ -84,14 +83,14 @@ class BookingUpdateTest extends TestCase
 
         $booking = $this->ownerBooking();
 
-        $newCheckIn  = Carbon::now()->addDays(10)->format('Y-m-d');
+        $newCheckIn = Carbon::now()->addDays(10)->format('Y-m-d');
         $newCheckOut = Carbon::now()->addDays(12)->format('Y-m-d');
 
         $response = $this->actingAs($this->user)
             ->putJson("/api/v1/bookings/{$booking->id}", [
-                'check_in'    => $newCheckIn,
-                'check_out'   => $newCheckOut,
-                'guest_name'  => 'Trần Thị C',
+                'check_in' => $newCheckIn,
+                'check_out' => $newCheckOut,
+                'guest_name' => 'Trần Thị C',
                 'guest_email' => 'tran.thi.c@example.com',
             ]);
 
@@ -103,10 +102,10 @@ class BookingUpdateTest extends TestCase
             ->assertJsonPath('data.guest_email', 'tran.thi.c@example.com');
 
         $this->assertDatabaseHas('bookings', [
-            'id'          => $booking->id,
-            'check_in'    => $newCheckIn,
-            'check_out'   => $newCheckOut,
-            'guest_name'  => 'Trần Thị C',
+            'id' => $booking->id,
+            'check_in' => $newCheckIn,
+            'check_out' => $newCheckOut,
+            'guest_name' => 'Trần Thị C',
             'guest_email' => 'tran.thi.c@example.com',
         ]);
 
@@ -116,15 +115,15 @@ class BookingUpdateTest extends TestCase
     public function test_owner_can_update_guest_info_keeping_same_dates(): void
     {
         $booking = $this->ownerBooking([
-            'check_in'  => Carbon::now()->addDays(8)->startOfDay(),
+            'check_in' => Carbon::now()->addDays(8)->startOfDay(),
             'check_out' => Carbon::now()->addDays(10)->startOfDay(),
         ]);
 
         $response = $this->actingAs($this->user)
             ->putJson("/api/v1/bookings/{$booking->id}", [
-                'check_in'    => $booking->check_in->format('Y-m-d'),
-                'check_out'   => $booking->check_out->format('Y-m-d'),
-                'guest_name'  => 'Lê Văn D',
+                'check_in' => $booking->check_in->format('Y-m-d'),
+                'check_out' => $booking->check_out->format('Y-m-d'),
+                'guest_name' => 'Lê Văn D',
                 'guest_email' => 'le.van.d@example.com',
             ]);
 
@@ -137,14 +136,14 @@ class BookingUpdateTest extends TestCase
     {
         // Existing booking: days 5-7
         $booking = $this->ownerBooking([
-            'check_in'  => Carbon::now()->addDays(5)->startOfDay(),
+            'check_in' => Carbon::now()->addDays(5)->startOfDay(),
             'check_out' => Carbon::now()->addDays(7)->startOfDay(),
         ]);
 
         // Shift to days 20-22 — no overlap
         $response = $this->actingAs($this->user)
             ->putJson("/api/v1/bookings/{$booking->id}", $this->payload([
-                'check_in'  => Carbon::now()->addDays(20)->format('Y-m-d'),
+                'check_in' => Carbon::now()->addDays(20)->format('Y-m-d'),
                 'check_out' => Carbon::now()->addDays(22)->format('Y-m-d'),
             ]));
 
@@ -158,7 +157,7 @@ class BookingUpdateTest extends TestCase
 
         $response = $this->actingAs($this->admin)
             ->putJson("/api/v1/bookings/{$booking->id}", $this->payload([
-                'check_in'  => Carbon::now()->addDays(15)->format('Y-m-d'),
+                'check_in' => Carbon::now()->addDays(15)->format('Y-m-d'),
                 'check_out' => Carbon::now()->addDays(17)->format('Y-m-d'),
             ]));
 
@@ -172,7 +171,7 @@ class BookingUpdateTest extends TestCase
     {
         // Booking A (owned by user, days 5-7) — this is what we try to update
         $bookingA = $this->ownerBooking([
-            'check_in'  => Carbon::now()->addDays(5)->startOfDay(),
+            'check_in' => Carbon::now()->addDays(5)->startOfDay(),
             'check_out' => Carbon::now()->addDays(7)->startOfDay(),
         ]);
 
@@ -183,14 +182,14 @@ class BookingUpdateTest extends TestCase
             ->for($this->room)
             ->confirmed()
             ->create([
-                'check_in'  => Carbon::now()->addDays(12)->startOfDay(),
+                'check_in' => Carbon::now()->addDays(12)->startOfDay(),
                 'check_out' => Carbon::now()->addDays(14)->startOfDay(),
             ]);
 
         // Try to move booking A into days 12-14 (overlaps booking B)
         $response = $this->actingAs($this->user)
             ->putJson("/api/v1/bookings/{$bookingA->id}", $this->payload([
-                'check_in'  => Carbon::now()->addDays(12)->format('Y-m-d'),
+                'check_in' => Carbon::now()->addDays(12)->format('Y-m-d'),
                 'check_out' => Carbon::now()->addDays(14)->format('Y-m-d'),
             ]));
 
@@ -203,11 +202,11 @@ class BookingUpdateTest extends TestCase
     public function test_update_rejected_when_check_out_is_same_as_check_in(): void
     {
         $booking = $this->ownerBooking();
-        $date    = Carbon::now()->addDays(10)->format('Y-m-d');
+        $date = Carbon::now()->addDays(10)->format('Y-m-d');
 
         $response = $this->actingAs($this->user)
             ->putJson("/api/v1/bookings/{$booking->id}", $this->payload([
-                'check_in'  => $date,
+                'check_in' => $date,
                 'check_out' => $date, // same day — check_out must be AFTER check_in
             ]));
 
@@ -221,7 +220,7 @@ class BookingUpdateTest extends TestCase
 
         $response = $this->actingAs($this->user)
             ->putJson("/api/v1/bookings/{$booking->id}", $this->payload([
-                'check_in'  => Carbon::now()->addDays(10)->format('Y-m-d'),
+                'check_in' => Carbon::now()->addDays(10)->format('Y-m-d'),
                 'check_out' => Carbon::now()->addDays(8)->format('Y-m-d'),
             ]));
 
@@ -235,7 +234,7 @@ class BookingUpdateTest extends TestCase
 
         $response = $this->actingAs($this->user)
             ->putJson("/api/v1/bookings/{$booking->id}", $this->payload([
-                'check_in'  => Carbon::yesterday()->format('Y-m-d'),
+                'check_in' => Carbon::yesterday()->format('Y-m-d'),
                 'check_out' => Carbon::now()->addDays(1)->format('Y-m-d'),
             ]));
 
@@ -246,7 +245,7 @@ class BookingUpdateTest extends TestCase
     public function test_update_rejected_when_guest_name_is_missing(): void
     {
         $booking = $this->ownerBooking();
-        $data    = $this->payload();
+        $data = $this->payload();
         unset($data['guest_name']);
 
         $response = $this->actingAs($this->user)
@@ -273,7 +272,7 @@ class BookingUpdateTest extends TestCase
 
     public function test_non_owner_cannot_update_booking(): void
     {
-        $booking   = $this->ownerBooking();
+        $booking = $this->ownerBooking();
         $otherUser = User::factory()->create();
 
         $response = $this->actingAs($otherUser)
@@ -294,12 +293,12 @@ class BookingUpdateTest extends TestCase
     public function test_unverified_user_cannot_update_booking(): void
     {
         $unverified = User::factory()->unverified()->create();
-        $booking    = Booking::factory()
+        $booking = Booking::factory()
             ->for($unverified)
             ->for($this->room)
             ->pending()
             ->create([
-                'check_in'  => Carbon::now()->addDays(5)->startOfDay(),
+                'check_in' => Carbon::now()->addDays(5)->startOfDay(),
                 'check_out' => Carbon::now()->addDays(7)->startOfDay(),
             ]);
 
@@ -318,7 +317,7 @@ class BookingUpdateTest extends TestCase
 
         $response = $this->actingAs($this->user)
             ->putJson("/api/v1/bookings/{$booking->id}", $this->payload([
-                'check_in'  => Carbon::now()->addDays(15)->format('Y-m-d'),
+                'check_in' => Carbon::now()->addDays(15)->format('Y-m-d'),
                 'check_out' => Carbon::now()->addDays(17)->format('Y-m-d'),
             ]));
 
@@ -347,12 +346,12 @@ class BookingUpdateTest extends TestCase
     {
         $booking = $this->ownerBooking();
 
-        $checkIn  = Carbon::now()->addDays(15)->format('Y-m-d');
+        $checkIn = Carbon::now()->addDays(15)->format('Y-m-d');
         $checkOut = Carbon::now()->addDays(17)->format('Y-m-d');
 
         $response = $this->actingAs($this->user)
             ->putJson("/api/v1/bookings/{$booking->id}", $this->payload([
-                'check_in'  => $checkIn,
+                'check_in' => $checkIn,
                 'check_out' => $checkOut,
             ]));
 
@@ -374,7 +373,7 @@ class BookingUpdateTest extends TestCase
 
         $response = $this->actingAs($this->user)
             ->putJson("/api/v1/bookings/{$booking->id}", $this->payload([
-                'check_in'  => Carbon::now()->addDays(15)->format('Y-m-d'),
+                'check_in' => Carbon::now()->addDays(15)->format('Y-m-d'),
                 'check_out' => Carbon::now()->addDays(17)->format('Y-m-d'),
             ]));
 

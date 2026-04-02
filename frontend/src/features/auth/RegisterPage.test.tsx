@@ -73,7 +73,11 @@ describe('RegisterPage', () => {
     expect(mockRegisterHttpOnly).not.toHaveBeenCalled()
     expect(screen.getByText('Tên cần ít nhất 2 ký tự')).toBeInTheDocument()
     expect(screen.getByText('Địa chỉ email không hợp lệ')).toBeInTheDocument()
-    expect(screen.getByText('Mật khẩu cần ít nhất 8 ký tự, 1 chữ hoa, 1 số')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Mật khẩu cần ít nhất 8 ký tự, 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt'
+      )
+    ).toBeInTheDocument()
     expect(screen.getByText('Mật khẩu xác nhận không khớp')).toBeInTheDocument()
   })
 
@@ -90,16 +94,25 @@ describe('RegisterPage', () => {
 
     await user.clear(passwordInput)
     await user.type(passwordInput, 'Password')
-    expect(screen.getByTestId('password-strength-segment-0')).toHaveClass('bg-amber-400')
-    expect(screen.getByTestId('password-strength-segment-1')).toHaveClass('bg-amber-400')
+    expect(screen.getByTestId('password-strength-segment-0')).toHaveClass('bg-red-500')
+    expect(screen.getByTestId('password-strength-segment-1')).toHaveClass('bg-red-500')
     expect(screen.getByTestId('password-strength-segment-2')).toHaveClass('bg-stone-200')
-    expect(screen.getByText('Trung bình')).toBeInTheDocument()
+    expect(screen.getByText('Yếu')).toBeInTheDocument()
 
     await user.clear(passwordInput)
     await user.type(passwordInput, 'Password1')
+    expect(screen.getByTestId('password-strength-segment-0')).toHaveClass('bg-amber-400')
+    expect(screen.getByTestId('password-strength-segment-1')).toHaveClass('bg-amber-400')
+    expect(screen.getByTestId('password-strength-segment-2')).toHaveClass('bg-amber-400')
+    expect(screen.getByTestId('password-strength-segment-3')).toHaveClass('bg-stone-200')
+    expect(screen.getByText('Trung bình')).toBeInTheDocument()
+
+    await user.clear(passwordInput)
+    await user.type(passwordInput, 'Password1!')
     expect(screen.getByTestId('password-strength-segment-0')).toHaveClass('bg-emerald-500')
     expect(screen.getByTestId('password-strength-segment-1')).toHaveClass('bg-emerald-500')
     expect(screen.getByTestId('password-strength-segment-2')).toHaveClass('bg-emerald-500')
+    expect(screen.getByTestId('password-strength-segment-3')).toHaveClass('bg-emerald-500')
     expect(screen.getByText('Mạnh')).toBeInTheDocument()
   })
 
@@ -135,8 +148,8 @@ describe('RegisterPage', () => {
 
     await user.type(screen.getByLabelText('Họ và tên'), '  Nguyen Van A  ')
     await user.type(screen.getByLabelText('Email'), '  user@example.com  ')
-    await user.type(screen.getByLabelText('Mật khẩu'), 'Password1')
-    await user.type(screen.getByLabelText('Xác nhận mật khẩu'), 'Password1')
+    await user.type(screen.getByLabelText('Mật khẩu'), 'Password1!')
+    await user.type(screen.getByLabelText('Xác nhận mật khẩu'), 'Password1!')
     await user.click(screen.getByRole('button', { name: 'Tạo tài khoản' }))
 
     await waitFor(() => {
@@ -144,8 +157,8 @@ describe('RegisterPage', () => {
       expect(mockRegisterHttpOnly).toHaveBeenCalledWith(
         'Nguyen Van A',
         'user@example.com',
-        'Password1',
-        'Password1'
+        'Password1!',
+        'Password1!'
       )
     })
   })
@@ -162,8 +175,8 @@ describe('RegisterPage', () => {
 
     await user.type(screen.getByLabelText('Họ và tên'), 'Nguyen Van A')
     await user.type(screen.getByLabelText('Email'), 'user@example.com')
-    await user.type(screen.getByLabelText('Mật khẩu'), 'Password1')
-    await user.type(screen.getByLabelText('Xác nhận mật khẩu'), 'Password1')
+    await user.type(screen.getByLabelText('Mật khẩu'), 'Password1!')
+    await user.type(screen.getByLabelText('Xác nhận mật khẩu'), 'Password1!')
     await user.click(screen.getByRole('button', { name: 'Tạo tài khoản' }))
 
     const submitButton = screen.getByRole('button', { name: 'Đang tạo tài khoản...' })
@@ -186,8 +199,8 @@ describe('RegisterPage', () => {
 
     await user.type(screen.getByLabelText('Họ và tên'), 'Nguyen Van A')
     await user.type(screen.getByLabelText('Email'), 'user@example.com')
-    await user.type(screen.getByLabelText('Mật khẩu'), 'Password1')
-    await user.type(screen.getByLabelText('Xác nhận mật khẩu'), 'Password1')
+    await user.type(screen.getByLabelText('Mật khẩu'), 'Password1!')
+    await user.type(screen.getByLabelText('Xác nhận mật khẩu'), 'Password1!')
     await user.click(screen.getByRole('button', { name: 'Tạo tài khoản' }))
 
     expect(await screen.findByText('Đăng ký thất bại. Vui lòng thử lại.')).toBeInTheDocument()
@@ -205,10 +218,10 @@ describe('RegisterPage', () => {
       target: { value: 'user@example.com' },
     })
     fireEvent.change(screen.getByLabelText('Mật khẩu'), {
-      target: { value: 'Password1' },
+      target: { value: 'Password1!' },
     })
     fireEvent.change(screen.getByLabelText('Xác nhận mật khẩu'), {
-      target: { value: 'Password1' },
+      target: { value: 'Password1!' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'Tạo tài khoản' }))
 
@@ -219,8 +232,8 @@ describe('RegisterPage', () => {
     expect(mockRegisterHttpOnly).toHaveBeenCalledWith(
       'Nguyen Van A',
       'user@example.com',
-      'Password1',
-      'Password1'
+      'Password1!',
+      'Password1!'
     )
     expect(screen.getByRole('status')).toHaveTextContent(
       'Tài khoản đã được tạo! Đang chuyển hướng...'

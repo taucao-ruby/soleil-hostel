@@ -10,24 +10,26 @@ const RoomStatusBadge: React.FC<RoomStatusBadgeProps> = ({ status, className = '
   const getBadgeStyle = () => {
     switch (status) {
       case 'available':
-        return 'bg-green-100 text-green-800'
+        return 'bg-green-50 text-green-700 border-green-200'
+      case 'booked':
       case 'occupied':
-        return 'bg-red-100 text-red-800'
+        return 'bg-blue-50 text-blue-700 border-blue-200'
       case 'maintenance':
-        return 'bg-yellow-100 text-yellow-800'
+        return 'bg-stone-100 text-stone-700 border-stone-200'
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-gray-100 text-gray-800 border-gray-200'
     }
   }
 
   const getLabel = () => {
     switch (status) {
       case 'available':
-        return 'Trống'
+        return 'Còn phòng'
+      case 'booked':
       case 'occupied':
-        return 'Có khách'
+        return 'Đã đặt'
       case 'maintenance':
-        return 'Đang bảo trì'
+        return 'Bảo trì'
       default:
         return status
     }
@@ -35,7 +37,7 @@ const RoomStatusBadge: React.FC<RoomStatusBadgeProps> = ({ status, className = '
 
   return (
     <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getBadgeStyle()} ${className}`}
+      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${getBadgeStyle()} ${className}`}
     >
       {getLabel()}
     </span>

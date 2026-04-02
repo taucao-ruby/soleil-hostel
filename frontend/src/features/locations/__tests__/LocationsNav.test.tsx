@@ -31,12 +31,12 @@ describe('Locations nav link', () => {
   it('has active style on /locations', () => {
     renderHeader('/locations')
     const link = screen.getAllByRole('link', { name: 'Chi nhánh' })[0]
-    expect(link.className).toContain('text-blue-600')
+    expect(link.className).toContain('text-[#C9973A]')
   })
 
   it('has active style on /locations/:slug', () => {
     renderHeader('/locations/some-slug')
     const link = screen.getAllByRole('link', { name: 'Chi nhánh' })[0]
-    expect(link.className).toContain('text-blue-600')
+    expect(link.className).toContain('text-[#C9973A]')
   })
 })

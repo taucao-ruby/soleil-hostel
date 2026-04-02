@@ -4,8 +4,19 @@ import type { AdminRoom, CreateRoomData, UpdateRoomData } from './adminRoom.type
 // Note: Ensure that the backend actually provides these endpoints in this format.
 // The prompt indicated /api/v1/rooms as the base.
 
-export const getRoomsByLocation = async (locationId: number): Promise<AdminRoom[]> => {
-  const response = await api.get('/v1/rooms', { params: { location_id: locationId } })
+export const getRoomsByLocation = async (
+  locationId?: number,
+  signal?: AbortSignal
+): Promise<AdminRoom[]> => {
+  const response = await api.get('/v1/rooms', {
+    params: typeof locationId === 'number' ? { location_id: locationId } : undefined,
+    signal,
+  })
+  return response.data.data
+}
+
+export const getRoomById = async (id: number, signal?: AbortSignal): Promise<AdminRoom> => {
+  const response = await api.get(`/v1/rooms/${id}`, { signal })
   return response.data.data
 }
 

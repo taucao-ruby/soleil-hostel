@@ -14,6 +14,11 @@ function makeRaw(overrides: Partial<BookingApiRaw> = {}): BookingApiRaw {
     status: 'pending',
     status_label: 'Pending',
     nights: 2,
+    room: {
+      id: 10,
+      name: 'Dormitory 4 giường',
+      display_name: 'Phòng Dormitory 4 giường',
+    },
     created_at: '2026-05-20T10:00:00+00:00',
     updated_at: '2026-05-20T10:00:00+00:00',
     ...overrides,
@@ -52,9 +57,21 @@ describe('toBookingViewModel', () => {
     expect(vm.statusLabel).toBe('pending')
   })
 
+  it('prefers the room display_name when available', () => {
+    const vm = toBookingViewModel(makeRaw())
+    expect(vm.roomName).toBe('Phòng Dormitory 4 giường')
+  })
+
+  it('falls back to a generated room label when room data is absent', () => {
+    const raw = makeRaw()
+    delete raw.room
+    const vm = toBookingViewModel(raw)
+    expect(vm.roomName).toBe('Phòng #10')
+  })
+
   it('includes amount_formatted when present', () => {
     const vm = toBookingViewModel(makeRaw({ amount: 5000, amount_formatted: '50.000 ₫' }))
-    expect(vm.amountFormatted).toBe('50.000 ₫')
+    expect(vm.amountFormatted).toBe('50.000₫')
   })
 
   it('leaves amountFormatted undefined when not present', () => {
@@ -62,6 +79,11 @@ describe('toBookingViewModel', () => {
     delete raw.amount_formatted
     const vm = toBookingViewModel(raw)
     expect(vm.amountFormatted).toBeUndefined()
+  })
+
+  it('formats amount when only numeric amount is present', () => {
+    const vm = toBookingViewModel(makeRaw({ amount: 1050000, amount_formatted: undefined }))
+    expect(vm.amountFormatted).toBe('1.050.000₫')
   })
 })
 

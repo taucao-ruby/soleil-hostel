@@ -1,193 +1,234 @@
 import React, { useState } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/features/auth/AuthContext'
-import Button from '../ui/Button'
 
 /**
- * Header Component
+ * Header — dark sticky header for all non-/ non-/admin/* routes (PROMPT_SH1).
  *
- * Sticky navigation header with:
- * - Logo
- * - Navigation links (Home, Rooms, Booking, Dashboard)
- * - Auth buttons (Login/Logout)
- * - Mobile hamburger menu
+ * Desktop (≥ 768px):
+ *   Left:   Soleil wordmark (amber)
+ *   Center: Trang chủ | Phòng | Chi nhánh
+ *   Right:  auth section (unauthenticated: Đăng nhập outline + Đăng ký amber)
+ *           (authenticated: Đặt phòng · Bảng điều khiển · Xin chào, Văn A · Đăng xuất)
+ *
+ * Mobile (< 768px):
+ *   Left:  Soleil wordmark
+ *   Right: hamburger button (aria-label="Mở menu")
+ *   Below: slide-down dark nav card
  */
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Extract given name: "Nguyễn Văn A" → "Văn A" */
+function givenName(fullName: string | null | undefined): string {
+  if (!fullName) return ''
+  const parts = fullName.trim().split(/\s+/)
+  return parts.length > 1 ? parts.slice(1).join(' ') : fullName
+}
+
+// ─── Nav links ────────────────────────────────────────────────────────────────
+
+const CENTER_LINKS = [
+  { path: '/', label: 'Trang chủ', exact: true },
+  { path: '/rooms', label: 'Phòng', exact: false },
+  { path: '/locations', label: 'Chi nhánh', exact: false },
+]
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 const Header: React.FC = () => {
-  const navigate = useNavigate()
   const location = useLocation()
+  const navigate = useNavigate()
   const { isAuthenticated, user, logoutHttpOnly } = useAuth()
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  const isActive = (path: string, exact: boolean) =>
+    exact ? location.pathname === path : location.pathname.startsWith(path)
+
+  const closeMenu = () => setMenuOpen(false)
 
   const handleLogout = async () => {
+    closeMenu()
     try {
       await logoutHttpOnly()
       navigate('/')
     } catch {
-      // Logout API failure is non-critical; user is already navigating away
+      // non-critical
     }
   }
 
-  const isActive = (path: string) =>
-    path === '/' ? location.pathname === '/' : location.pathname.startsWith(path)
+  // ── Desktop center link style ──────────────────────────────────────────────
+  const desktopLink = (path: string, exact: boolean, label: string) => {
+    const active = isActive(path, exact)
+    return (
+      <Link
+        key={path}
+        to={path}
+        className={[
+          'text-[14px] font-sans transition-colors',
+          active ? 'text-[#C9973A]' : 'text-white/80 hover:text-amber-300',
+        ].join(' ')}
+      >
+        {label}
+      </Link>
+    )
+  }
 
-  const navLinks = [
-    { path: '/', label: 'Trang chủ' },
-    { path: '/rooms', label: 'Phòng' },
-    { path: '/locations', label: 'Chi nhánh' },
-    ...(isAuthenticated ? [{ path: '/booking', label: 'Đặt phòng' }] : []),
-    ...(isAuthenticated ? [{ path: '/dashboard', label: 'Bảng điều khiển' }] : []),
-  ]
+  // ── Mobile link style ──────────────────────────────────────────────────────
+  const mobileLink = (path: string, label: string, onClick?: () => void) => (
+    <Link
+      key={path}
+      to={path}
+      onClick={onClick ?? closeMenu}
+      className="block py-2.5 px-4 text-[15px] text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+    >
+      {label}
+    </Link>
+  )
 
   return (
-    <header className="sticky top-0 z-50 bg-black shadow-md">
-      <nav className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link
-            to="/"
-            className="flex items-center space-x-2 text-2xl font-bold text-yellow-600 transition-colors hover:text-blue-700"
+    <header className="sticky top-0 z-50 bg-[#1C1A17]">
+      {/* ── Main bar ──────────────────────────────────────────────────────── */}
+      <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+        {/* Left — wordmark */}
+        <Link to="/" className="flex items-center gap-1.5 flex-shrink-0">
+          <span
+            className="text-[#C9973A] font-sans font-medium leading-none"
+            style={{ fontSize: '18px' }}
           >
-            {/* <svg className="w-8 h-8 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5zm0 2.18l8 4v8.82c0 4.52-3.13 8.79-8 10-4.87-1.21-8-5.48-8-10V8.18l8-4z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg> */}
-            <img
-              src="/brand/soleil-logo-64.webp"
-              srcSet="/brand/soleil-logo-64.webp 1x, /brand/soleil-logo-96.webp 2x"
-              width={36}
-              height={36}
-              alt="Soleil Hostel"
-              className="object-contain h-9 w-9"
-              loading="eager"
-              decoding="async"
-            />
-            <span className="hidden sm:block">Soleil Hostel</span>
-          </Link>
+            Soleil
+          </span>
+          <span className="text-[10px] text-white/40 tracking-widest uppercase mt-0.5">HOSTEL</span>
+        </Link>
 
-          {/* Desktop Navigation */}
-          <div className="items-center hidden space-x-6 md:flex">
-            {navLinks.map(link => (
+        {/* Center — desktop nav */}
+        <nav className="hidden md:flex items-center gap-7" aria-label="Điều hướng chính">
+          {CENTER_LINKS.map(l => desktopLink(l.path, l.exact, l.label))}
+        </nav>
+
+        {/* Right — desktop auth */}
+        <div className="hidden md:flex items-center gap-3">
+          {isAuthenticated ? (
+            <>
               <Link
-                key={link.path}
-                to={link.path}
-                className={`text-sm font-medium transition-colors ${
-                  isActive(link.path)
-                    ? 'text-blue-600 border-b-2 border-blue-600'
-                    : 'text-gray-700 hover:text-blue-600'
-                }`}
+                to="/booking"
+                className="text-[14px] font-sans text-white/80 hover:text-white transition-colors"
               >
-                {link.label}
+                Đặt phòng
               </Link>
-            ))}
-          </div>
+              <Link
+                to="/dashboard"
+                className="text-[14px] font-sans text-white/80 hover:text-white transition-colors"
+              >
+                Bảng điều khiển
+              </Link>
+              <span className="text-[13px] text-white/50 select-none">
+                Xin chào, {givenName(user?.name)}
+              </span>
+              <button
+                onClick={handleLogout}
+                className="text-[13px] font-sans text-white/70 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 rounded"
+              >
+                Đăng xuất
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                className="text-sm font-sans text-white border border-white/50 px-4 py-1.5 rounded-lg hover:border-white hover:text-white transition-colors"
+              >
+                Đăng nhập
+              </Link>
+              <Link
+                to="/register"
+                className="text-sm font-sans text-white bg-[#C9973A] hover:bg-[#B8872A] px-4 py-1.5 rounded-lg transition-colors"
+              >
+                Đăng ký
+              </Link>
+            </>
+          )}
+        </div>
 
-          {/* Auth Buttons (Desktop) */}
-          <div className="items-center hidden space-x-4 md:flex">
+        {/* Mobile — hamburger */}
+        <button
+          className="md:hidden flex items-center justify-center w-9 h-9 text-white/80 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 rounded-lg"
+          aria-label="Mở menu"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen(o => !o)}
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            {menuOpen ? (
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            ) : (
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 12h16M4 18h16"
+              />
+            )}
+          </svg>
+        </button>
+      </div>
+
+      {/* ── Slide-down mobile menu ─────────────────────────────────────────── */}
+      {menuOpen && (
+        <nav
+          className="md:hidden border-t border-white/10 bg-[#1C1A17] px-4 py-3 space-y-1"
+          aria-label="Điều hướng di động"
+        >
+          {/* Core links */}
+          {CENTER_LINKS.map(l => mobileLink(l.path, l.label))}
+
+          {/* Auth section */}
+          <div className="pt-3 mt-3 border-t border-white/10 space-y-1">
             {isAuthenticated ? (
               <>
-                <span className="text-sm text-gray-600">Xin chào, {user?.name}</span>
-                <Button variant="outline" size="sm" onClick={handleLogout}>
+                {mobileLink('/booking', 'Đặt phòng')}
+                {mobileLink('/dashboard', 'Bảng điều khiển')}
+                <div className="px-4 py-1.5 text-[13px] text-white/40 select-none">
+                  Xin chào, {givenName(user?.name)}
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left block py-2.5 px-4 text-[15px] text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                >
                   Đăng xuất
-                </Button>
+                </button>
               </>
             ) : (
               <>
-                <Button variant="ghost" size="sm" onClick={() => navigate('/login')}>
+                <Link
+                  to="/login"
+                  onClick={closeMenu}
+                  className="block py-2.5 px-4 text-[15px] text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                >
                   Đăng nhập
-                </Button>
-                <Button variant="primary" size="sm" onClick={() => navigate('/register')}>
+                </Link>
+                <Link
+                  to="/register"
+                  onClick={closeMenu}
+                  className="block py-2.5 px-4 text-[15px] text-white bg-[#C9973A] hover:bg-[#B8872A] rounded-lg transition-colors text-center mt-1"
+                >
                   Đăng ký
-                </Button>
+                </Link>
               </>
             )}
           </div>
-
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 text-gray-700 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            aria-label="Mở menu"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {mobileMenuOpen ? (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              ) : (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              )}
-            </svg>
-          </button>
-        </div>
-
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="py-4 border-t border-gray-200 md:hidden">
-            <div className="flex flex-col space-y-3">
-              {navLinks.map(link => (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`px-4 py-2 text-base font-medium rounded-lg transition-colors ${
-                    isActive(link.path)
-                      ? 'bg-blue-50 text-blue-600'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              ))}
-              <div className="pt-3 mt-3 border-t border-gray-200">
-                {isAuthenticated ? (
-                  <>
-                    <div className="px-4 py-2 text-sm text-gray-600">Xin chào, {user?.name}</div>
-                    <button
-                      onClick={() => {
-                        handleLogout()
-                        setMobileMenuOpen(false)
-                      }}
-                      className="w-full px-4 py-2 text-base font-medium text-left text-gray-700 transition-colors rounded-lg hover:bg-gray-100"
-                    >
-                      Đăng xuất
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => {
-                        navigate('/login')
-                        setMobileMenuOpen(false)
-                      }}
-                      className="w-full px-4 py-2 text-base font-medium text-left text-gray-700 transition-colors rounded-lg hover:bg-gray-100"
-                    >
-                      Đăng nhập
-                    </button>
-                    <button
-                      onClick={() => {
-                        navigate('/register')
-                        setMobileMenuOpen(false)
-                      }}
-                      className="w-full px-4 py-2 mt-2 text-base font-medium text-left text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
-                    >
-                      Đăng ký
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </nav>
+        </nav>
+      )}
     </header>
   )
 }

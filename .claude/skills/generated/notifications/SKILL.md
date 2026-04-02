@@ -58,7 +58,7 @@ Start here when exploring this area:
 | `confirmation_notification_is_queued_on_correct_queue` | Method | `backend/tests/Feature/Notifications/BookingNotificationTest.php` | 78 |
 | `confirmation_notification_skipped_when_booking_not_confirmed` | Method | `backend/tests/Feature/Notifications/BookingNotificationTest.php` | 94 |
 | `confirmed_notification_has_correct_properties` | Method | `backend/tests/Feature/Notifications/BookingNotificationTest.php` | 341 |
-| `confirmBooking` | Method | `backend/app/Services/BookingService.php` | 85 |
+| `confirmBooking` | Method | `backend/app/Services/BookingService.php` | 93 |
 | `test_confirming_booking_twice_does_not_create_duplicate_stay` | Method | `backend/tests/Feature/Stays/StayBackfillTest.php` | 28 |
 
 ## Execution Flows
@@ -67,9 +67,12 @@ Start here when exploring this area:
 |------|------|-------|
 | `Handle → SupportsTags` | cross_community | 6 |
 | `Handle → Flush` | cross_community | 6 |
+| `HandleForceDelete → SupportsTags` | cross_community | 6 |
+| `HandleForceDelete → Flush` | cross_community | 6 |
 | `HandlePaymentIntentSucceeded → SupportsTags` | cross_community | 5 |
 | `HandlePaymentIntentSucceeded → Flush` | cross_community | 5 |
 | `Handle → BookingConfirmed` | cross_community | 4 |
+| `HandleForceDelete → BookingConfirmed` | cross_community | 4 |
 | `HandlePaymentIntentSucceeded → BookingConfirmed` | cross_community | 3 |
 
 ## Connected Areas
@@ -78,7 +81,7 @@ Start here when exploring this area:
 |------|-------------|
 | Mail | 5 calls |
 | Room | 2 calls |
-| Services | 1 calls |
+| Listeners | 1 calls |
 
 ## How to Explore
 

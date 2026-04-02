@@ -841,15 +841,15 @@ EXCLUDE USING gist (
 | `2026_02_28_add_cashier_columns_to_users_table`           | Cashier: stripe_id, pm_type, pm_last_four, trial  |
 | `2026_03_17_000001_harden_fk_delete_policies`             | FK hardening: 4 FKs CASCADE→SET NULL/RESTRICT (PG)|
 | `2026_03_17_000002_add_check_constraint_rooms_max_guests` | CHECK (max_guests > 0) on rooms (PG only)         |
-| `2026_03_17_000003_add_check_constraint_bookings_status`  | CHECK (status IN (...)) on bookings (PG only)      |
-| `2026_03_20_000001_create_stays_table`                    | stays table + operational lifecycle indexes        |
-| `2026_03_20_000002_create_room_assignments_table`         | room assignment history + partial active index     |
-| `2026_03_20_000003_create_service_recovery_cases_table`   | incident + compensation audit trail                |
-| `2026_03_23_000001_add_room_readiness_to_rooms_table`     | room readiness status + audit fields               |
-| `2026_03_23_000002_add_room_classification_to_rooms_table`| room equivalence and upgrade comparability fields  |
-| `2026_03_23_000003_add_deposit_lifecycle_to_bookings_table` | deposit / advance lifecycle tracking             |
+| `2026_03_17_000003_add_check_constraint_bookings_status`  | CHECK (status IN (...)) on bookings (PG only)     |
+| `2026_03_20_000001_create_stays_table`                    | stays table + operational lifecycle indexes       |
+| `2026_03_20_000002_create_room_assignments_table`         | room assignment history + partial active index    |
+| `2026_03_20_000003_create_service_recovery_cases_table`   | incident + compensation audit trail               |
+| `2026_03_23_000001_add_room_readiness_to_rooms_table`     | room readiness status + audit fields              |
+| `2026_03_23_000002_add_room_classification_to_rooms_table`| room equivalence and upgrade comparability fields |
+| `2026_03_23_000003_add_deposit_lifecycle_to_bookings_table` | deposit / advance lifecycle tracking            |
 | `2026_03_23_000004_add_settlement_lifecycle_to_service_recovery_cases_table` | settlement tracking on recovery cases |
-| `2026_03_23_000005_fix_reviews_room_fk_delete_policy`     | correct `reviews.room_id` FK to RESTRICT           |
+| `2026_03_23_000005_fix_reviews_room_fk_delete_policy`     | correct `reviews.room_id` FK to RESTRICT          |
 
 ### Commands
 

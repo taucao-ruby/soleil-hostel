@@ -1,22 +1,13 @@
-import React, { useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import React, { useEffect, useRef, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthContext'
 
-/**
- * LoginPage Component
- *
- * Full-featured login form with:
- * - Email/password fields with validation
- * - Remember me checkbox
- * - Loading/error/success states
- * - Redirect after successful login
- * - Link to registration
- * - G-06 fix: redirect to /dashboard if already authenticated
- */
+const FALLBACK_AUTH_ERROR = 'Đăng nhập thất bại. Vui lòng thử lại.'
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate()
-  const { isAuthenticated, loginHttpOnly, error: authError, clearError } = useAuth()
+  const { loginHttpOnly, error: authError, clearError } = useAuth()
+  const redirectTimeoutRef = useRef<number | null>(null)
 
   const [formData, setFormData] = useState({
     email: '',
@@ -25,214 +16,266 @@ const LoginPage: React.FC = () => {
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
+  const [redirecting, setRedirecting] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showFallbackError, setShowFallbackError] = useState(false)
 
-  // G-06: Already authenticated → redirect to dashboard
-  // Must be AFTER all hooks to comply with React Rules of Hooks
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />
-  }
+  const isBusy = loading || redirecting
+  const errorMessage = authError ?? (showFallbackError ? FALLBACK_AUTH_ERROR : null)
 
-  /**
-   * Validate form data
-   */
+  useEffect(() => {
+    return () => {
+      if (redirectTimeoutRef.current !== null) {
+        window.clearTimeout(redirectTimeoutRef.current)
+      }
+    }
+  }, [])
+
   const validate = (): boolean => {
-    const newErrors: Record<string, string> = {}
+    const nextErrors: Record<string, string> = {}
 
     if (!formData.email.trim()) {
-      newErrors.email = 'Vui lòng nhập email'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Email không hợp lệ'
+      nextErrors.email = 'Vui lòng nhập email'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      nextErrors.email = 'Email không hợp lệ'
     }
 
     if (!formData.password) {
-      newErrors.password = 'Vui lòng nhập mật khẩu'
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Mật khẩu phải có ít nhất 8 ký tự'
+      nextErrors.password = 'Vui lòng nhập mật khẩu'
     }
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+    setErrors(nextErrors)
+    return Object.keys(nextErrors).length === 0
   }
 
-  /**
-   * Handle form submission
-   */
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    clearError()
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
 
-    if (!validate()) return
+    clearError()
+    setShowFallbackError(false)
+    setRedirecting(false)
+
+    if (redirectTimeoutRef.current !== null) {
+      window.clearTimeout(redirectTimeoutRef.current)
+      redirectTimeoutRef.current = null
+    }
+
+    if (!validate()) {
+      return
+    }
 
     setLoading(true)
-    setSuccess(false)
 
     try {
-      await loginHttpOnly(formData.email, formData.password, formData.rememberMe)
-
-      setSuccess(true)
-
-      // Redirect to dashboard after successful login
-      setTimeout(() => {
+      await loginHttpOnly(formData.email.trim(), formData.password, formData.rememberMe)
+      setRedirecting(true)
+      redirectTimeoutRef.current = window.setTimeout(() => {
         navigate('/dashboard')
       }, 500)
     } catch {
-      // Error is handled by AuthContext and displayed via authError
+      setShowFallbackError(true)
     } finally {
       setLoading(false)
     }
   }
 
-  /**
-   * Handle input changes
-   */
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target
-    setFormData(prev => ({
-      ...prev,
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = event.target
+
+    setFormData(current => ({
+      ...current,
       [name]: type === 'checkbox' ? checked : value,
     }))
-    // Clear error for this field
+
     if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }))
+      setErrors(current => {
+        const nextErrors = { ...current }
+        delete nextErrors[name]
+        return nextErrors
+      })
+    }
+
+    if (authError || showFallbackError) {
+      clearError()
+      setShowFallbackError(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-50 px-4 py-12">
-      <div className="max-w-md w-full">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Chào mừng trở lại</h1>
-          <p className="text-gray-600">Đăng nhập vào tài khoản Soleil Hostel</p>
-        </div>
+    <section className="bg-hueSurface px-4 py-14 sm:px-6 sm:py-16">
+      <div className="mx-auto flex min-h-[70vh] w-full max-w-sm flex-col justify-center">
+        <div className="rounded-lg border border-hueBorder bg-white p-6 shadow-[0_20px_45px_rgba(28,26,23,0.08)] sm:p-8">
+          <div className="mb-8">
+            <p className="text-sm font-medium uppercase tracking-[0.2em] text-brandAmber">
+              Soleil Hostel
+            </p>
+            <h1 className="mt-3 text-3xl font-medium text-hueBlack">Đăng nhập tài khoản</h1>
+            <p className="mt-3 text-sm leading-6 text-hueMuted">
+              Tiếp tục quản lý đặt phòng và theo dõi chuyến đi của bạn tại Soleil Hostel.
+            </p>
+          </div>
 
-        {/* Login Form Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <form onSubmit={handleSubmit} noValidate>
-            {/* Success Message */}
-            {success && (
-              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-green-800 text-sm font-medium">
-                  ✓ Đăng nhập thành công! Đang chuyển hướng...
-                </p>
-              </div>
-            )}
+          {errorMessage && (
+            <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3" role="alert">
+              <p className="text-sm font-medium text-red-800">{errorMessage}</p>
+            </div>
+          )}
 
-            {/* Error Message */}
-            {authError && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-800 text-sm font-medium">{authError}</p>
-              </div>
-            )}
-
-            {/* Email Field */}
-            <div className="mb-6">
-              <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
+          <form className="space-y-5" noValidate onSubmit={handleSubmit}>
+            <div>
+              <label htmlFor="email" className="mb-2 block text-sm font-medium text-hueBlack">
                 Địa chỉ email
               </label>
               <input
-                type="email"
+                autoComplete="email"
+                className={`w-full rounded-lg border bg-white px-4 py-3 text-sm text-hueBlack outline-none transition focus:border-brandAmber focus:ring-2 focus:ring-brandAmber/20 ${
+                  errors.email ? 'border-red-300' : 'border-hueBorder'
+                } ${isBusy ? 'cursor-not-allowed bg-stone-50 text-hueMuted' : ''}`}
+                disabled={isBusy}
                 id="email"
                 name="email"
-                value={formData.email}
                 onChange={handleChange}
-                disabled={loading}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-colors ${
-                  errors.email
-                    ? 'border-red-300 focus:ring-red-500'
-                    : 'border-gray-300 focus:ring-blue-500'
-                } ${loading ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}`}
-                placeholder="you@example.com"
-                aria-required="true"
-                aria-invalid={!!errors.email}
-                aria-describedby={errors.email ? 'email-error' : undefined}
+                placeholder="Nhập email của bạn"
+                type="email"
+                value={formData.email}
+                aria-describedby={errors.email ? 'login-email-error' : undefined}
+                aria-invalid={errors.email ? 'true' : 'false'}
               />
               {errors.email && (
-                <p id="email-error" className="mt-2 text-sm text-red-600">
+                <p id="login-email-error" className="mt-2 text-sm font-medium text-red-700">
                   {errors.email}
                 </p>
               )}
             </div>
 
-            {/* Password Field */}
-            <div className="mb-6">
-              <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">
+            <div>
+              <label htmlFor="password" className="mb-2 block text-sm font-medium text-hueBlack">
                 Mật khẩu
               </label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                disabled={loading}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-colors ${
-                  errors.password
-                    ? 'border-red-300 focus:ring-red-500'
-                    : 'border-gray-300 focus:ring-blue-500'
-                } ${loading ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}`}
-                placeholder="••••••••"
-                aria-required="true"
-                aria-invalid={!!errors.password}
-                aria-describedby={errors.password ? 'password-error' : undefined}
-              />
+              <div className="relative">
+                <input
+                  autoComplete="current-password"
+                  className={`w-full rounded-lg border bg-white px-4 py-3 pr-12 text-sm text-hueBlack outline-none transition focus:border-brandAmber focus:ring-2 focus:ring-brandAmber/20 ${
+                    errors.password ? 'border-red-300' : 'border-hueBorder'
+                  } ${isBusy ? 'cursor-not-allowed bg-stone-50 text-hueMuted' : ''}`}
+                  disabled={isBusy}
+                  id="password"
+                  name="password"
+                  onChange={handleChange}
+                  placeholder="Nhập mật khẩu"
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password}
+                  aria-describedby={errors.password ? 'login-password-error' : undefined}
+                  aria-invalid={errors.password ? 'true' : 'false'}
+                />
+                <button
+                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-hueMuted transition hover:text-hueBlack focus:outline-none focus:ring-2 focus:ring-brandAmber/30"
+                  disabled={isBusy}
+                  type="button"
+                  onClick={() => setShowPassword(current => !current)}
+                >
+                  {showPassword ? (
+                    <svg
+                      aria-hidden="true"
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M3 3l18 18"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="1.8"
+                      />
+                      <path
+                        d="M10.58 10.58a2 2 0 102.83 2.83"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="1.8"
+                      />
+                      <path
+                        d="M9.88 5.09A10.94 10.94 0 0112 4.91c4.85 0 8.93 3.04 10.5 7.09a11.82 11.82 0 01-4.04 5.27"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="1.8"
+                      />
+                      <path
+                        d="M6.61 6.61A11.86 11.86 0 001.5 12c1.57 4.05 5.65 7.09 10.5 7.09 1.77 0 3.44-.4 4.89-1.1"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="1.8"
+                      />
+                    </svg>
+                  ) : (
+                    <svg
+                      aria-hidden="true"
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M1.5 12C3.07 7.95 7.15 4.91 12 4.91S20.93 7.95 22.5 12C20.93 16.05 16.85 19.09 12 19.09S3.07 16.05 1.5 12z"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="1.8"
+                      />
+                      <circle cx="12" cy="12" r="3.25" strokeWidth="1.8" />
+                    </svg>
+                  )}
+                </button>
+              </div>
               {errors.password && (
-                <p id="password-error" className="mt-2 text-sm text-red-600">
+                <p id="login-password-error" className="mt-2 text-sm font-medium text-red-700">
                   {errors.password}
                 </p>
               )}
             </div>
 
-            {/* Remember Me Checkbox */}
-            <div className="mb-6 flex items-center">
+            <label className="flex items-start gap-3 text-sm text-hueMuted" htmlFor="rememberMe">
               <input
-                type="checkbox"
+                checked={formData.rememberMe}
+                className="mt-0.5 h-4 w-4 rounded border-hueBorder text-brandAmber focus:ring-brandAmber"
+                disabled={isBusy}
                 id="rememberMe"
                 name="rememberMe"
-                checked={formData.rememberMe}
                 onChange={handleChange}
-                disabled={loading}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                type="checkbox"
               />
-              <label htmlFor="rememberMe" className="ml-2 text-sm text-gray-700">
-                Ghi nhớ đăng nhập trong 30 ngày
-              </label>
-            </div>
+              <span>Ghi nhớ đăng nhập trong 30 ngày</span>
+            </label>
 
-            {/* Submit Button */}
             <button
+              aria-busy={isBusy}
+              className="flex w-full items-center justify-center rounded-lg bg-brandAmber px-4 py-3 text-sm font-medium text-hueBlack transition hover:bg-[#b88933] focus:outline-none focus:ring-2 focus:ring-brandAmber/30 disabled:cursor-not-allowed disabled:bg-[#d6b173] disabled:text-hueBlack/75"
+              disabled={isBusy}
               type="submit"
-              disabled={loading}
-              className={`w-full py-3 px-4 rounded-lg font-semibold text-white transition-all ${
-                loading
-                  ? 'bg-blue-400 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 hover:shadow-lg'
-              }`}
-              aria-busy={loading}
             >
-              {loading ? (
-                <span className="flex items-center justify-center">
+              {isBusy ? (
+                <span className="flex items-center gap-2">
                   <svg
-                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                    className="h-4 w-4 animate-spin"
                     fill="none"
                     viewBox="0 0 24 24"
-                    aria-hidden="true"
                   >
                     <circle
-                      className="opacity-25"
+                      className="opacity-30"
                       cx="12"
                       cy="12"
                       r="10"
                       stroke="currentColor"
                       strokeWidth="4"
-                    ></circle>
+                    />
                     <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
+                      className="opacity-80"
+                      d="M22 12a10 10 0 00-10-10"
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeWidth="4"
+                    />
                   </svg>
                   Đang đăng nhập...
                 </span>
@@ -242,31 +285,25 @@ const LoginPage: React.FC = () => {
             </button>
           </form>
 
-          {/* Register Link */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
+          <div className="mt-6 space-y-3 text-sm">
+            <p className="text-center text-hueMuted">
               Chưa có tài khoản?{' '}
-              <button
-                onClick={() => navigate('/register')}
-                className="text-blue-600 font-semibold hover:text-blue-700 transition-colors"
+              <Link
+                className="font-medium text-brandAmber transition hover:text-hueBlack"
+                to="/register"
               >
-                Đăng ký tại đây
-              </button>
+                Đăng ký ngay
+              </Link>
+            </p>
+            <p className="text-center">
+              <Link className="font-medium text-hueMuted transition hover:text-hueBlack" to="/">
+                ← Quay về trang chủ
+              </Link>
             </p>
           </div>
         </div>
-
-        {/* Back to Home */}
-        <div className="mt-6 text-center">
-          <button
-            onClick={() => navigate('/')}
-            className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            ← Về trang chủ
-          </button>
-        </div>
       </div>
-    </div>
+    </section>
   )
 }
 

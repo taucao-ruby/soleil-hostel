@@ -4,6 +4,8 @@ import Button from '@/shared/components/ui/Button'
 
 interface ReviewFormProps {
   bookingId: number
+  defaultOpen?: boolean
+  variant?: 'compact' | 'detail'
 }
 
 // ── Star rating ──────────────────────────────────────────────
@@ -14,6 +16,7 @@ interface StarRatingProps {
   onHover: (v: number) => void
   onHoverEnd: () => void
   disabled: boolean
+  large?: boolean
 }
 
 const StarRating: React.FC<StarRatingProps> = ({
@@ -23,8 +26,9 @@ const StarRating: React.FC<StarRatingProps> = ({
   onHover,
   onHoverEnd,
   disabled,
+  large = false,
 }) => (
-  <div className="flex gap-1" role="radiogroup" aria-label="Xếp hạng sao">
+  <div className={`flex ${large ? 'gap-2' : 'gap-1'}`} role="radiogroup" aria-label="Xếp hạng sao">
     {[1, 2, 3, 4, 5].map(star => (
       <button
         key={star}
@@ -36,7 +40,7 @@ const StarRating: React.FC<StarRatingProps> = ({
         onClick={() => onRate(star)}
         onMouseEnter={() => onHover(star)}
         onMouseLeave={onHoverEnd}
-        className={`text-2xl leading-none transition-colors disabled:cursor-not-allowed ${
+        className={`${large ? 'text-5xl' : 'text-2xl'} leading-none transition-colors disabled:cursor-not-allowed ${
           (hovered || value) >= star ? 'text-yellow-400' : 'text-gray-300'
         }`}
       >
@@ -47,8 +51,25 @@ const StarRating: React.FC<StarRatingProps> = ({
 )
 
 // ── ReviewForm ───────────────────────────────────────────────
-const ReviewForm: React.FC<ReviewFormProps> = ({ bookingId }) => {
-  const [isOpen, setIsOpen] = useState(false)
+const REVIEW_LABELS: Record<number, string> = {
+  1: 'Cần cải thiện',
+  2: 'Chưa như kỳ vọng',
+  3: 'Hài lòng',
+  4: 'Rất tốt',
+  5: 'Xuất sắc',
+}
+
+function getAutoTitle(rating: number): string {
+  return REVIEW_LABELS[rating] ?? 'Đánh giá đặt phòng'
+}
+
+const ReviewForm: React.FC<ReviewFormProps> = ({
+  bookingId,
+  defaultOpen = false,
+  variant = 'compact',
+}) => {
+  const isDetail = variant === 'detail'
+  const [isOpen, setIsOpen] = useState(defaultOpen)
   const [submitted, setSubmitted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -61,12 +82,26 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ bookingId }) => {
   // ── Success state ────────────────────────────────────────
   if (submitted) {
     return (
-      <div className="mt-4 pt-4 border-t border-gray-100">
-        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-sm font-medium text-green-800">
+      <div className={isDetail ? 'pt-8' : 'mt-4 pt-4 border-t border-gray-100'}>
+        <div
+          className={
+            isDetail
+              ? 'rounded-2xl border border-green-200 bg-gradient-to-br from-green-50 via-white to-emerald-50 px-6 py-8 text-center'
+              : 'rounded-lg border border-green-200 bg-green-50 p-3'
+          }
+        >
+          <p
+            className={
+              isDetail
+                ? 'text-lg font-semibold text-green-800'
+                : 'text-sm font-medium text-green-800'
+            }
+          >
             Đánh giá của bạn đã được gửi thành công.
           </p>
-          <p className="text-xs text-green-700 mt-1">Cảm ơn bạn đã chia sẻ trải nghiệm!</p>
+          <p className={isDetail ? 'mt-2 text-sm text-green-700' : 'mt-1 text-xs text-green-700'}>
+            Cảm ơn bạn đã chia sẻ trải nghiệm!
+          </p>
         </div>
       </div>
     )
@@ -75,10 +110,10 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ bookingId }) => {
   // ── Collapsed trigger ────────────────────────────────────
   if (!isOpen) {
     return (
-      <div className="mt-4 pt-4 border-t border-gray-100">
+      <div className={isDetail ? 'pt-8' : 'mt-4 pt-4 border-t border-gray-100'}>
         <Button
-          variant="outline"
-          size="sm"
+          variant={isDetail ? 'secondary' : 'outline'}
+          size={isDetail ? 'md' : 'sm'}
           onClick={() => setIsOpen(true)}
           aria-label="Mở form viết đánh giá"
         >
@@ -100,7 +135,9 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ bookingId }) => {
 
     setIsLoading(true)
     try {
-      await submitReview({ booking_id: bookingId, title, content, rating })
+      const resolvedTitle = isDetail && title.trim().length === 0 ? getAutoTitle(rating) : title
+
+      await submitReview({ booking_id: bookingId, title: resolvedTitle, content, rating })
       setSubmitted(true)
     } catch (err: unknown) {
       const axiosErr = err as {
@@ -133,47 +170,65 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ bookingId }) => {
 
   // ── Form ─────────────────────────────────────────────────
   return (
-    <div className="mt-4 pt-4 border-t border-gray-100">
-      <h3 className="text-sm font-semibold text-gray-900 mb-3">Viết đánh giá</h3>
+    <div className={isDetail ? 'pt-8' : 'mt-4 border-t border-gray-100 pt-4'}>
+      {!isDetail && <h3 className="mb-3 text-sm font-semibold text-gray-900">Viết đánh giá</h3>}
       <form onSubmit={handleSubmit} noValidate>
         {/* Star rating */}
-        <div className="mb-3">
-          <label className="block text-xs text-gray-500 mb-1">Xếp hạng</label>
-          <StarRating
-            value={rating}
-            hovered={hovered}
-            onRate={setRating}
-            onHover={setHovered}
-            onHoverEnd={() => setHovered(0)}
-            disabled={isLoading}
-          />
+        <div className={isDetail ? 'mb-6 text-center' : 'mb-3'}>
+          <label
+            className={`block ${isDetail ? 'mb-4 text-base font-semibold text-gray-900' : 'mb-1 text-xs text-gray-500'}`}
+          >
+            {isDetail ? 'Đánh giá của bạn' : 'Xếp hạng'}
+          </label>
+          <div className={isDetail ? 'flex justify-center' : ''}>
+            <StarRating
+              value={rating}
+              hovered={hovered}
+              onRate={setRating}
+              onHover={setHovered}
+              onHoverEnd={() => setHovered(0)}
+              disabled={isLoading}
+              large={isDetail}
+            />
+          </div>
+          {isDetail && hovered + rating > 0 && (
+            <p className="mt-4 inline-flex rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-800">
+              {REVIEW_LABELS[hovered || rating]}
+            </p>
+          )}
         </div>
 
         {/* Title */}
-        <div className="mb-3">
-          <label htmlFor={`review-title-${bookingId}`} className="block text-xs text-gray-500 mb-1">
-            Tiêu đề <span aria-hidden="true">*</span>
-          </label>
-          <input
-            id={`review-title-${bookingId}`}
-            type="text"
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            maxLength={255}
-            required
-            disabled={isLoading}
-            placeholder="Ngắn gọn trải nghiệm của bạn"
-            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
-          />
-        </div>
+        {!isDetail && (
+          <div className="mb-3">
+            <label
+              htmlFor={`review-title-${bookingId}`}
+              className="mb-1 block text-xs text-gray-500"
+            >
+              Tiêu đề <span aria-hidden="true">*</span>
+            </label>
+            <input
+              id={`review-title-${bookingId}`}
+              type="text"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              maxLength={255}
+              required
+              disabled={isLoading}
+              placeholder="Ngắn gọn trải nghiệm của bạn"
+              className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+            />
+          </div>
+        )}
 
         {/* Content */}
-        <div className="mb-3">
+        <div className={isDetail ? 'mb-5' : 'mb-3'}>
           <label
             htmlFor={`review-content-${bookingId}`}
-            className="block text-xs text-gray-500 mb-1"
+            className={`block ${isDetail ? 'mb-2 text-sm text-gray-500' : 'mb-1 text-xs text-gray-500'}`}
           >
-            Nội dung <span aria-hidden="true">*</span>
+            {isDetail ? 'Chia sẻ trải nghiệm của bạn' : 'Nội dung'}{' '}
+            <span aria-hidden="true">*</span>
           </label>
           <textarea
             id={`review-content-${bookingId}`}
@@ -181,10 +236,12 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ bookingId }) => {
             onChange={e => setContent(e.target.value)}
             maxLength={5000}
             required
-            rows={3}
+            rows={isDetail ? 5 : 3}
             disabled={isLoading}
-            placeholder="Chia sẻ chi tiết trải nghiệm của bạn..."
-            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 resize-none"
+            placeholder="Chia sẻ trải nghiệm của bạn..."
+            className={`w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 disabled:bg-gray-50 ${
+              isDetail ? 'resize-y focus:ring-amber-400' : 'resize-none focus:ring-blue-500'
+            }`}
           />
         </div>
 
@@ -196,22 +253,35 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ bookingId }) => {
         )}
 
         {/* Actions */}
-        <div className="flex gap-2">
-          <Button type="submit" size="sm" disabled={isLoading} aria-busy={isLoading}>
-            {isLoading ? 'Đang gửi...' : 'Gửi đánh giá'}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setIsOpen(false)
-              setError(null)
-            }}
-            disabled={isLoading}
-          >
-            Hủy
-          </Button>
+        <div className={isDetail ? 'space-y-3' : 'flex gap-2'}>
+          {isDetail ? (
+            <button
+              type="submit"
+              disabled={isLoading}
+              aria-busy={isLoading}
+              className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 px-4 py-3 text-base font-semibold text-white transition-all hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isLoading ? 'Đang gửi...' : 'Gửi đánh giá'}
+            </button>
+          ) : (
+            <>
+              <Button type="submit" size="sm" disabled={isLoading} aria-busy={isLoading}>
+                {isLoading ? 'Đang gửi...' : 'Gửi đánh giá'}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setIsOpen(false)
+                  setError(null)
+                }}
+                disabled={isLoading}
+              >
+                Hủy
+              </Button>
+            </>
+          )}
         </div>
       </form>
     </div>

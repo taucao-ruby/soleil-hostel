@@ -1,93 +1,108 @@
 import React from 'react'
-import { Link } from 'react-router-dom'
 import type { BookingDetailRaw } from '@/features/booking/booking.types'
+import type { BookingApiRaw } from '@/shared/types/booking.types'
+import { STAY_STATUS_CONFIG, type StayStatus } from '@/shared/components/ui/StatusBadge'
 
 interface StayJournalProps {
   bookings: BookingDetailRaw[]
 }
 
+function deriveStayStatus(booking: BookingApiRaw): StayStatus {
+  const now = new Date()
+  const checkIn = new Date(booking.check_in)
+  const checkOut = new Date(booking.check_out)
+
+  if (booking.status === 'cancelled') {
+    // Cancelled after check-in date passed ≈ no-show
+    return checkIn <= now ? 'no_show' : 'checked_out'
+  }
+  if (
+    (booking.status === 'confirmed' || booking.status === 'pending') &&
+    now >= checkIn &&
+    now < checkOut
+  ) {
+    return 'in_house'
+  }
+  if (booking.status === 'confirmed' && now < checkIn) {
+    return 'expected'
+  }
+  return 'checked_out'
+}
+
+// ─── Date helpers ─────────────────────────────────────────────────────────────
+
+function fmtDate(iso: string): string {
+  if (!iso) return '---'
+  try {
+    const d = new Date(iso.split('T')[0] + 'T00:00:00')
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+  } catch {
+    return iso
+  }
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
+/**
+ * StayJournal — vertical timeline of a guest's stay history.
+ *
+ * Spec (PROMPT_5C):
+ *   - border-l-2 border-gray-200 vertical line on left
+ *   - Each node: 6px circle dot (colored by stay status) + content right
+ *   - Date bold 13px · Room 13px · Duration muted
+ *   - Stay status: in_house → green | checked_out → gray | no_show → red | relocated → blue
+ */
 const StayJournal: React.FC<StayJournalProps> = ({ bookings }) => {
   if (bookings.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center text-gray-500">
-        Khách hàng chưa có lịch sử lưu trú.
+      <div className="rounded-2xl border border-[#E2DDD6] bg-white p-8 text-center text-[13px] text-[#6B6760]">
+        Chưa có nhật ký lưu trú.
       </div>
     )
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return 'bg-green-100 text-green-800'
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'cancelled':
-      case 'refund_pending':
-        return 'bg-gray-100 text-gray-800'
-      default:
-        return 'bg-blue-100 text-blue-800'
-    }
-  }
-
   return (
-    <div className="bg-white shadow overflow-hidden sm:rounded-md border border-gray-200">
-      <ul className="divide-y divide-gray-200">
-        {bookings.map(booking => (
-          <li key={booking.id}>
-            <div className="px-4 py-4 sm:px-6 hover:bg-gray-50">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <p className="text-sm font-medium text-blue-600 truncate">
-                    Mã ĐP:{' '}
-                    <Link to={`/admin/bookings/${booking.id}`} className="hover:underline">
-                      #{booking.id}
-                    </Link>
-                  </p>
+    <div className="rounded-2xl border border-[#E2DDD6] bg-white px-4 py-4">
+      {/* Timeline container — vertical line is border-l on the inner list */}
+      <ul className="relative border-l-2 border-gray-200 ml-2 space-y-0">
+        {bookings.map((booking, idx) => {
+          const stayStatus = deriveStayStatus(booking)
+          const dot = STAY_STATUS_CONFIG[stayStatus]
+          const roomName = booking.room?.name ?? '---'
+          const nights = booking.nights ?? 1
+          const isLast = idx === bookings.length - 1
+
+          return (
+            <li key={booking.id} className={`relative pl-5 ${isLast ? 'pb-0' : 'pb-5'}`}>
+              {/* Timeline dot — 6px circle, positioned on the vertical line */}
+              <span
+                aria-label={dot.label}
+                className={`absolute -left-[5px] top-[5px] w-2.5 h-2.5 rounded-full border-2 border-white ${dot.dotCls}`}
+              />
+
+              {/* Content */}
+              <div>
+                {/* Date row */}
+                <p className="text-[13px] font-medium text-[#1C1A17] leading-snug">
+                  {fmtDate(booking.check_in)}
+                </p>
+
+                {/* Room name */}
+                <p className="text-[13px] text-[#1C1A17] mt-0.5">{roomName}</p>
+
+                {/* Duration + stay status */}
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-[12px] text-[#6B6760]">{nights} đêm</span>
                   <span
-                    className={`ml-3 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(booking.status)}`}
-                  >
-                    {booking.status}
-                  </span>
-                </div>
-                <div className="ml-2 flex-shrink-0 flex">
-                  <p className="text-sm font-semibold text-gray-900">
-                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
-                      Number(
-                        (booking as unknown as Record<string, unknown>).amount ||
-                          (booking as unknown as Record<string, unknown>).total_price ||
-                          0
-                      )
-                    )}
-                  </p>
+                    className={`inline-block w-1.5 h-1.5 rounded-full ${dot.dotCls}`}
+                    aria-hidden="true"
+                  />
+                  <span className="text-[12px] text-[#6B6760]">{dot.label}</span>
                 </div>
               </div>
-              <div className="mt-2 sm:flex sm:justify-between">
-                <div className="sm:flex flex-col">
-                  <p className="flex items-center text-sm text-gray-500">
-                    <span className="font-semibold text-gray-700 w-16">Phòng:</span>
-                    {booking.room?.name || '---'}
-                  </p>
-                  <p className="flex items-center text-sm text-gray-500 mt-1">
-                    <span className="font-semibold text-gray-700 w-16">Kỳ nghỉ:</span>
-                    {booking.check_in} &rarr; {booking.check_out} (
-                    {Math.max(
-                      1,
-                      Math.ceil(
-                        (new Date(booking.check_out).getTime() -
-                          new Date(booking.check_in).getTime()) /
-                          (1000 * 3600 * 24)
-                      )
-                    )}{' '}
-                    đêm)
-                  </p>
-                </div>
-                <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
-                  <p>Đặt ngày: {booking.created_at.split('T')[0]}</p>
-                </div>
-              </div>
-            </div>
-          </li>
-        ))}
+            </li>
+          )
+        })}
       </ul>
     </div>
   )

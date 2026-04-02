@@ -113,8 +113,8 @@ describe('SearchCard', () => {
       expect(screen.getByRole('option', { name: 'Soleil Phú Hội' })).toBeInTheDocument()
     })
 
-    // Submit the form (default values: first location, today/tomorrow, 1 guest)
-    await user.click(screen.getByRole('button', { name: /Tìm phòng trống/i }))
+    // Submit the form (default values: first location, today/tomorrow)
+    await user.click(screen.getByRole('button', { name: /Tìm kiếm/i }))
 
     expect(mockNavigate).toHaveBeenCalledTimes(1)
     const navArg = mockNavigate.mock.calls[0][0] as string
@@ -133,7 +133,7 @@ describe('SearchCard', () => {
 
     // Change to second location
     await user.selectOptions(screen.getByRole('combobox'), 'soleil-thanh-noi')
-    await user.click(screen.getByRole('button', { name: /Tìm phòng trống/i }))
+    await user.click(screen.getByRole('button', { name: /Tìm kiếm/i }))
 
     const navArg = mockNavigate.mock.calls[0][0] as string
     expect(navArg).toContain('/locations/soleil-thanh-noi')
@@ -157,7 +157,7 @@ describe('SearchCard', () => {
     await user.clear(checkOutInput)
     await user.type(checkOutInput, today)
 
-    await user.click(screen.getByRole('button', { name: /Tìm phòng trống/i }))
+    await user.click(screen.getByRole('button', { name: /Tìm kiếm/i }))
 
     expect(screen.getByRole('alert')).toHaveTextContent(/Ngày trả phòng phải sau/)
     expect(mockNavigate).not.toHaveBeenCalled()
@@ -192,13 +192,13 @@ describe('SearchCard', () => {
     })
 
     // Submit button should be disabled
-    expect(screen.getByRole('button', { name: /Tìm phòng trống/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /Tìm kiếm/i })).toBeDisabled()
   })
 
   it('disables submit button while locations are loading', () => {
     mockedGetLocations.mockReturnValue(new Promise(() => {}))
 
     renderSearchCard()
-    expect(screen.getByRole('button', { name: /Tìm phòng trống/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /Tìm kiếm/i })).toBeDisabled()
   })
 })

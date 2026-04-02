@@ -130,48 +130,39 @@ describe('Regression: H-02 — "Tìm phòng trống" appears exactly once', () =
   })
 })
 
-describe('Regression: H-03 — location pill has correct styling', () => {
-  test('location pill has role="status", correct text and rounded-full class', () => {
-    renderHomePage()
-    const pill = screen.getByRole('status')
-    expect(pill).toHaveTextContent('☀️ Huế · Việt Nam')
-    expect(pill.className).toMatch(/rounded-full/)
-  })
-})
-
 // ─── CORE FUNCTIONALITY TESTS ──────────────────────────────────────────────
 
 describe('Hero content', () => {
   test('renders correct H1 heading', () => {
     renderHomePage()
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      'Nơi nghỉ ngơi của bạn tại Huế'
+      'Khám phá Huế theo cách của bạn'
     )
   })
 
   test('renders subtitle text', () => {
     renderHomePage()
-    expect(screen.getByText('Không gian ấm cúng, giá cả phải chăng')).toBeInTheDocument()
+    expect(screen.getByText('Đặt phòng nhanh — không cần thẻ tín dụng')).toBeInTheDocument()
   })
 })
 
 describe('FilterChips', () => {
-  test('clicking inactive chip sets it active (aria-pressed + bg-[#D4622A])', () => {
+  test('clicking inactive amenity chip sets it active (aria-pressed + amber active class)', () => {
     renderHomePage()
 
-    const dormChip = screen.getByRole('button', { name: /Dorm/i })
-    // Initially not active
-    expect(dormChip).toHaveAttribute('aria-pressed', 'false')
+    // Second chip (Điều hòa) is initially inactive; first chip (WiFi) is active
+    const acChip = screen.getByRole('button', { name: /Điều hòa/i })
+    expect(acChip).toHaveAttribute('aria-pressed', 'false')
 
-    fireEvent.click(dormChip)
+    fireEvent.click(acChip)
 
-    // Now active — both aria-pressed and className should reflect this
-    expect(dormChip).toHaveAttribute('aria-pressed', 'true')
-    expect(dormChip.className).toMatch(/bg-\[#D4622A\]/)
+    // Now active — aria-pressed and bg-amber-100 class
+    expect(acChip).toHaveAttribute('aria-pressed', 'true')
+    expect(acChip.className).toMatch(/bg-amber-100/)
 
-    // Previous chip deactivated
-    const allChip = screen.getByRole('button', { name: /Tất cả/i })
-    expect(allChip.className).not.toMatch(/bg-\[#D4622A\]/)
+    // Previous active chip (WiFi) is deactivated
+    const wifiChip = screen.getByRole('button', { name: /WiFi/i })
+    expect(wifiChip.className).not.toMatch(/bg-amber-100/)
   })
 })
 
@@ -182,14 +173,10 @@ describe('Room cards', () => {
     expect(bookButtons.length).toBeGreaterThanOrEqual(2)
   })
 
-  test('wishlist button toggles aria-pressed', () => {
+  test('renders availability badges on room cards', () => {
     renderHomePage()
-    const wishlistButtons = screen.getAllByRole('button', { name: /Lưu phòng/i })
-    expect(wishlistButtons[0]).toHaveAttribute('aria-pressed', 'false')
-
-    fireEvent.click(wishlistButtons[0])
-
-    expect(wishlistButtons[0]).toHaveAttribute('aria-pressed', 'true')
+    const availabilityBadges = screen.getAllByText('Còn phòng')
+    expect(availabilityBadges.length).toBeGreaterThanOrEqual(2)
   })
 })
 

@@ -1,100 +1,119 @@
 import React from 'react'
 import type { Location } from '@/shared/types/location.types'
-import { amenityIcons } from './constants'
+import { amenityCardLabels, amenityIcons, locationFallbackImages } from './constants'
 
 interface LocationCardProps {
   location: Location
   onClick: () => void
 }
 
-/**
- * LocationCard Component
- *
- * Displays a single location in a card layout with:
- * - Cover image (or gradient placeholder)
- * - Name, address, amenity icons
- * - Room stats (total / available)
- */
+const fallbackDescription =
+  'Không gian lưu trú ấm cúng với vị trí thuận tiện để khám phá thành phố và tận hưởng nhịp sống địa phương.'
+
 const LocationCard: React.FC<LocationCardProps> = ({ location, onClick }) => {
-  const primaryImage = location.images?.[0]?.url
+  const primaryImage = location.images?.[0]?.url || locationFallbackImages[location.slug]
+  const summary = location.description?.trim() || fallbackDescription
+  const amenityPreview = location.amenities.slice(0, 4)
+  const roomAvailability =
+    location.stats.available_rooms ?? location.stats.rooms_count ?? location.stats.total_rooms
 
   return (
     <article
-      className="overflow-hidden transition-shadow duration-300 bg-white shadow-md cursor-pointer rounded-xl hover:shadow-xl"
+      className="group overflow-hidden rounded-[24px] border border-hueBorder bg-white shadow-[0_18px_40px_rgba(28,26,23,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_54px_rgba(28,26,23,0.12)]"
       onClick={onClick}
       role="button"
       tabIndex={0}
-      onKeyDown={e => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
+      aria-label={`Xem chi tiết ${location.name}`}
+      onKeyDown={event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
           onClick()
         }
       }}
     >
-      {/* Location Image */}
-      <div className="relative h-48 overflow-hidden bg-gradient-to-br from-amber-400 to-orange-600">
+      <div className="relative h-56 overflow-hidden bg-gradient-to-br from-[#dcc292] via-[#c9973a] to-[#5d4220]">
         {primaryImage ? (
           <img
             src={primaryImage}
             alt={location.name}
-            className="object-cover w-full h-full"
+            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
             loading="lazy"
           />
-        ) : (
-          <div className="flex items-center justify-center w-full h-full">
-            <svg
-              className="w-16 h-16 text-white opacity-50"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-              />
-            </svg>
-          </div>
-        )}
+        ) : null}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/15 via-transparent to-transparent" />
       </div>
 
-      {/* Card Content */}
-      <div className="p-6">
-        {/* Name */}
-        <h3 className="mb-2 text-xl font-bold text-gray-900">{location.name}</h3>
+      <div className="p-5">
+        <h3 className="text-[1.9rem] font-semibold leading-tight text-hueBlack sm:text-[2rem]">
+          {location.name}
+        </h3>
 
-        {/* Address */}
-        <p className="mb-4 text-sm text-gray-600">{location.address.full}</p>
+        <div className="mt-2 flex items-start gap-2 text-sm text-hueMuted">
+          <svg
+            className="mt-0.5 h-4 w-4 flex-none text-hueMuted"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.8}
+              d="M12 21s-6-4.35-6-10a6 6 0 1112 0c0 5.65-6 10-6 10z"
+            />
+            <circle cx="12" cy="11" r="2.5" strokeWidth="1.8" />
+          </svg>
+          <span>{location.address.full}</span>
+        </div>
 
-        {/* Amenities */}
-        {location.amenities.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-4">
-            {location.amenities.slice(0, 6).map(amenity => (
-              <span
-                key={amenity}
-                className="text-lg"
-                title={amenity.replace(/_/g, ' ')}
-                role="img"
-                aria-label={amenity.replace(/_/g, ' ')}
-              >
-                {amenityIcons[amenity] || '✓'}
-              </span>
+        <p className="mt-3 line-clamp-2 text-[15px] leading-6 text-hueBlack/80">{summary}</p>
+
+        {amenityPreview.length > 0 && (
+          <div className="mt-5 grid grid-cols-5 gap-2 border-b border-hueBorder pb-4">
+            {amenityPreview.map(amenity => (
+              <div key={amenity} className="flex flex-col items-center gap-1 text-center">
+                <span className="text-[17px]" aria-hidden="true">
+                  {amenityIcons[amenity] || '✨'}
+                </span>
+                <span className="text-[10px] font-medium leading-3 text-hueBlack">
+                  {amenityCardLabels[amenity] || amenity}
+                </span>
+              </div>
             ))}
-            {location.amenities.length > 6 && (
-              <span className="text-sm text-gray-500">+{location.amenities.length - 6} khác</span>
+
+            {location.amenities.length > amenityPreview.length ? (
+              <div className="flex flex-col items-center gap-1 text-center">
+                <span className="text-[17px]" aria-hidden="true">
+                  ➕
+                </span>
+                <span className="text-[10px] font-medium leading-3 text-hueBlack">Khác</span>
+              </div>
+            ) : (
+              <div className="hidden sm:block" aria-hidden="true" />
             )}
           </div>
         )}
 
-        {/* Stats */}
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600">{location.stats.total_rooms} phòng</span>
-          {location.stats.available_rooms !== undefined && (
-            <span className="font-medium text-green-600">
-              {location.stats.available_rooms} còn trống
-            </span>
-          )}
+        <div className="mt-4 flex items-center justify-between gap-4 text-sm">
+          <span className="inline-flex items-center gap-2 text-hueMuted">
+            <svg
+              className="h-4 w-4 text-hueMuted"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.8}
+                d="M3 12h18M5 12V9a2 2 0 012-2h10a2 2 0 012 2v3M7 12v5m10-5v5M5 17h14"
+              />
+            </svg>
+            {location.stats.total_rooms} Phòng
+          </span>
+          <span className="font-medium text-hueBlack">{roomAvailability} còn trống</span>
         </div>
       </div>
     </article>

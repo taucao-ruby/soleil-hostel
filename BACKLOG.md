@@ -451,18 +451,18 @@ FEAT-002 (Group Booking) → requires a new ADR before coding
 | ✅ Batch 3: HealthService extraction, FormRequests, PHPStan/Larastan, Contact+Review tests    | Mar 2, 2026       | 67 tests  |
 | ✅ Batch 4: AbortController cleanup, vi.hoisted auth mocks, no-console ESLint, RoomList tests | Mar 2, 2026       | 8 tests   |
 | ✅ Docs sync v5 + RBAC UX audit (frontend RBAC.md + RBAC_UX_AUDIT.md)                         | Mar 9, 2026       | —         |
-| ✅ RBAC Hardening: defense-in-depth (route+gate), PERMISSION_MATRIX.md, moderator denial tests | Mar 10, 2026      | 16 tests  |
-| ✅ RBAC Phases 1-3: enforcement gaps, admin audit log, moderator role activated                 | Mar 11, 2026      | —         |
-| ✅ Admin panel expansion: AdminLayout, sidebar, room/booking/customer mgmt (frontend)          | Mar 12, 2026      | —         |
-| ✅ Repo hygiene: artifact cleanup, toolchain normalization, CI hygiene hooks                    | Mar 12, 2026      | —         |
-| ✅ Repository structure audit 2026-03-12 (AUDIT_2026_03_12_STRUCTURE.md)                       | Mar 12, 2026      | —         |
-| ✅ RBAC mobile remediation: admin route guard on frontend                                       | Mar 13, 2026      | —         |
-| ✅ Password complexity enforcement on registration + EmailVerificationTest                      | Mar 13-14, 2026   | —         |
+| ✅ RBAC Hardening: defense-in-depth (route+gate), PERMISSION_MATRIX.md, moderator denial tests| Mar 10, 2026      | 16 tests  |
+| ✅ RBAC Phases 1-3: enforcement gaps, admin audit log, moderator role activated               | Mar 11, 2026      | —         |
+| ✅ Admin panel expansion: AdminLayout, sidebar, room/booking/customer mgmt (frontend)         | Mar 12, 2026      | —         |
+| ✅ Repo hygiene: artifact cleanup, toolchain normalization, CI hygiene hooks                  | Mar 12, 2026      | —         |
+| ✅ Repository structure audit 2026-03-12 (AUDIT_2026_03_12_STRUCTURE.md)                      | Mar 12, 2026      | —         |
+| ✅ RBAC mobile remediation: admin route guard on frontend                                     | Mar 13, 2026      | —         |
+| ✅ Password complexity enforcement on registration + EmailVerificationTest                    | Mar 13-14, 2026   | —         |
 | ✅ CVE fix: flatted >=3.4.0 + undici >=7.24.0 (ef138cc)                                       | Mar 14, 2026      | —         |
-| ✅ DB hardening: FK delete policies (4 FKs CASCADE→SET NULL/RESTRICT)                          | Mar 17, 2026      | 3 migrations, 8 tests |
-| ✅ DB hardening: chk_rooms_max_guests CHECK constraint                                         | Mar 17, 2026      | PG-only   |
-| ✅ DB hardening: chk_bookings_status CHECK constraint                                          | Mar 17, 2026      | PG-only   |
-| ✅ v3.2 operations: room readiness, blockage resolver, financial ops                           | Mar 21, 2026      | 1009 tests |
+| ✅ DB hardening: FK delete policies (4 FKs CASCADE→SET NULL/RESTRICT)                         | Mar 17, 2026      | 3 migrations, 8 tests |
+| ✅ DB hardening: chk_rooms_max_guests CHECK constraint                                        | Mar 17, 2026      | PG-only   |
+| ✅ DB hardening: chk_bookings_status CHECK constraint                                         | Mar 17, 2026      | PG-only   |
+| ✅ v3.2 operations: room readiness, blockage resolver, financial ops                          | Mar 21, 2026      | 1009 tests |
 | ✅ v3.3 static analysis: Psalm 35→0, PHPStan 151→0 (Level 5, no baseline, no ignores)         | Mar 21, 2026      | 1037 tests |
 | ✅ v3.4 operational completion: readiness, classification, deposit, settlement, escalation engine, OperationalDashboardService (16 metrics) | Mar 23, 2026 | — |
 | ✅ Restore path integrity: `BookingService::restore()` in transaction with FOR UPDATE (TOCTOU-safe) | Mar 29, 2026 | 16 tests |

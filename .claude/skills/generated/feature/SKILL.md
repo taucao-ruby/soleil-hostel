@@ -1,11 +1,11 @@
 ---
 name: feature
-description: "Skill for the Feature area of soleil-hostel. 228 symbols across 113 files."
+description: "Skill for the Feature area of soleil-hostel. 233 symbols across 115 files."
 ---
 
 # Feature
 
-228 symbols | 113 files | Cohesion: 85%
+233 symbols | 115 files | Cohesion: 85%
 
 ## When to Use
 
@@ -82,8 +82,8 @@ Start here when exploring this area:
 
 | Area | Connections |
 |------|-------------|
-| Room | 44 calls |
-| Booking | 7 calls |
+| Room | 46 calls |
+| Booking | 8 calls |
 | Services | 2 calls |
 | Listeners | 2 calls |
 

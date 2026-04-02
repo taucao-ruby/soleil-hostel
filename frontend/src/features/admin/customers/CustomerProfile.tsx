@@ -2,16 +2,78 @@ import React, { useState, useEffect } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { getCustomerProfile, getCustomerBookings } from './customer.api'
 import type { CustomerProfile as TCustomerProfile } from './customer.api'
-import type { BookingApiRaw } from '@/features/booking/booking.types'
+import type { BookingDetailRaw } from '@/features/booking/booking.types'
 import LoadingSpinner from '@/shared/components/feedback/LoadingSpinner'
+import { BookingStatusBadge } from '@/shared/components/ui/StatusBadge'
 import StayJournal from './StayJournal'
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+const VND = new Intl.NumberFormat('vi-VN')
+
+/** DD/MM/YYYY from ISO string */
+function fmtDate(iso: string): string {
+  if (!iso) return '---'
+  try {
+    const d = new Date(iso.split('T')[0] + 'T00:00:00')
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+  } catch {
+    return iso
+  }
+}
+
+/** Two-letter initials from a Vietnamese full name */
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+  }
+  return name.slice(0, 2).toUpperCase()
+}
+
+// ─── Compact booking card ────────────────────────────────────────────────────
+
+interface BookingRowProps {
+  booking: BookingDetailRaw
+}
+const BookingRow: React.FC<BookingRowProps> = ({ booking }) => {
+  const amount =
+    booking.amount_formatted ?? (booking.amount != null ? `${VND.format(booking.amount)}₫` : null)
+  const roomName = booking.room?.name ?? '---'
+  const nights = booking.nights ?? 1
+
+  return (
+    <li className="py-3 border-b border-gray-100 last:border-0">
+      <div className="flex items-start justify-between gap-2">
+        <Link
+          to={`/admin/bookings/${booking.id}`}
+          className="text-[13px] font-medium text-[#1C1A17] hover:text-[#C9973A] transition-colors line-clamp-1 flex-1"
+        >
+          {roomName}
+        </Link>
+        <BookingStatusBadge status={booking.status} />
+      </div>
+      <div className="mt-1 flex items-center justify-between gap-2">
+        <span className="text-[12px] text-[#6B6760]">
+          {fmtDate(booking.check_in)} → {fmtDate(booking.check_out)}
+          <span className="ml-1">· {nights} đêm</span>
+        </span>
+        {amount && (
+          <span className="text-[12px] font-medium text-[#C9973A] flex-shrink-0">{amount}</span>
+        )}
+      </div>
+    </li>
+  )
+}
+
+// ─── Main component ──────────────────────────────────────────────────────────
 
 const CustomerProfile: React.FC = () => {
   const { email } = useParams<{ email: string }>()
   const navigate = useNavigate()
 
   const [profile, setProfile] = useState<TCustomerProfile | null>(null)
-  const [bookings, setBookings] = useState<BookingApiRaw[]>([])
+  const [bookings, setBookings] = useState<BookingDetailRaw[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -20,6 +82,8 @@ const CustomerProfile: React.FC = () => {
       return
     }
 
+    const controller = new AbortController()
+
     const loadData = async () => {
       setIsLoading(true)
       try {
@@ -27,107 +91,124 @@ const CustomerProfile: React.FC = () => {
           getCustomerProfile(email),
           getCustomerBookings(email),
         ])
-        setProfile(profData)
-        setBookings(bookingsData)
+        if (!controller.signal.aborted) {
+          setProfile(profData)
+          setBookings(bookingsData)
+        }
       } catch {
         // fetch error handled silently
       } finally {
-        setIsLoading(false)
+        if (!controller.signal.aborted) {
+          setIsLoading(false)
+        }
       }
     }
-    loadData()
+
+    void loadData()
+    return () => controller.abort()
   }, [email, navigate])
 
+  // ── Loading ────────────────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="py-12 flex justify-center">
+      <div className="py-16 flex justify-center">
         <LoadingSpinner size="lg" message="Đang tải hồ sơ khách hàng..." />
       </div>
     )
   }
 
+  // ── Not found ──────────────────────────────────────────────────────────────
   if (!profile) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center text-gray-500">
-        <p className="mb-4">Không tìm thấy thông tin khách hàng.</p>
-        <Link to="/admin/customers" className="text-blue-600 hover:underline">
-          Quay lại danh sách
+      <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center text-[#6B6760]">
+        <p className="mb-4 text-sm">Không tìm thấy thông tin khách hàng.</p>
+        <Link to="/admin/customers" className="text-[#C9973A] text-sm hover:underline">
+          ← Quay lại danh sách
         </Link>
       </div>
     )
   }
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Hồ sơ khách hàng</h1>
-        <div className="mt-4 sm:mt-0">
-          <Link
-            to="/admin/customers"
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 shadow-sm"
-          >
-            Trở lại danh sách
-          </Link>
+    <div className="space-y-5">
+      {/* Breadcrumb */}
+      <nav
+        className="text-[13px] text-[#6B6760] flex items-center gap-1"
+        aria-label="Điều hướng breadcrumb"
+      >
+        <Link to="/admin/customers" className="hover:text-[#1C1A17] transition-colors">
+          Khách hàng
+        </Link>
+        <span aria-hidden="true" className="text-[#E2DDD6]">
+          /
+        </span>
+        <span className="text-[#1C1A17] font-medium">{profile.name}</span>
+      </nav>
+
+      {/* Profile header card */}
+      <div className="rounded-2xl border border-[#E2DDD6] bg-white p-6 flex gap-4">
+        {/* Avatar */}
+        <div
+          className="w-16 h-16 rounded-full bg-amber-100 text-amber-800 flex-shrink-0 flex items-center justify-center"
+          style={{ fontSize: '20px', fontWeight: 500 }}
+          aria-hidden="true"
+        >
+          {getInitials(profile.name)}
+        </div>
+
+        {/* Info */}
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[#1C1A17] leading-snug" style={{ fontSize: '20px', fontWeight: 500 }}>
+            {profile.name}
+          </h2>
+          <p className="font-mono text-[14px] text-[#6B6760] mt-0.5 truncate">{profile.email}</p>
+
+          {/* Role badge */}
+          <span className="mt-1.5 inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium bg-green-50 text-green-800 border border-green-200">
+            Khách hàng
+          </span>
+
+          {/* Stats row */}
+          <p className="mt-2 text-[13px] text-[#6B6760]">
+            Tham gia {fmtDate(profile.first_visit)}
+            <span className="mx-1.5 text-[#E2DDD6]" aria-hidden="true">
+              ·
+            </span>
+            Tổng {profile.total_stays} đặt phòng
+          </p>
         </div>
       </div>
 
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
-        <div className="px-4 py-5 sm:px-6 flex items-center justify-between">
-          <div className="flex items-center">
-            <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-2xl mr-4 shadow-sm">
-              {profile.name.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <h3 className="text-xl leading-6 font-bold text-gray-900">{profile.name}</h3>
-              <p className="mt-1 max-w-2xl text-sm text-gray-500">{profile.email}</p>
-            </div>
+      {/* 2-col layout */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+        {/* LEFT — Lịch sử đặt phòng */}
+        <section aria-label="Lịch sử đặt phòng">
+          <h3 className="text-[13px] font-medium text-[#6B6760] uppercase tracking-wider mb-3">
+            Đặt phòng
+          </h3>
+          <div className="rounded-2xl border border-[#E2DDD6] bg-white px-4">
+            {bookings.length === 0 ? (
+              <p className="py-8 text-center text-[13px] text-[#6B6760]">
+                Chưa có lịch sử đặt phòng.
+              </p>
+            ) : (
+              <ul>
+                {bookings.map(b => (
+                  <BookingRow key={b.id} booking={b} />
+                ))}
+              </ul>
+            )}
           </div>
-          <div className="text-right hidden sm:block">
-            <p className="text-sm text-gray-500">Thành viên từ</p>
-            <p className="font-semibold text-gray-900">{profile.first_visit.split('T')[0]}</p>
-          </div>
-        </div>
-        <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
-          <dl className="sm:divide-y sm:divide-gray-200">
-            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Tổng lưu trú</dt>
-              <dd className="mt-1 text-sm font-bold text-gray-900 sm:mt-0 sm:col-span-2">
-                {profile.total_stays} lần ({profile.total_nights || 0} đêm)
-              </dd>
-            </div>
-            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Tổng chi tiêu</dt>
-              <dd className="mt-1 text-sm font-bold text-green-600 sm:mt-0 sm:col-span-2">
-                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
-                  Number(profile.total_spent)
-                )}
-              </dd>
-            </div>
-            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Cơ sở yêu thích</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                {profile.preferred_location || '---'}
-              </dd>
-            </div>
-            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Đánh giá trung bình</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                {profile.average_rating ? (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                    ★ {profile.average_rating}/5.0
-                  </span>
-                ) : (
-                  <span className="text-gray-400">Chưa có đánh giá</span>
-                )}
-              </dd>
-            </div>
-          </dl>
-        </div>
-      </div>
+        </section>
 
-      <div className="mt-8">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Nhật ký lưu trú</h2>
-        <StayJournal bookings={bookings} />
+        {/* RIGHT — Nhật ký lưu trú */}
+        <section aria-label="Nhật ký lưu trú">
+          <h3 className="text-[13px] font-medium text-[#6B6760] uppercase tracking-wider mb-3">
+            Nhật ký lưu trú
+          </h3>
+          <StayJournal bookings={bookings} />
+        </section>
       </div>
     </div>
   )

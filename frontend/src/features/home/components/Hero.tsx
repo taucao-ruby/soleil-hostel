@@ -2,18 +2,17 @@ import React, { useMemo } from 'react'
 import { HERO_IMAGE_URL } from '../home.mock'
 
 /**
- * Hero — full-bleed hero section.
+ * Hero — full-bleed hero section (PROMPT_1A spec).
  *
- * Defect fixes:
- *   C-01: Brand name rendered ONLY in StickyHeader. Zero decorative text layers here.
- *   C-02: Real hostel photo via <img> object-cover + black/40 overlay.
- *   H-01: "Cuộn xuống" scroll indicator removed entirely.
- *   H-02: No CTA button in hero — ONE CTA lives in SearchCard only.
- *   H-03: Location displayed as a proper pill with role="status".
- *   M-01: Content vertically centered via flex items-center justify-center.
- *   M-03: No hero button. CTA is in SearchCard.
+ * - Height: 52vh min 360px
+ * - H1 bottom-left: "Khám phá Huế theo cách của bạn" — white, 26px, weight 500
+ * - Subline: "Đặt phòng nhanh — không cần thẻ tín dụng" — white, 14px, 70% opacity
+ * - Bottom-to-top gradient overlay for text legibility
+ * - Ken Burns disabled when prefers-reduced-motion: reduce
  *
- * Ken Burns animation disabled when prefers-reduced-motion: reduce.
+ * Regression guards:
+ *   C-01: No "Soleil" or "Hostel" as DOM text content in this section
+ *   C-02: Real hostel photo via <img> object-cover (aria-hidden)
  */
 const Hero: React.FC = () => {
   const prefersReduced = useMemo(
@@ -24,10 +23,10 @@ const Hero: React.FC = () => {
   return (
     <section
       data-testid="hero-section"
-      className="relative h-[100svh] min-h-[520px] overflow-hidden"
-      aria-label="Soleil Hostel Huế — trang chủ"
+      className="relative h-[52vh] min-h-[360px] overflow-hidden"
+      aria-label="Trang chủ Soleil Hostel Huế"
     >
-      {/* Real hostel photo — FIX C-02: actual photo, not flat brown placeholder */}
+      {/* Real hostel photo — C-02 guard: must be a real URL, not placehold.co */}
       <img
         src={HERO_IMAGE_URL}
         alt="Không gian ấm cúng của Soleil Hostel Huế"
@@ -38,30 +37,24 @@ const Hero: React.FC = () => {
         aria-hidden="true"
       />
 
-      {/* Dark overlay for legibility — spec: bg-black/40 */}
-      <div className="absolute inset-0 bg-black/40" aria-hidden="true" />
+      {/* Bottom-to-top gradient for text legibility */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            'linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.25) 55%, transparent 100%)',
+        }}
+        aria-hidden="true"
+      />
 
-      {/* Hero content — vertically + horizontally centered — FIX M-01 */}
-      <div className="relative z-10 flex flex-col items-center justify-center h-full px-6 text-center gap-4">
-        {/* Location pill — FIX H-03: proper pill + role="status" + ☀️ prefix */}
-        <span
-          role="status"
-          className="inline-flex items-center gap-1 bg-[#F5EFE0] text-[#5C3D1E] rounded-full px-4 py-1.5 text-sm font-medium font-sans"
-        >
-          ☀️ Huế · Việt Nam
-        </span>
-
-        {/* H1 — FIX C-01: brand name is ONLY in header. No "Soleil/Hostel" here. */}
-        <h1 className="font-serif font-bold text-white text-4xl leading-tight max-w-xs drop-shadow-lg">
-          Nơi nghỉ ngơi của bạn tại Huế
+      {/* Content — bottom-left anchored */}
+      <div className="absolute bottom-0 left-0 z-10 px-5 pb-6 max-w-[280px]">
+        <h1 className="text-white leading-tight mb-2" style={{ fontSize: '26px', fontWeight: 500 }}>
+          Khám phá Huế theo cách của bạn
         </h1>
-
-        {/* Subtitle */}
-        <p className="font-sans text-white/80 text-base max-w-xs leading-relaxed">
-          Không gian ấm cúng, giá cả phải chăng
+        <p className="text-white/70 text-sm leading-relaxed">
+          Đặt phòng nhanh — không cần thẻ tín dụng
         </p>
-
-        {/* FIX H-02 + M-03: NO CTA button here. The ONE CTA lives in SearchCard. */}
       </div>
     </section>
   )

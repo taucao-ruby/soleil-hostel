@@ -4,7 +4,8 @@ import { useAuth } from './AuthContext'
 
 const FALLBACK_AUTH_ERROR = 'Đăng ký thất bại. Vui lòng thử lại.'
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
+const PASSWORD_REGEX =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]).{8,}$/
 
 type FormState = {
   name: string
@@ -21,7 +22,9 @@ const validateEmail = (email: string) =>
   EMAIL_REGEX.test(email.trim()) ? '' : 'Địa chỉ email không hợp lệ'
 
 const validatePassword = (password: string) =>
-  PASSWORD_REGEX.test(password) ? '' : 'Mật khẩu cần ít nhất 8 ký tự, 1 chữ hoa, 1 số'
+  PASSWORD_REGEX.test(password)
+    ? ''
+    : 'Mật khẩu cần ít nhất 8 ký tự, 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt'
 
 const validatePasswordConfirmation = (password: string, passwordConfirmation: string) =>
   passwordConfirmation && password === passwordConfirmation ? '' : 'Mật khẩu xác nhận không khớp'
@@ -45,19 +48,23 @@ const getPasswordStrength = (password: string) => {
     score += 1
   }
 
+  if (/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(password)) {
+    score += 1
+  }
+
   return Math.max(1, score)
 }
 
 const getStrengthLabel = (strength: number) => {
-  if (strength >= 3) {
+  if (strength >= 4) {
     return 'Mạnh'
   }
 
-  if (strength === 2) {
+  if (strength === 3) {
     return 'Trung bình'
   }
 
-  if (strength === 1) {
+  if (strength <= 2) {
     return 'Yếu'
   }
 
@@ -296,13 +303,13 @@ const RegisterPage: React.FC = () => {
                 aria-live="polite"
                 aria-label={`Độ mạnh mật khẩu: ${getStrengthLabel(passwordStrength)}`}
               >
-                <div className="grid grid-cols-3 gap-2">
-                  {[0, 1, 2].map(index => {
+                <div className="grid grid-cols-4 gap-2">
+                  {[0, 1, 2, 3].map(index => {
                     const active = index < passwordStrength
                     const activeClass =
-                      passwordStrength >= 3
+                      passwordStrength >= 4
                         ? 'bg-emerald-500'
-                        : passwordStrength === 2
+                        : passwordStrength === 3
                           ? 'bg-amber-400'
                           : 'bg-red-500'
 

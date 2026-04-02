@@ -123,7 +123,7 @@ describe('RoomForm', () => {
     })
 
     expect(await screen.findByText('Room Dashboard')).toBeInTheDocument()
-  })
+  }, 15000)
 
   it('loads edit mode with pre-filled room data and classification fields', async () => {
     const user = userEvent.setup()

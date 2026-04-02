@@ -112,12 +112,25 @@ class CheckHttpOnlyTokenValid
         // ========== Attach to Request ==========
         // Set authenticated user & token on request attributes (used by HttpOnlyTokenController)
         $user = $token->tokenable;
+        if (! $user instanceof \App\Models\User) {
+            throw new AuthenticationException('Unauthenticated. Please log in.');
+        }
         $request->attributes->set('user', $user);
         $request->attributes->set('token', $token);
 
         // Also set user resolver so $request->user() works for downstream middleware
         // (e.g. 'verified', 'role') when this middleware is used as a fallback
         $request->setUserResolver(fn () => $user);
+
+        // Authenticate on the default auth guard so Gate::authorize() works.
+        // Gate resolves users via auth()->user() (default guard = 'web'), not $request->user().
+        // Also set on sanctum guard for compatibility with auth:sanctum middleware consumers.
+        auth()->setUser($user);
+        try {
+            auth()->guard('sanctum')->setUser($user);
+        } catch (\Throwable $e) {
+            // Guard unavailable in test context — request resolver above is sufficient
+        }
 
         // Throttle last_used_at updates to 1-minute intervals to reduce DB writes
         if (! $token->last_used_at || $token->last_used_at->diffInMinutes(now()) >= 1) {

@@ -188,7 +188,7 @@ describe('BookingForm', () => {
 
     const user = userEvent.setup()
     await waitFor(() => {
-      expect(screen.getByLabelText(/Chọn phòng/)).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: /Phòng Dormitory 4 giường/i })).toBeInTheDocument()
     })
 
     await user.selectOptions(screen.getByLabelText(/Chọn phòng/), '1')

@@ -81,7 +81,7 @@ class CheckTokenNotRevokedAndNotExpired
         // ========== AUTHENTICATE USER (ONLY AFTER validation checks pass) ==========
         // Now that we've verified token is valid, not expired, and not revoked, authenticate the user
         $user = $token->tokenable;
-        if (! $user) {
+        if (! $user instanceof \App\Models\User) {
             throw new AuthenticationException('Không tìm được user cho token này.');
         }
 

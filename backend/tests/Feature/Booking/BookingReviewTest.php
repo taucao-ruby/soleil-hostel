@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Booking;
 
-use App\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Models\Review;
 use App\Models\Room;
@@ -60,9 +59,9 @@ class BookingReviewTest extends TestCase
     {
         parent::setUp();
 
-        $this->user  = User::factory()->create();
+        $this->user = User::factory()->create();
         $this->admin = User::factory()->admin()->create();
-        $this->room  = Room::factory()->create();
+        $this->room = Room::factory()->create();
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -78,7 +77,7 @@ class BookingReviewTest extends TestCase
             ->for($this->room)
             ->confirmed()
             ->create(array_merge([
-                'check_in'  => Carbon::now()->subDays(5)->startOfDay(),
+                'check_in' => Carbon::now()->subDays(5)->startOfDay(),
                 'check_out' => Carbon::now()->subDays(2)->startOfDay(),
             ], $overrides));
     }
@@ -88,9 +87,9 @@ class BookingReviewTest extends TestCase
     {
         return array_merge([
             'booking_id' => $booking->id,
-            'title'      => 'Trải nghiệm tuyệt vời',
-            'content'    => 'Phòng sạch sẽ, nhân viên thân thiện và chu đáo.',
-            'rating'     => 5,
+            'title' => 'Trải nghiệm tuyệt vời',
+            'content' => 'Phòng sạch sẽ, nhân viên thân thiện và chu đáo.',
+            'rating' => 5,
         ], $overrides);
     }
 
@@ -112,8 +111,8 @@ class BookingReviewTest extends TestCase
 
         $this->assertDatabaseHas('reviews', [
             'booking_id' => $booking->id,
-            'user_id'    => $this->user->id,
-            'rating'     => 5,
+            'user_id' => $this->user->id,
+            'rating' => 5,
         ]);
     }
 
@@ -163,8 +162,8 @@ class BookingReviewTest extends TestCase
             ->assertStatus(201);
 
         $this->assertDatabaseHas('reviews', [
-            'booking_id'  => $booking->id,
-            'guest_name'  => $this->user->name,
+            'booking_id' => $booking->id,
+            'guest_name' => $this->user->name,
             'guest_email' => $this->user->email,
         ]);
     }
@@ -178,7 +177,7 @@ class BookingReviewTest extends TestCase
             ->for($this->room)
             ->pending()
             ->create([
-                'check_in'  => Carbon::now()->subDays(5)->startOfDay(),
+                'check_in' => Carbon::now()->subDays(5)->startOfDay(),
                 'check_out' => Carbon::now()->subDays(2)->startOfDay(),
             ]);
 
@@ -195,7 +194,7 @@ class BookingReviewTest extends TestCase
             ->for($this->room)
             ->cancelled()
             ->create([
-                'check_in'  => Carbon::now()->subDays(5)->startOfDay(),
+                'check_in' => Carbon::now()->subDays(5)->startOfDay(),
                 'check_out' => Carbon::now()->subDays(2)->startOfDay(),
             ]);
 
@@ -214,7 +213,7 @@ class BookingReviewTest extends TestCase
             ->for($this->room)
             ->confirmed()
             ->create([
-                'check_in'  => Carbon::now()->addDays(5)->startOfDay(),
+                'check_in' => Carbon::now()->addDays(5)->startOfDay(),
                 'check_out' => Carbon::now()->addDays(7)->startOfDay(), // future
             ]);
 
@@ -247,7 +246,7 @@ class BookingReviewTest extends TestCase
     public function test_non_owner_cannot_create_review_for_others_booking(): void
     {
         $otherUser = User::factory()->create();
-        $booking   = $this->reviewableBooking($otherUser); // owned by otherUser
+        $booking = $this->reviewableBooking($otherUser); // owned by otherUser
 
         $response = $this->actingAs($this->user) // different user tries
             ->postJson('/api/v1/reviews', $this->reviewPayload($booking));
@@ -351,9 +350,9 @@ class BookingReviewTest extends TestCase
         $this->actingAs($this->user)
             ->postJson('/api/v1/reviews', [
                 'booking_id' => 99999,
-                'title'      => 'Test',
-                'content'    => 'Test content',
-                'rating'     => 5,
+                'title' => 'Test',
+                'content' => 'Test content',
+                'rating' => 5,
             ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['booking_id']);
@@ -364,15 +363,15 @@ class BookingReviewTest extends TestCase
     public function test_owner_can_update_review(): void
     {
         $booking = $this->reviewableBooking();
-        $review  = Review::factory()
+        $review = Review::factory()
             ->forBooking($booking)
             ->create(['user_id' => $this->user->id, 'rating' => 3]);
 
         $response = $this->actingAs($this->user)
             ->putJson("/api/v1/reviews/{$review->id}", [
-                'title'   => 'Tiêu đề mới',
+                'title' => 'Tiêu đề mới',
                 'content' => 'Nội dung đánh giá đã cập nhật.',
-                'rating'  => 4,
+                'rating' => 4,
             ]);
 
         $response->assertOk()
@@ -381,7 +380,7 @@ class BookingReviewTest extends TestCase
             ->assertJsonPath('data.title', 'Tiêu đề mới');
 
         $this->assertDatabaseHas('reviews', [
-            'id'     => $review->id,
+            'id' => $review->id,
             'rating' => 4,
         ]);
     }
@@ -389,16 +388,16 @@ class BookingReviewTest extends TestCase
     public function test_non_owner_cannot_update_review(): void
     {
         $otherUser = User::factory()->create();
-        $booking   = $this->reviewableBooking($otherUser);
-        $review    = Review::factory()
+        $booking = $this->reviewableBooking($otherUser);
+        $review = Review::factory()
             ->forBooking($booking)
             ->create(['user_id' => $otherUser->id]);
 
         $this->actingAs($this->user) // different user
             ->putJson("/api/v1/reviews/{$review->id}", [
-                'title'   => 'Hack title',
+                'title' => 'Hack title',
                 'content' => 'Hack content',
-                'rating'  => 1,
+                'rating' => 1,
             ])
             ->assertForbidden();
     }
@@ -406,7 +405,7 @@ class BookingReviewTest extends TestCase
     public function test_admin_cannot_update_others_review(): void
     {
         $booking = $this->reviewableBooking();
-        $review  = Review::factory()
+        $review = Review::factory()
             ->forBooking($booking)
             ->create(['user_id' => $this->user->id]);
 
@@ -414,9 +413,9 @@ class BookingReviewTest extends TestCase
         // deferring to the ownership check which denies
         $this->actingAs($this->admin)
             ->putJson("/api/v1/reviews/{$review->id}", [
-                'title'   => 'Admin edit',
+                'title' => 'Admin edit',
                 'content' => 'Admin content',
-                'rating'  => 2,
+                'rating' => 2,
             ])
             ->assertForbidden();
     }
@@ -426,7 +425,7 @@ class BookingReviewTest extends TestCase
     public function test_owner_can_delete_own_review(): void
     {
         $booking = $this->reviewableBooking();
-        $review  = Review::factory()
+        $review = Review::factory()
             ->forBooking($booking)
             ->create(['user_id' => $this->user->id]);
 
@@ -441,7 +440,7 @@ class BookingReviewTest extends TestCase
     public function test_admin_can_delete_any_review(): void
     {
         $booking = $this->reviewableBooking();
-        $review  = Review::factory()
+        $review = Review::factory()
             ->forBooking($booking)
             ->create(['user_id' => $this->user->id]);
 
@@ -456,8 +455,8 @@ class BookingReviewTest extends TestCase
     public function test_non_owner_non_admin_cannot_delete_review(): void
     {
         $otherUser = User::factory()->create();
-        $booking   = $this->reviewableBooking($otherUser);
-        $review    = Review::factory()
+        $booking = $this->reviewableBooking($otherUser);
+        $review = Review::factory()
             ->forBooking($booking)
             ->create(['user_id' => $otherUser->id]);
 
@@ -471,7 +470,7 @@ class BookingReviewTest extends TestCase
     public function test_unauthenticated_cannot_delete_review(): void
     {
         $booking = $this->reviewableBooking();
-        $review  = Review::factory()
+        $review = Review::factory()
             ->forBooking($booking)
             ->create(['user_id' => $this->user->id]);
 

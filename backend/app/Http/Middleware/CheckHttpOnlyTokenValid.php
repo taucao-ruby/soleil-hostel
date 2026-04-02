@@ -112,6 +112,9 @@ class CheckHttpOnlyTokenValid
         // ========== Attach to Request ==========
         // Set authenticated user & token on request attributes (used by HttpOnlyTokenController)
         $user = $token->tokenable;
+        if (! $user instanceof \App\Models\User) {
+            throw new AuthenticationException('Unauthenticated. Please log in.');
+        }
         $request->attributes->set('user', $user);
         $request->attributes->set('token', $token);
 

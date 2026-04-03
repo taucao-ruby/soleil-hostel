@@ -159,7 +159,7 @@ const RegisterPage: React.FC = () => {
 
       setRedirecting(true)
       redirectTimeoutRef.current = window.setTimeout(() => {
-        navigate('/dashboard')
+        navigate('/email/verify')
       }, 1000)
     } catch {
       setShowFallbackError(true)
@@ -191,7 +191,7 @@ const RegisterPage: React.FC = () => {
   }
 
   return (
-    <section className="bg-hueSurface px-4 py-14 sm:px-6 sm:py-16">
+    <section className="px-4 bg-hueSurface py-14 sm:px-6 sm:py-16">
       <div className="mx-auto flex min-h-[70vh] w-full max-w-sm flex-col justify-center">
         <div className="rounded-lg border border-hueBorder bg-white p-6 shadow-[0_20px_45px_rgba(28,26,23,0.08)] sm:p-8">
           <div className="mb-8">
@@ -206,7 +206,7 @@ const RegisterPage: React.FC = () => {
 
           {redirecting && !errorMessage && (
             <div
-              className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3"
+              className="px-4 py-3 mb-6 border rounded-lg border-emerald-200 bg-emerald-50"
               role="status"
             >
               <p className="text-sm font-medium text-emerald-800">
@@ -216,14 +216,14 @@ const RegisterPage: React.FC = () => {
           )}
 
           {errorMessage && (
-            <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3" role="alert">
+            <div className="px-4 py-3 mb-6 border border-red-200 rounded-lg bg-red-50" role="alert">
               <p className="text-sm font-medium text-red-800">{errorMessage}</p>
             </div>
           )}
 
           <form className="space-y-5" noValidate onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="name" className="mb-2 block text-sm font-medium text-hueBlack">
+              <label htmlFor="name" className="block mb-2 text-sm font-medium text-hueBlack">
                 Họ và tên
               </label>
               <input
@@ -249,7 +249,7 @@ const RegisterPage: React.FC = () => {
             </div>
 
             <div>
-              <label htmlFor="email" className="mb-2 block text-sm font-medium text-hueBlack">
+              <label htmlFor="email" className="block mb-2 text-sm font-medium text-hueBlack">
                 Email
               </label>
               <input
@@ -275,7 +275,7 @@ const RegisterPage: React.FC = () => {
             </div>
 
             <div>
-              <label htmlFor="password" className="mb-2 block text-sm font-medium text-hueBlack">
+              <label htmlFor="password" className="block mb-2 text-sm font-medium text-hueBlack">
                 Mật khẩu
               </label>
               <input
@@ -338,7 +338,7 @@ const RegisterPage: React.FC = () => {
             <div>
               <label
                 htmlFor="passwordConfirmation"
-                className="mb-2 block text-sm font-medium text-hueBlack"
+                className="block mb-2 text-sm font-medium text-hueBlack"
               >
                 Xác nhận mật khẩu
               </label>
@@ -379,7 +379,7 @@ const RegisterPage: React.FC = () => {
                 <span className="flex items-center gap-2">
                   <svg
                     aria-hidden="true"
-                    className="h-4 w-4 animate-spin"
+                    className="w-4 h-4 animate-spin"
                     fill="none"
                     viewBox="0 0 24 24"
                   >
@@ -411,7 +411,7 @@ const RegisterPage: React.FC = () => {
             <p className="text-center text-hueMuted">
               Đã có tài khoản?{' '}
               <Link
-                className="font-medium text-brandAmber transition hover:text-hueBlack"
+                className="font-medium transition text-brandAmber hover:text-hueBlack"
                 to="/login"
               >
                 Đăng nhập

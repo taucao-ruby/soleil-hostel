@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Models\User;
+use App\Services\EmailVerificationCodeService;
 use App\Traits\ApiResponse;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
@@ -46,13 +47,13 @@ class HttpOnlyTokenController extends Controller
             throw new AuthenticationException('Email hoặc mật khẩu không đúng.');
         }
 
-        // Auto-resend verification email if unverified.
-        // Wrapped in try/catch: SMTP / mail-binding failures must not cause a 500 on login.
+        // Auto-resend verification code if unverified.
+        // Wrapped in try/catch: mail failures must not cause a 500 on login.
         if (! $user->hasVerifiedEmail()) {
             try {
-                $user->sendEmailVerificationNotification();
+                app(EmailVerificationCodeService::class)->issue($user);
             } catch (\Exception $e) {
-                Log::warning('Failed to resend verification email on login', [
+                Log::warning('Failed to send verification code on login', [
                     'user_id' => $user->id,
                     'email' => $user->email,
                     'error' => $e->getMessage(),
@@ -110,6 +111,7 @@ class HttpOnlyTokenController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->role,
+                'email_verified_at' => $user->email_verified_at?->toIso8601String(),
             ],
             'expires_in_minutes' => $expiresInMinutes,
             'expires_at' => $expiresAt->toIso8601String(),
@@ -294,6 +296,7 @@ class HttpOnlyTokenController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->role,
+                'email_verified_at' => $user->email_verified_at?->toIso8601String(),
             ],
             'token' => [
                 'name' => $token->name,

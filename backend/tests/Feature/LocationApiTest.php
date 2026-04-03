@@ -51,8 +51,34 @@ class LocationApiTest extends TestCase
         $response = $this->getJson('/api/v1/locations');
 
         $response->assertOk()
+            ->assertJsonPath('data.0.stats.total_rooms', 7)
             ->assertJsonPath('data.0.stats.rooms_count', 7)
-            ->assertJsonPath('data.0.stats.available_rooms', 5);
+            // All 7 rooms available because no active bookings
+            ->assertJsonPath('data.0.stats.available_rooms', 7);
+    }
+
+    /** @test */
+    public function it_reduces_available_rooms_when_booking_exists_today(): void
+    {
+        $location = Location::factory()->create(['is_active' => true]);
+        $room1 = Room::factory()->create(['location_id' => $location->id, 'status' => 'available']);
+        Room::factory()->count(2)->create(['location_id' => $location->id, 'status' => 'available']);
+        $user = User::factory()->create();
+
+        // Book room1 overlapping today
+        Booking::factory()->create([
+            'room_id' => $room1->id,
+            'user_id' => $user->id,
+            'check_in' => now()->subDay()->toDateString(),
+            'check_out' => now()->addDay()->toDateString(),
+            'status' => 'confirmed',
+        ]);
+
+        $response = $this->getJson('/api/v1/locations');
+
+        $response->assertOk()
+            ->assertJsonPath('data.0.stats.rooms_count', 3)
+            ->assertJsonPath('data.0.stats.available_rooms', 2);
     }
 
     /** @test */

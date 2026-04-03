@@ -249,6 +249,6 @@ describe('RegisterPage', () => {
       vi.advanceTimersByTime(1)
     })
 
-    expect(mockNavigate).toHaveBeenCalledWith('/dashboard')
+    expect(mockNavigate).toHaveBeenCalledWith('/email/verify')
   })
 })

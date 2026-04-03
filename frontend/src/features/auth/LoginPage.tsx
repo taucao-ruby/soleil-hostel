@@ -102,7 +102,7 @@ const LoginPage: React.FC = () => {
   }
 
   return (
-    <section className="bg-hueSurface px-4 py-14 sm:px-6 sm:py-16">
+    <section className="px-4 bg-hueSurface py-14 sm:px-6 sm:py-16">
       <div className="mx-auto flex min-h-[70vh] w-full max-w-sm flex-col justify-center">
         <div className="rounded-lg border border-hueBorder bg-white p-6 shadow-[0_20px_45px_rgba(28,26,23,0.08)] sm:p-8">
           <div className="mb-8">
@@ -116,14 +116,14 @@ const LoginPage: React.FC = () => {
           </div>
 
           {errorMessage && (
-            <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3" role="alert">
+            <div className="px-4 py-3 mb-6 border border-red-200 rounded-lg bg-red-50" role="alert">
               <p className="text-sm font-medium text-red-800">{errorMessage}</p>
             </div>
           )}
 
           <form className="space-y-5" noValidate onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="email" className="mb-2 block text-sm font-medium text-hueBlack">
+              <label htmlFor="email" className="block mb-2 text-sm font-medium text-hueBlack">
                 Địa chỉ email
               </label>
               <input
@@ -149,7 +149,7 @@ const LoginPage: React.FC = () => {
             </div>
 
             <div>
-              <label htmlFor="password" className="mb-2 block text-sm font-medium text-hueBlack">
+              <label htmlFor="password" className="block mb-2 text-sm font-medium text-hueBlack">
                 Mật khẩu
               </label>
               <div className="relative">
@@ -170,7 +170,7 @@ const LoginPage: React.FC = () => {
                 />
                 <button
                   aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-hueMuted transition hover:text-hueBlack focus:outline-none focus:ring-2 focus:ring-brandAmber/30"
+                  className="absolute transition -translate-y-1/2 right-3 top-1/2 text-hueMuted hover:text-hueBlack focus:outline-none focus:ring-2 focus:ring-brandAmber/30"
                   disabled={isBusy}
                   type="button"
                   onClick={() => setShowPassword(current => !current)}
@@ -178,7 +178,7 @@ const LoginPage: React.FC = () => {
                   {showPassword ? (
                     <svg
                       aria-hidden="true"
-                      className="h-5 w-5"
+                      className="w-5 h-5"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -211,7 +211,7 @@ const LoginPage: React.FC = () => {
                   ) : (
                     <svg
                       aria-hidden="true"
-                      className="h-5 w-5"
+                      className="w-5 h-5"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -257,7 +257,7 @@ const LoginPage: React.FC = () => {
                 <span className="flex items-center gap-2">
                   <svg
                     aria-hidden="true"
-                    className="h-4 w-4 animate-spin"
+                    className="w-4 h-4 animate-spin"
                     fill="none"
                     viewBox="0 0 24 24"
                   >
@@ -289,14 +289,14 @@ const LoginPage: React.FC = () => {
             <p className="text-center text-hueMuted">
               Chưa có tài khoản?{' '}
               <Link
-                className="font-medium text-brandAmber transition hover:text-hueBlack"
+                className="font-medium transition text-brandAmber hover:text-hueBlack"
                 to="/register"
               >
                 Đăng ký ngay
               </Link>
             </p>
             <p className="text-center">
-              <Link className="font-medium text-hueMuted transition hover:text-hueBlack" to="/">
+              <Link className="font-medium transition text-hueMuted hover:text-hueBlack" to="/">
                 ← Quay về trang chủ
               </Link>
             </p>

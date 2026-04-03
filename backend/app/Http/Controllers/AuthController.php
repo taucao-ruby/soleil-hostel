@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Models\User;
+use App\Services\EmailVerificationCodeService;
 use App\Traits\ApiResponse;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
@@ -58,6 +59,7 @@ class AuthController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->role,
+                'email_verified_at' => $user->email_verified_at?->toIso8601String(),
             ],
             'access_token' => $token,
             'token_type' => 'Bearer',
@@ -79,9 +81,17 @@ class AuthController extends Controller
             ]);
         }
 
-        // Auto-resend verification email if unverified
+        // Auto-resend verification code if unverified
         if (! $user->hasVerifiedEmail()) {
-            $user->sendEmailVerificationNotification();
+            try {
+                app(EmailVerificationCodeService::class)->issue($user);
+            } catch (\Exception $e) {
+                Log::warning('Failed to send verification code on login', [
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -92,6 +102,7 @@ class AuthController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->role,
+                'email_verified_at' => $user->email_verified_at?->toIso8601String(),
             ],
             'access_token' => $token,
             'token_type' => 'Bearer',
@@ -110,6 +121,7 @@ class AuthController extends Controller
             'name' => $user->name,
             'email' => $user->email,
             'role' => $user->role,
+            'email_verified_at' => $user->email_verified_at?->toIso8601String(),
         ]);
     }
 

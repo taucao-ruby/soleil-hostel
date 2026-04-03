@@ -3,7 +3,7 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
-use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
+use App\Services\EmailVerificationCodeService;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
@@ -56,6 +56,14 @@ class RegisterTest extends TestCase
         $user = User::where('email', 'jane@example.com')->firstOrFail();
         $this->assertNotEquals('Password1!', $user->password);
         $this->assertTrue(Hash::check('Password1!', $user->password));
+    }
+
+    public function test_registration_does_not_auto_verify_email(): void
+    {
+        $this->postJson(self::ENDPOINT, self::VALID_PAYLOAD)->assertStatus(201);
+
+        $user = User::where('email', 'jane@example.com')->firstOrFail();
+        $this->assertNull($user->email_verified_at, 'email_verified_at must be NULL after registration');
     }
 
     // =========================================================
@@ -114,12 +122,15 @@ class RegisterTest extends TestCase
 
     public function test_smtp_failure_during_verification_email_does_not_cause_500(): void
     {
-        // Replace the listener in the IoC container with a mock that throws.
-        // This simulates a real SMTP / mail transport failure at the listener level.
+        // Simulate an SMTP / mail transport failure at the service level.
+        // The application listener (SendEmailVerificationCode) delegates to
+        // EmailVerificationCodeService::issue(), which calls $user->notify().
+        // If notify() throws (e.g. SMTP down), SendEmailVerificationCode catches
+        // it internally and logs a warning — registration must still return 201.
         $this->instance(
-            SendEmailVerificationNotification::class,
-            \Mockery::mock(SendEmailVerificationNotification::class, function ($mock) {
-                $mock->shouldReceive('handle')
+            EmailVerificationCodeService::class,
+            \Mockery::mock(EmailVerificationCodeService::class, function ($mock) {
+                $mock->shouldReceive('issue')
                     ->once()
                     ->andThrow(new \RuntimeException('SMTP connection refused'));
             })

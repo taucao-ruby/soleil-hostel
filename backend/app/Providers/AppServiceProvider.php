@@ -16,6 +16,8 @@ use App\Repositories\Contracts\RoomRepositoryInterface;
 use App\Repositories\EloquentBookingRepository;
 use App\Repositories\EloquentContactMessageRepository;
 use App\Repositories\EloquentRoomRepository;
+use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Sanctum\Sanctum;
 
@@ -86,5 +88,34 @@ class AppServiceProvider extends ServiceProvider
         // Usage: $request->purify(['field1', 'field2'])
         // Automatically sanitizes FormRequest data
         FormRequestPurifyMacro::register();
+
+        // ========== Redirect verification email link to SPA ==========
+        // Default Laravel VerifyEmail points to /api/email/verify/{id}/{hash} directly.
+        // Clicking that link in a mail client opens a raw API URL with no auth cookie → 401.
+        // Instead: send a frontend SPA URL. The SPA reads the params and calls the API
+        // with its existing httpOnly cookie, then shows a proper success/error page.
+        VerifyEmail::createUrlUsing(function ($notifiable) {
+            $frontendUrl = rtrim(config('app.frontend_url', 'http://localhost:5173'), '/');
+            $id = $notifiable->getKey();
+            $hash = sha1($notifiable->getEmailForVerification());
+            $expires = now()->addMinutes(config('auth.verification.expire', 60));
+
+            // Generate the signed backend URL to extract the expires + signature params
+            $backendUrl = URL::temporarySignedRoute(
+                'verification.verify',
+                $expires,
+                ['id' => $id, 'hash' => $hash]
+            );
+
+            $parsedQuery = [];
+            parse_str(parse_url($backendUrl, PHP_URL_QUERY) ?? '', $parsedQuery);
+
+            return $frontendUrl.'/email/verify?'.http_build_query([
+                'id'        => $id,
+                'hash'      => $hash,
+                'expires'   => $parsedQuery['expires'],
+                'signature' => $parsedQuery['signature'],
+            ]);
+        });
     }
 }

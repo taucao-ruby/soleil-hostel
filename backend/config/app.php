@@ -10,6 +10,8 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    'frontend_url' => env('FRONTEND_URL', 'http://localhost:5173'),
+
     'asset_url' => env('ASSET_URL', null),
 
     'timezone' => 'UTC',
@@ -39,6 +41,7 @@ return [
         Illuminate\Encryption\EncryptionServiceProvider::class,
         Illuminate\Cookie\CookieServiceProvider::class,
         Illuminate\Filesystem\FilesystemServiceProvider::class,
+        Illuminate\Mail\MailServiceProvider::class,
         Illuminate\Notifications\NotificationServiceProvider::class,
         Illuminate\Pagination\PaginationServiceProvider::class,
         Illuminate\Pipeline\PipelineServiceProvider::class,

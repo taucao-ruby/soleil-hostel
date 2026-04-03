@@ -298,7 +298,9 @@ describe('GuestDashboard', () => {
 
     renderDashboard()
     expect(
-      screen.getByText('Email của bạn chưa được xác minh. Vui lòng kiểm tra hộp thư đến.')
+      screen.getByText(
+        'Email của bạn chưa được xác minh. Vui lòng kiểm tra hộp thư đến để lấy mã xác minh.'
+      )
     ).toBeInTheDocument()
     expect(screen.queryByText('Không thể tải danh sách đặt phòng.')).not.toBeInTheDocument()
   })
@@ -324,11 +326,11 @@ describe('GuestDashboard', () => {
 
     renderDashboard()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Gửi lại email xác minh →' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Gửi lại mã →' }))
 
     await waitFor(() => {
-      expect(mockApiPost).toHaveBeenCalledWith('/email/verification-notification')
-      expect(mockShowToast.success).toHaveBeenCalledWith('Đã gửi lại email xác minh.')
+      expect(mockApiPost).toHaveBeenCalledWith('/email/send-code')
+      expect(mockShowToast.success).toHaveBeenCalledWith('Đã gửi mã xác minh đến email của bạn.')
     })
   })
 })

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -106,12 +107,24 @@ class Location extends Model
 
     /**
      * Scope: Include room counts for listing pages.
+     *
+     * available_rooms_count = rooms with no active (pending/confirmed)
+     * bookings overlapping today, using half-open interval [today, tomorrow).
+     * Soft-deleted bookings are excluded automatically (Booking uses SoftDeletes).
      */
     public function scopeWithRoomCounts(Builder $query): Builder
     {
+        $today = Carbon::today()->toDateString();
+        $tomorrow = Carbon::tomorrow()->toDateString();
+
         return $query->withCount([
             'rooms',
-            'activeRooms as available_rooms_count',
+            'rooms as available_rooms_count' => function (Builder $q) use ($today, $tomorrow) {
+                $q->whereDoesntHave('activeBookings', function (Builder $bq) use ($today, $tomorrow) {
+                    $bq->where('check_in', '<', $tomorrow)
+                        ->where('check_out', '>', $today);
+                });
+            },
         ]);
     }
 

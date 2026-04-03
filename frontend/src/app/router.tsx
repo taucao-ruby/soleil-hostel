@@ -16,6 +16,7 @@ import HomePage from '@/pages/HomePage'
 // Lazy-loaded pages (code splitting for better performance)
 const LoginPage = lazy(() => import('@/features/auth/LoginPage'))
 const RegisterPage = lazy(() => import('@/features/auth/RegisterPage'))
+const EmailVerifyPage = lazy(() => import('@/features/auth/EmailVerifyPage'))
 const RoomList = lazy(() => import('@/features/rooms/RoomList'))
 const BookingForm = lazy(() => import('@/features/booking/BookingForm'))
 const BookingList = lazy(() => import('@/features/booking/BookingList'))
@@ -128,6 +129,10 @@ export const router = createBrowserRouter([
           {
             path: 'register',
             element: withSuspense(RegisterPage),
+          },
+          {
+            path: 'email/verify',
+            element: withSuspense(EmailVerifyPage),
           },
           {
             path: 'rooms',

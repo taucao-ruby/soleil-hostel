@@ -7,6 +7,12 @@
       "runtimeArgs": ["run", "dev"],
       "cwd": "frontend",
       "port": 5174
+    },
+    {
+      "name": "stitch-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-p", "5199", "stitch-preview"],
+      "port": 5199
     }
   ]
 }

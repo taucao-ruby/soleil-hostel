@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&amp;family=Source+Serif+4:wght@400;600;700&amp;family=Noto+Serif:wght@400;700&amp;family=Be+Vietnam+Pro:wght@400;500;700&amp;family=JetBrains+Mono&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed-dim": "#cdc5ba",
+                    "inverse-primary": "#e8bf9a",
+                    "primary-container": "#7c5c3e",
+                    "primary": "#624528",
+                    "on-tertiary": "#ffffff",
+                    "primary-fixed": "#ffdcbf",
+                    "tertiary": "#4f4a41",
+                    "surface": "#fff8f4",
+                    "surface-container-lowest": "#ffffff",
+                    "primary-fixed-dim": "#e8bf9a",
+                    "surface-bright": "#fff8f4",
+                    "on-primary-fixed-variant": "#5d4125",
+                    "on-tertiary-fixed-variant": "#4b463d",
+                    "surface-variant": "#eae1da",
+                    "on-tertiary-container": "#e6ded2",
+                    "surface-dim": "#e1d8d2",
+                    "error": "#ba1a1a",
+                    "secondary-container": "#e7e2da",
+                    "on-surface-variant": "#4f453c",
+                    "on-secondary": "#ffffff",
+                    "surface-container-highest": "#eae1da",
+                    "inverse-on-surface": "#f9efe8",
+                    "error-container": "#ffdad6",
+                    "surface-tint": "#78583a",
+                    "surface-container-low": "#fcf2eb",
+                    "on-surface": "#1f1b17",
+                    "surface-container": "#f6ece5",
+                    "outline-variant": "#d3c4b9",
+                    "on-primary": "#ffffff",
+                    "outline": "#81756b",
+                    "on-secondary-fixed-variant": "#494741",
+                    "on-primary-fixed": "#2c1601",
+                    "on-tertiary-fixed": "#1f1b14",
+                    "tertiary-fixed": "#eae1d5",
+                    "secondary-fixed": "#e7e2da",
+                    "on-secondary-fixed": "#1d1c17",
+                    "surface-container-high": "#f0e6e0",
+                    "on-secondary-container": "#67645e",
+                    "background": "#fff8f4",
+                    "tertiary-container": "#676258",
+                    "secondary-fixed-dim": "#cac6be",
+                    "on-primary-container": "#ffd8b6",
+                    "on-background": "#1f1b17",
+                    "secondary": "#615e58",
+                    "on-error-container": "#93000a",
+                    "on-error": "#ffffff",
+                    "inverse-surface": "#34302b"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Noto Serif"],
+                    "body": ["Be Vietnam Pro"],
+                    "label": ["Be Vietnam Pro"],
+                    "serif": ["Source Serif 4"],
+                    "sans": ["DM Sans"],
+                    "mono": ["JetBrains Mono"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .step-line {
+            height: 2px;
+            flex-grow: 1;
+            background: #eae1da;
+        }
+        .step-line-active {
+            background: #624528;
+        }
+        body {
+            background-color: #fff8f4;
+            color: #1f1b17;
+            font-family: 'DM Sans', sans-serif;
+            max-width: 390px;
+            margin: 0 auto;
+            position: relative;
+            min-height: 100vh;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="pb-40">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-[#fff8f4]/80 dark:bg-[#1f1b17]/80 backdrop-blur-md flex items-center justify-between px-6 h-16 w-full shadow-none border-b border-[#624528]/10" style="max-width: 390px;">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[#624528] active:scale-95 duration-150 cursor-pointer" data-icon="arrow_back">arrow_back</span>
+<span class="font-['Source_Serif_4'] text-xl font-bold tracking-tight text-[#624528] dark:text-[#ffdcbf]">Soleil</span>
+</div>
+<h1 class="font-['Source_Serif_4'] font-semibold text-lg text-[#624528] dark:text-[#ffdcbf] absolute left-1/2 -translate-x-1/2">Đặt phòng</h1>
+<div class="w-6"></div> <!-- Spacer for centering -->
+</header>
+<main class="pt-20 px-4">
+<!-- Step Indicator -->
+<section class="mb-8 mt-4">
+<div class="flex items-center justify-between px-4">
+<div class="flex flex-col items-center z-10">
+<div class="w-8 h-8 rounded-full bg-primary-container text-white flex items-center justify-center font-bold text-sm">1</div>
+<span class="text-[10px] uppercase tracking-wider font-bold mt-2 text-primary">Xem lại</span>
+</div>
+<div class="step-line -mt-6"></div>
+<div class="flex flex-col items-center z-10">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center font-bold text-sm">2</div>
+<span class="text-[10px] uppercase tracking-wider font-medium mt-2 text-outline">Chi tiết</span>
+</div>
+<div class="step-line -mt-6"></div>
+<div class="flex flex-col items-center z-10">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center font-bold text-sm">3</div>
+<span class="text-[10px] uppercase tracking-wider font-medium mt-2 text-outline">Xác nhận</span>
+</div>
+</div>
+</section>
+<!-- Booking Summary Card -->
+<article class="bg-surface-container-lowest rounded-xl p-4 shadow-[0_12px_40px_rgba(31,27,23,0.06)] mb-4">
+<h2 class="font-serif font-semibold text-base text-on-surface mb-6">Thông tin đặt phòng</h2>
+<div class="space-y-5">
+<div class="flex justify-between items-start">
+<span class="text-on-surface-variant text-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-base" data-icon="location_on">location_on</span> Địa điểm
+                    </span>
+<span class="text-on-surface font-medium text-sm text-right">Soleil Huế — Trung Tâm</span>
+</div>
+<div class="flex justify-between items-start">
+<span class="text-on-surface-variant text-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-base" data-icon="bed">bed</span> Loại phòng
+                    </span>
+<div class="text-right">
+<div class="text-on-surface font-medium text-sm">Phòng Đôi Superior</div>
+<div class="text-outline text-xs mt-0.5">Tầng 2 · 2 giường đơn · Tối đa 2 khách</div>
+</div>
+</div>
+<div class="flex justify-between items-start">
+<span class="text-on-surface-variant text-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-base" data-icon="calendar_today">calendar_today</span> Nhận phòng
+                    </span>
+<span class="text-on-surface font-medium text-sm text-right font-sans">Thứ Sáu, <span class="font-mono">14</span> tháng <span class="font-mono">6</span> năm <span class="font-mono">2026</span></span>
+</div>
+<div class="flex justify-between items-start">
+<span class="text-on-surface-variant text-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-base" data-icon="event">event</span> Trả phòng
+                    </span>
+<span class="text-on-surface font-medium text-sm text-right font-sans">Chủ Nhật, <span class="font-mono">16</span> tháng <span class="font-mono">6</span> năm <span class="font-mono">2026</span></span>
+</div>
+<div class="flex justify-between items-start">
+<span class="text-on-surface-variant text-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-base" data-icon="group">group</span> Số khách
+                    </span>
+<span class="text-on-surface font-medium text-sm text-right">2 người</span>
+</div>
+<hr class="border-outline-variant/30 my-2"/>
+<div class="space-y-1">
+<div class="flex justify-end items-center gap-2 text-on-surface-variant text-sm">
+<span>450.000₫ × 2 đêm</span>
+</div>
+<div class="flex justify-end items-baseline gap-1 text-on-surface font-bold text-lg">
+<span class="text-xs font-medium text-outline-variant">TỔNG</span>
+<span>= 900.000₫</span>
+</div>
+<div class="text-right italic text-[11px] text-outline">Chưa bao gồm thuế và phí</div>
+</div>
+</div>
+</article>
+<!-- Availability Status -->
+<div class="bg-[#EAF3DE] text-[#3B6D11] p-3 rounded-lg flex items-center gap-2 mb-8">
+<span class="material-symbols-outlined text-lg" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-[13px] font-medium">Phòng còn trống cho ngày của bạn</span>
+</div>
+<!-- Edit Link -->
+<div class="text-center mb-10">
+<a class="text-primary-container text-sm font-medium underline underline-offset-4 flex items-center justify-center gap-1 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined text-base" data-icon="arrow_back">arrow_back</span>
+                Thay đổi lựa chọn
+            </a>
+</div>
+</main>
+<!-- Sticky Bottom Action -->
+<div class="fixed bottom-20 left-0 w-full bg-white/90 backdrop-blur-sm border-t border-[#624528]/10 p-4 z-40" style="max-width: 390px;">
+<button class="w-full h-12 bg-gradient-to-br from-primary to-primary-container text-white rounded-lg font-medium text-sm flex items-center justify-center gap-2 active:scale-95 duration-150 shadow-lg shadow-primary/10">
+            Tiếp theo: Chi tiết khách
+            <span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full h-20 flex justify-around items-center px-4 pb-safe bg-[#fff8f4]/80 dark:bg-[#1f1b17]/80 backdrop-blur-md rounded-t-2xl z-50 border-t border-[#624528]/10 shadow-[0_-4px_20px_rgba(31,27,23,0.04)]" style="max-width: 390px;">
+<div class="flex flex-col items-center justify-center bg-[#ffdcbf] dark:bg-[#624528] text-[#624528] dark:text-[#ffdcbf] rounded-xl px-4 py-1.5 active:translate-y-0.5 transition-transform duration-200">
+<span class="material-symbols-outlined text-2xl" data-icon="home" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-['DM_Sans'] text-[10px] uppercase tracking-[0.05em] font-medium mt-0.5">Trang chủ</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#1f1b17]/50 dark:text-[#eae1da]/50 px-4 py-1.5 hover:text-[#624528] dark:hover:text-[#ffdcbf] active:translate-y-0.5 transition-transform duration-200">
+<span class="material-symbols-outlined text-2xl" data-icon="explore">explore</span>
+<span class="font-['DM_Sans'] text-[10px] uppercase tracking-[0.05em] font-medium mt-0.5">Khám phá</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#1f1b17]/50 dark:text-[#eae1da]/50 px-4 py-1.5 hover:text-[#624528] dark:hover:text-[#ffdcbf] active:translate-y-0.5 transition-transform duration-200">
+<span class="material-symbols-outlined text-2xl" data-icon="confirmation_number">confirmation_number</span>
+<span class="font-['DM_Sans'] text-[10px] uppercase tracking-[0.05em] font-medium mt-0.5">Đã đặt</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#1f1b17]/50 dark:text-[#eae1da]/50 px-4 py-1.5 hover:text-[#624528] dark:hover:text-[#ffdcbf] active:translate-y-0.5 transition-transform duration-200">
+<span class="material-symbols-outlined text-2xl" data-icon="person">person</span>
+<span class="font-['DM_Sans'] text-[10px] uppercase tracking-[0.05em] font-medium mt-0.5">Hồ sơ</span>
+</div>
+</nav>
+</body></html>

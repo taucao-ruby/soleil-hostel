@@ -104,7 +104,7 @@ class EmailVerificationCodeController extends Controller
             'success' => true,
             'verified' => $user->hasVerifiedEmail(),
             'email' => $user->email,
-            'email_verified_at' => $user->email_verified_at?->toISOString(),
+            'email_verified_at' => $user->email_verified_at?->toIso8601String(),
             'cooldown_remaining_seconds' => $this->service->cooldownRemaining($user),
         ]);
     }

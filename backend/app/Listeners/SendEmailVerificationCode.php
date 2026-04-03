@@ -2,6 +2,7 @@
 
 namespace App\Listeners;
 
+use App\Models\User;
 use App\Services\EmailVerificationCodeService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -16,6 +17,14 @@ class SendEmailVerificationCode
     public function handle(Registered $event): void
     {
         if (! $event->user instanceof MustVerifyEmail) {
+            return;
+        }
+
+        // All authenticatables in this application are App\Models\User (auth.php uses a single
+        // Eloquent provider with App\Models\User). This instanceof check narrows the type safely
+        // and is a truthful runtime guard — the service depends on notify() which is not in
+        // the Authenticatable or MustVerifyEmail interfaces.
+        if (! $event->user instanceof User) {
             return;
         }
 

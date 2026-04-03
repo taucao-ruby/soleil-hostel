@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Soleil Hostel — Stitch Screen Review</title>
+  <style>
+    :root {
+      --soil:   #7C5C3E;
+      --moss:   #3D6B52;
+      --dusk:   #C25A3A;
+      --surface:#FDFAF5;
+      --alt:    #F5F0E8;
+      --border: #E0D8CC;
+      --ink:    #1E1A16;
+      --muted:  #8A7B6C;
+      --admin:  #1E2B3A;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: #F0EBE3;
+      color: var(--ink);
+      min-height: 100vh;
+    }
+
+    /* ── Top bar ── */
+    .topbar {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--admin);
+      color: #fff;
+      padding: 12px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid rgba(255,255,255,.1);
+    }
+    .topbar h1 { font-size: 15px; font-weight: 500; letter-spacing: .02em; }
+    .topbar .meta { font-size: 12px; opacity: .6; }
+    .topbar .badge {
+      background: var(--soil); color: #fff;
+      font-size: 11px; padding: 3px 10px; border-radius: 999px;
+    }
+
+    /* ── Phase headers ── */
+    .phase-header {
+      padding: 32px 24px 12px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .phase-header h2 {
+      font-size: 13px; font-weight: 600; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .phase-header hr { flex: 1; border: none; border-top: 1px solid var(--border); }
+
+    /* ── Grid ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 24px;
+      padding: 0 24px 24px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      box-shadow: 0 2px 12px rgba(31,27,23,.06);
+      cursor: pointer;
+      transition: box-shadow .15s, transform .15s;
+      display: flex; flex-direction: column;
+    }
+    .card:hover {
+      box-shadow: 0 8px 28px rgba(31,27,23,.14);
+      transform: translateY(-2px);
+    }
+
+    /* screen preview area — 390:844 aspect ratio */
+    .preview-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 390 / 844;
+      background: var(--alt);
+      overflow: hidden;
+      border-bottom: 1px solid var(--border);
+    }
+    .preview-wrap img {
+      width: 100%; height: 100%;
+      object-fit: cover; object-position: top;
+      display: block;
+    }
+    .preview-wrap .placeholder {
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 8px;
+      color: var(--muted); font-size: 13px;
+      background: var(--alt);
+    }
+    .preview-wrap .placeholder svg { opacity: .35; }
+    .preview-wrap .tag {
+      position: absolute; top: 10px; right: 10px;
+      font-size: 10px; font-weight: 600; letter-spacing: .04em;
+      padding: 3px 8px; border-radius: 999px;
+      text-transform: uppercase;
+    }
+    .tag-confirmed  { background:#EAF3DE; color:#3B6D11; }
+    .tag-pending    { background:#FEF9E7; color:#8A6000; }
+    .tag-failed     { background:#FCEBEB; color:#A32D2D; }
+    .tag-checked_out{ background:#EDEDEC; color:#6B6B6B; }
+    .tag-default    { background:var(--alt); color:var(--muted); }
+    .tag-admin      { background:#1E2B3A; color:#fff; }
+    .tag-step       { background:var(--soil); color:#fff; }
+
+    /* card meta */
+    .card-meta {
+      padding: 12px 14px 14px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .card-meta .route {
+      font-size: 11px; font-family: 'JetBrains Mono', monospace;
+      color: var(--soil); font-weight: 500;
+    }
+    .card-meta .title {
+      font-size: 14px; font-weight: 500; color: var(--ink); line-height: 1.3;
+    }
+    .card-meta .desc {
+      font-size: 12px; color: var(--muted); line-height: 1.4;
+    }
+    .card-meta .screen-id {
+      font-size: 10px; font-family: 'JetBrains Mono', monospace;
+      color: var(--border); margin-top: 4px; word-break: break-all;
+    }
+    .card-meta .pill-confirmed { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; background:#EAF3DE; color:#3B6D11; margin-top:4px; }
+    .card-meta .pill-silent    { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; background:#FEF9E7; color:#8A6000; margin-top:4px; }
+
+    /* ── Lightbox ── */
+    .lightbox {
+      display: none;
+      position: fixed; inset: 0; z-index: 999;
+      background: rgba(30,27,23,.85);
+      align-items: center; justify-content: center;
+    }
+    .lightbox.open { display: flex; }
+    .lightbox img {
+      max-height: 92vh; max-width: 420px; width: auto;
+      border-radius: 16px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.5);
+    }
+    .lightbox .close {
+      position: absolute; top: 20px; right: 24px;
+      color: #fff; font-size: 28px; cursor: pointer;
+      background: none; border: none; line-height: 1;
+    }
+    .lightbox .lb-label {
+      position: absolute; bottom: 24px; left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,.6); color: #fff;
+      padding: 6px 16px; border-radius: 999px;
+      font-size: 13px; white-space: nowrap;
+    }
+
+    /* ── Stats bar ── */
+    .stats {
+      display: flex; gap: 24px;
+      padding: 16px 24px;
+      background: var(--admin); color: #fff;
+      font-size: 12px;
+    }
+    .stats .stat { display: flex; flex-direction: column; gap: 2px; }
+    .stats .stat .n { font-size: 22px; font-weight: 600; color: #E8B84B; }
+    .stats .stat .l { opacity: .6; }
+
+    /* ── Screen Viewer (iframe) ── */
+    .viewer-section { padding: 0 24px 32px; }
+    .viewer-section h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 16px 0 10px; }
+    .iframe-container {
+      display: flex; gap: 16px; overflow-x: auto; padding-bottom: 8px;
+    }
+    .iframe-wrap {
+      flex: 0 0 390px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .iframe-wrap .label { font-size: 12px; color: var(--muted); font-family: monospace; }
+    .iframe-wrap iframe {
+      width: 390px; height: 844px;
+      border: 1px solid var(--border); border-radius: 12px;
+      background: var(--surface);
+    }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=Source+Serif+4:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:12px">
+    <span style="font-family:'Source Serif 4',serif;font-size:18px">Soleil</span>
+    <span style="opacity:.3">|</span>
+    <h1>Stitch Screen Review — Design System v3</h1>
+  </div>
+  <div style="display:flex;align-items:center;gap:16px">
+    <span class="meta">Source Serif 4 · DM Sans · soil #7C5C3E</span>
+    <span class="badge">All Priorities — 20 screens</span>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat"><span class="n">20</span><span class="l">Screens generated</span></div>
+  <div class="stat"><span class="n">3</span><span class="l">Screenshot confirmed</span></div>
+  <div class="stat"><span class="n">17</span><span class="l">updateTime confirmed</span></div>
+  <div class="stat"><span class="n">3</span><span class="l">HTML files available</span></div>
+</div>
+
+<!-- ── PRIORITY 1 — Core Booking Conversion ── -->
+<div class="phase-header">
+  <h2>Priority 1 — Core Booking Conversion</h2>
+  <hr />
+</div>
+
+<div class="grid">
+
+  <!-- / Home -->
+  <div class="card" onclick="openLb(this)">
+    <div class="preview-wrap">
+      <div class="placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+        </svg>
+        <span>Mở Stitch để xem</span>
+        <span style="font-size:11px;opacity:.7">updateTime confirmed</span>
+      </div>
+      <span class="tag tag-default">Home</span>
+    </div>
+    <div class="card-meta">
+      <span class="route">/</span>
+      <span class="title">Trang chủ — Hero + Search</span>
+      <span class="desc">Inline search widget, location strip, room type teaser, trust bar. PublicLayout.</span>
+      <span class="pill-silent">updateTime ✓ — ID pending</span>
+    </div>
+  </div>
+
+  <!-- /booking Step 1 — HAS SCREENSHOT -->
+  <div class="card" onclick="openLb(this)" data-img="https://lh3.googleusercontent.com/aida/ADBb0uj1-UDmuxr-j7cP-shtonljhKUN8zfSU-gnFQ3lLOMsnxesJ2ZaarPgcmb6wpf-HT4QmaW792rZYmksf21sfIhSH27xo4JXtqbGM0jcE7wOwonUJcvApq_7q2OUTjiHbOb-KTc2OBuG8A4HN3cjv6G-M3jNu0Whfo5IPc0wFQlgyKf4oXBpTF7FlofOWyQSg5AMx-rKuCV0_G0Eb3XOuDgeeH3z5hkssLfLcaKv6yNCGF-L89xv-IF2Lw" data-label="/booking — Step 1: Xem lại">
+    <div class="preview-wrap">
+      <img src="https://lh3.googleusercontent.com/aida/ADBb0uj1-UDmuxr-j7cP-shtonljhKUN8zfSU-gnFQ3lLOMsnxesJ2ZaarPgcmb6wpf-HT4QmaW792rZYmksf21sfIhSH27xo4JXtqbGM0jcE7wOwonUJcvApq_7q2OUTjiHbOb-KTc2OBuG8A4HN3cjv6G-M3jNu0Whfo5IPc0wFQlgyKf4oXBpTF7FlofOWyQSg5AMx-rKuCV0_G0Eb3XOuDgeeH3z5hkssLfLcaKv6yNCGF-L89xv-IF2Lw" alt="Booking Step 1" />
+      <span class="tag tag-step">Step 1 / 3</span>
+    </div>
+    <div class="card-meta">
+      <span class="route">/booking</span>
+      <span class="title">Đặt phòng — Xem lại lựa chọn</span>
+      <span class="desc">3-step wizard · Location, room, dates, price breakdown, availability banner.</span>
+      <span class="pill-confirmed">Screenshot ✓ · ID: 41ebc406...</span>
+      <span class="screen-id">projects/9341105650334650897/screens/41ebc4062453458fad2723bfc42ce91b</span>
+    </div>
+  </div>
+
+  <!-- /booking Step 2 -->
+  <div class="card">
+    <div class="preview-wrap">
+      <div class="placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+        <span>Mở Stitch để xem</span>
+        <span style="font-size:11px;opacity:.7">updateTime confirmed</span>
+      </div>
+      <span class="tag tag-step">Step 2 / 3</span>
+    </div>
+    <div class="card-meta">
+      <span class="route">/booking</span>
+      <span class="title">Đặt phòng — Chi tiết khách</span>
+      <span class="desc">Floating label form · Pre-filled from profile · Info banner · Mini summary.</span>
+      <span class="pill-silent">updateTime ✓ — ID pending</span>
+    </div>
+  </div>
+
+  <!-- /booking Step 3 -->
+  <div class="card">
+    <div class="preview-wrap">
+      <div class="placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+          <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+        </svg>
+        <span>Mở Stitch để xem</span>
+        <span style="font-size:11px;opacity:.7">updateTime confirmed</span>
+      </div>
+      <span class="tag tag-step">Step 3 / 3</span>
+    </div>
+    <div class="card-meta">
+      <span class="route">/booking</span>
+      <span class="title">Đặt phòng — Xác nhận</span>
+      <span class="desc">Full summary + price breakdown + cancellation policy + "Xác nhận đặt phòng" CTA.</span>
+      <span class="pill-silent">updateTime ✓ — ID pending</span>
+    </div>
+  </div>
+
+  <!-- /my-bookings/:id confirmed -->
+  <div class="card">
+    <div class="preview-wrap">
+      <div class="placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+        <span>Mở Stitch để xem</span>
+      </div>
+      <span class="tag tag-confirmed">confirmed</span>
+    </div>
+    <div class="card-meta">
+      <span class="route">/my-bookings/:id</span>
+      <span class="title">Chi tiết đặt phòng — Đã xác nhận</span>
+      <span class="desc">Moss green banner · Booking ID mono · Cancel CTA (destructive outline) · Policy.</span>
+      <span class="pill-silent">updateTime ✓ — ID pending</span>
+    </div>
+  </div>
+
+  <!-- /my-bookings/:id checked_out + ReviewForm -->
+  <div class="card">
+    <div class="preview-wrap">
+      <div class="placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+        <span>Mở Stitch để xem</span>
+      </div>
+      <span class="tag tag-checked_out">checked_out</span>
+    </div>
+    <div class="card-meta">
+      <span class="route">/my-bookings/:id</span>
+      <span class="title">Chi tiết — Đã trả phòng + ReviewForm</span>
+      <span class="desc">Muted banner · Star rating (4★) · Optional comment · "Gửi đánh giá" submit.</span>
+      <span class="pill-silent">updateTime ✓ — ID pending</span>
+    </div>
+  </div>
+
+  <!-- /my-bookings/:id refund_failed — HAS SCREENSHOT -->
+  <div class="card" onclick="openLb(this)" data-img="https://lh3.googleusercontent.com/aida/ADBb0ujKL3AttoXXAQkG5ZkSkOm083G0B3JdyrNgjpOXCNPUJBzLn7r2EW6aZOncLdkSRWsslNRfyeZnfs_1wVS9479JYWetMtghCxCUVTev9FLBhTA4lnYAiR6WgrIOeT1gbPZjWI-3kTpDufMyVB-FQp8iRLWIgnjb_fseiFPRHFJt9GID_J5PmrMULPRFoEJzpMOst6JCLWr_j4eUv396Iw0MJOr0Q18BSfQr897JoEeMb4NLLQLiAdRQJg" data-label="/my-bookings/:id — refund_failed">
+    <div class="preview-wrap">
+      <img src="https://lh3.googleusercontent.com/aida/ADBb0ujKL3AttoXXAQkG5ZkSkOm083G0B3JdyrNgjpOXCNPUJBzLn7r2EW6aZOncLdkSRWsslNRfyeZnfs_1wVS9479JYWetMtghCxCUVTev9FLBhTA4lnYAiR6WgrIOeT1gbPZjWI-3kTpDufMyVB-FQp8iRLWIgnjb_fseiFPRHFJt9GID_J5PmrMULPRFoEJzpMOst6JCLWr_j4eUv396Iw0MJOr0Q18BSfQr897JoEeMb4NLLQLiAdRQJg" alt="Refund Failed" />
+      <span class="tag tag-failed">refund_failed</span>
+    </div>
+    <div class="card-meta">
+      <span class="route">/my-bookings/:id</span>
+      <span class="title">Chi tiết — Hoàn tiền thất bại</span>
+      <span class="desc">Red banner · Amber escalation alert · Refund timeline · "Thử lại" + "Hủy" actions.</span>
+      <span class="pill-confirmed">Screenshot ✓ · ID: f7852ac1...</span>
+      <span class="screen-id">projects/9341105650334650897/screens/f7852ac15d7643ce89b9c3a3f3c98e94</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── IFRAME VIEWER for HTML files ── -->
+<div class="viewer-section">
+  <h3>Live HTML Preview (Stitch-generated · 3 files available)</h3>
+  <div class="iframe-container">
+    <div class="iframe-wrap">
+      <span class="label">/booking — Step 1: Xem lại (screen 41ebc406)</span>
+      <iframe
+        src="/stitch-booking-step1.html"
+        title="Booking Step 1"
+        sandbox="allow-scripts allow-same-origin"
+      ></iframe>
+    </div>
+    <div class="iframe-wrap">
+      <span class="label">/my-bookings/:id — refund_failed (screen f7852ac1)</span>
+      <iframe
+        src="/stitch-refund-failed.html"
+        title="Refund Failed"
+        sandbox="allow-scripts allow-same-origin"
+      ></iframe>
+    </div>
+    <div class="iframe-wrap">
+      <span class="label">/admin/customers — Customer List (screen 988badab)</span>
+      <iframe
+        src="/stitch-customers.html"
+        title="Customer List"
+        sandbox="allow-scripts allow-same-origin"
+      ></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- ── PRIORITY 2 — DISCOVERY ── -->
+<div class="phase-header">
+  <h2>Priority 2 — Discovery</h2>
+  <hr />
+</div>
+
+<div class="grid">
+
+  <!-- /rooms -->
+  <div class="card">
+    <div class="preview-wrap">
+      <div class="placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h6M3 15h6"/>
+        </svg>
+        <span>Mở Stitch để xem</span>
+        <span style="font-size:11px;opacity:.7">updateTime confirmed</span>
+      </div>
+      <span class="tag tag-default">Rooms</span>
+    </div>
+    <div class="card-meta">
+      <span class="route">/rooms</span>
+      <span class="title">Danh sách phòng</span>
+      <span class="desc">Sticky filter chips · 2-col room cards · Availability dots (green/amber/red) · Dark header.</span>
+      <span class="pill-silent">updateTime ✓ — ID pending</span>
+    </div>
+  </div>
+
+  <!-- /locations/:slug -->
+  <div class="card">
+    <div class="preview-wrap">
+      <div class="placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+        </svg>
+        <span>Mở Stitch để xem</span>
+        <span style="font-size:11px;opacity:.7">updateTime confirmed</span>
+      </div>
+      <span class="tag tag-default">Location</span>
+    </div>
+    <div class="card-meta">
+      <span class="route">/locations/:slug</span>
+      <span class="title">Chi tiết địa điểm — Soleil Huế</span>
+      <span class="desc">Hero overlay · About · Room cards · Amenities grid · Map · Sticky CTA.</span>
+      <span class="pill-silent">updateTime ✓ — ID pending</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── PRIORITY 3 — GUEST ACCOUNT ── -->
+<div class="phase-header">
+  <h2>Priority 3 — Guest Account</h2>
+  <hr />
+</div>
+<div class="grid">
+
+  <div class="card">
+    <div class="preview-wrap">
+      <div class="placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <span>Mở Stitch để xem</span>
+      </div>
+      <span class="tag tag-default">Auth</span>
+    </div>
+    <div class="card-meta">
+      <span class="route">/login</span>
+      <span class="title">Đăng nhập</span>
+      <span class="desc">Centered card · Floating labels · Inline error · Remember me · Forgot password link.</span>
+      <span class="pill-silent">updateTime ✓ — ID pending</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="preview-wrap">
+      <div class="placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <span>Mở Stitch để xem</span>
+      </div>
+      <span class="tag tag-default">Bookings</span>
+    </div>
+    <div class="card-meta">
+      <span class="route">/my-bookings</span>
+      <span class="title">Đặt phòng của tôi</span>
+      <span class="desc">Filter tabs (Tất cả/Sắp tới/Đã qua/Đã hủy) · 4 booking cards · All status badges.</span>
+      <span class="pill-silent">updateTime ✓ — ID pending</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="preview-wrap">
+      <div class="placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span>Mở Stitch để xem</span>
+      </div>
+      <span class="tag tag-default">Dashboard</span>
+    </div>
+    <div class="card-meta">
+      <span class="route">/dashboard</span>
+      <span class="title">Dashboard khách</span>
+      <span class="desc">Welcome serif · Next stay card + countdown · Recent 3 bookings · Quick action tiles.</span>
+      <span class="pill-silent">updateTime ✓ — ID pending</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── PRIORITY 4 — ADMIN OPERATIONS ── -->
+<div class="phase-header">
+  <h2>Priority 4 — Admin Operations</h2>
+  <hr />
+</div>
+<div class="grid">
+
+  <div class="card">
+    <div class="preview-wrap">
+      <div class="placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <span>Mở Stitch để xem</span>
+      </div>
+      <span class="tag tag-admin">Admin</span>
+    </div>
+    <div class="card-meta">
+      <span class="route">/admin</span>
+      <span class="title">Admin Dashboard</span>
+      <span class="desc">KPI 4-card grid · Today's bookings table · Occupancy bars · Activity feed.</span>
+      <span class="pill-silent">updateTime ✓ — ID pending</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="preview-wrap">
+      <div class="placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <span>Mở Stitch để xem</span>
+      </div>
+      <span class="tag tag-admin">Admin</span>
+    </div>
+    <div class="card-meta">
+      <span class="route">/admin/bookings</span>
+      <span class="title">Quản lý đặt phòng</span>
+      <span class="desc">Search + filter chips · Tabs incl. 🗑 Trashed (admin-only) · Booking row cards · refund_failed highlight.</span>
+      <span class="pill-silent">updateTime ✓ — ID pending</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="preview-wrap">
+      <div class="placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>Mở Stitch để xem</span>
+      </div>
+      <span class="tag tag-admin">Admin</span>
+    </div>
+    <div class="card-meta">
+      <span class="route">/bookings/today</span>
+      <span class="title">Hôm nay</span>
+      <span class="desc">Check-ins table + Mark ✓ actions · Check-outs · In-house count · Pending action alert.</span>
+      <span class="pill-silent">updateTime ✓ — ID pending</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="preview-wrap">
+      <div class="placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span>Mở Stitch để xem</span>
+      </div>
+      <span class="tag tag-admin">Admin</span>
+    </div>
+    <div class="card-meta">
+      <span class="route">/bookings/calendar</span>
+      <span class="title">Lịch đặt phòng</span>
+      <span class="desc">Room-row × date-col grid · Booking blocks · Today marker · Overlap conflict in red border.</span>
+      <span class="pill-silent">updateTime ✓ — ID pending</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="preview-wrap">
+      <div class="placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span>Mở Stitch để xem</span>
+      </div>
+      <span class="tag tag-admin">Admin</span>
+    </div>
+    <div class="card-meta">
+      <span class="route">/admin/bookings/:id</span>
+      <span class="title">Chi tiết đặt phòng (Admin)</span>
+      <span class="desc">Status change dropdown · Internal notes · Guest info card · Timeline · Danger zone (admin).</span>
+      <span class="pill-silent">updateTime ✓ — ID pending</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── PRIORITY 5 — ADMIN MANAGEMENT ── -->
+<div class="phase-header">
+  <h2>Priority 5 — Admin Management</h2>
+  <hr />
+</div>
+<div class="grid">
+
+  <div class="card">
+    <div class="preview-wrap">
+      <div class="placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <span>Mở Stitch để xem</span>
+      </div>
+      <span class="tag tag-admin">Admin</span>
+    </div>
+    <div class="card-meta">
+      <span class="route">/admin/rooms</span>
+      <span class="title">Quản lý phòng</span>
+      <span class="desc">Room rows + toggle active/inactive · "+ Thêm phòng" (admin only) · Edit link per row.</span>
+      <span class="pill-silent">updateTime ✓ — ID pending</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="preview-wrap">
+      <div class="placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span>Mở Stitch để xem</span>
+      </div>
+      <span class="tag tag-admin">Admin only</span>
+    </div>
+    <div class="card-meta">
+      <span class="route">/admin/rooms/new</span>
+      <span class="title">Tạo phòng mới</span>
+      <span class="desc">Multi-section form: Basic info · Pricing · Amenities checkboxes · Availability toggle.</span>
+      <span class="pill-silent">updateTime ✓ — ID pending</span>
+    </div>
+  </div>
+
+  <div class="card" onclick="openLb(this)" data-img="https://lh3.googleusercontent.com/aida/ADBb0uiLWYjBk1qe6l0a5_G8eSVc37BgS_EGh2GJ1dze3M2oukFFGIWoS5vUMIhsuox05jBIMBA6GCdflkNbLMTsrs7DCkcleAVtfy4Rhmjdm35SoUisX7UNKlVLiDDsv4NY1LPmVI8iQAdqrn6P4IxJJEe6rz_qWaAavRWBeiy2zXDMtEnbPLCcPj6pkh4Pz2tYA6DK-2PblJoXKUma738HN6-nCC6z8D3TdqiYcBJEqsaZQTbp1K7yzZjNWA" data-label="/admin/customers — Customer List">
+    <div class="preview-wrap">
+      <img src="https://lh3.googleusercontent.com/aida/ADBb0uiLWYjBk1qe6l0a5_G8eSVc37BgS_EGh2GJ1dze3M2oukFFGIWoS5vUMIhsuox05jBIMBA6GCdflkNbLMTsrs7DCkcleAVtfy4Rhmjdm35SoUisX7UNKlVLiDDsv4NY1LPmVI8iQAdqrn6P4IxJJEe6rz_qWaAavRWBeiy2zXDMtEnbPLCcPj6pkh4Pz2tYA6DK-2PblJoXKUma738HN6-nCC6z8D3TdqiYcBJEqsaZQTbp1K7yzZjNWA" alt="Customer List" />
+      <span class="tag tag-admin">Admin</span>
+    </div>
+    <div class="card-meta">
+      <span class="route">/admin/customers</span>
+      <span class="title">Danh sách khách hàng</span>
+      <span class="desc">Color-coded avatars · Email + phone · Booking count · Last stay · "Xem thêm 243 khách..." · Activity summary.</span>
+      <span class="pill-confirmed">Screenshot ✓ · ID: 988badab...</span>
+      <span class="screen-id">projects/9341105650334650897/screens/988badab0b8a49e2ac6e9dc09ed90e24</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="preview-wrap">
+      <div class="placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span>Mở Stitch để xem</span>
+      </div>
+      <span class="tag tag-admin">Admin</span>
+    </div>
+    <div class="card-meta">
+      <span class="route">/customers/:email</span>
+      <span class="title">Hồ sơ khách hàng</span>
+      <span class="desc">Profile header + stats · Booking history · Internal notes · Admin: deactivate + reset password.</span>
+      <span class="pill-silent">updateTime ✓ — ID pending</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── STATUS BADGE REFERENCE ── -->
+<div class="phase-header">
+  <h2>Status Badge System</h2>
+  <hr />
+</div>
+<div style="padding:0 24px 32px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+  <span style="padding:3px 10px;border-radius:4px;font-size:12px;font-weight:500;background:#EAF3DE;color:#3B6D11;border:1px solid #B2D89F">✓ Đã xác nhận</span>
+  <span style="padding:3px 10px;border-radius:4px;font-size:12px;font-weight:500;background:#FEF9E7;color:#8A6000;border:1px solid #F0D88A">⏳ Chờ xác nhận</span>
+  <span style="padding:3px 10px;border-radius:4px;font-size:12px;font-weight:500;background:#E6F1FB;color:#185FA5;border:1px solid #93C5E8">↩ Hoàn tiền đang xử lý</span>
+  <span style="padding:3px 10px;border-radius:4px;font-size:12px;font-weight:500;background:#F3F0EC;color:#8A7B6C;border:1px solid #D5CDBF">✕ Đã hủy</span>
+  <span style="padding:3px 10px;border-radius:4px;font-size:12px;font-weight:500;background:#FCEBEB;color:#A32D2D;border:1px solid #E8AAAA">✕ Hoàn tiền thất bại</span>
+  <span style="padding:3px 10px;border-radius:4px;font-size:12px;font-weight:500;background:#D6EDE0;color:#2A5C3F;border:1px solid #9FD0B5">✓ Đã nhận phòng</span>
+  <span style="padding:3px 10px;border-radius:4px;font-size:12px;font-weight:500;background:#EDEDEC;color:#6B6B6B;border:1px solid #D0D0D0">◎ Đã trả phòng</span>
+</div>
+
+<!-- ── Lightbox ── -->
+<div class="lightbox" id="lb" onclick="closeLb(event)">
+  <button class="close" onclick="closeLb()">✕</button>
+  <img id="lb-img" src="" alt="" />
+  <div class="lb-label" id="lb-label"></div>
+</div>
+
+<script>
+  function openLb(card) {
+    const img = card.dataset.img;
+    if (!img) return;
+    document.getElementById('lb-img').src = img;
+    document.getElementById('lb-label').textContent = card.dataset.label || '';
+    document.getElementById('lb').classList.add('open');
+  }
+  function closeLb(e) {
+    if (!e || e.target === document.getElementById('lb') || e.target.classList.contains('close')) {
+      document.getElementById('lb').classList.remove('open');
+    }
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLb({}); });
+</script>
+</body>
+</html>

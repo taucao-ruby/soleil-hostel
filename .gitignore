@@ -22,7 +22,7 @@ npm-debug.log
 yarn-error.log
 
 # PHP
-vendor/
+backend/vendor/
 storage/logs/
 bootstrap/cache/
 

@@ -108,7 +108,7 @@ class AppServiceProvider extends ServiceProvider
             );
 
             $parsedQuery = [];
-            parse_str(parse_url($backendUrl, PHP_URL_QUERY) ?? '', $parsedQuery);
+            parse_str(parse_url($backendUrl, PHP_URL_QUERY) ?: '', $parsedQuery);
 
             return $frontendUrl.'/email/verify?'.http_build_query([
                 'id'        => $id,

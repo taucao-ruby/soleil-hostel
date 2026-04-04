@@ -36,6 +36,7 @@ class EmailVerificationCodeService
         $rawCode = $this->generateCode();
         $codeHash = hash('sha256', $rawCode);
 
+        /** @var EmailVerificationCode $record */
         $record = DB::transaction(function () use ($user, $codeHash) {
             // Invalidate all existing active codes for this user
             EmailVerificationCode::where('user_id', $user->id)

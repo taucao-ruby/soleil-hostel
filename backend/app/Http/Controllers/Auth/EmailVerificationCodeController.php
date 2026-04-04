@@ -73,7 +73,7 @@ class EmailVerificationCodeController extends Controller
             VerificationResult::Invalid => response()->json([
                 'success' => false,
                 'message' => 'Invalid verification code.',
-                'attempts_remaining' => $result['attempts_remaining'],
+                'attempts_remaining' => $result['attempts_remaining'] ?? 0,
             ], 422),
 
             VerificationResult::Expired => response()->json([

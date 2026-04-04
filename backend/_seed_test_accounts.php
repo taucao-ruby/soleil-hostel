@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\User;
 use App\Enums\UserRole;
+use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
 $accounts = [
@@ -14,11 +14,11 @@ foreach ($accounts as $a) {
     $u = User::updateOrCreate(
         ['email' => $a['email']],
         [
-            'name'              => ucfirst($a['role']->value) . ' Test',
-            'password'          => Hash::make('Test1234!'),
-            'role'              => $a['role'],
+            'name' => ucfirst($a['role']->value).' Test',
+            'password' => Hash::make('Test1234!'),
+            'role' => $a['role'],
             'email_verified_at' => now(),
         ]
     );
-    echo $u->role->value . ' | ' . $u->email . PHP_EOL;
+    echo $u->role->value.' | '.$u->email.PHP_EOL;
 }

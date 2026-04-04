@@ -13,8 +13,11 @@ use Illuminate\Support\Facades\Log;
 class EmailVerificationCodeService
 {
     private const CODE_LENGTH = 6;
+
     private const EXPIRY_MINUTES = 15;
+
     public const COOLDOWN_SECONDS = 60;
+
     private const MAX_ATTEMPTS = 5;
 
     /**

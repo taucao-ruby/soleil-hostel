@@ -15,15 +15,16 @@
 
 ## 1) Current Snapshot (keep under 12 lines)
 
-- Date updated: 2026-03-31
-- Current branch: `dev` (main=`f43804b`, dev=`a2da01b`)
-- Latest commit: `a2da01b` — Update license link to point to GitHub
-- Backend test baseline: **1047 passed, 2875 assertions** — verified 2026-03-31
-- Frontend test baseline: **261 tests, 25 suites** — verified 2026-03-31
-- Pint: 283 files, 0 style issues. **PHPStan: Level 5, 0 errors (no baseline, no ignores).** Psalm: Level 1, 0 blocking.
-- TL-02 ✅ Fixed (admin booking filters server-side). TL-05 ✅ Fixed (moderator SPA access via `minRole` prop).
-- Open findings: F-23 (MD lint), F-25 (CSRF path — architecture clarified, path remains), F-26–F-62 (2026-03-20 audit). See FINDINGS_BACKLOG.md.
+- Date updated: 2026-04-04
+- Current branch: `dev` (main=`9756bba`, dev=`de501e2`)
+- Latest commit: `de501e2` — chore(backend): fix Pint style violations in 3 files
+- Backend test baseline: **re-verification required** — email verification tests heavily revised Apr 3; previous baseline 1047/2875 (2026-03-31)
+- Frontend: `pnpm run build` PASS (TS5103 fixed — `ignoreDeprecations: "6.0"` removed from tsconfig.app.json)
+- Pint: 357 files, **8 style issues** (email-verification cluster — line_ending CRLF + braces_position + unary_operator_spaces). NOT at 0. **PHPStan: Level 5, 0 errors.** Psalm: Level 1, 0 blocking.
+- Email OTP verification flow ✅ Done (Apr 3). Location room availability fix ✅ Done (Apr 3).
+- Open findings: F-23 (MD lint), F-25 (CSRF path), F-26–F-62 (2026-03-20 audit). See FINDINGS_BACKLOG.md.
 - **H-06**: `phpunit.xml` defaults to PostgreSQL; run `docker compose up -d db` before `php artisan test`.
+- **Pint-residual**: 8 files in email-verification cluster need line_ending fix (CRLF authored on Windows).
 
 ## 2) Invariants
 
@@ -34,6 +35,8 @@ This section intentionally left as a pointer — do not duplicate invariants her
 
 ### Now
 
+- **Pint-residual**: Fix 8 style violations in email-verification cluster (line_ending, braces_position, unary_operator_spaces, class_definition) — CRLF authored on Windows
+- **Backend test re-baseline**: run `php artisan test` and update COMPACT §1 + PROJECT_STATUS after Pint fix
 - PAY-001 Phase 2: Stripe checkout session + frontend payment UI
 - TD-005 RBAC Follow-ups (FU-1..FU-5) — legacy test migration, coverage gaps, config verification (see `docs/PERMISSION_MATRIX.md`)
 - OPS-001: SSH deploy step + automated health check + automatic rollback on health failure
@@ -55,6 +58,7 @@ See `docs/agents/COMMANDS.md` for full command catalog.
 - Vitest can emit `act(...)` and non-boolean DOM attribute warnings; treat as non-blocking when `npx vitest run` is PASS.
 - Any new warning pattern or warning volume increase should be treated as a change signal and reviewed.
 - Test accounts (soleil_test DB): user@soleil.test / admin@soleil.test / moderator@soleil.test — `P@ssworD123`
+- Pint 8 residual violations (email-verification cluster) are non-blocking for dev but will fail CI gate. Fix before next merge to main.
 
 ## 6) Key pointers (docs / important files)
 

@@ -5,6 +5,8 @@ includes:
 parameters:
   level: 5
 
+  parseModelCastsMethod: true
+
   paths:
     - app/
 

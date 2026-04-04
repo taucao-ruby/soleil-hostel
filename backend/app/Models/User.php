@@ -215,7 +215,7 @@ class User extends Authenticatable implements MustVerifyEmail
      * // In controllers/services
      * if ($user->changeEmail($request->input('email'))) {
      *     $user->save();
-     *     $user->sendEmailVerificationNotification();
+     *     app(EmailVerificationCodeService::class)->issue($user);
      * }
      */
     public function changeEmail(string $newEmail): bool

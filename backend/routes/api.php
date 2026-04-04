@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController as TokenAuthController;
+use App\Http\Controllers\Auth\EmailVerificationCodeController;
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\HttpOnlyTokenController;
 use App\Http\Controllers\Auth\UnifiedAuthController;
@@ -98,27 +99,27 @@ Route::post('/contact', [ContactController::class, 'store'])->middleware('thrott
 // Signature verification handled by Cashier (STRIPE_WEBHOOK_SECRET env var)
 Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handleWebhook']);
 
-// ========== EMAIL VERIFICATION ROUTES ==========
-// These routes require authentication but NOT verified email
-// The verification link itself uses signed URLs for security
+// ========== EMAIL VERIFICATION ROUTES (OTP Code Flow) ==========
+// All routes require authentication but NOT verified email.
+// Uses 6-digit OTP code instead of signed URL links.
 
 // Verification notice (required by Laravel - named route)
 Route::get('/email/verify', [EmailVerificationController::class, 'notice'])
     ->name('verification.notice')
     ->middleware(['check_token_valid']);
 
-// Verify email (signed URL from verification email)
-Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
-    ->name('verification.verify')
-    ->middleware(['check_token_valid', 'signed']);
-
-// Resend verification email
-Route::post('/email/verification-notification', [EmailVerificationController::class, 'resend'])
-    ->name('verification.send')
+// Send a new verification code
+Route::post('/email/send-code', [EmailVerificationCodeController::class, 'sendCode'])
+    ->name('verification.send-code')
     ->middleware(['check_token_valid', 'throttle:email-verification']);
 
-// Check verification status
-Route::get('/email/verification-status', [EmailVerificationController::class, 'status'])
+// Verify a submitted OTP code
+Route::post('/email/verify-code', [EmailVerificationCodeController::class, 'verifyCode'])
+    ->name('verification.verify-code')
+    ->middleware(['check_token_valid', 'throttle:10,1']);
+
+// Check verification status + cooldown
+Route::get('/email/verification-status', [EmailVerificationCodeController::class, 'status'])
     ->name('verification.status')
     ->middleware(['check_token_valid']);
 

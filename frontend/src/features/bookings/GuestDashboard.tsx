@@ -72,7 +72,7 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onCancel }) => {
   const statusConfig = getDashboardStatus(booking)
 
   return (
-    <article className="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:flex-row sm:items-start sm:justify-between">
+    <article className="flex flex-col gap-4 p-4 bg-white border border-gray-200 shadow-sm rounded-xl sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0 space-y-1.5">
         <p className="text-[15px] font-medium text-gray-900">{booking.roomName}</p>
         <p className="text-[13px] text-gray-500">
@@ -93,7 +93,7 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onCancel }) => {
           <button
             type="button"
             onClick={() => onCancel(booking)}
-            className="rounded-lg border border-red-300 px-3 py-1 text-sm text-red-600 transition-colors hover:bg-red-50"
+            className="px-3 py-1 text-sm text-red-600 transition-colors border border-red-300 rounded-lg hover:bg-red-50"
             aria-label={`Hủy đặt phòng #${formatBookingReference(booking)}`}
           >
             Hủy đặt phòng
@@ -109,19 +109,19 @@ const BookingListSkeleton: React.FC = () => (
     {Array.from({ length: 3 }).map((_, index) => (
       <div
         key={index}
-        className="animate-pulse rounded-xl border border-gray-200 bg-white p-4"
+        className="p-4 bg-white border border-gray-200 animate-pulse rounded-xl"
         role="status"
         aria-label="Đang tải danh sách đặt phòng"
       >
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0 flex-1 space-y-2">
-            <div className="h-4 w-48 rounded bg-gray-200" />
-            <div className="h-3 w-44 rounded bg-gray-200" />
-            <div className="h-3 w-32 rounded bg-gray-200" />
+          <div className="flex-1 min-w-0 space-y-2">
+            <div className="w-48 h-4 bg-gray-200 rounded" />
+            <div className="h-3 bg-gray-200 rounded w-44" />
+            <div className="w-32 h-3 bg-gray-200 rounded" />
           </div>
           <div className="flex flex-col items-start gap-2 sm:items-end">
-            <div className="h-6 w-28 rounded-full bg-gray-200" />
-            <div className="h-8 w-28 rounded-lg bg-gray-200" />
+            <div className="h-6 bg-gray-200 rounded-full w-28" />
+            <div className="h-8 bg-gray-200 rounded-lg w-28" />
           </div>
         </div>
       </div>
@@ -172,8 +172,8 @@ const GuestDashboard: React.FC = () => {
 
     setIsResendingVerification(true)
     try {
-      await api.post('/email/verification-notification')
-      showToast.success('Đã gửi lại email xác minh.')
+      await api.post('/email/send-code')
+      showToast.success('Đã gửi mã xác minh đến email của bạn.')
     } catch (error) {
       showToast.error(getErrorMessage(error))
     } finally {
@@ -185,7 +185,7 @@ const GuestDashboard: React.FC = () => {
     <section className="space-y-6">
       {isEmailUnverified && (
         <div
-          className="rounded-r-lg border-l-4 border-amber-400 bg-amber-50 p-4"
+          className="p-4 border-l-4 rounded-r-lg border-amber-400 bg-amber-50"
           role="alert"
           aria-live="polite"
         >
@@ -194,16 +194,24 @@ const GuestDashboard: React.FC = () => {
               <span aria-hidden="true" className="mr-2">
                 ⚠️
               </span>
-              Email của bạn chưa được xác minh. Vui lòng kiểm tra hộp thư đến.
+              Email của bạn chưa được xác minh. Vui lòng kiểm tra hộp thư đến để lấy mã xác minh.
             </p>
-            <button
-              type="button"
-              onClick={handleResendVerification}
-              disabled={isResendingVerification}
-              className="text-left text-sm font-medium text-amber-800 underline underline-offset-4 transition-colors hover:text-amber-900 disabled:cursor-not-allowed disabled:no-underline disabled:opacity-70"
-            >
-              {isResendingVerification ? 'Đang gửi lại...' : 'Gửi lại email xác minh →'}
-            </button>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                disabled={isResendingVerification}
+                className="text-sm font-medium text-left underline transition-colors text-amber-800 underline-offset-4 hover:text-amber-900 disabled:cursor-not-allowed disabled:no-underline disabled:opacity-70"
+              >
+                {isResendingVerification ? 'Đang gửi...' : 'Gửi lại mã →'}
+              </button>
+              <Link
+                to="/email/verify"
+                className="text-sm font-medium underline transition-colors text-amber-800 underline-offset-4 hover:text-amber-900"
+              >
+                Nhập mã xác minh →
+              </Link>
+            </div>
           </div>
         </div>
       )}
@@ -236,12 +244,12 @@ const GuestDashboard: React.FC = () => {
       {isLoading && <BookingListSkeleton />}
 
       {!isLoading && !isVerificationBlocked && isError && (
-        <div className="rounded-xl border border-red-200 bg-white p-6 text-center">
+        <div className="p-6 text-center bg-white border border-red-200 rounded-xl">
           <p className="mb-3 text-red-600">Không thể tải danh sách đặt phòng.</p>
           <button
             type="button"
             onClick={refetch}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+            className="px-4 py-2 text-sm font-medium text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50"
           >
             Thử lại
           </button>
@@ -253,10 +261,10 @@ const GuestDashboard: React.FC = () => {
           id={`dashboard-panel-${activeTab}`}
           role="tabpanel"
           aria-labelledby={`dashboard-tab-${activeTab}`}
-          className="rounded-2xl border border-gray-200 bg-white px-6 py-12 text-center"
+          className="px-6 py-12 text-center bg-white border border-gray-200 rounded-2xl"
         >
-          <div className="mx-auto mb-4 flex h-8 w-8 items-center justify-center text-gray-400">
-            <svg aria-hidden="true" className="h-8 w-8" fill="none" viewBox="0 0 24 24">
+          <div className="flex items-center justify-center w-8 h-8 mx-auto mb-4 text-gray-400">
+            <svg aria-hidden="true" className="w-8 h-8" fill="none" viewBox="0 0 24 24">
               <path
                 d="M8 2v3M16 2v3M3.5 9.5h17M6.5 5.5h11a3 3 0 013 3v8a3 3 0 01-3 3h-11a3 3 0 01-3-3v-8a3 3 0 013-3z"
                 stroke="currentColor"
@@ -279,7 +287,7 @@ const GuestDashboard: React.FC = () => {
           {activeTab === 'all' && (
             <Link
               to="/rooms"
-              className="inline-flex items-center rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+              className="inline-flex items-center px-4 py-2 text-sm font-medium text-white transition-colors rounded-lg bg-amber-500 hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
             >
               Đặt phòng ngay →
             </Link>
@@ -301,7 +309,7 @@ const GuestDashboard: React.FC = () => {
       )}
 
       {!isLoading && isVerificationBlocked && (
-        <div className="rounded-2xl border border-gray-200 bg-white px-6 py-8 text-center">
+        <div className="px-6 py-8 text-center bg-white border border-gray-200 rounded-2xl">
           <p className="text-sm text-gray-600">
             Xác minh email để xem và quản lý danh sách đặt phòng của bạn.
           </p>
@@ -310,16 +318,16 @@ const GuestDashboard: React.FC = () => {
 
       {cancelTarget && (
         <div
-          className="fixed inset-0 z-50 bg-black/40 px-4 py-6"
+          className="fixed inset-0 z-50 px-4 py-6 bg-black/40"
           role="dialog"
           aria-modal="true"
           aria-labelledby="cancel-booking-title"
           aria-describedby="cancel-booking-description"
           onClick={handleCancelDismiss}
         >
-          <div className="mx-auto flex min-h-full items-center justify-center">
+          <div className="flex items-center justify-center min-h-full mx-auto">
             <div
-              className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl"
+              className="w-full max-w-sm p-6 bg-white shadow-xl rounded-xl"
               onClick={event => event.stopPropagation()}
             >
               <h2 id="cancel-booking-title" className="text-xl font-semibold text-gray-900">
@@ -329,13 +337,13 @@ const GuestDashboard: React.FC = () => {
                 Hành động này không thể hoàn tác. Bạn có chắc muốn hủy?
               </p>
 
-              <div className="mt-6 flex justify-end gap-3">
+              <div className="flex justify-end gap-3 mt-6">
                 <button
                   type="button"
                   onClick={handleCancelDismiss}
                   disabled={isPending}
                   autoFocus
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Hủy bỏ
                 </button>
@@ -343,12 +351,12 @@ const GuestDashboard: React.FC = () => {
                   type="button"
                   onClick={handleCancelConfirm}
                   disabled={isPending}
-                  className="inline-flex items-center justify-center rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70"
+                  className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white transition-colors bg-red-600 rounded-lg hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {isPending && (
                     <svg
                       aria-hidden="true"
-                      className="mr-2 h-4 w-4 animate-spin"
+                      className="w-4 h-4 mr-2 animate-spin"
                       fill="none"
                       viewBox="0 0 24 24"
                     >

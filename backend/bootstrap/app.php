@@ -64,6 +64,17 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->encryptCookies(except: [
             'soleil_token',
         ]);
+
+        // Ensure our custom token-auth middleware runs BEFORE ThrottleRequests in the
+        // sorted middleware pipeline. Without this, Laravel's priority list places
+        // ThrottleRequests before check_token_valid (which is not in the default priority
+        // list), causing $request->user() to return null when the rate-limiter key is
+        // computed → all requests collapse to the same IP-based key → only 10/min pass
+        // regardless of how many distinct authenticated users are in flight.
+        $middleware->prependToPriorityList(
+            before: \Illuminate\Routing\Middleware\ThrottleRequests::class,
+            prepend: \App\Http\Middleware\CheckTokenNotRevokedAndNotExpired::class,
+        );
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // ========== API Response Wrapper ==========

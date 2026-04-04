@@ -41,7 +41,7 @@ class LocationResource extends JsonResource
             'amenities' => $this->amenities ?? [],
             'images' => $this->images ?? [],
             'stats' => [
-                'total_rooms' => $this->total_rooms,
+                'total_rooms' => $this->rooms_count ?? $this->total_rooms,
                 'available_rooms' => $this->when(
                     isset($this->available_rooms_count),
                     fn () => $this->available_rooms_count

@@ -152,7 +152,7 @@ class LocationTest extends TestCase
     }
 
     /** @test */
-    public function with_room_counts_scope_loads_counts(): void
+    public function with_room_counts_scope_counts_all_rooms_as_available_when_no_bookings(): void
     {
         $location = Location::factory()->create();
         Room::factory()->count(5)->create(['location_id' => $location->id, 'status' => 'available']);
@@ -160,7 +160,103 @@ class LocationTest extends TestCase
 
         $result = Location::withRoomCounts()->find($location->id);
         $this->assertEquals(7, $result->rooms_count);
-        $this->assertEquals(5, $result->available_rooms_count);
+        // All 7 rooms are available because no active bookings exist
+        $this->assertEquals(7, $result->available_rooms_count);
+    }
+
+    /** @test */
+    public function with_room_counts_scope_excludes_rooms_with_active_bookings_today(): void
+    {
+        $location = Location::factory()->create();
+        $room1 = Room::factory()->create(['location_id' => $location->id, 'status' => 'available']);
+        $room2 = Room::factory()->create(['location_id' => $location->id, 'status' => 'available']);
+        $room3 = Room::factory()->create(['location_id' => $location->id, 'status' => 'maintenance']);
+
+        $user = User::factory()->create();
+
+        // Book room1 with dates overlapping today
+        Booking::factory()->create([
+            'room_id' => $room1->id,
+            'user_id' => $user->id,
+            'check_in' => now()->subDay()->toDateString(),
+            'check_out' => now()->addDay()->toDateString(),
+            'status' => 'confirmed',
+        ]);
+
+        $result = Location::withRoomCounts()->find($location->id);
+        $this->assertEquals(3, $result->rooms_count);
+        // room1 is booked today, room2 and room3 are available (regardless of status)
+        $this->assertEquals(2, $result->available_rooms_count);
+    }
+
+    /** @test */
+    public function with_room_counts_scope_ignores_cancelled_bookings(): void
+    {
+        $location = Location::factory()->create();
+        Room::factory()->count(3)->create(['location_id' => $location->id]);
+
+        $user = User::factory()->create();
+        $room = $location->rooms->first();
+
+        // Cancelled booking overlapping today should not block availability
+        Booking::factory()->create([
+            'room_id' => $room->id,
+            'user_id' => $user->id,
+            'check_in' => now()->subDay()->toDateString(),
+            'check_out' => now()->addDay()->toDateString(),
+            'status' => 'cancelled',
+        ]);
+
+        $result = Location::withRoomCounts()->find($location->id);
+        $this->assertEquals(3, $result->rooms_count);
+        $this->assertEquals(3, $result->available_rooms_count);
+    }
+
+    /** @test */
+    public function with_room_counts_scope_ignores_soft_deleted_bookings(): void
+    {
+        $location = Location::factory()->create();
+        Room::factory()->count(2)->create(['location_id' => $location->id]);
+
+        $user = User::factory()->create();
+        $room = $location->rooms->first();
+
+        // Soft-deleted booking overlapping today should not block availability
+        $booking = Booking::factory()->create([
+            'room_id' => $room->id,
+            'user_id' => $user->id,
+            'check_in' => now()->subDay()->toDateString(),
+            'check_out' => now()->addDay()->toDateString(),
+            'status' => 'confirmed',
+        ]);
+        $booking->delete(); // soft-delete
+
+        $result = Location::withRoomCounts()->find($location->id);
+        $this->assertEquals(2, $result->rooms_count);
+        $this->assertEquals(2, $result->available_rooms_count);
+    }
+
+    /** @test */
+    public function with_room_counts_scope_ignores_future_bookings(): void
+    {
+        $location = Location::factory()->create();
+        Room::factory()->count(2)->create(['location_id' => $location->id]);
+
+        $user = User::factory()->create();
+        $room = $location->rooms->first();
+
+        // Future booking should not block today's availability
+        Booking::factory()->create([
+            'room_id' => $room->id,
+            'user_id' => $user->id,
+            'check_in' => now()->addDays(5)->toDateString(),
+            'check_out' => now()->addDays(10)->toDateString(),
+            'status' => 'confirmed',
+        ]);
+
+        $result = Location::withRoomCounts()->find($location->id);
+        $this->assertEquals(2, $result->rooms_count);
+        $this->assertEquals(2, $result->available_rooms_count);
     }
 
     // ===== BOOKING OBSERVER TESTS =====

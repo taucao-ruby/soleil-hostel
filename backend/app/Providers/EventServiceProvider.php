@@ -12,8 +12,8 @@ use App\Listeners\QueryDebuggerListener;
 use App\Listeners\SendBookingCancellation;
 use App\Listeners\SendBookingConfirmation;
 use App\Listeners\SendBookingUpdateNotification;
+use App\Listeners\SendEmailVerificationCode;
 use Illuminate\Auth\Events\Registered;
-use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
@@ -26,7 +26,7 @@ class EventServiceProvider extends ServiceProvider
      */
     protected $listen = [
         Registered::class => [
-            SendEmailVerificationNotification::class,
+            SendEmailVerificationCode::class,
         ],
 
         // ========== QUERY DEBUGGING ==========

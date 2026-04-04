@@ -14,8 +14,8 @@ const LocationCard: React.FC<LocationCardProps> = ({ location, onClick }) => {
   const primaryImage = location.images?.[0]?.url || locationFallbackImages[location.slug]
   const summary = location.description?.trim() || fallbackDescription
   const amenityPreview = location.amenities.slice(0, 4)
-  const roomAvailability =
-    location.stats.available_rooms ?? location.stats.rooms_count ?? location.stats.total_rooms
+  const totalRooms = location.stats.rooms_count ?? location.stats.total_rooms
+  const roomAvailability = location.stats.available_rooms ?? totalRooms
 
   return (
     <article
@@ -40,7 +40,7 @@ const LocationCard: React.FC<LocationCardProps> = ({ location, onClick }) => {
             loading="lazy"
           />
         ) : null}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/15 via-transparent to-transparent" />
+        <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/15 via-transparent to-transparent" />
       </div>
 
       <div className="p-5">
@@ -48,7 +48,7 @@ const LocationCard: React.FC<LocationCardProps> = ({ location, onClick }) => {
           {location.name}
         </h3>
 
-        <div className="mt-2 flex items-start gap-2 text-sm text-hueMuted">
+        <div className="flex items-start gap-2 mt-2 text-sm text-hueMuted">
           <svg
             className="mt-0.5 h-4 w-4 flex-none text-hueMuted"
             fill="none"
@@ -70,7 +70,7 @@ const LocationCard: React.FC<LocationCardProps> = ({ location, onClick }) => {
         <p className="mt-3 line-clamp-2 text-[15px] leading-6 text-hueBlack/80">{summary}</p>
 
         {amenityPreview.length > 0 && (
-          <div className="mt-5 grid grid-cols-5 gap-2 border-b border-hueBorder pb-4">
+          <div className="grid grid-cols-5 gap-2 pb-4 mt-5 border-b border-hueBorder">
             {amenityPreview.map(amenity => (
               <div key={amenity} className="flex flex-col items-center gap-1 text-center">
                 <span className="text-[17px]" aria-hidden="true">
@@ -95,10 +95,10 @@ const LocationCard: React.FC<LocationCardProps> = ({ location, onClick }) => {
           </div>
         )}
 
-        <div className="mt-4 flex items-center justify-between gap-4 text-sm">
+        <div className="flex items-center justify-between gap-4 mt-4 text-sm">
           <span className="inline-flex items-center gap-2 text-hueMuted">
             <svg
-              className="h-4 w-4 text-hueMuted"
+              className="w-4 h-4 text-hueMuted"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -111,7 +111,7 @@ const LocationCard: React.FC<LocationCardProps> = ({ location, onClick }) => {
                 d="M3 12h18M5 12V9a2 2 0 012-2h10a2 2 0 012 2v3M7 12v5m10-5v5M5 17h14"
               />
             </svg>
-            {location.stats.total_rooms} Phòng
+            {totalRooms} Phòng
           </span>
           <span className="font-medium text-hueBlack">{roomAvailability} còn trống</span>
         </div>

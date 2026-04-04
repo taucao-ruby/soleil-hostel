@@ -1,0 +1,215 @@
+/*
+|--------------------------------------------------------------------------
+| Soleil Hostel Email Theme
+|--------------------------------------------------------------------------
+|
+| This custom theme overrides Laravel's default email styling to match
+| the Soleil Hostel brand. These styles are inlined by Laravel's mail
+| system for maximum email client compatibility.
+|
+| Brand Colors:
+| - Primary: #007BFF (Soleil Blue)
+| - Secondary: #6C757D
+| - Background: #F8F9FA
+|
+*/
+
+/* Base Styles */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    color: #212529;
+    background-color: #f8f9fa;
+}
+
+/* Header Styles */
+.header {
+    background-color: #007bff;
+    padding: 20px;
+    text-align: center;
+}
+
+.header a {
+    color: #ffffff !important;
+    font-size: 24px;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+/* Content Wrapper */
+.wrapper {
+    background-color: #f8f9fa;
+    padding: 20px;
+}
+
+.content-cell {
+    padding: 35px;
+}
+
+/* Typography */
+h1 {
+    color: #212529;
+    font-size: 22px;
+    font-weight: bold;
+    margin-top: 0;
+}
+
+p {
+    color: #212529;
+    font-size: 16px;
+    line-height: 1.6;
+    margin: 0 0 16px;
+}
+
+/* Links */
+a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Primary Button */
+.button-primary {
+    background-color: #007bff;
+    border-bottom: 8px solid #007bff;
+    border-left: 18px solid #007bff;
+    border-right: 18px solid #007bff;
+    border-top: 8px solid #007bff;
+    border-radius: 6px;
+    color: #ffffff !important;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+    text-decoration: none;
+}
+
+.button-primary:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+}
+
+/* Success Button */
+.button-success {
+    background-color: #28a745;
+    border-bottom: 8px solid #28a745;
+    border-left: 18px solid #28a745;
+    border-right: 18px solid #28a745;
+    border-top: 8px solid #28a745;
+    border-radius: 6px;
+    color: #ffffff !important;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+    text-decoration: none;
+}
+
+/* Error/Danger Button */
+.button-error {
+    background-color: #dc3545;
+    border-bottom: 8px solid #dc3545;
+    border-left: 18px solid #dc3545;
+    border-right: 18px solid #dc3545;
+    border-top: 8px solid #dc3545;
+    border-radius: 6px;
+    color: #ffffff !important;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+    text-decoration: none;
+}
+
+/* Panel (for booking details, etc.) */
+.panel {
+    background-color: #f8f9fa;
+    border-left: 4px solid #007bff;
+    margin: 24px 0;
+    padding: 16px;
+}
+
+.panel-content {
+    color: #212529;
+}
+
+/* Table Styles (for booking details) */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+}
+
+.table th,
+.table td {
+    border: 1px solid #e8e5ef;
+    padding: 12px;
+    text-align: left;
+}
+
+.table th {
+    background-color: #007bff;
+    color: #ffffff;
+    font-weight: bold;
+}
+
+.table tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+/* Footer Styles */
+.footer {
+    background-color: #f8f9fa;
+    padding: 20px;
+    text-align: center;
+}
+
+.footer p {
+    color: #6c757d;
+    font-size: 12px;
+    margin: 0 0 8px;
+}
+
+.footer a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+/* Subcopy (fallback URL text) */
+.subcopy {
+    border-top: 1px solid #e8e5ef;
+    margin-top: 24px;
+    padding-top: 16px;
+}
+
+.subcopy p {
+    color: #6c757d;
+    font-size: 12px;
+}
+
+/* Responsive Design */
+@media only screen and (max-width: 600px) {
+    .content-cell {
+        padding: 20px !important;
+    }
+
+    h1 {
+        font-size: 20px !important;
+    }
+
+    p {
+        font-size: 15px !important;
+    }
+
+    .button-primary,
+    .button-success,
+    .button-error {
+        display: block !important;
+        width: 100% !important;
+        text-align: center !important;
+    }
+}

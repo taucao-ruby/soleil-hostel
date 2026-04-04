@@ -74,15 +74,6 @@ class BookingController extends Controller
                 userId: auth()->id(),
                 additionalData: []
             );
-
-            // Dispatch event for cache invalidation
-            event(new BookingCreated($booking));
-
-            return response()->json([
-                'success' => true,
-                'message' => __('booking.created'),
-                'data' => new BookingResource($booking->load('room')),
-            ], 201);
         } catch (RuntimeException $e) {
             // Handle business errors from the service (room unavailable, not found, etc.)
             return response()->json([
@@ -102,6 +93,26 @@ class BookingController extends Controller
                 'message' => __('booking.create_error'),
             ], 500);
         }
+
+        // Booking is committed. Fire event for cache invalidation and notifications.
+        // Event listeners run outside the transaction; a listener failure (e.g. mail
+        // transport error with QUEUE_CONNECTION=sync) must NOT roll back the booking
+        // or turn a successful 201 into a 500. Log and continue.
+        try {
+            event(new BookingCreated($booking));
+        } catch (\Throwable $e) {
+            Log::error('BookingCreated event listener failed after successful booking creation', [
+                'booking_id' => $booking->id,
+                'exception' => class_basename($e),
+                'message' => $e->getMessage(),
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => __('booking.created'),
+            'data' => new BookingResource($booking->load('room')),
+        ], 201);
     }
 
     /**

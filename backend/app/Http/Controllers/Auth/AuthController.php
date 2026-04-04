@@ -6,6 +6,7 @@ use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RefreshTokenRequest;
 use App\Models\PersonalAccessToken;
 use App\Models\User;
+use App\Services\EmailVerificationCodeService;
 use App\Traits\ApiResponse;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
@@ -67,9 +68,17 @@ class AuthController extends Controller
             throw new AuthenticationException('Email hoặc mật khẩu không đúng.');
         }
 
-        // Auto-resend verification email if unverified
+        // Auto-resend verification code if unverified
         if (! $user->hasVerifiedEmail()) {
-            $user->sendEmailVerificationNotification();
+            try {
+                app(EmailVerificationCodeService::class)->issue($user);
+            } catch (\Exception $e) {
+                \Log::warning('Failed to send verification code on login', [
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         // ========== Determine: Short-lived or Long-lived ==========
@@ -410,6 +419,8 @@ class AuthController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'role' => $user->role ?? 'user',
+                'email_verified_at' => $user->email_verified_at?->toIso8601String(),
             ],
             'token' => [
                 'name' => $token->name,

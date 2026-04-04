@@ -1,5 +1,26 @@
 # WORKLOG — Soleil Hostel (Append-only)
 
+## 2026-04-04
+
+- Change: 5 commits across email-verification hardening + static analysis clean + style normalization. Merged dev → main (9756bba), 7 commits, 40 files, 1954 insertions, 403 deletions.
+- fix(frontend): TS5103 — removed `ignoreDeprecations: "6.0"` from `tsconfig.app.json`. `"6.0"` is not a valid TS 5.7.3 deprecation wave token. No deprecated options in tsconfig chain (Branch B). `pnpm run build` exits 0.
+- fix(backend): PHPStan Level 5 — 10 errors introduced by new email-verification files (Apr 3) resolved. 0 errors, no baseline, no ignores. Larastan.
+- fix(backend): Psalm Level 1 — 4 errors in auth and service layer resolved. 0 blocking.
+- chore(backend): Pint style — 3 files fixed: `_seed_test_accounts.php` (ordered_imports, concat_space, binary_operator_spaces, line_ending), `AppServiceProvider.php` (binary_operator_spaces in http_build_query array), `EmailVerificationCodeService.php` (class_attributes_separation between const declarations). 21 lines, whitespace/ordering only. Security surface untouched.
+- Residual: 8 Pint violations in email-verification file cluster — line_ending (CRLF authored on Windows), unary_operator_spaces, braces_position, class_definition. Files: VerificationResult.php, EmailVerificationCodeController.php, VerifyCodeRequest.php, SendEmailVerificationCode.php, EmailVerificationCode.php, EmailVerificationCodeNotification.php, migration, EmailVerificationTest.php. Tracked as next `Now` item.
+- merge: dev → main (9756bba). `--no-ff`. Branch history preserved.
+
+## 2026-04-03
+
+- Change: Email verification code (OTP) full-stack feature + concurrent booking fix + mail asset fix (commits 74320b7, 6b9ecd4, bd91e90).
+- Backend — Email OTP: `email_verification_codes` table (SHA-256 `code_hash`, `attempts`, `max_attempts`, `expires_at`, `consumed_at`, `last_sent_at`). `EmailVerificationCodeService`: `issue()`, `verify()`, `cooldownRemaining()` — timing-safe `hash_equals`, `FOR UPDATE` pessimistic lock, COOLDOWN_SECONDS=60, MAX_ATTEMPTS=5, EXPIRY_MINUTES=15. `VerificationResult` enum (7 states). `EmailVerificationCodeController` (POST `/email/verification-code`, POST `/email/verify-code`). `VerifyCodeRequest`. `SendEmailVerificationCode` listener. `EmailVerificationCodeNotification` (styled Markdown mail). `EventServiceProvider` updated. `AppServiceProvider`: `VerifyEmail::createUrlUsing()` rewrites link to SPA `/email/verify` path (avoids 401 from raw API URL in mail client). 4 new routes under auth middleware.
+- Backend — Location availability: `scopeWithRoomCounts` rewritten to use booking-based overlap count (active `pending`/`confirmed` bookings) instead of stale `room.status` column. `LocationResource` uses `rooms_count` (not `total_rooms`). `LocationCard` updated to match. Fixes "0 còn trống" display bug.
+- Backend — Infra: mail view assets (`soleil.css`, `email.blade.php`) committed — previously excluded by `.gitignore` (6b9ecd4). Concurrent booking HTTP 500 + IP-rate-limit collapse fix (bd91e90).
+- Frontend: `EmailVerifyPage.tsx` (312 lines) — 6-digit OTP input, resend cooldown countdown, error states, Vietnamese UI. `router.tsx`: `/email/verify` route. `LoginPage.tsx` + `RegisterPage.tsx`: redirect to verify page for unverified users. `GuestDashboard.tsx` refactored. `LocationCard.tsx`: `rooms_count`.
+- Seed: `_seed_test_accounts.php` — user/moderator/admin test accounts with `Test1234!` password.
+- Tests: `EmailVerificationTest.php` (672-line heavy revision). `RegisterTest.php` (+23 lines). `LocationApiTest.php` (+28 lines). `LocationTest.php` (+100 lines).
+- Gates post-feature: PHPStan 10 errors (new files), Psalm 4 errors — resolved same day (Apr 4). Pint 3 declared + 8 residual — declared 3 fixed Apr 4, residual 8 tracked.
+
 ## 2026-03-31
 
 - Change: Docs sync v3 (evidence-gated pass across 5 canonical docs) + PROJECT_STATUS / README / PRODUCT_GOAL / BACKLOG refresh.

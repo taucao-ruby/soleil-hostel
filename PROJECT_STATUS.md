@@ -1,8 +1,8 @@
 # Soleil Hostel - Project Status
 
-**Last Updated:** March 31, 2026
+**Last Updated:** April 4, 2026
 **Current Branch:** `dev`
-**Latest Commit:** `a2da01b` — Update license link to point to GitHub
+**Latest Commit:** `de501e2` — chore(backend): fix Pint style violations in 3 files
 
 ## Current Status: Repo Health Green
 
@@ -10,15 +10,16 @@
 > Batches 1–12 + DevSecOps + quality hardening + DB hardening + v3.1 stay domain complete.
 > See [docs/AUDIT_2026_02_21.md](./docs/AUDIT_2026_02_21.md) for detailed audit history.
 
-Gates (verified March 31, 2026):
+Gates (verified April 4, 2026):
 
-- Backend tests PASS: **1047 tests**, **2875 assertions** (`cd backend && php artisan test`)
-- Frontend typecheck PASS: 0 errors (`cd frontend && npx tsc --noEmit`)
-- Frontend unit tests PASS: **25 files**, **261 tests** (`cd frontend && npx vitest run`)
+- Backend tests: **re-verification required** (email verification tests heavily revised Apr 3; previous baseline 1047/2875)
+- Frontend typecheck PASS: 0 errors (`cd frontend && npx tsc --noEmit`) — TS5103 fixed
+- Frontend build PASS: `pnpm run build` exits 0 — verified Apr 4
+- Frontend unit tests: **re-verification required** (previous baseline 261/25 — Mar 31)
 - Compose config PASS (`docker compose config`)
-- Pint style PASS: **283 files**, 0 violations (`cd backend && vendor/bin/pint --test`)
-- PHPStan Level 5 PASS: **0 errors** (no baseline, no ignores — Larastan)
-- Psalm: Level 1, 0 blocking errors
+- Pint style: **8 violations** in email-verification cluster (line_ending CRLF, braces_position, unary_operator_spaces, class_definition) — NOT at 0 (`cd backend && vendor/bin/pint --test`)
+- PHPStan Level 5 PASS: **0 errors** (10 errors from Apr 3 new files resolved Apr 4)
+- Psalm: Level 1, 0 blocking errors (4 errors from Apr 3 new files resolved Apr 4)
 
 Open Findings: F-23 (MD lint, low), F-25 (CSRF path, low), F-26–F-62 (2026-03-20 audit — 37 findings, no code changed)
 Blocked Items: M-11 (migration squash — needs human approval)
@@ -128,6 +129,10 @@ See also: `docs/PERMISSION_MATRIX.md` Table E for current moderator access surfa
 
 | Feature                         | Priority | Notes                                                                                |
 | ------------------------------- | -------- | ------------------------------------------------------------------------------------ |
+| **Email Verification OTP Flow**     | ✅ Done  | Full-stack 6-digit code: EmailVerificationCodeService, EmailVerificationCode model + migration, controller, notification, listener, VerificationResult enum, EmailVerifyPage.tsx SPA (Apr 3) |
+| **Location Room Availability Fix**  | ✅ Done  | `scopeWithRoomCounts` uses booking-based availability; LocationResource + LocationCard use `rooms_count` (Apr 3) |
+| **PHPStan gate maintained**         | ✅ Done  | 10 errors introduced by new files Apr 3 — all resolved Apr 4 (0 errors, Level 5, no baseline) |
+| **Psalm gate maintained**           | ✅ Done  | 4 errors in auth/service layer resolved Apr 4 (0 blocking, Level 1) |
 | **Stripe Payment Integration**  | High     | Cashier bootstrapped, webhooks implemented; checkout session + payment UI pending    |
 | **RBAC Hardening**              | ✅ Done  | Defense-in-depth, phases 1-3, moderator activation, mobile guard, password complexity (Mar 10-14) |
 | **Booking Detail Panel**        | ✅ Done  | Guest read-only panel with 14 tests (Feb 27)                                         |
@@ -171,6 +176,7 @@ All audit and batch details are preserved in [AUDIT_REPORT.md](./AUDIT_REPORT.md
 | Mar 23, 2026 | v3.4 operational completion: readiness, classification, deposit lifecycle, settlement, escalation engine, OperationalDashboardService (16 metrics) | 1014 tests at that point |
 | Mar 29, 2026 | Restore path integrity (Wave 1), admin filters (Wave 2), CSRF clarity (Wave 3), ReviewForm (Wave 4), governance docs (Wave 5) | +40 backend tests, +35 frontend tests; TL-02/TL-05 resolved |
 | Mar 30, 2026 | picomatch ReDoS CVE fix (GHSA-c2c7-rcm5-vvqj), Pint cleanup (8 files), null-safe RoomResource fix, AGENT_LEARNINGS scaffold | — |
+| Apr 3–4, 2026 | Email verification OTP flow (full-stack), location availability fix, concurrent booking HTTP 500 fix, mail view assets (infra), PHPStan 10→0 errors, Psalm 4→0 errors, TS5103 tsconfig fix, Pint style fix (3 files) | Merged to main Apr 4 (9756bba, 7 commits, 40 files, 1954+/403−) |
 | Mar 31, 2026 | Docs sync v3: 5 confirmed docs updated, 9 findings patched (F-01, F-02, F-03, F-04, F-05, F-07, F-09) | — |
 
 ---

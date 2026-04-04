@@ -222,6 +222,8 @@ Canonical permission matrix: [docs/PERMISSION_MATRIX.md](../PERMISSION_MATRIX.md
 
 Current enforcement status: PASS WITH FOLLOW-UPS. Room CUD and admin booking endpoints use defense-in-depth (route middleware + controller-level gate/policy). Moderator role is ACTIVE: gates admin booking READ routes (`role:moderator` middleware, v1.php) and customer management endpoints (`/api/v1/admin/customers/*`). Open follow-ups: 5 — see PERMISSION_MATRIX.md.
 
+**Role Hierarchy Stability:** `isAtLeast()` at `User.php:134-146` uses level comparison. Adding or reordering roles silently shifts all HIERARCHY-DEPENDENT permissions. See [PERMISSION_MATRIX.md § Role Hierarchy Stability Warning](../PERMISSION_MATRIX.md) for the required change procedure.
+
 ## DB Constraints Added (formerly backlog)
 
 All four previously absent constraints added via migrations (audit v2, PR-2 + PR-3, 2026-02-21):

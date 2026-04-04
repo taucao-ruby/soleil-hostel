@@ -72,6 +72,22 @@ What the system actually does. Tier 1 evidence only.
 
 **HIERARCHY-DEPENDENT NOTICE**: `role:admin` middleware is enforced via `EnsureUserHasRole` using role hierarchy comparison (`isAtLeast()`), not exact match. Current hierarchy places admin above moderator. If role hierarchy is modified, rows marked HIERARCHY-DEPENDENT may change without code review.
 
+### Role Hierarchy Stability Warning
+
+The `isAtLeast()` method (`User.php:134-146`) uses a static level mapping: `USER=1, MODERATOR=2, ADMIN=3`. This means:
+
+- **Adding a role between existing roles** (e.g., `MANAGER` at level 3, pushing `ADMIN` to 4) silently shifts all `isAtLeast(ADMIN)` checks to include the new role.
+- **Reordering role levels** changes every HIERARCHY-DEPENDENT permission row in Table A without any code change in controllers, policies, or routes.
+- **All rows marked HIERARCHY-DEPENDENT** (A1-A4, A7-A12) are affected by hierarchy changes.
+
+**Required procedure before any role hierarchy change:**
+1. Full permission re-audit of all rows in Table A marked HIERARCHY-DEPENDENT
+2. Review all `isAtLeast()` call sites: `EnsureUserHasRole.php`, `BookingPolicy.php`, `User.php`
+3. Update this matrix with new enforcement evidence before deploy
+4. Run the full test suite with explicit role-boundary assertions
+
+Owner: Security Lead (see [CONTROL_PLANE_OWNERSHIP.md](./agents/CONTROL_PLANE_OWNERSHIP.md))
+
 ---
 
 ## Table B — Data Operation Permissions by Actor

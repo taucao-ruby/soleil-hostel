@@ -9,6 +9,7 @@ Definition of Done (DoD) for AI agent tasks in this repository.
   - `cd frontend && npx tsc --noEmit` — 0 errors
   - `cd frontend && npx vitest run` — 0 failures
   - `docker compose config` — valid
+  - `bash scripts/verify-control-plane.sh` — 0 FAIL (control-plane health)
 - [ ] No new lint errors introduced
 - [ ] Architecture invariants preserved (see [ARCHITECTURE_FACTS.md](./ARCHITECTURE_FACTS.md))
 - [ ] Existing tests not broken; new tests added for new behavior

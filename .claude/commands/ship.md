@@ -25,6 +25,10 @@ and wait for user confirmation before running gates.
 - `.agent/rules/instruction-surface-and-task-boundaries.md`
 - `.agent/rules/soleil-ai-review-engine-impact-and-change-scope.md`
 
+## Setup
+
+Apply bundle: `full-release-gate` (see [TASK_BUNDLES.md](../../docs/agents/TASK_BUNDLES.md))
+
 ## Gate Sequence
 
 Run in order, stop on first failure:
@@ -34,6 +38,7 @@ cd backend && php artisan test --bail
 cd frontend && npx tsc --noEmit
 cd frontend && npx vitest run
 docker compose config
+bash scripts/verify-control-plane.sh
 ```
 
 ## Post-Gate Checks

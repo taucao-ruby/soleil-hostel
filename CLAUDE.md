@@ -46,6 +46,7 @@ Root contract for the Soleil Hostel instruction system. This file defines consti
 
 - Auto-expanded canon: `docs/agents/ARCHITECTURE_FACTS.md`, `docs/agents/CONTRACT.md`
 - Canonical policy references: `docs/PERMISSION_MATRIX.md`, `docs/DB_FACTS.md`, `docs/DOMAIN_LAYERS.md`
+- Control-plane governance: `docs/agents/CONTROL_PLANE_OWNERSHIP.md`, `docs/agents/TASK_BUNDLES.md`
 - Derived rules: `.agent/rules/booking-integrity.md`, `.agent/rules/auth-token-safety.md`, `.agent/rules/migration-safety.md`
 - Commands and gates: `docs/agents/COMMANDS.md`, `docs/COMMANDS_AND_GATES.md`, `.claude/commands/`, `.claude/output-styles/`
 - Skills and workflows: `skills/README.md`, `skills/laravel/*.md`, `skills/react/*.md`, `.claude/skills/soleil-ai-review-engine/`, `.claude/skills/generated/`

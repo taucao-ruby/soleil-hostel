@@ -249,6 +249,26 @@ Dont:
 - Do not rely on SQLite to enforce PostgreSQL-only invariants (exclusion constraints, PG triggers).
 - FK `reviews.booking_id → bookings.id` exists (migration `2026_02_22_000002`, ON DELETE RESTRICT, pgsql-only). ON DELETE RESTRICT is intentional — bookings use soft-delete.
 
+## Deprecation: rooms.status
+
+`rooms.status` is a **DEPRECATED** legacy field. The canonical physical room state is `rooms.readiness_status` (added in migration `2026_03_23_000001`).
+
+**Current state:**
+- `rooms.status` remains in schema (migration `2025_05_09_000000`) and in `Room.php` `$fillable`
+- `Room::scopeAvailable()` still queries `rooms.status = 'available'`
+- `rooms.readiness_status` is the canonical field with CHECK constraint and enum backing
+- Both fields appear in `Room::$fillable` and are selected in queries
+
+**Deprecation timeline:**
+- **Phase 1 (current):** Document deprecation. New code must use `readiness_status` for physical room state. `rooms.status` reads are allowed only for legacy admin/sellable semantics with a `# DEPRECATED` comment.
+- **Phase 2 (next feature wave):** Migrate all `rooms.status` reads to `readiness_status` or a dedicated sellable-status field. Remove `rooms.status` from `Room::scopeAvailable()`.
+- **Phase 3 (post-migration):** Drop `rooms.status` column via migration. Remove from `$fillable`, `@property`, and all scopes.
+
+**Enforcement:**
+- `scripts/verify-control-plane.sh` warns if backend files reference `rooms.status`
+- New code referencing `rooms.status` without `# DEPRECATED` comment should be flagged in PR review
+- DB CHECK constraint on `rooms.status` remains **deferred** — legacy values are inconsistent across codebase
+
 ## AI Rules for DB-Related Changes
 
 - Never use `UNIQUE(room_id, check_in, check_out)` as overlap prevention.

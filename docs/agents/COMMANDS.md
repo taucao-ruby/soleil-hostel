@@ -46,6 +46,17 @@ cd frontend && pnpm format
 cd backend && composer audit
 ```
 
+## Prerequisites
+
+| Tool | Purpose | Install |
+|------|---------|---------|
+| `jq` | Claude Code hook JSON parsing | https://jqlang.github.io/jq/download/ |
+| `node` >= 20 | Frontend tools, MCP server | https://nodejs.org/ |
+| `php` >= 8.2 | Backend runtime | https://www.php.net/ |
+| `docker` | Container orchestration | https://www.docker.com/ |
+
+> **`jq` is required for Claude Code hooks to function.** Without it, all PreToolUse/PostToolUse hooks degrade to fail-open mode. Run `bash scripts/verify-control-plane.sh` to check.
+
 ## Setup Commands
 
 ```bash

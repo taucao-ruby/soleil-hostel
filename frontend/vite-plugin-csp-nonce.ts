@@ -1,3 +1,5 @@
+import type { Plugin } from 'vite'
+
 /**
  * Vite Plugin: CSP Nonce Injection
  *
@@ -10,7 +12,7 @@
  * Serving the HTML as a static file will leave the placeholder unresolved.
  */
 
-export default function vitePluginCspNonce() {
+export default function vitePluginCspNonce(): Plugin {
   return {
     name: 'vite-plugin-csp-nonce',
 
@@ -46,6 +48,6 @@ export default function vitePluginCspNonce() {
      * Transform HTML trong dev mode
      * Dev mode không cần nonce (unsafe-eval + unsafe-inline allowed)
      */
-    apply: 'build', // Chỉ apply khi build, không dev
+    apply: 'build' as const, // Chỉ apply khi build, không dev
   }
 }

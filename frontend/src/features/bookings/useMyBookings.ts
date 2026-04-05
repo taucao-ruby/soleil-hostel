@@ -24,7 +24,11 @@ export function useMyBookingsQuery() {
         setRawBookings(data)
       }
     } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return
+      // Axios aborts via AbortSignal throw CanceledError (code: ERR_CANCELED), not DOMException
+      const isCanceled =
+        (err instanceof DOMException && err.name === 'AbortError') ||
+        (err instanceof Error && (err as { code?: string }).code === 'ERR_CANCELED')
+      if (isCanceled) return
       if (mountedRef.current) {
         setIsError(true)
       }

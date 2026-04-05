@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import HeaderMobile from './HeaderMobile'
@@ -29,6 +29,11 @@ async function openMenu() {
   const btn = screen.getByRole('button', { name: /mở menu/i })
   await user.click(btn)
   return user
+}
+
+/** Scope queries to the mobile drawer nav (jsdom renders both desktop + mobile layouts) */
+function drawer() {
+  return within(screen.getByRole('navigation', { name: /menu điều hướng/i }))
 }
 
 // ── Setup ───────────────────────────────────────────────
@@ -62,7 +67,7 @@ describe('HeaderMobile', () => {
   describe('always-visible header bar', () => {
     it('shows the quick Phòng link', () => {
       renderHeader()
-      expect(screen.getByRole('link', { name: 'Phòng' })).toBeInTheDocument()
+      expect(screen.getAllByRole('link', { name: 'Phòng' }).length).toBeGreaterThanOrEqual(1)
     })
 
     it('shows the hamburger button', () => {
@@ -85,7 +90,8 @@ describe('HeaderMobile', () => {
 
     it('does not show Đăng nhập before menu is opened', () => {
       renderHeader()
-      expect(screen.queryByText('Đăng nhập')).not.toBeInTheDocument()
+      // Desktop layout also renders Đăng nhập; check the mobile drawer nav is absent
+      expect(screen.queryByRole('navigation', { name: /menu điều hướng/i })).not.toBeInTheDocument()
     })
   })
 
@@ -112,10 +118,11 @@ describe('HeaderMobile', () => {
     it('shows all nav links in drawer', async () => {
       renderHeader()
       await openMenu()
-      expect(screen.getByRole('link', { name: 'Trang chủ' })).toBeInTheDocument()
-      expect(screen.getAllByRole('link', { name: 'Phòng' }).length).toBeGreaterThanOrEqual(1)
-      expect(screen.getByRole('link', { name: 'Chi nhánh' })).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'Đặt phòng' })).toBeInTheDocument()
+      const d = drawer()
+      expect(d.getByRole('link', { name: 'Trang chủ' })).toBeInTheDocument()
+      expect(d.getAllByRole('link', { name: 'Phòng' }).length).toBeGreaterThanOrEqual(1)
+      expect(d.getByRole('link', { name: 'Chi nhánh' })).toBeInTheDocument()
+      expect(d.getByRole('link', { name: 'Đặt phòng' })).toBeInTheDocument()
     })
 
     it('closes drawer when backdrop is clicked', async () => {
@@ -130,7 +137,7 @@ describe('HeaderMobile', () => {
       renderHeader()
       await openMenu()
       const user = userEvent.setup()
-      await user.click(screen.getByRole('link', { name: 'Chi nhánh' }))
+      await user.click(drawer().getByRole('link', { name: 'Chi nhánh' }))
       expect(screen.queryByRole('navigation', { name: /menu điều hướng/i })).not.toBeInTheDocument()
     })
   })
@@ -139,8 +146,9 @@ describe('HeaderMobile', () => {
     it('shows Đăng nhập and Đăng ký ngay in drawer', async () => {
       renderHeader()
       await openMenu()
-      expect(screen.getByRole('link', { name: 'Đăng nhập' })).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'Đăng ký ngay' })).toBeInTheDocument()
+      const d = drawer()
+      expect(d.getByRole('link', { name: 'Đăng nhập' })).toBeInTheDocument()
+      expect(d.getByRole('link', { name: 'Đăng ký ngay' })).toBeInTheDocument()
     })
 
     it('does not show Bảng điều khiển or Đăng xuất', async () => {
@@ -165,8 +173,9 @@ describe('HeaderMobile', () => {
     it('shows Bảng điều khiển and Đăng xuất in drawer', async () => {
       renderHeader()
       await openMenu()
-      expect(screen.getByRole('link', { name: 'Bảng điều khiển' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Đăng xuất' })).toBeInTheDocument()
+      const d = drawer()
+      expect(d.getByRole('link', { name: 'Bảng điều khiển' })).toBeInTheDocument()
+      expect(d.getByRole('button', { name: 'Đăng xuất' })).toBeInTheDocument()
     })
 
     it('does not show Đăng nhập or Đăng ký ngay', async () => {
@@ -179,7 +188,7 @@ describe('HeaderMobile', () => {
     it('calls logoutHttpOnly and closes drawer when Đăng xuất is clicked', async () => {
       renderHeader()
       const user = await openMenu()
-      await user.click(screen.getByRole('button', { name: 'Đăng xuất' }))
+      await user.click(drawer().getByRole('button', { name: 'Đăng xuất' }))
       expect(mockLogout).toHaveBeenCalledOnce()
       expect(screen.queryByRole('navigation', { name: /menu điều hướng/i })).not.toBeInTheDocument()
     })
@@ -189,7 +198,7 @@ describe('HeaderMobile', () => {
     it('Trang chủ link has amber indicator when on / route', async () => {
       renderHeader('/')
       await openMenu()
-      const homeLink = screen.getByRole('link', { name: 'Trang chủ' })
+      const homeLink = drawer().getByRole('link', { name: 'Trang chủ' })
       expect(homeLink.className).toContain('C9973A')
     })
 

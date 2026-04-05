@@ -73,3 +73,19 @@ These domains have critical invariants. Read the relevant docs before making cha
 - Use `run_verify` ONLY for allowlisted commands (see [MCP.md](./MCP.md))
 - NEVER run arbitrary commands outside the allowlist
 - NEVER guess file paths — always discover via MCP or search first
+
+## Stale-Index Degradation (soleil-ai-review-engine)
+
+When the `soleil-ai-review-engine` index is stale or unavailable (tool errors, missing `.soleil-ai-review-engine/` directory, or `meta.json` showing outdated `analyzed_at`):
+
+1. **Flag the condition**: Before any multi-file change, emit: "Impact analysis unavailable — proceeding with conservative scope only."
+2. **Conservative scope**: Touch only the file(s) explicitly named in the task. Do not infer related files from memory or prior sessions.
+3. **Do not auto-reindex**: Surface the condition and wait for the operator to run `npx soleil-engine-cli analyze`.
+4. **Skip rename workflow**: Do not use `soleil-ai-review-engine_rename` in degraded mode — fall back to manual grep-based rename with explicit human review of all call sites.
+5. **Resume normal mode**: Once reindex completes and tools respond without error, full impact analysis is required again before edits.
+
+This degradation protocol prevents false-negative blast radius assessments from outdated graph data.
+
+## Control Plane Ownership
+
+Component ownership is defined in [docs/agents/CONTROL_PLANE_OWNERSHIP.md](./agents/CONTROL_PLANE_OWNERSHIP.md). That file is the single canonical source — do not redefine ownership elsewhere.

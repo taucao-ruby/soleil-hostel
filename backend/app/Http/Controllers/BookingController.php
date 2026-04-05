@@ -18,6 +18,7 @@ use App\Services\CreateBookingService;
 use App\Services\RoomService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
@@ -35,12 +36,14 @@ class BookingController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         // No policy guard needed: getUserBookings() filters by auth()->id(),
         // ensuring users can only see their own bookings. The viewAny policy
         // is semantically "view ALL bookings" (moderator+), not "view own".
-        $bookings = $this->bookingService->getUserBookings(auth()->id());
+        // Use $request->user() — check_token_valid sets the request user resolver
+        // directly; auth()->id() resolves via the default guard and returns null here.
+        $bookings = $this->bookingService->getUserBookings($request->user()->id);
 
         return response()->json([
             'success' => true,
@@ -71,7 +74,7 @@ class BookingController extends Controller
                 checkOut: $validated['check_out'],
                 guestName: $validated['guest_name'],
                 guestEmail: $validated['guest_email'],
-                userId: auth()->id(),
+                userId: $request->user()->id,
                 additionalData: []
             );
         } catch (RuntimeException $e) {
@@ -83,7 +86,7 @@ class BookingController extends Controller
         } catch (\Throwable $e) {
             // Log unexpected errors
             Log::error('Booking creation failed: '.$e->getMessage(), [
-                'user_id' => auth()->id(),
+                'user_id' => $request->user()?->id,
                 'room_id' => $validated['room_id'] ?? null,
                 'exception' => class_basename($e),
             ]);
@@ -194,7 +197,7 @@ class BookingController extends Controller
      * Regular users: Can only soft delete their own bookings
      * Admins: Can soft delete any booking
      */
-    public function destroy(Booking $booking): JsonResponse
+    public function destroy(Request $request, Booking $booking): JsonResponse
     {
         // Authorize deletion
         $this->authorize('delete', $booking);
@@ -204,7 +207,7 @@ class BookingController extends Controller
         event(new BookingDeleted($booking));
 
         // Soft delete booking with audit trail (records deleted_by)
-        $this->bookingService->softDelete($booking, auth()->id());
+        $this->bookingService->softDelete($booking, $request->user()->id);
 
         return response()->json([
             'success' => true,

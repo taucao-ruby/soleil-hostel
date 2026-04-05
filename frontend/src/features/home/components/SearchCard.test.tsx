@@ -92,16 +92,16 @@ describe('SearchCard', () => {
     mockedGetLocations.mockReturnValue(new Promise(() => {}))
 
     renderSearchCard()
-    expect(screen.getByTestId('locations-skeleton')).toBeInTheDocument()
+    expect(screen.getAllByTestId('locations-skeleton')[0]).toBeInTheDocument()
   })
 
   it('populates select with fetched locations', async () => {
     renderSearchCard()
 
     await waitFor(() => {
-      expect(screen.getByRole('option', { name: 'Soleil Phú Hội' })).toBeInTheDocument()
+      expect(screen.getAllByRole('option', { name: 'Soleil Phú Hội' })[0]).toBeInTheDocument()
     })
-    expect(screen.getByRole('option', { name: 'Soleil Thành Nội' })).toBeInTheDocument()
+    expect(screen.getAllByRole('option', { name: 'Soleil Thành Nội' })[0]).toBeInTheDocument()
   })
 
   it('navigates to location detail with search params on submit', async () => {
@@ -110,11 +110,11 @@ describe('SearchCard', () => {
 
     // Wait for locations to load
     await waitFor(() => {
-      expect(screen.getByRole('option', { name: 'Soleil Phú Hội' })).toBeInTheDocument()
+      expect(screen.getAllByRole('option', { name: 'Soleil Phú Hội' })[0]).toBeInTheDocument()
     })
 
     // Submit the form (default values: first location, today/tomorrow)
-    await user.click(screen.getByRole('button', { name: /Tìm kiếm/i }))
+    await user.click(screen.getAllByRole('button', { name: /Tìm kiếm/i })[0])
 
     expect(mockNavigate).toHaveBeenCalledTimes(1)
     const navArg = mockNavigate.mock.calls[0][0] as string
@@ -128,12 +128,12 @@ describe('SearchCard', () => {
     renderSearchCard()
 
     await waitFor(() => {
-      expect(screen.getByRole('option', { name: 'Soleil Thành Nội' })).toBeInTheDocument()
+      expect(screen.getAllByRole('option', { name: 'Soleil Thành Nội' })[0]).toBeInTheDocument()
     })
 
     // Change to second location
-    await user.selectOptions(screen.getByRole('combobox'), 'soleil-thanh-noi')
-    await user.click(screen.getByRole('button', { name: /Tìm kiếm/i }))
+    await user.selectOptions(screen.getAllByRole('combobox')[0], 'soleil-thanh-noi')
+    await user.click(screen.getAllByRole('button', { name: /Tìm kiếm/i })[0])
 
     const navArg = mockNavigate.mock.calls[0][0] as string
     expect(navArg).toContain('/locations/soleil-thanh-noi')
@@ -144,7 +144,7 @@ describe('SearchCard', () => {
     renderSearchCard()
 
     await waitFor(() => {
-      expect(screen.getByRole('option', { name: 'Soleil Phú Hội' })).toBeInTheDocument()
+      expect(screen.getAllByRole('option', { name: 'Soleil Phú Hội' })[0]).toBeInTheDocument()
     })
 
     // Set check_out to same day as check_in
@@ -157,9 +157,9 @@ describe('SearchCard', () => {
     await user.clear(checkOutInput)
     await user.type(checkOutInput, today)
 
-    await user.click(screen.getByRole('button', { name: /Tìm kiếm/i }))
+    await user.click(screen.getAllByRole('button', { name: /Tìm kiếm/i })[0])
 
-    expect(screen.getByRole('alert')).toHaveTextContent(/Ngày trả phòng phải sau/)
+    expect(screen.getAllByRole('alert')[0]).toHaveTextContent(/Ngày trả phòng phải sau/)
     expect(mockNavigate).not.toHaveBeenCalled()
   })
 
@@ -178,7 +178,7 @@ describe('SearchCard', () => {
     await user.click(screen.getByText(/Lỗi — Thử lại/))
 
     await waitFor(() => {
-      expect(screen.getByRole('option', { name: 'Soleil Phú Hội' })).toBeInTheDocument()
+      expect(screen.getAllByRole('option', { name: 'Soleil Phú Hội' })[0]).toBeInTheDocument()
     })
   })
 
@@ -192,13 +192,13 @@ describe('SearchCard', () => {
     })
 
     // Submit button should be disabled
-    expect(screen.getByRole('button', { name: /Tìm kiếm/i })).toBeDisabled()
+    expect(screen.getAllByRole('button', { name: /Tìm kiếm/i })[0]).toBeDisabled()
   })
 
   it('disables submit button while locations are loading', () => {
     mockedGetLocations.mockReturnValue(new Promise(() => {}))
 
     renderSearchCard()
-    expect(screen.getByRole('button', { name: /Tìm kiếm/i })).toBeDisabled()
+    expect(screen.getAllByRole('button', { name: /Tìm kiếm/i })[0]).toBeDisabled()
   })
 })

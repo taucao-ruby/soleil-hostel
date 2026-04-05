@@ -6,7 +6,7 @@
  * Uses vitest + @testing-library/react, semantic queries only.
  */
 import { describe, test, expect, vi, beforeEach } from 'vitest'
-import { render, screen, within, fireEvent } from '@testing-library/react'
+import { render, screen, within, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import HomePage from './HomePage'
 import BottomNav from '@/features/home/components/BottomNav'
@@ -18,6 +18,57 @@ const { mockUseAuth } = vi.hoisted(() => ({
 
 vi.mock('@/features/auth/AuthContext', () => ({
   useAuth: mockUseAuth,
+}))
+
+// RoomsSection now fetches rooms on mount — mock to prevent unhandled requests
+vi.mock('@/features/rooms/room.api', () => ({
+  getRooms: vi.fn().mockResolvedValue([
+    {
+      id: 1,
+      name: 'Phòng Dorm 4',
+      description: null,
+      price: 350000,
+      max_guests: 4,
+      status: 'available',
+      room_type_code: 'dorm',
+      room_tier: 1,
+      image_url: null,
+      location: { id: 1, name: 'Soleil Hostel', slug: 'soleil-hostel' },
+      location_id: 1,
+      created_at: '',
+      updated_at: '',
+    },
+    {
+      id: 2,
+      name: 'Phòng Đơn Standard',
+      description: null,
+      price: 420000,
+      max_guests: 2,
+      status: 'available',
+      room_type_code: 'standard',
+      room_tier: 1,
+      image_url: null,
+      location: { id: 1, name: 'Soleil Hostel', slug: 'soleil-hostel' },
+      location_id: 1,
+      created_at: '',
+      updated_at: '',
+    },
+    {
+      id: 3,
+      name: 'Phòng VIP',
+      description: null,
+      price: 600000,
+      max_guests: 2,
+      status: 'available',
+      room_type_code: 'vip',
+      room_tier: 3,
+      image_url: null,
+      location: { id: 1, name: 'Soleil Hostel', slug: 'soleil-hostel' },
+      location_id: 1,
+      created_at: '',
+      updated_at: '',
+    },
+  ]),
 }))
 
 // SearchCard now fetches locations on mount — mock to prevent unhandled requests
@@ -167,16 +218,18 @@ describe('FilterChips', () => {
 })
 
 describe('Room cards', () => {
-  test('renders at least 2 room cards each with "Đặt ngay" button', () => {
+  test('renders at least 2 room cards each with "Đặt ngay" button', async () => {
     renderHomePage()
-    const bookButtons = screen.getAllByRole('button', { name: /Đặt ngay/i })
+    const bookButtons = await screen.findAllByRole('button', { name: /Đặt ngay/i })
     expect(bookButtons.length).toBeGreaterThanOrEqual(2)
   })
 
-  test('renders availability badges on room cards', () => {
+  test('renders availability badges on room cards', async () => {
     renderHomePage()
-    const availabilityBadges = screen.getAllByText('Còn phòng')
-    expect(availabilityBadges.length).toBeGreaterThanOrEqual(2)
+    await waitFor(() => {
+      const availabilityBadges = screen.getAllByText('Còn phòng')
+      expect(availabilityBadges.length).toBeGreaterThanOrEqual(2)
+    })
   })
 })
 

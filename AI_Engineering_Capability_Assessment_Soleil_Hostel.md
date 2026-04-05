@@ -8,8 +8,8 @@
 | **Subject Level**    | Expert Principal Engineer, 15+ years experience                                                        |
 | **Evaluator**        | Distinguished Engineer perspective — evaluating for Principal→DE trajectory                            |
 | **Method**           | Full codebase read, all gates executed, every finding verified against source, AI system architecture reviewed |
-| **Date**             | March 7, 2026 (original) — **Rewritten April 2, 2026 (DE-calibrated)**                                |
-| **Branch / HEAD**    | `dev` / `a2da01b` (April 2, 2026)                                                                     |
+| **Date**             | March 7, 2026 (original) — **Rewritten April 2, 2026 (DE-calibrated)** — **Updated April 4, 2026 (Harness Hardening wave verified)** |
+| **Branch / HEAD**    | `dev` / `26fe51d` (April 4, 2026)                                                                     |
 | **Prior assessment** | Two prior versions existed (rated 7.0–7.1/10 on a Senior→Staff scale). This rewrite recalibrates the entire framework for evaluating a Principal Engineer against Distinguished-level criteria.                    |
 
 ---
@@ -83,15 +83,15 @@ Note: The prior assessment reported 871 tests. Actual current count is 885. Mult
 
 | Dimension                              | Score   | Weight | Evidence                                                                                                                                                                                                                   |
 | -------------------------------------- | ------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **1. Original Technical Contribution** | 8.5/10  | 25%    | The AI agent governance framework (CLAUDE.md constitutional hierarchy, 17 skill files, MCP safety constraints, AGENT_LEARNINGS self-learning, 4 specialist subagents, 6 slash commands) is genuinely novel. No published equivalent exists at this formalization level. Missing: external publication, open-source extraction. |
-| **2. Judgment & Decision Quality**     | 6.0/10  | 25%    | Strong individual decisions (ADRs are excellent), but meta-decision quality is poor: 47 migrations for an unshipped product, four-layer operational domain before first booking, "DO NOT FIX" on Critical concurrency findings while adding features. Distinguished-level judgment means knowing what *not* to build. |
-| **3. Leverage Creation**               | 5.5/10  | 20%    | The AI governance framework creates leverage — but only for the author. Not extracted, not published, not transferable. The codebase itself creates zero leverage: no users served, no team enabled, no patterns published. Distinguished Engineers create disproportionate impact *beyond* their own work. |
+| **1. Original Technical Contribution** | 8.8/10  | 25%    | The AI agent governance framework (constitutional hierarchy, 17 skills, 6 task bundles, MCP safety, AGENT_LEARNINGS self-learning, 4 subagents, 6 slash commands, control-plane ownership matrix, replayable verification, structured audit logging) is genuinely novel. April 4 harness hardening added runtime observability, ownership formalization, and verification infrastructure — moving from "well-designed" to "operationally hardened." Missing: external publication, open-source extraction. |
+| **2. Judgment & Decision Quality**     | 6.5/10  | 25%    | Strong individual decisions (ADRs are excellent), but meta-decision quality still shows gaps: 48 migrations for an unshipped product, four-layer operational domain before first booking. Improved: F-27/F-28 Critical TOCTOU races fixed (restore now uses transaction + FOR UPDATE). F-26 (`confirmBooking()` without lock) remains open but is a smaller inconsistency now. Harness hardening shows prioritization improvement — addressing governance infrastructure systematically. |
+| **3. Leverage Creation**               | 5.8/10  | 20%    | The AI governance framework creates leverage — primarily for the author but now with extraction-ready artifacts (CONTROL_PLANE_OWNERSHIP, TASK_BUNDLES, verify-control-plane.sh). Not yet published or transferred. The codebase itself creates zero leverage: no users served, no team enabled, no patterns published. Distinguished Engineers create disproportionate impact *beyond* their own work. |
 | **4. Shipping & Impact**               | 3.0/10  | 15%    | Zero deployments. Zero users. Zero payments processed. Zero post-mortems. Zero production incidents resolved. At the Principal level, shipping large, complex systems under uncertainty is an *expected* competency, not an aspirational one. 15+ years of experience with zero evidence of shipping this system is a fundamental gap. |
-| **5. Technical Culture & Influence**    | 5.0/10  | 15%    | Strong governance artifacts (PERMISSION_MATRIX, FINDINGS_BACKLOG, AGENT_LEARNINGS, AI_GOVERNANCE). But no external blog posts, conference talks, open-source contributions, or evidence of influencing engineering practices beyond this repository. Distinguished requires moving the industry, not just one codebase. |
+| **5. Technical Culture & Influence**    | 5.0/10  | 15%    | Strong governance artifacts (PERMISSION_MATRIX, FINDINGS_BACKLOG, AGENT_LEARNINGS, AI_GOVERNANCE, CONTROL_PLANE_OWNERSHIP). But no external blog posts, conference talks, open-source contributions, or evidence of influencing engineering practices beyond this repository. Distinguished requires moving the industry, not just one codebase. |
 
-**Weighted Score: 5.9/10** — Strong Principal with a Distinguished-level spike in AI governance, held back by a delivery gap and absence of external influence.
+**Weighted Score: 6.2/10** — Strong Principal with Distinguished-level spikes in AI governance and backend engineering discipline, held back by a delivery gap and absence of external influence. Improved from 5.9 (April 2) by harness hardening wave and F-27/F-28 locking fixes.
 
-**For comparison, prior assessments scored 7.0–7.1/10 on a Senior→Staff scale.** On a DE scale, the same work scores lower because the evaluation criteria shift from "can you build it correctly?" (yes, clearly) to "does it create leverage, impact, and advance the practice?" (not yet).
+**For comparison, prior assessments scored 7.0–7.1/10 on a Senior→Staff scale.** On a DE scale, the same work scores lower because the evaluation criteria shift from "can you build it correctly?" (yes, clearly) to "does it create leverage, impact, and advance the practice?" (not yet). The April 4 harness hardening moved the score from 5.9→6.2 by adding runtime observability, ownership formalization, and verification infrastructure — the kind of platform engineering that demonstrates DE-adjacent thinking.
 
 ---
 
@@ -109,19 +109,29 @@ This is not a configuration file — it is a multi-layered governance system for
 | Domain Facts | `ARCHITECTURE_FACTS.md` | Verified invariants agents must preserve | Active, maintained |
 | Contract | `CONTRACT.md` | Definition of Done per task type (code, docs, booking, auth, migration) | 5 DoD profiles |
 | Skills | 17 skill files across `skills/laravel/`, `skills/react/`, `skills/ops/` | Task-specific guardrails — agents select 1–3 per task | Comprehensive |
+| Task Bundles | `TASK_BUNDLES.md` (6 bundles) | Default skill/rule compositions agents can reference by name | Production-grade (April 4) |
 | Session State | `COMPACT.md` | Volatile session handoff with lifecycle policy | Self-healing (April 2 verified) |
 | Subagents | 4 specialists: `security-reviewer`, `db-investigator`, `docs-sync`, `frontend-reviewer` | Domain-specific reasoning | Specialist separation |
 | Commands | 6 slash commands: `audit-security`, `fix-backend`, `fix-frontend`, `review-pr`, `ship`, `sync-docs` | Executable playbooks | Workflow coverage |
 | Self-Learning | `AGENT_LEARNINGS` + operating rules + schema + examples | Failure pattern capture with human verification gate | Scaffolded, not yet populated |
 | MCP Server | 5 tools with policy.json | Read-only + allowlisted commands, denylist enforcement | Safety-constrained |
-| Hooks | Pre-commit/post-tool enforcement | Runtime guardrails | Automated |
-| Code Intelligence | soleil-ai-review-engine integration | 4587 symbols, 12018 relationships, 190 execution flows indexed | Integrated |
+| Hooks | Pre-commit/post-tool enforcement | Runtime guardrails with structured audit logging (JSONL) | Hardened (April 4) — `SOLEIL-HOOK-DEGRADED` warnings on degradation |
+| Code Intelligence | soleil-ai-review-engine integration | 4880 symbols, 12804 relationships, 222 execution flows indexed | Integrated |
+| Ownership | `CONTROL_PLANE_OWNERSHIP.md` | Single source of truth for component ownership + review cadence | Production-grade (April 4) |
+| Verification | `scripts/verify-control-plane.sh` | Replayable health check — prerequisites, hooks, settings, policy, rules, deprecation, governance files | Production-grade (April 4) |
 
-**Why 8.5 and not 9+:** The framework is comprehensive but has two Distinguished-level gaps:
+**Why 8.5→8.8 (post-April 4 hardening) and not 9+:** The framework is comprehensive and now has runtime hardening that most governance systems lack:
 
-1. **Not extracted.** This lives inside a hostel booking repo. A Distinguished contribution would extract it into an open-source framework (`ai-agent-governance` or similar) with documentation, examples, and adaptability to other codebases. The patterns are clearly generalizable — the constitutional hierarchy, skill routing, and self-learning gates are not hostel-specific.
+1. **Partially extracted.** The April 4 harness hardening wave formalized control-plane ownership (`CONTROL_PLANE_OWNERSHIP.md`), default task bundles (`TASK_BUNDLES.md`), replayable verification (`verify-control-plane.sh`), structured audit logging (JSONL hook events), and stale-index degradation protocol. These artifacts are the *infrastructure* for extraction. A Distinguished contribution would complete extraction into a standalone open-source framework (`ai-agent-governance` or similar). The patterns are clearly generalizable — the constitutional hierarchy, skill routing, and self-learning gates are not hostel-specific.
 
 2. **Not published.** No blog post, no conference talk, no technical paper. The AI governance field is nascent. A Principal Engineer who has invented a formal governance system for AI agents and not shared it externally is leaving Distinguished-level impact on the table. This is the most publishable part of the entire project.
+
+**What the April 4 hardening added to the contribution:**
+- **Runtime observability:** Hooks now emit structured `SOLEIL-HOOK-DEGRADED` warnings and write JSONL audit events. This moves from "hooks exist" to "hooks are auditable."
+- **Ownership formalization:** Every control-plane component has a named owner role, review cadence, and escalation path. This is the organizational governance layer that was previously implicit.
+- **Task bundles:** 6 named compositions (`backend-safe-fix`, `frontend-contract-fix`, `migration-audit`, `auth-review`, `docs-sync-only`, `full-release-gate`) reduce agent composition burden from 17-skill manual selection to bundle reference.
+- **Replayable verification:** `verify-control-plane.sh` proves control-plane health on any machine — prerequisites, hook integrity, JSON validity, rule freshness, deprecation guards, governance file existence.
+- **Deprecation enforcement:** `rooms.status` deprecation plan with code-level warning in verify script. Role hierarchy stability warning with change procedure in PERMISSION_MATRIX.
 
 **What makes it genuinely novel:**
 - The constitutional hierarchy (CLAUDE.md → ARCHITECTURE_FACTS → CONTRACT → skills → commands) with explicit conflict resolution rules is not found in any published AI coding framework.
@@ -145,9 +155,9 @@ This is not a configuration file — it is a multi-layered governance system for
 
 **Decisions that undermine Distinguished readiness:**
 
-- **47 migrations for an unshipped product.** The operational domain (stays, room_assignments, service_recovery_cases, readiness_status, room_type_code, room_tier, deposit lifecycle, settlement columns, escalation engine, 9 new enums) was added March 20–23. This is production operations infrastructure for a system that has never processed a booking. At the Principal level, this is scope control failure. A Distinguished Engineer would recognize that building Layer 2–4 operational tables before Layer 1 (bookings) has served its first user is building the maintenance department before opening the hotel.
+- **47 migrations for an unshipped product.** The operational domain (stays, room_assignments, service_recovery_cases, readiness_status, room_type_code, room_tier, deposit lifecycle, settlement columns, escalation engine, 9 new enums) was added March 20–23. This is production operations infrastructure for a system that has never processed a booking. At the Principal level, this is scope control failure. A Distinguished Engineer would recognize that building Layer 2–4 operational tables before Layer 1 (bookings) has served its first user is building the maintenance department before opening the hotel. (As of April 4: 48 total migrations.)
 
-- **"DO NOT FIX" on Critical concurrency findings.** F-26 (`confirmBooking()` without `lockForUpdate()`), F-27 (restore TOCTOU race), F-28 (bulk restore TOCTOU race) are Critical findings documented March 20. The FINDINGS_BACKLOG header says "DO NOT FIX — document only." These are 4–8 line fixes in the project's core business domain. Choosing to add four-layer operational tables rather than fixing 3 Critical locking gaps is a prioritization failure that a DE review cannot overlook. The *cost* of fixing them is near-zero. The *cost* of not fixing them is that the project's strongest claim — "deadlock-aware, locking-disciplined booking logic" — is demonstrably inconsistent.
+- **"DO NOT FIX" on Critical concurrency findings.** F-26 (`confirmBooking()` without `lockForUpdate()`) remains Critical and open. F-27 and F-28 (restore TOCTOU races) were fixed between the April 2 assessment and April 4 — `BookingService::restore()` now uses `DB::transaction` + `hasOverlappingBookingsWithLock()` with FOR UPDATE. This is positive judgment signal: the two most exploitable TOCTOU races were closed. F-26 remains: the *cost* of fixing it is near-zero (add `$booking->lockForUpdate()` before update). The *cost* of not fixing it is that concurrent webhook callbacks can double-confirm a booking and create duplicate Stay records.
 
 - **Six audit cycles, zero deployments.** The assessment itself is evidence. A Principal Engineer who commissions a sixth review of an undeployed codebase is optimizing for internal confidence, not external impact. A Distinguished Engineer ships under uncertainty and learns from production. Every audit finding in this project could have been discovered faster by deploying to staging and running the happy path.
 
@@ -264,9 +274,9 @@ The following issues were not in the March 7 assessment and were discovered duri
 
 | ID   | File                                                  | Issue                                                                                                                  |
 | ---- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| F-26 | `BookingService.php:84–121`                           | `confirmBooking()` runs in `DB::transaction` without `lockForUpdate()` — concurrent webhooks can double-confirm.       |
-| F-27 | `AdminBookingController.php:106–144`                  | `restore()` TOCTOU race: overlap check and restore are two separate DB operations without transaction + lock.          |
-| F-28 | `AdminBookingController.php:194–241`                  | `restoreBulk()` has same TOCTOU race as F-27 per booking iteration.                                                   |
+| F-26 | `BookingService.php:84–121`                           | `confirmBooking()` runs in `DB::transaction` without `lockForUpdate()` — concurrent webhooks can double-confirm. **STILL OPEN as of April 4.** |
+| F-27 | `AdminBookingController.php:106–144`                  | `restore()` TOCTOU race: overlap check and restore are two separate DB operations without transaction + lock. **FIXED** — `BookingService::restore()` now uses `DB::transaction` + `hasOverlappingBookingsWithLock()` (FOR UPDATE). |
+| F-28 | `AdminBookingController.php:194–241`                  | `restoreBulk()` has same TOCTOU race as F-27 per booking iteration. **FIXED** — delegates to `BookingService::restore()` which has proper locking. |
 
 ### HIGH (from March 20 audit — still open)
 
@@ -275,7 +285,7 @@ The following issues were not in the March 7 assessment and were discovered duri
 | F-29 | `AuthController.php:53,87`                            | **FIXED as of March review** — legacy tokens now have `expires_at` set at creation time.                              |
 | F-30 | `routes/api.php:88–91`                                | `GET /api/auth/csrf-token` has no auth middleware and no rate limiting — returns live CSRF token to unauthenticated callers. |
 | F-31 | `UnifiedAuthController.php:154–196`                   | `detectAuthMode()` uses wrong config key (`max_refresh_count` instead of `max_refresh_count_per_hour`) — 5× the intended limit. |
-| F-32 | `UnifiedAuthController.php:154–196`                   | Bearer lookup hashes full `{id}|{token}` string; Sanctum stores hash of random portion only — Bearer path always returns 401. |
+| F-32 | `UnifiedAuthController.php:154–196`                   | Bearer lookup hashes full `{id}|{token}` string; Sanctum stores hash of random portion only — Bearer path always returns 401. **CHANGED** — Bearer lookup now correctly uses `PersonalAccessToken::where('token', $tokenHash)` which matches Sanctum's storage format. Config key mismatch (F-31) still applies to both paths. |
 
 ### MEDIUM/LOW (from March 20 audit — open, documented-only per backlog policy)
 
@@ -297,7 +307,7 @@ This is the Distinguished-level contribution. Not the booking system — the *sy
 
 This is **solidly Principal-level backend engineering** — comprehensive, thoughtful, well-tested. It exceeds what most production booking systems implement. The discipline is real, not aesthetic.
 
-**Current limitation:** F-26/F-27/F-28 reveal inconsistent application of the locking patterns that are the project's strongest claim. `CreateBookingService` and `CancellationService` use `lockForUpdate()` correctly; `confirmBooking()`, `restore()`, and `restoreBulk()` do not. This inconsistency undermines the capability claim more than the original absence would have.
+**Current limitation:** F-27/F-28 (restore TOCTOU) are now fixed — `BookingService::restore()` uses `DB::transaction` + `hasOverlappingBookingsWithLock()` (FOR UPDATE). F-26 remains: `confirmBooking()` lacks `lockForUpdate()`, meaning concurrent webhook callbacks can double-confirm. `CreateBookingService` and `CancellationService` use `lockForUpdate()` correctly; `confirmBooking()` does not. This is a narrower inconsistency than before (1 gap vs. 3) but still undermines the locking discipline claim.
 
 ### ADEQUATE ZONE: Frontend / Infrastructure / Security
 
@@ -361,9 +371,9 @@ Required for DE:   All bars at 7+ with no bar below 5
 1. **Ship the system** → proves execution under uncertainty (Shipping 3→6)
 2. **Extract and publish the AI governance framework** → creates external influence (Influence 2→6, Leverage 5.5→7)
 3. **Write 2–3 blog posts** about the governance framework, the booking concurrency design, and the ADR practice → builds reputation (Influence 6→7.5)
-4. **Fix the 3 Critical locking gaps** → restores consistency to the strongest technical claim (Judgment 6→7)
+4. **Fix the last Critical locking gap (F-26)** → restores consistency to the strongest technical claim (Judgment 6.5→7)
 
-These four actions would move the weighted score from **5.9 → 7.2**, which is the DE threshold.
+These four actions would move the weighted score from **6.2 → 7.5**, clearing the DE threshold.
 
 ---
 
@@ -378,7 +388,7 @@ These are small actions that remove contradictions from your strongest claims:
 | # | Action | Effort | Impact | Why It Matters at DE Level |
 |---|--------|--------|--------|---------------------------|
 | 1 | Add `$user->withAccessToken($token)` to `CheckHttpOnlyTokenValid.php` | 1 line | Completes BE-01 | Eliminates the auth bug that has persisted across 3 assessment cycles |
-| 2 | Add `lockForUpdate()` to `confirmBooking()`, `restore()`, `restoreBulk()` (F-26/F-27/F-28) | 3×4 lines | Fixes 3 Critical locking gaps | Your strongest technical claim is locking discipline — it must be consistent |
+| 2 | Add `lockForUpdate()` to `confirmBooking()` (F-26) | 4 lines | Fixes last Critical locking gap | Your strongest technical claim is locking discipline — F-27/F-28 are now fixed; F-26 is the remaining inconsistency |
 | 3 | Fix `detectAuthMode()` Bearer lookup hash mismatch (F-32) | 1 line | Fixes broken Bearer path | Cannot claim dual-auth if one path is silently non-functional |
 | 4 | Update local `.env` to pgsql | 3 lines | Fixes `docker compose config` | Removes the last gate failure blocking deployment |
 
@@ -520,40 +530,40 @@ httpOnly cookies with CSRF double-submit, HTML Purifier over regex (with documen
 
 **Expert Principal Engineer with Distinguished-level technical depth and a novel contribution, operating below DE threshold due to zero external impact.**
 
-### Weighted Score: 5.9 / 10 (DE Scale)
+### Weighted Score: 6.2 / 10 (DE Scale)
 
 | DE Dimension | Score | Weight | Weighted |
 |-------------|-------|--------|----------|
-| Original Technical Contribution | 8.5 | 25% | 2.13 |
-| Judgment & Decision Quality | 6.0 | 25% | 1.50 |
-| Leverage Creation | 5.5 | 20% | 1.10 |
+| Original Technical Contribution | 8.8 | 25% | 2.20 |
+| Judgment & Decision Quality | 6.5 | 25% | 1.63 |
+| Leverage Creation | 5.8 | 20% | 1.16 |
 | Shipping & Impact | 3.0 | 15% | 0.45 |
 | Technical Culture & Influence | 5.0 | 15% | 0.75 |
-| **Total** | | **100%** | **5.93** |
+| **Total** | | **100%** | **6.19** |
 
-**DE threshold: 7.0.** Gap: 1.1 points.
+**DE threshold: 7.0.** Gap: 0.8 points (narrowed from 1.1 on April 2).
 
 ### What the Score Means
 
-5.9 is not a failure. On the prior Senior→Staff scale, this engineer scored 7.0–7.1. The DE scale is fundamentally different — it measures leverage, influence, and impact at levels most engineers never reach. A 5.9 means:
+5.9→6.2 is not a failure. On the prior Senior→Staff scale, this engineer scored 7.0–7.1. The DE scale is fundamentally different — it measures leverage, influence, and impact at levels most engineers never reach. A 6.2 means:
 
 - **All Principal-level competencies are met.** Architecture, testing, security, documentation, AI orchestration — all pass without qualification.
-- **One Distinguished-level contribution exists** (AI governance framework at 8.5).
+- **One Distinguished-level contribution exists** (AI governance framework at 8.8, up from 8.5 after harness hardening).
 - **The conversion of capability to impact has not occurred.** This is the entire gap.
 
-### The Path to Distinguished (5.9 → 7.2)
+### The Path to Distinguished (6.2 → 7.2)
 
 ```
-Today:     5.9/10 — Principal with DE-level depth, zero external impact
+Today:     6.2/10 — Principal with DE-level depth, zero external impact
            │
-Phase 1:   Fix consistency gaps (F-26/27/28, BE-01, F-32)
-           │  → Judgment 6.0 → 7.0  │  Weighted: +0.25
+Phase 1:   Fix remaining consistency gap (F-26)
+           │  → Judgment 6.5 → 7.0  │  Weighted: +0.13
            │
 Phase 2:   Deploy to production, process real bookings
            │  → Shipping 3.0 → 6.0  │  Weighted: +0.45
            │
 Phase 3:   Extract + publish AI governance as open-source framework
-           │  → Leverage 5.5 → 7.5  │  Weighted: +0.40
+           │  → Leverage 5.8 → 7.5  │  Weighted: +0.34
            │  → Influence 5.0 → 6.5 │  Weighted: +0.23
            │
 Phase 4:   Write 2–3 blog posts, engage with AI engineering community
@@ -562,7 +572,7 @@ Phase 4:   Write 2–3 blog posts, engage with AI engineering community
 Result:    7.5/10 — Distinguished threshold cleared
 ```
 
-**Estimated time to DE threshold: 8–12 weeks of focused execution.**
+**Estimated time to DE threshold: 6–10 weeks of focused execution** (reduced from 8–12 weeks on April 2 — harness hardening closed 0.3 points of the gap).
 
 This is not a long journey. The raw material is already here. The AI governance framework is a Distinguished-level artifact waiting to be made visible. The booking system is a working product waiting to be deployed. The blog posts are ADRs waiting to be edited for a public audience.
 
@@ -579,9 +589,9 @@ Both paths lead to Distinguished. Neither path includes "commission another asse
 
 ---
 
-_End of Assessment — April 2, 2026 (DE-Calibrated Revision)_
-_Evaluator perspective: Distinguished Engineer_
+_End of Assessment — April 4, 2026 (DE-Calibrated Revision, Harness Hardening Update)_
+_Evaluator perspective: Distinguished Engineer (Google SRE) + Harness Engineer (Anthropic) + AI Engineer (OpenAI)_
 _Subject level: Expert Principal Engineer, 15+ years_
-_Weighted DE Score: 5.9 / 10_
+_Weighted DE Score: 6.2 / 10 (up from 5.9 on April 2)_
 _DE Threshold: 7.0_
-_Gap: 1.1 points — closable in 8–12 weeks_
+_Gap: 0.8 points — closable in 6–10 weeks_

@@ -37,7 +37,7 @@ return [
     'dev' => [
         'HTML.AllowedElements' => [
             // Inline text formatting
-            'b', 'i', 'u', 'strong', 'em', 's', 'code', 'mark', 'small', 'sub', 'sup',
+            'b', 'i', 'u', 'strong', 'em', 's', 'code', 'small', 'sub', 'sup',
             // Links
             'a',
             // Images
@@ -66,7 +66,6 @@ return [
             'img.width' => true,
             'img.height' => true,
             'img.title' => true,
-            'img.loading' => true,
 
             // Global: class, id, style (sẽ strip style sau)
             '*.class' => true,

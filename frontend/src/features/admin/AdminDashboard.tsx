@@ -526,7 +526,9 @@ const AdminDashboard: React.FC = () => {
             className="rounded-xl border border-gray-200 bg-white p-4 shadow-[0_12px_30px_rgba(28,25,23,0.04)]"
           >
             <p className="text-[12px] uppercase tracking-[0.24em] text-stone-400">{card.label}</p>
-            <p className="mt-3 text-[28px] font-medium text-stone-950">{card.value}</p>
+            <p className="mt-3 text-[20px] font-medium text-stone-950 sm:text-[28px]">
+              {card.value}
+            </p>
             <span
               className={`mt-3 inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-medium ${trendClassNames[card.trendTone]}`}
             >

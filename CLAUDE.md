@@ -70,7 +70,7 @@ Root contract for the Soleil Hostel instruction system. This file defines consti
 <!-- soleil-ai-review-engine:start -->
 # soleil-ai-review-engine — Code Intelligence
 
-This project is indexed by soleil-ai-review-engine as **soleil-hostel** (4880 symbols, 12804 relationships, 222 execution flows). Use the soleil-ai-review-engine MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by soleil-ai-review-engine as **soleil-hostel** (4896 symbols, 12834 relationships, 222 execution flows). Use the soleil-ai-review-engine MCP tools to understand code, assess impact, and navigate safely.
 
 > If any soleil-ai-review-engine tool warns the index is stale, run `npx soleil-engine-cli analyze` in terminal first.
 

@@ -14,7 +14,7 @@ use Illuminate\Support\Carbon;
 
 class DevRolePreviewSeeder extends Seeder
 {
-    private const PASSWORD = 'password';
+    private const PASSWORD = 'P@ssworD!123';
 
     public function run(): void
     {

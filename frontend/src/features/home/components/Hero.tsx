@@ -23,7 +23,7 @@ const Hero: React.FC = () => {
   return (
     <section
       data-testid="hero-section"
-      className="relative h-[52vh] min-h-[360px] overflow-hidden"
+      className="relative h-[100svh] min-h-[600px] overflow-hidden"
       aria-label="Trang chủ Soleil Hostel Huế"
     >
       {/* Real hostel photo — C-02 guard: must be a real URL, not placehold.co */}
@@ -47,12 +47,15 @@ const Hero: React.FC = () => {
         aria-hidden="true"
       />
 
-      {/* Content — bottom-left anchored */}
-      <div className="absolute bottom-0 left-0 z-10 px-5 pb-6 max-w-[280px]">
-        <h1 className="text-white leading-tight mb-2" style={{ fontSize: '26px', fontWeight: 500 }}>
+      {/* Content — bottom-left anchored, pb-24 to clear SearchCard overlap */}
+      <div className="absolute bottom-0 left-0 z-10 px-5 md:px-12 lg:px-20 pb-24 md:pb-20 max-w-[320px] md:max-w-[500px] lg:max-w-[720px]">
+        <h1
+          className="text-white leading-tight mb-3 text-[34px] md:text-[44px] lg:text-[54px]"
+          style={{ fontWeight: 500 }}
+        >
           Khám phá Huế theo cách của bạn
         </h1>
-        <p className="text-white/70 text-sm leading-relaxed">
+        <p className="text-white/70 text-[15px] md:text-[17px] leading-relaxed">
           Đặt phòng nhanh — không cần thẻ tín dụng
         </p>
       </div>

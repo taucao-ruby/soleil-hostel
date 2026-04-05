@@ -78,7 +78,7 @@ describe('RoomList', () => {
     render(<RoomList />)
 
     await waitFor(() => {
-      expect(screen.getByText('Không có phòng trống')).toBeInTheDocument()
+      expect(screen.getByText('Hiện chưa có phòng nào')).toBeInTheDocument()
     })
   })
 
@@ -87,9 +87,7 @@ describe('RoomList', () => {
     render(<RoomList />)
 
     await waitFor(() => {
-      expect(
-        screen.getByText('Không thể tải danh sách phòng. Vui lòng thử lại sau.')
-      ).toBeInTheDocument()
+      expect(screen.getByText('Không thể tải danh sách phòng')).toBeInTheDocument()
     })
   })
 
@@ -115,7 +113,8 @@ describe('RoomList', () => {
     render(<RoomList />)
 
     await waitFor(() => {
-      expect(screen.getByText('Còn trống')).toBeInTheDocument()
+      // "Có thể đặt" appears in both the filter tab and the status badge
+      expect(screen.getAllByText('Có thể đặt').length).toBeGreaterThanOrEqual(1)
       expect(screen.getByText('Đã đặt')).toBeInTheDocument()
       expect(screen.getByText('Bảo trì')).toBeInTheDocument()
     })

@@ -3,21 +3,19 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/features/auth/AuthContext'
 
 /**
- * HeaderMobile — sticky top header for the public homepage (PROMPT_1A).
+ * HeaderMobile — responsive sticky header for the public homepage.
  *
- * Design:
- *   - Always dark bg-[#1C1A17], height h-14
- *   - Left: "Soleil" wordmark (amber) + "HOSTEL" label
- *   - Right: Phòng link + hamburger button (☰ / ✕)
- *   - Hamburger opens full slide-down drawer with all nav links
- *   - Drawer closes on link click or backdrop tap
+ * Mobile  (<md): Wordmark + "Phòng" shortcut + hamburger drawer
+ * Tablet+ (≥md): Full horizontal nav, no hamburger
+ *   Left:   Soleil wordmark
+ *   Center: Nav links (Trang chủ | Phòng | Chi nhánh)
+ *   Right:  Đặt ngay CTA + Đăng nhập / Đăng ký
  */
 
 const NAV_LINKS = [
   { to: '/', label: 'Trang chủ' },
   { to: '/rooms', label: 'Phòng' },
   { to: '/locations', label: 'Chi nhánh' },
-  { to: '/booking', label: 'Đặt phòng' },
 ]
 
 const HeaderMobile: React.FC = () => {
@@ -38,20 +36,85 @@ const HeaderMobile: React.FC = () => {
 
   const close = () => setMenuOpen(false)
 
+  const isActive = (to: string) =>
+    to === '/' ? location.pathname === '/' : location.pathname.startsWith(to)
+
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#1C1A17] h-14">
-        <div className="flex items-center justify-between px-4 h-full">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#1C1A17]/95 backdrop-blur-md h-14 border-b border-white/[0.08]">
+        <div className="flex items-center justify-between h-full px-4 md:px-8 lg:px-12 max-w-7xl mx-auto">
           {/* Wordmark */}
-          <Link to="/" onClick={close} className="flex items-center gap-1.5">
-            <span className="font-serif font-bold text-xl text-[#C9973A] leading-none">Soleil</span>
-            <span className="text-[10px] font-sans tracking-widest uppercase text-white/50 mt-0.5">
+          <Link to="/" onClick={close} className="flex items-center gap-1.5 shrink-0">
+            <span className="font-serif font-bold text-[20px] text-[#C9973A] leading-none">
+              Soleil
+            </span>
+            <span className="text-[10px] font-sans tracking-widest uppercase text-white/45 mt-0.5">
               HOSTEL
             </span>
           </Link>
 
-          {/* Right: quick Phòng link + hamburger */}
-          <div className="flex items-center gap-4">
+          {/* ── Desktop center nav ──────────────────────────────────── */}
+          <nav aria-label="Điều hướng chính" className="hidden md:flex items-center gap-1">
+            {NAV_LINKS.map(({ to, label }) => {
+              const active = isActive(to)
+              return (
+                <Link
+                  key={to}
+                  to={to}
+                  className={[
+                    'px-4 py-2 rounded-lg text-[14px] font-medium transition-colors duration-150',
+                    active ? 'text-[#C9973A]' : 'text-white/65 hover:text-white',
+                  ].join(' ')}
+                >
+                  {label}
+                </Link>
+              )
+            })}
+          </nav>
+
+          {/* ── Desktop right: auth + CTA ───────────────────────────── */}
+          <div className="hidden md:flex items-center gap-2">
+            {isAuthenticated ? (
+              <>
+                <Link
+                  to="/dashboard"
+                  className="text-[13px] text-white/65 hover:text-white transition-colors px-3 py-2 rounded-lg"
+                >
+                  Tài khoản
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="text-[13px] text-white/65 hover:text-rose-400 transition-colors px-3 py-2 rounded-lg"
+                >
+                  Đăng xuất
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="text-[13px] text-white/65 hover:text-white transition-colors px-3 py-2 rounded-lg"
+                >
+                  Đăng nhập
+                </Link>
+                <Link
+                  to="/register"
+                  className="text-[13px] font-medium text-white/65 hover:text-white transition-colors px-3 py-2 rounded-lg"
+                >
+                  Đăng ký
+                </Link>
+              </>
+            )}
+            <Link
+              to="/booking"
+              className="ml-1 text-[13px] font-semibold bg-[#C9973A] hover:bg-[#b8852e] text-white px-5 py-2 rounded-lg transition-colors duration-150"
+            >
+              Đặt ngay
+            </Link>
+          </div>
+
+          {/* ── Mobile right: Phòng + hamburger ──────────────────────── */}
+          <div className="flex md:hidden items-center gap-4">
             <Link
               to="/rooms"
               className="text-[13px] text-white/80 hover:text-white transition-colors"
@@ -66,32 +129,25 @@ const HeaderMobile: React.FC = () => {
                 'relative flex flex-col justify-center items-center w-9 h-9 rounded-lg border transition-all duration-200',
                 menuOpen
                   ? 'border-[#C9973A]/60 bg-[#C9973A]/10'
-                  : 'border-white/20 bg-white/5 hover:border-white/40 hover:bg-white/10',
+                  : 'border-white/20 bg-white/5 hover:border-white/40',
               ].join(' ')}
             >
-              {/* Top line */}
               <span
                 className={[
                   'absolute w-4 h-[2px] rounded-full transition-all duration-300 origin-center',
-                  menuOpen
-                    ? 'bg-[#C9973A] rotate-45 translate-y-0'
-                    : 'bg-white/80 -translate-y-[5px]',
+                  menuOpen ? 'bg-[#C9973A] rotate-45' : 'bg-white/80 -translate-y-[5px]',
                 ].join(' ')}
               />
-              {/* Middle line */}
               <span
                 className={[
                   'absolute w-4 h-[2px] rounded-full transition-all duration-200',
-                  menuOpen ? 'bg-[#C9973A] opacity-0 scale-x-0' : 'bg-white/80 opacity-100',
+                  menuOpen ? 'opacity-0 scale-x-0' : 'bg-white/80 opacity-100',
                 ].join(' ')}
               />
-              {/* Bottom line */}
               <span
                 className={[
                   'absolute w-4 h-[2px] rounded-full transition-all duration-300 origin-center',
-                  menuOpen
-                    ? 'bg-[#C9973A] -rotate-45 translate-y-0'
-                    : 'bg-white/80 translate-y-[5px]',
+                  menuOpen ? 'bg-[#C9973A] -rotate-45' : 'bg-white/80 translate-y-[5px]',
                 ].join(' ')}
               />
             </button>
@@ -99,24 +155,21 @@ const HeaderMobile: React.FC = () => {
         </div>
       </header>
 
-      {/* ── Slide-down drawer ────────────────────────────────────────── */}
+      {/* ── Mobile drawer ──────────────────────────────────────────────── */}
       {menuOpen && (
         <>
-          {/* Backdrop */}
           <div
-            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] md:hidden"
             onClick={close}
             aria-hidden="true"
           />
-
-          {/* Drawer panel */}
           <nav
             aria-label="Menu điều hướng"
-            className="fixed top-14 left-0 right-0 z-40 bg-[#1C1A17] border-t border-white/10 shadow-xl"
+            className="fixed top-14 left-0 right-0 z-40 bg-[#1C1A17] border-t border-white/10 shadow-2xl md:hidden"
           >
             <ul className="flex flex-col py-2">
-              {NAV_LINKS.map(({ to, label }) => {
-                const active = location.pathname === to
+              {[...NAV_LINKS, { to: '/booking', label: 'Đặt phòng' }].map(({ to, label }) => {
+                const active = isActive(to)
                 return (
                   <li key={to}>
                     <Link
@@ -137,13 +190,9 @@ const HeaderMobile: React.FC = () => {
                   </li>
                 )
               })}
-
-              {/* Divider */}
               <li>
                 <div className="mx-5 my-2 border-t border-white/10" />
               </li>
-
-              {/* Auth links */}
               {isAuthenticated ? (
                 <>
                   <li>
@@ -159,7 +208,7 @@ const HeaderMobile: React.FC = () => {
                   <li>
                     <button
                       onClick={handleLogout}
-                      className="flex items-center gap-3 w-full px-5 py-3.5 text-[15px] text-rose-400 hover:text-rose-300 hover:bg-white/5 transition-colors"
+                      className="flex w-full items-center gap-3 px-5 py-3.5 text-[15px] text-rose-400 hover:text-rose-300 hover:bg-white/5 transition-colors"
                     >
                       <span className="w-1 h-4 rounded-full bg-transparent" />
                       Đăng xuất
@@ -182,7 +231,7 @@ const HeaderMobile: React.FC = () => {
                     <Link
                       to="/register"
                       onClick={close}
-                      className="block text-center py-2.5 rounded-xl bg-[#C9973A] text-white text-[14px] font-medium hover:bg-[#b8852e] transition-colors"
+                      className="block text-center py-2.5 rounded-xl bg-[#C9973A] text-white text-[14px] font-semibold hover:bg-[#b8852e] transition-colors"
                     >
                       Đăng ký ngay
                     </Link>

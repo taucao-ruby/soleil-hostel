@@ -139,7 +139,7 @@ const BottomNav: React.FC = () => {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 bg-[#FDFAF3] border-t border-[#E2D5C3]"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#FDFAF3] border-t border-[#E2D5C3]"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       aria-label="Điều hướng chính"
     >

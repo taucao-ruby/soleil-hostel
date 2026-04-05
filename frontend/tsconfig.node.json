@@ -7,5 +7,5 @@
     "allowSyntheticDefaultImports": true,
     "types": ["node", "vitest/config"]
   },
-  "include": ["vite.config.ts"]
+  "include": ["vite.config.ts", "vite-plugin-csp-nonce.ts"]
 }

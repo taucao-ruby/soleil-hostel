@@ -63,8 +63,9 @@
     },
     "frontend_typecheck": {
       "cwd": "frontend",
-      "command": "npx",
+      "command": "pnpm",
       "args": [
+        "exec",
         "tsc",
         "--noEmit"
       ],
@@ -72,8 +73,9 @@
     },
     "frontend_unit_tests": {
       "cwd": "frontend",
-      "command": "npx",
+      "command": "pnpm",
       "args": [
+        "exec",
         "vitest",
         "run"
       ],

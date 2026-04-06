@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Đăng ký | SOLEIL HOSTEL</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,700&amp;family=Plus+Jakarta+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#7c5800",
+                        "surface-container": "#f6ece5",
+                        "surface-container-high": "#f0e6df",
+                        "inverse-primary": "#f9bc3d",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed": "#410002",
+                        "on-primary-container": "#453000",
+                        "primary-fixed-dim": "#f9bc3d",
+                        "surface-variant": "#eae1da",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-fixed": "#6ffbbe",
+                        "on-background": "#1f1b17",
+                        "error": "#ba1a1a",
+                        "on-tertiary-container": "#6e0006",
+                        "on-surface": "#1f1b17",
+                        "on-secondary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "inverse-surface": "#34302b",
+                        "on-tertiary": "#ffffff",
+                        "surface": "#f5efe3",
+                        "surface-dim": "#e2d8d1",
+                        "surface-container-highest": "#eae1da",
+                        "on-tertiary-fixed-variant": "#93000b",
+                        "on-primary-fixed-variant": "#5e4200",
+                        "surface-bright": "#fff8f4",
+                        "on-secondary-fixed-variant": "#005236",
+                        "on-surface-variant": "#504534",
+                        "on-primary": "#ffffff",
+                        "background": "#f5efe3",
+                        "surface-tint": "#7c5800",
+                        "inverse-on-surface": "#f9efe8",
+                        "tertiary-container": "#ff6d61",
+                        "outline": "#827562",
+                        "tertiary": "#bf0715",
+                        "primary-container": "#c9920a",
+                        "secondary": "#006c49",
+                        "outline-variant": "#d4c4ae",
+                        "secondary-fixed-dim": "#4edea3",
+                        "tertiary-fixed-dim": "#ffb4ab",
+                        "on-secondary-fixed": "#002113",
+                        "primary-fixed": "#ffdea6",
+                        "surface-container-low": "#fcf2eb",
+                        "on-error-container": "#93000a",
+                        "tertiary-fixed": "#ffdad6",
+                        "secondary-container": "#6cf8bb",
+                        "on-primary-fixed": "#271900",
+                        "on-secondary-container": "#00714d"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Newsreader"],
+                        "body": ["Plus Jakarta Sans"],
+                        "label": ["Plus Jakarta Sans"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .editorial-shadow {
+            box-shadow: 0 20px 40px rgba(26, 22, 18, 0.06);
+        }
+        .gold-gradient {
+            background: linear-gradient(135deg, #c9920a 0%, #a87808 100%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface font-body text-on-surface min-h-screen">
+<!-- Success Banner -->
+<div class="fixed top-0 left-0 right-0 z-50 bg-secondary text-on-secondary px-6 py-3 flex items-center justify-between text-sm font-medium animate-slide-down">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">check_circle</span>
+<span>Tài khoản đã được tạo! Đang chuyển hướng...</span>
+</div>
+</div>
+<main class="flex flex-col items-center px-6 pt-16 pb-12 min-h-screen">
+<!-- Logo Header -->
+<header class="mb-10 text-center">
+<h1 class="font-headline italic text-2xl tracking-[0.15em] uppercase">
+                Soleil <span class="not-italic font-label font-bold text-sm tracking-[0.3em] ml-1">HOSTEL</span>
+</h1>
+</header>
+<!-- Registration Card -->
+<section class="w-full max-w-md bg-surface-container-lowest rounded-2xl p-6 editorial-shadow">
+<!-- Navigation Action -->
+<div class="flex items-center justify-between mb-8">
+<button class="flex items-center text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-lg">arrow_back</span>
+</button>
+<div class="text-xs font-label uppercase tracking-widest text-outline">
+                    Đã có tài khoản? <a class="text-primary-container font-bold hover:underline" href="#">Đăng nhập</a>
+</div>
+</div>
+<!-- Heading -->
+<h2 class="font-headline italic text-2xl mb-8 text-on-surface">Đăng ký</h2>
+<!-- Registration Form -->
+<form class="space-y-6">
+<!-- Full Name -->
+<div class="space-y-1.5">
+<label class="text-[10px] font-label font-bold tracking-widest uppercase text-outline" for="full-name">Họ và tên</label>
+<input id="full-name" class="w-full h-12 px-4 rounded-lg border-none bg-surface-container text-sm focus:ring-1 focus:ring-primary-container transition-all" placeholder="Nguyễn Văn A" type="text"/>
+</div>
+<!-- Email -->
+<div class="space-y-1.5">
+<label class="text-[10px] font-label font-bold tracking-widest uppercase text-outline">Email</label>
+<div class="relative">
+<input class="w-full h-12 px-4 pr-10 rounded-lg border-none bg-surface-container text-sm focus:ring-1 focus:ring-primary-container transition-all" type="email" value="alex.traveler@gmail.com"/>
+<span class="material-symbols-outlined absolute right-3 top-3.5 text-secondary text-sm">check_circle</span>
+</div>
+</div>
+<!-- Phone Number -->
+<div class="space-y-1.5">
+<label class="text-[10px] font-label font-bold tracking-widest uppercase text-outline" for="phone">Số điện thoại</label>
+<div class="flex gap-2">
+<div class="flex items-center justify-center bg-surface-container px-3 rounded-lg gap-2 shrink-0">
+<img alt="VN Flag" class="w-5 h-auto" data-alt="close up of the vietnamese national flag with red background and a yellow star in the center" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAEoKJtjBbWgFBvQfHXV2M15n7iRciGIH2D-meCLt-6xcDPQNk4ci6dEALDHbc1XcnRVeL-5zWQP9_3eA6oLSWw_sB9OvOmYOEGKKBfu2zfG3hMx8aZIaUVTN2yVtExgOPWpbEhNMzphqnMoIHjUIPei2N8qPsdvv3V2pCaOhnysi5PP-AbIxCWTGchBky1LdW_9YZLUEHAccN5s0FzXOP4tu0oU4e1acT9j5jg2nFxXDDZzCIshubEzHf49PPwwCYkKo8c1t4ameE"/>
+<span class="text-xs font-medium">+84</span>
+</div>
+<input id="phone" class="w-full h-12 px-4 rounded-lg border-none bg-surface-container text-sm focus:ring-1 focus:ring-primary-container transition-all" placeholder="901 234 567" type="tel"/>
+</div>
+</div>
+<!-- Password -->
+<div class="space-y-1.5">
+<label class="text-[10px] font-label font-bold tracking-widest uppercase text-outline">Mật khẩu</label>
+<div class="space-y-2">
+<div class="relative">
+<input class="w-full h-12 px-4 pr-10 rounded-lg border-none bg-surface-container text-sm focus:ring-1 focus:ring-primary-container transition-all" type="password"/>
+<button class="material-symbols-outlined absolute right-3 top-3.5 text-outline text-sm hover:text-primary-container transition-colors" type="button">visibility</button>
+</div>
+<div class="flex items-center gap-2 px-1">
+<div class="flex flex-1 gap-1">
+<div class="h-1 flex-1 bg-secondary rounded-full"></div>
+<div class="h-1 flex-1 bg-secondary rounded-full"></div>
+<div class="h-1 flex-1 bg-secondary rounded-full"></div>
+<div class="h-1 flex-1 bg-secondary/20 rounded-full"></div>
+</div>
+<span class="text-[10px] font-bold text-secondary uppercase tracking-tighter">Mạnh</span>
+</div>
+</div>
+</div>
+<!-- Confirm Password -->
+<div class="space-y-1.5">
+<label class="text-[10px] font-label font-bold tracking-widest uppercase text-outline">Xác nhận mật khẩu</label>
+<div class="relative">
+<input class="w-full h-12 px-4 pr-10 rounded-lg border-none bg-surface-container text-sm focus:ring-1 focus:ring-primary-container transition-all" type="password"/>
+<span class="material-symbols-outlined absolute right-3 top-3.5 text-secondary text-sm">check_circle</span>
+</div>
+</div>
+<!-- Terms -->
+<div class="flex items-start gap-3 py-2">
+<input checked="" class="mt-1 rounded text-primary-container focus:ring-primary-container border-outline-variant bg-surface-container" id="terms" type="checkbox"/>
+<label class="text-xs text-on-surface-variant leading-relaxed" for="terms">
+                        Tôi đồng ý với <a class="text-primary-container underline" href="#">Điều khoản sử dụng</a> và <a class="text-primary-container underline" href="#">Chính sách bảo mật</a> của Soleil Hostel.
+                    </label>
+</div>
+<!-- CTA -->
+<button class="w-full h-12 gold-gradient text-surface-container-lowest font-bold text-sm rounded-lg active:scale-95 transition-transform" type="button">
+                    Tạo tài khoản
+                </button>
+</form>
+<!-- Divider -->
+<div class="relative my-8 text-center">
+<div class="absolute inset-0 flex items-center">
+<div class="w-full border-t border-outline-variant/15"></div>
+</div>
+<span class="relative px-4 bg-surface-container-lowest text-[10px] font-bold uppercase tracking-[0.2em] text-outline">Hoặc</span>
+</div>
+<!-- OAuth -->
+<button class="w-full h-12 flex items-center justify-center gap-3 border border-outline-variant/20 rounded-lg text-sm font-medium text-on-surface hover:bg-surface-container transition-colors" type="button">
+<svg class="w-5 h-5" viewbox="0 0 24 24">
+<path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
+<path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
+<path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"></path>
+<path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"></path>
+</svg>
+                Tiếp tục với Google
+            </button>
+</section>
+<!-- Footer Info -->
+<footer class="mt-8 text-center px-8">
+<p class="text-[10px] font-label font-bold uppercase tracking-widest text-outline/50 leading-loose">
+                © 2024 SOLEIL HOSTEL. THE MODERN ARCHIVIST COLLECTION.
+            </p>
+</footer>
+</main>
+</body></html>

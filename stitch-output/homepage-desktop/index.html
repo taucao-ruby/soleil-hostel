@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Soleil Hostel | The Modern Archivist Edition</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@1,6..72,200..800&amp;family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-on-surface": "#f9efe8",
+                        "primary": "#7c5800",
+                        "on-tertiary-fixed-variant": "#93000b",
+                        "surface-container-high": "#f0e6df",
+                        "tertiary-fixed-dim": "#ffb4ab",
+                        "on-tertiary": "#ffffff",
+                        "on-surface": "#1f1b17",
+                        "on-primary-container": "#453000",
+                        "surface-dim": "#e2d8d1",
+                        "primary-fixed-dim": "#f9bc3d",
+                        "inverse-surface": "#34302b",
+                        "on-error": "#ffffff",
+                        "tertiary-container": "#ff6d61",
+                        "on-tertiary-container": "#6e0006",
+                        "surface-container-highest": "#eae1da",
+                        "surface-container": "#f6ece5",
+                        "on-secondary-fixed": "#002113",
+                        "surface-variant": "#eae1da",
+                        "secondary-fixed": "#6ffbbe",
+                        "on-surface-variant": "#504534",
+                        "primary-container": "#c9920a",
+                        "on-background": "#1f1b17",
+                        "primary-fixed": "#ffdea6",
+                        "surface-bright": "#fff8f4",
+                        "on-secondary": "#ffffff",
+                        "on-primary-fixed-variant": "#5e4200",
+                        "on-error-container": "#93000a",
+                        "on-primary-fixed": "#271900",
+                        "error": "#ba1a1a",
+                        "background": "#fff8f4",
+                        "surface-container-low": "#fcf2eb",
+                        "surface": "#fff8f4",
+                        "secondary-fixed-dim": "#4edea3",
+                        "outline": "#827562",
+                        "secondary": "#006c49",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-container": "#6cf8bb",
+                        "inverse-primary": "#f9bc3d",
+                        "surface-tint": "#7c5800",
+                        "error-container": "#ffdad6",
+                        "outline-variant": "#d4c4ae",
+                        "tertiary-fixed": "#ffdad6",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed": "#410002",
+                        "tertiary": "#bf0715",
+                        "on-secondary-container": "#00714d",
+                        "on-secondary-fixed-variant": "#005236"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Newsreader"],
+                        "body": ["Plus Jakarta Sans"],
+                        "label": ["Plus Jakarta Sans"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #F5EFE3; color: #1A1612; }
+        .font-serif-italic { font-family: 'Newsreader', serif; font-style: italic; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .gold-gradient { background: linear-gradient(135deg, #C9920A 0%, #A87808 100%); }
+    </style>
+</head>
+<body class="antialiased">
+<!-- Top Navigation Bar -->
+<header class="bg-[#F5EFE3] dark:bg-[#1A1612] docked full-width top-0 sticky z-[60] border-none shadow-none">
+<nav class="flex justify-between items-center w-full px-8 py-4 max-w-7xl mx-auto">
+<div class="text-xl font-serif italic text-[#1A1612] dark:text-[#F5EFE3] tracking-widest">
+                Soleil <span class="not-italic text-sm font-sans font-bold tracking-[0.2em] ml-1">HOSTEL</span>
+</div>
+<div class="hidden md:flex items-center gap-8">
+<a class="text-[14px] font-bold border-b-2 border-[#C9920A] pb-1 text-[#C9920A]" href="#">Phòng</a>
+<a class="text-[14px] font-medium tracking-wide text-[#1A1612] dark:text-[#F5EFE3] opacity-80 hover:text-[#A87808] transition-colors" href="#">Tiện ích</a>
+<a class="text-[14px] font-medium tracking-wide text-[#1A1612] dark:text-[#F5EFE3] opacity-80 hover:text-[#A87808] transition-colors" href="#">Ưu đãi</a>
+<a class="text-[14px] font-medium tracking-wide text-[#1A1612] dark:text-[#F5EFE3] opacity-80 hover:text-[#A87808] transition-colors" href="#">Về chúng tôi</a>
+</div>
+<button class="gold-gradient text-white px-6 py-2.5 rounded-lg font-bold text-sm tracking-wide active:scale-[0.98] transition-all duration-200">
+                Đặt phòng
+            </button>
+</nav>
+</header>
+<!-- [6] Promo Banner -->
+<div class="w-full bg-[#C9920A] py-2 px-4 flex justify-center items-center gap-4 text-white">
+<span class="text-xs font-bold tracking-widest uppercase">[6] Ưu đãi mùa hè: Giảm 10% khi đặt phòng trực tiếp</span>
+<button class="bg-white text-[#C9920A] px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-tighter hover:bg-[#F5EFE3] transition-colors">
+            Xem ưu đãi
+        </button>
+</div>
+<main>
+<!-- Hero Section -->
+<section class="relative h-[819px] min-h-[600px] flex items-center overflow-hidden">
+<div class="absolute inset-0 z-0">
+<img class="w-full h-full object-cover" data-alt="luxury boutique hotel courtyard with warm lighting at sunset, traditional architectural details and tropical plants" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBoMno0bzp0ySUNgeFMx8o-qAMRdq8wC7ul9Mp9EAPN1q92bcHkqMNGr7NxJ2J6bI9U82b3KprSDCNv0QI7uOrSYkw2WMpZV_Lw7kwrkFcfpgziWJsTExF98VZy7GgcZHlylGurzDAGjjkzPZNUUChKY40VmwsOEG-DmtIw-YLUN9yB1dKyqDqBVrRt0cUkg0sUbHpLyxz8PmGiCsWHfyj6k3xQgCS3Xwqr6s7vQWlYejW3HE2UX71NpoUGb1KsaFe4J_-FnEPlnbw"/>
+<div class="absolute inset-0 bg-gradient-to-r from-[#1A1612]/80 via-[#1A1612]/40 to-transparent"></div>
+</div>
+<div class="relative z-10 max-w-7xl mx-auto px-8 w-full">
+<div class="max-w-2xl text-white">
+<h1 class="text-6xl md:text-7xl font-serif-italic mb-4 leading-tight">
+                        Khám phá Huế theo cách của bạn
+                    </h1>
+<p class="text-xl font-body opacity-90 mb-6">
+                        Đặt phòng nhanh — không cần thẻ tín dụng
+                    </p>
+<!-- [1] Hero Eyebrow Badge -->
+<div class="inline-flex items-center gap-2 bg-[#C9920A] text-[#1A1612] px-4 py-1.5 rounded-full text-[11px] font-bold tracking-wide">
+<span class="material-symbols-outlined text-[14px]">stars</span>
+                        [1] ✦ Được đặt 240 lần trong 30 ngày qua
+                    </div>
+</div>
+</div>
+<!-- Floating Search Widget [2] -->
+<div class="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-full max-w-6xl px-8 z-20">
+<div class="bg-white rounded-2xl shadow-[0_20px_40px_rgba(26,22,18,0.06)] p-2 flex flex-col md:flex-row items-stretch md:items-center gap-2">
+<div class="flex-1 px-6 py-3 border-r border-[#D4C4AE]/20">
+<label class="block text-[10px] uppercase tracking-widest font-bold text-outline mb-1">Chi nhánh</label>
+<select class="w-full bg-transparent border-none p-0 text-[#1A1612] font-semibold focus:ring-0">
+<option>Huế Heritage</option>
+<option>Hội An Ancient</option>
+</select>
+</div>
+<div class="flex-1 px-6 py-3 border-r border-[#D4C4AE]/20">
+<label class="block text-[10px] uppercase tracking-widest font-bold text-outline mb-1">Nhận phòng</label>
+<input class="w-full bg-transparent border-none p-0 text-[#1A1612] font-semibold focus:ring-0" type="text" value="24 Th05 2024"/>
+</div>
+<div class="flex-1 px-6 py-3 border-r border-[#D4C4AE]/20">
+<label class="block text-[10px] uppercase tracking-widest font-bold text-outline mb-1">Trả phòng</label>
+<input class="w-full bg-transparent border-none p-0 text-[#1A1612] font-semibold focus:ring-0" type="text" value="26 Th05 2024"/>
+</div>
+<!-- [2] Stepper Addition -->
+<div class="flex-1 px-6 py-3 border-r border-[#D4C4AE]/20">
+<label class="block text-[10px] uppercase tracking-widest font-bold text-outline mb-1">[2] SỐ KHÁCH</label>
+<div class="flex items-center gap-4">
+<button class="w-6 h-6 flex items-center justify-center border border-outline-variant rounded-full text-sm font-bold">−</button>
+<span class="font-bold">2</span>
+<button class="w-6 h-6 flex items-center justify-center border border-outline-variant rounded-full text-sm font-bold">+</button>
+</div>
+</div>
+<button class="gold-gradient text-white px-10 py-5 rounded-xl font-bold flex items-center gap-2 hover:scale-[1.02] transition-transform">
+                        Tìm kiếm <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</div>
+</section>
+<!-- [3] Trust Bar -->
+<section class="mt-32 border-b border-[#E5E7EB]">
+<div class="max-w-7xl mx-auto px-8 h-16 flex items-center justify-between text-sm font-medium text-[#1A1612]/70">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[#C9920A]">check_circle</span>
+                    [3] ✓ Xác nhận ngay
+                </div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[#C9920A]">star</span>
+                    ⭐ 4.9 / 5 từ 820 đánh giá
+                </div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[#C9920A]">lock</span>
+                    🔒 Không cần thẻ tín dụng
+                </div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[#C9920A]">replay</span>
+                    ↩ Hủy miễn phí 24h
+                </div>
+</div>
+</section>
+<!-- Room Section -->
+<section class="py-24 max-w-7xl mx-auto px-8">
+<div class="flex justify-between items-end mb-12">
+<div>
+<h2 class="text-4xl font-serif-italic mb-2">Phòng Nghỉ Lưu Trữ</h2>
+<p class="text-outline">Sự kết hợp giữa tiện nghi hiện đại và di sản văn hóa.</p>
+</div>
+<a class="text-[#C9920A] font-bold text-sm tracking-widest uppercase border-b border-[#C9920A]" href="#">Xem tất cả loại phòng</a>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<!-- Room Card 1 -->
+<div class="group bg-surface-container-lowest rounded-2xl overflow-hidden hover:shadow-[0_20px_40px_rgba(26,22,18,0.06)] transition-all">
+<div class="relative h-64 overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" data-alt="minimalist modern dorm room with high quality wood bunk beds and soft sunlight from a large window" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDK37FtFVSDzPJrDctvKRjsQBXynqcGwIo1LhDyeTi0P9klM4zEdt_Zc6AhhYtj4qcJzKQw9AAHrqD8ABkQZlqO2VvnC41HGKQXJj7rcrF2efrMKUnTCsjpZ-B3nuJjFtfRI5m73ZAD8BycSs9Jao4ELeFS6s-uwgFXZw7ayVtSCR6hfxrzJ5YzcGjGeQ7XHms3l2CbyTdffuk5IUIO6WN44Gk7MAX9C8WxlGgxn4cdVzWUCgUrHyxBOLBxk1arbc9U5rAvsqMablA"/>
+<div class="absolute top-4 left-4 bg-[#FECACA] text-[#DC2626] px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">Phổ biến</div>
+</div>
+<div class="p-6">
+<!-- [4] Room Type Chip -->
+<div class="mb-3 inline-block bg-gray-100 text-gray-700 px-3 py-0.5 rounded-full text-[11px] font-bold">[4] Dorm</div>
+<h3 class="text-xl font-bold mb-2">Heritage Bunk Room</h3>
+<p class="text-sm text-outline mb-6 leading-relaxed">Phòng tập thể sang trọng với tủ đồ cá nhân và rèm che riêng tư tuyệt đối.</p>
+<div class="flex items-baseline gap-1 mb-4">
+<span class="text-2xl font-extrabold text-[#C9920A]">350.000đ</span>
+<span class="text-xs text-outline font-medium">/đêm</span>
+</div>
+<!-- [5] Details Link -->
+<div class="flex items-center justify-between pt-4 border-t border-outline-variant/10">
+<a class="text-[13px] font-bold text-[#C9920A] flex items-center gap-1 hover:underline" href="#">
+                                [5] Xem chi tiết <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</a>
+<button class="gold-gradient text-white px-5 py-2 rounded-lg text-xs font-bold active:scale-95 transition-all">Đặt ngay</button>
+</div>
+</div>
+</div>
+<!-- Room Card 2 -->
+<div class="group bg-surface-container-lowest rounded-2xl overflow-hidden hover:shadow-[0_20px_40px_rgba(26,22,18,0.06)] transition-all">
+<div class="relative h-64 overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" data-alt="elegant standard hotel room with neutral tones, boutique furniture and art on the walls" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5aq9wZvGoQKWJLm59jFl4dP9JXw9XLTzDTtFMAeYfLmMtS-w0nQk5Nbjisfg1Gstyt4Ursh29FgPiQQjMhedyvzboZYCIAWHywv57rFhUiMQfDIhP8rOM2sw0gXOdkiybQNZYEBpqNfPH0xk9FhQAf3lC1iUiEzeHJtFt5XlRHKfq2S66HRlkXRxE1tnMgYJp760M4QBjmq_-g-jVj9ELSJ3iSHmijGreHHn-RoLWPKwg-2p5h2D0_3fE_TOIu9Z2bwtoc10Rxmo"/>
+</div>
+<div class="p-6">
+<div class="mb-3 inline-block bg-gray-100 text-gray-700 px-3 py-0.5 rounded-full text-[11px] font-bold">[4] Standard</div>
+<h3 class="text-xl font-bold mb-2">Classic Soleil Private</h3>
+<p class="text-sm text-outline mb-6 leading-relaxed">Không gian riêng tư cho cặp đôi với ban công hướng vườn hoa nhiệt đới.</p>
+<div class="flex items-baseline gap-1 mb-4">
+<span class="text-2xl font-extrabold text-[#C9920A]">850.000đ</span>
+<span class="text-xs text-outline font-medium">/đêm</span>
+</div>
+<div class="flex items-center justify-between pt-4 border-t border-outline-variant/10">
+<a class="text-[13px] font-bold text-[#C9920A] flex items-center gap-1 hover:underline" href="#">
+                                [5] Xem chi tiết <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</a>
+<button class="gold-gradient text-white px-5 py-2 rounded-lg text-xs font-bold active:scale-95 transition-all">Đặt ngay</button>
+</div>
+</div>
+</div>
+<!-- Room Card 3 -->
+<div class="group bg-surface-container-lowest rounded-2xl overflow-hidden hover:shadow-[0_20px_40px_rgba(26,22,18,0.06)] transition-all">
+<div class="relative h-64 overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" data-alt="spacious suite room with living area, premium linens and large windows with city view" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA8QGol170vrYidLGSwc0tODyHzJ6eQwfo6IiRNQEw7rzEsIaFYFJ-qH2SZ06nV-2DECTr5xj4xTa0K6WSvqC-usEPkJOaikxj4mAfgQdMnO-uVJY5_o3Inv-ffkdFWM_JnflWE3VaWt7de_1KYSrnNowi719flKQ1XQ_gr0VBWa4y8ThL26jRTtv3FwzVPgUSnnzAfamP5WJBNNvjbVR1miVxBEzpCrqPFj12NmMzZ8d9tp-qM3otG-GJO6FYQMlbGkeKLkt4Ilj8"/>
+<div class="absolute top-4 left-4 bg-[#C9920A] text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">Premium</div>
+</div>
+<div class="p-6">
+<div class="mb-3 inline-block bg-gray-100 text-gray-700 px-3 py-0.5 rounded-full text-[11px] font-bold">[4] Suite</div>
+<h3 class="text-xl font-bold mb-2">Imperial Studio</h3>
+<p class="text-sm text-outline mb-6 leading-relaxed">Căn hộ thu nhỏ đầy đủ tiện nghi bếp và phòng khách cho kỳ nghỉ dài.</p>
+<div class="flex items-baseline gap-1 mb-4">
+<span class="text-2xl font-extrabold text-[#C9920A]">1.200.000đ</span>
+<span class="text-xs text-outline font-medium">/đêm</span>
+</div>
+<div class="flex items-center justify-between pt-4 border-t border-outline-variant/10">
+<a class="text-[13px] font-bold text-[#C9920A] flex items-center gap-1 hover:underline" href="#">
+                                [5] Xem chi tiết <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</a>
+<button class="gold-gradient text-white px-5 py-2 rounded-lg text-xs font-bold active:scale-95 transition-all">Đặt ngay</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Reviews Section [7] -->
+<section class="py-24 bg-surface-container">
+<div class="max-w-7xl mx-auto px-8">
+<div class="text-center mb-16">
+<h2 class="text-4xl font-serif-italic mb-4">Trải Nghiệm Khách Hàng</h2>
+<div class="flex justify-center gap-1 text-[#C9920A]">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Review Card 1 -->
+<div class="bg-white p-8 rounded-2xl">
+<div class="flex items-center gap-4 mb-6">
+<!-- [7] Avatar and Initial -->
+<div class="w-10 h-10 rounded-full bg-[#C9920A] flex items-center justify-center text-white font-bold text-lg">
+                                [7] M
+                            </div>
+<div>
+<h4 class="font-bold text-[#1A1612]">Minh Trần</h4>
+<p class="text-[10px] uppercase tracking-widest font-bold text-[#C9920A]">Đã xác thực</p>
+</div>
+</div>
+<p class="italic text-sm text-[#1A1612]/80 mb-6">"Không gian tuyệt vời, mang đậm hơi thở Cố đô. Nhân viên vô cùng thân thiện và hỗ trợ nhiệt tình."</p>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1 bg-[#F5EFE3] text-[10px] font-bold rounded-full">Sạch sẽ</span>
+<span class="px-3 py-1 bg-[#F5EFE3] text-[10px] font-bold rounded-full">Gần trung tâm</span>
+</div>
+</div>
+<!-- Review Card 2 -->
+<div class="bg-white p-8 rounded-2xl">
+<div class="flex items-center gap-4 mb-6">
+<div class="w-10 h-10 rounded-full bg-[#C9920A] flex items-center justify-center text-white font-bold text-lg">
+                                [7] L
+                            </div>
+<div>
+<h4 class="font-bold text-[#1A1612]">Linh Nguyễn</h4>
+<p class="text-[10px] uppercase tracking-widest font-bold text-[#C9920A]">Đã xác thực</p>
+</div>
+</div>
+<p class="italic text-sm text-[#1A1612]/80 mb-6">"Dorm ở đây là sạch nhất mình từng ở. Rèm che rất kín đáo và nệm êm như khách sạn 5 sao."</p>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1 bg-[#F5EFE3] text-[10px] font-bold rounded-full">Giá tốt</span>
+<span class="px-3 py-1 bg-[#F5EFE3] text-[10px] font-bold rounded-full">Hiện đại</span>
+</div>
+</div>
+<!-- Review Card 3 -->
+<div class="bg-white p-8 rounded-2xl">
+<div class="flex items-center gap-4 mb-6">
+<div class="w-10 h-10 rounded-full bg-[#C9920A] flex items-center justify-center text-white font-bold text-lg">
+                                [7] J
+                            </div>
+<div>
+<h4 class="font-bold text-[#1A1612]">James Wilson</h4>
+<p class="text-[10px] uppercase tracking-widest font-bold text-[#C9920A]">Verified Stay</p>
+</div>
+</div>
+<p class="italic text-sm text-[#1A1612]/80 mb-6">"Perfect location for exploring Hue. The design of the common areas is stunning. Highly recommend!"</p>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1 bg-[#F5EFE3] text-[10px] font-bold rounded-full">English Speaking</span>
+<span class="px-3 py-1 bg-[#F5EFE3] text-[10px] font-bold rounded-full">Interior</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-[#1A1612] text-[#F5EFE3] pt-20 pb-10">
+<div class="max-w-7xl mx-auto px-8 grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+<div class="col-span-1 md:col-span-2">
+<div class="text-2xl font-serif italic text-white tracking-widest mb-6">
+                    Soleil <span class="not-italic text-sm font-sans font-bold tracking-[0.2em] ml-1">HOSTEL</span>
+</div>
+<p class="max-w-sm opacity-70 leading-relaxed mb-8">
+                    Chúng tôi định nghĩa lại trải nghiệm lưu trú tại Huế, kết hợp giữa tinh thần nghệ thuật hiện đại và di sản văn hóa truyền thống.
+                </p>
+<div class="flex gap-4">
+<span class="material-symbols-outlined cursor-pointer hover:text-[#C9920A] transition-colors">social_leaderboard</span>
+<span class="material-symbols-outlined cursor-pointer hover:text-[#C9920A] transition-colors">camera</span>
+<span class="material-symbols-outlined cursor-pointer hover:text-[#C9920A] transition-colors">mail</span>
+</div>
+</div>
+<div>
+<h5 class="text-[10px] uppercase tracking-widest font-bold text-[#C9920A] mb-6">Liên kết</h5>
+<ul class="space-y-4 text-sm opacity-70">
+<li><a class="hover:text-white transition-colors" href="#">Khám phá</a></li>
+<li><a class="hover:text-white transition-colors" href="#">Phòng nghỉ</a></li>
+<li><a class="hover:text-white transition-colors" href="#">Ưu đãi mùa hè</a></li>
+<li><a class="hover:text-white transition-colors" href="#">Sự kiện</a></li>
+</ul>
+</div>
+<div>
+<h5 class="text-[10px] uppercase tracking-widest font-bold text-[#C9920A] mb-6">Thông tin</h5>
+<ul class="space-y-4 text-sm opacity-70">
+<li><a class="hover:text-white transition-colors" href="#">Chính sách bảo mật</a></li>
+<li><a class="hover:text-white transition-colors" href="#">Điều khoản sử dụng</a></li>
+<li><a class="hover:text-white transition-colors" href="#">Liên hệ hỗ trợ</a></li>
+<li><a class="hover:text-white transition-colors" href="#">FAQ</a></li>
+</ul>
+</div>
+</div>
+<div class="max-w-7xl mx-auto px-8 pt-10 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-6">
+<p class="text-xs opacity-50">© 2024 Soleil Hostel. The Modern Archivist Edition.</p>
+<div class="flex gap-8">
+<span class="text-xs opacity-50 flex items-center gap-2 cursor-pointer hover:opacity-100">Tiếng Việt <span class="material-symbols-outlined text-sm">language</span></span>
+<span class="text-xs opacity-50 flex items-center gap-2 cursor-pointer hover:opacity-100">VND <span class="material-symbols-outlined text-sm">payments</span></span>
+</div>
+</div>
+</footer>
+</body></html>

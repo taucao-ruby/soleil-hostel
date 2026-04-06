@@ -6,16 +6,14 @@ import type { Room } from '@/features/rooms/room.types'
 import { FILTER_CHIPS } from '../home.mock'
 
 /**
- * RoomsSection — featured rooms fetched live from /v1/rooms.
+ * RoomsSection — featured rooms fetched live from /v1/rooms (Stitch spec).
  *
- * Mobile  (<sm): 2-col grid, px-4
- * Tablet  (sm):  2-col grid, max-w container
- * Desktop (lg):  3-col grid, max-w-7xl container
+ * Mobile  (<md): 2-col grid
+ * Desktop (≥md): 3-col grid, max-w-7xl container
  * Wide    (xl):  4-col grid
  *
- * Picks a diverse mix across room types (dorm → standard → double →
- * deluxe → family → vip) so the homepage showcases the full price range.
- * Max 8 cards displayed; at most 2 per type.
+ * Section heading: font-serif italic (Stitch)
+ * Card: image, room-type chip, name, price, "Xem chi tiết" link + "Đặt ngay" CTA
  */
 const TYPE_ORDER = ['dorm', 'standard', 'double', 'deluxe', 'family', 'vip'] as const
 const MAX_PER_TYPE = 2
@@ -31,19 +29,16 @@ function pickFeatured(rooms: Room[]): Room[] {
   }
 
   const result: Room[] = []
-  // First pass: one per type in order
   for (const type of TYPE_ORDER) {
     const bucket = buckets.get(type)
     if (bucket?.length) result.push(bucket[0])
     if (result.length >= MAX_DISPLAY) return result
   }
-  // Second pass: second room per type
   for (const type of TYPE_ORDER) {
     const bucket = buckets.get(type)
     if (bucket && bucket.length >= MAX_PER_TYPE) result.push(bucket[1])
     if (result.length >= MAX_DISPLAY) return result
   }
-  // Fill remaining with any leftover
   for (const bucket of buckets.values()) {
     for (const room of bucket) {
       if (!result.includes(room)) result.push(room)
@@ -81,34 +76,34 @@ const RoomsSection: React.FC = () => {
   }, [fetchRooms, fetchKey])
 
   return (
-    <section aria-label="Phòng nổi bật" className="mt-10 md:mt-16">
+    <section aria-label="Phòng nổi bật" className="py-12 md:py-20">
       <div className="max-w-7xl mx-auto px-4 md:px-8 lg:px-12">
         {/* Header row */}
-        <div className="flex justify-between items-baseline mb-4 md:mb-6">
+        <div className="flex justify-between items-end mb-6 md:mb-10">
           <div>
-            <h2 className="font-serif font-semibold text-[#1C1A17] text-xl md:text-2xl lg:text-3xl">
-              Phòng nổi bật
+            <h2 className="font-serif italic text-[#1C1A17] text-2xl md:text-3xl lg:text-4xl">
+              Phòng Nghỉ Nổi Bật
             </h2>
             <p className="mt-1 text-sm text-[#6B6760] hidden md:block">
-              Lựa chọn phòng phù hợp với nhu cầu của bạn
+              Sự kết hợp giữa tiện nghi hiện đại và di sản văn hóa.
             </p>
           </div>
           <Link
             to="/rooms"
-            className="text-sm font-medium text-[#C9973A] hover:text-[#B8872A] transition-colors focus-visible:outline-none focus-visible:underline shrink-0"
+            className="text-[13px] font-bold text-[#C9920A] hover:text-[#a87808] border-b border-[#C9920A]/50 pb-0.5 tracking-wide uppercase transition-colors focus-visible:outline-none shrink-0"
           >
-            Xem tất cả →
+            Xem tất cả loại phòng
           </Link>
         </div>
 
         {/* Amenity filter chips */}
-        <div className="-mx-4 md:mx-0">
+        <div className="-mx-4 md:mx-0 mb-6">
           <FilterChips chips={FILTER_CHIPS} />
         </div>
 
         {/* Error state */}
         {error && (
-          <div className="mt-6 flex flex-col items-center gap-3 py-10 text-center">
+          <div className="flex flex-col items-center gap-3 py-10 text-center">
             <p className="text-sm text-[#6B6760]">Không thể tải danh sách phòng.</p>
             <button
               onClick={() => setFetchKey(k => k + 1)}
@@ -121,16 +116,17 @@ const RoomsSection: React.FC = () => {
 
         {/* Skeleton */}
         {loading && !error && (
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 mt-4 md:mt-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
-                className="animate-pulse rounded-xl border border-[#E2DDD6] overflow-hidden bg-white"
+                className="animate-pulse rounded-2xl border border-[#E2DDD6] overflow-hidden bg-white"
               >
-                <div className="bg-[#F0EDE8] h-[180px]" />
-                <div className="p-3 space-y-2">
-                  <div className="h-3.5 bg-[#F0EDE8] rounded w-4/5" />
-                  <div className="h-3 bg-[#F0EDE8] rounded w-2/5" />
+                <div className="bg-[#F0EDE8] h-[220px]" />
+                <div className="p-4 space-y-2">
+                  <div className="h-3 bg-[#F0EDE8] rounded w-1/3" />
+                  <div className="h-4 bg-[#F0EDE8] rounded w-4/5" />
+                  <div className="h-3 bg-[#F0EDE8] rounded w-2/5 mt-2" />
                   <div className="h-9 bg-[#F0EDE8] rounded mt-3" />
                 </div>
               </div>
@@ -138,13 +134,12 @@ const RoomsSection: React.FC = () => {
           </div>
         )}
 
-        {/* Room grid */}
         {!loading && !error && rooms.length === 0 && (
           <p className="mt-8 text-center text-sm text-[#6B6760]">Hiện chưa có phòng nào.</p>
         )}
 
         {!loading && !error && rooms.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 mt-4 md:mt-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
             {rooms.map(room => (
               <RoomCard key={room.id} room={room} />
             ))}
@@ -155,24 +150,37 @@ const RoomsSection: React.FC = () => {
   )
 }
 
-// ── VND formatter ────────────────────────────────────────────────────────────
+// ── VND formatter ─────────────────────────────────────────────────────────────
 const VND = new Intl.NumberFormat('vi-VN')
 
-// ── RoomCard ─────────────────────────────────────────────────────────────────
+// ── Room type label map ────────────────────────────────────────────────────────
+const TYPE_LABELS: Record<string, string> = {
+  dorm: 'Dorm',
+  standard: 'Standard',
+  double: 'Double',
+  deluxe: 'Deluxe',
+  family: 'Family',
+  vip: 'VIP',
+}
+
+// ── RoomCard ──────────────────────────────────────────────────────────────────
 const RoomCard: React.FC<{ room: Room }> = ({ room }) => {
   const navigate = useNavigate()
   const isAvailable = room.status === 'available'
   const locationName = room.location?.name ?? null
+  const typeLabel = room.room_type_code
+    ? (TYPE_LABELS[room.room_type_code] ?? room.room_type_code)
+    : null
 
   return (
-    <article className="border border-[#E2DDD6] rounded-xl overflow-hidden bg-white">
+    <article className="group border border-[#E2DDD6] rounded-2xl overflow-hidden bg-white hover:shadow-[0_20px_40px_rgba(26,22,18,0.08)] transition-shadow duration-300">
       {/* Image */}
-      <div className="relative" style={{ height: '180px' }}>
+      <div className="relative overflow-hidden" style={{ height: '220px' }}>
         {room.image_url ? (
           <img
             src={room.image_url}
             alt={room.name}
-            className="absolute inset-0 w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
             loading="lazy"
           />
         ) : (
@@ -215,25 +223,43 @@ const RoomCard: React.FC<{ room: Room }> = ({ room }) => {
       </div>
 
       {/* Card body */}
-      <div className="p-3">
-        <h3 className="font-medium text-[15px] text-[#1C1A17] leading-snug mb-1.5 line-clamp-2">
+      <div className="p-4">
+        {/* Room type chip */}
+        {typeLabel && (
+          <span className="inline-block bg-[#F0EDE8] text-[#504534] text-[11px] font-bold uppercase tracking-wide px-2.5 py-0.5 rounded mb-2">
+            {typeLabel}
+          </span>
+        )}
+
+        <h3 className="font-serif italic text-[16px] text-[#1C1A17] leading-snug mb-2 line-clamp-2">
           {room.name}
         </h3>
-        <p className="text-[13px] mb-2.5">
-          <span className="text-[#C9973A] font-medium">Từ {VND.format(room.price)}₫</span>
-          <span className="text-[#6B6760]"> / đêm</span>
+
+        <p className="text-[13px] mb-3">
+          <span className="text-[#C9920A] font-bold text-[16px]">{VND.format(room.price)}₫</span>
+          <span className="text-[#6B6760] text-[12px]"> / đêm</span>
         </p>
-        {isAvailable ? (
-          <button
-            aria-label="Đặt ngay"
-            onClick={() => navigate('/booking')}
-            className="w-full h-9 bg-[#C9973A] hover:bg-[#B8872A] text-white text-sm font-medium rounded-lg transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9973A] focus-visible:ring-offset-1"
+
+        {/* Actions row */}
+        <div className="flex items-center justify-between pt-3 border-t border-[#E2DDD6]/60">
+          <Link
+            to="/rooms"
+            className="text-[13px] font-bold text-[#C9920A] hover:underline flex items-center gap-0.5 focus-visible:outline-none focus-visible:underline"
           >
-            Đặt ngay
-          </button>
-        ) : (
-          <p className="text-xs text-[#6B6760] text-center py-2">Không còn phòng trống</p>
-        )}
+            Xem chi tiết →
+          </Link>
+          {isAvailable ? (
+            <button
+              aria-label="Đặt ngay"
+              onClick={() => navigate('/booking')}
+              className="h-8 px-4 bg-[#C9920A] hover:bg-[#a87808] text-white text-[12px] font-bold rounded-lg transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9920A] focus-visible:ring-offset-1 active:scale-95"
+            >
+              Đặt ngay
+            </button>
+          ) : (
+            <span className="text-xs text-[#6B6760]">Hết phòng</span>
+          )}
+        </div>
       </div>
     </article>
   )

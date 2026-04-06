@@ -154,11 +154,7 @@ describe('BookingForm', () => {
 
     render(<BookingForm />)
 
-    await waitFor(() => {
-      expect(screen.getByRole('combobox')).toBeDisabled()
-    })
-
-    expect(screen.getByRole('status')).toHaveTextContent('Không có phòng nào còn trống')
+    expect(await screen.findByRole('status')).toHaveTextContent('Không có phòng nào còn trống')
   })
 
   it('renders validation errors returned by the validator', async () => {

@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&amp;family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-on-surface": "#f9efe8",
+                        "primary": "#7c5800",
+                        "on-tertiary-fixed-variant": "#93000b",
+                        "surface-container-high": "#f0e6df",
+                        "tertiary-fixed-dim": "#ffb4ab",
+                        "on-tertiary": "#ffffff",
+                        "on-surface": "#1f1b17",
+                        "on-primary-container": "#453000",
+                        "surface-dim": "#e2d8d1",
+                        "primary-fixed-dim": "#f9bc3d",
+                        "inverse-surface": "#34302b",
+                        "on-error": "#ffffff",
+                        "tertiary-container": "#ff6d61",
+                        "on-tertiary-container": "#6e0006",
+                        "surface-container-highest": "#eae1da",
+                        "surface-container": "#f6ece5",
+                        "on-secondary-fixed": "#002113",
+                        "surface-variant": "#eae1da",
+                        "secondary-fixed": "#6ffbbe",
+                        "on-surface-variant": "#504534",
+                        "primary-container": "#c9920a",
+                        "on-background": "#1f1b17",
+                        "primary-fixed": "#ffdea6",
+                        "surface-bright": "#fff8f4",
+                        "on-secondary": "#ffffff",
+                        "on-primary-fixed-variant": "#5e4200",
+                        "on-error-container": "#93000a",
+                        "on-primary-fixed": "#271900",
+                        "error": "#ba1a1a",
+                        "background": "#fff8f4",
+                        "surface-container-low": "#fcf2eb",
+                        "surface": "#fff8f4",
+                        "secondary-fixed-dim": "#4edea3",
+                        "outline": "#827562",
+                        "secondary": "#006c49",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-container": "#6cf8bb",
+                        "inverse-primary": "#f9bc3d",
+                        "surface-tint": "#7c5800",
+                        "error-container": "#ffdad6",
+                        "outline-variant": "#d4c4ae",
+                        "tertiary-fixed": "#ffdad6",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed": "#410002",
+                        "tertiary": "#bf0715",
+                        "on-secondary-container": "#00714d",
+                        "on-secondary-fixed-variant": "#005236"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Newsreader"],
+                        "body": ["Plus Jakarta Sans"],
+                        "label": ["Plus Jakarta Sans"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #fff8f4; color: #1f1b17; }
+        .font-serif-italic { font-family: 'Newsreader', serif; font-style: italic; }
+        .glass-nav { background: rgba(26, 22, 18, 0.8); backdrop-filter: blur(12px); }
+        .gold-gradient { background: linear-gradient(135deg, #c9920a 0%, #a87808 100%); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="pb-24">
+<!-- TopAppBar -->
+<header class="sticky top-0 z-50 bg-[#F5EFE3] dark:bg-[#1A1612]">
+<nav class="flex justify-between items-center w-full px-6 py-4 max-w-7xl mx-auto">
+<div class="text-xl font-serif italic text-[#1A1612] dark:text-[#F5EFE3] tracking-widest">
+                Soleil HOSTEL
+            </div>
+<button class="bg-primary-container text-white px-5 py-2 rounded-lg font-medium text-sm transition-all duration-200 active:scale-95">
+                Đặt phòng
+            </button>
+</nav>
+</header>
+<main>
+<!-- [6] Promo Banner -->
+<div class="bg-primary-container text-white py-2.5 px-4 text-center text-[12px] font-medium tracking-wide">
+            🌞 Giảm 10% khi đặt trực tiếp · HSD 30/06 <a class="underline ml-2 font-bold decoration-2 underline-offset-2" href="#">Xem ưu đãi</a> [6]
+        </div>
+<!-- Hero Section -->
+<section class="relative h-[574px] flex flex-col justify-end px-6 pb-12 overflow-hidden">
+<div class="absolute inset-0 z-0">
+<img alt="Soleil Hostel Interior" class="w-full h-full object-cover brightness-[0.7]" data-alt="warm sunlit boutique hostel lobby with plush velvet furniture high ceilings and arched windows in colonial architectural style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDOCJlVYjx2W8miqyp5a-QKGYREDsHOskTTtIjWF9vA3kIsjvnNNMrPe3nr6oQqh4UkhAEg2calHoaZB8WT6yepS895ljDIonP3EuvK8KkEGqjEiLJwtOk79ncim3cehOcxbaQG-Fm1tMRiRe4tncHk2qzN00hPZNWdU_BmTiRqmljdvO3qeSyMd7mOAZphxPE-OvosekcKKo38nQLueSd-0RGLmL0kDzW8RP8hZHbYXuv836oebG2kNtSD5JS2wsgz9bZM1Qq8Lfw"/>
+</div>
+<div class="relative z-10 space-y-4">
+<h1 class="text-white text-5xl font-serif italic leading-tight">Nơi lưu trú <br/> đầy cảm hứng.</h1>
+<!-- [1] Eyebrow Badge -->
+<div class="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-full text-white text-[11px] font-semibold tracking-wider">
+<span class="text-primary-fixed">✦</span> Được đặt 240 lần trong 30 ngày qua [1]
+                </div>
+</div>
+</section>
+<!-- [2] Search Widget -->
+<section class="px-6 -mt-10 relative z-20">
+<div class="bg-surface-container-lowest p-6 rounded-2xl shadow-[0_20px_40px_rgba(26,22,18,0.06)] space-y-5">
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-1">
+<label class="text-[10px] uppercase tracking-widest font-bold text-outline">Ngày đến</label>
+<div class="flex items-center gap-2 text-sm font-medium">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="calendar_today">calendar_today</span>
+                            12 Th06
+                        </div>
+</div>
+<div class="space-y-1">
+<label class="text-[10px] uppercase tracking-widest font-bold text-outline">Ngày đi</label>
+<div class="flex items-center gap-2 text-sm font-medium">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="calendar_month">calendar_month</span>
+                            15 Th06
+                        </div>
+</div>
+</div>
+<!-- [2] Stepper -->
+<div class="space-y-3 pt-2 border-t border-outline-variant/15">
+<label class="text-[10px] uppercase tracking-widest font-bold text-outline">SỐ KHÁCH [2]</label>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2 text-sm font-medium">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="group">group</span>
+                            02 Người lớn
+                        </div>
+<div class="flex items-center gap-4">
+<button class="w-8 h-8 rounded-full border border-outline-variant flex items-center justify-center active:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="remove">remove</span>
+</button>
+<span class="font-bold">2</span>
+<button class="w-8 h-8 rounded-full border border-outline-variant flex items-center justify-center active:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
+</button>
+</div>
+</div>
+</div>
+<button class="w-full gold-gradient text-white py-4 rounded-xl font-bold tracking-widest text-sm shadow-lg shadow-primary/20 active:scale-[0.98] transition-transform">
+                    TÌM PHÒNG NGAY
+                </button>
+</div>
+</section>
+<!-- [3] Trust Bar -->
+<section class="mt-8 px-6 py-8 bg-surface-container">
+<div class="grid grid-cols-2 gap-y-6 gap-x-4 max-w-sm mx-auto">
+<div class="flex items-center gap-2 text-[12px] font-semibold text-on-surface-variant">
+<span class="text-secondary material-symbols-outlined text-base" data-icon="check_circle">check_circle</span>
+                    ✓ Xác nhận ngay
+                </div>
+<div class="flex items-center gap-2 text-[12px] font-semibold text-on-surface-variant">
+<span class="text-primary material-symbols-outlined text-base" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+                    ⭐ 4.9 / 5
+                </div>
+<div class="flex items-center gap-2 text-[12px] font-semibold text-on-surface-variant">
+<span class="text-primary material-symbols-outlined text-base" data-icon="lock">lock</span>
+                    🔒 Không cần thẻ
+                </div>
+<div class="flex items-center gap-2 text-[12px] font-semibold text-on-surface-variant">
+<span class="text-primary material-symbols-outlined text-base" data-icon="event_repeat">event_repeat</span>
+                    ↩ Hủy 24h
+                </div>
+</div>
+<div class="text-center mt-4 text-[10px] text-outline font-medium tracking-tighter">[3] 2x2 Trust Grid Layout</div>
+</section>
+<!-- Room Sections -->
+<section class="py-12 px-6 space-y-8">
+<div class="flex items-end justify-between">
+<h2 class="text-3xl font-serif italic text-on-surface">Phòng nghỉ<br/>Tâm điểm</h2>
+<a class="text-[12px] font-bold text-primary uppercase tracking-widest border-b border-primary/30 pb-1" href="#">Tất cả phòng</a>
+</div>
+<!-- Room Card 1 -->
+<div class="space-y-4">
+<div class="relative h-72 rounded-2xl overflow-hidden group">
+<img alt="Classic Dorm Room" class="w-full h-full object-cover" data-alt="minimalist modern dorm room with warm wood bunk beds crisp white linen and soft morning light entering from a side window" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAgNExYBqK9wFRJwmpM1BrOoSz-a8i6oadHlkmWkKZ8bn5HupGbLWbv2_j4URF68S1j_xxU6Mo3K6Uxr2W0jRln_tQMrfTPTX0pKR07GNHxUT7CJhrVIuoeTTckrQgW1k6fdb31SuWvis2R0_mR_YTH5TMEqVAJxc9pfQVRA89HxDHF4UYWHHvcwR4Ysvps9QFhBVyl3RBfiL19u2nllE7x6hvaO5MNMc-SeW7aq9Y6cXzEBwhFzOOvUnxiwK7dCp3CFzeyf3zDa7A"/>
+<div class="absolute top-4 left-4 bg-[#FECACA] text-[#DC2626] px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase">
+                        Phổ biến nhất
+                    </div>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between items-start">
+<div>
+<!-- [4] Room type chips -->
+<div class="flex gap-2 mb-2">
+<span class="bg-surface-container-high text-on-surface-variant text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Dorm [4]</span>
+<span class="bg-surface-container-high text-on-surface-variant text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Mix</span>
+</div>
+<h3 class="text-xl font-serif italic">Giường đơn Dorm 4</h3>
+</div>
+<div class="text-right">
+<span class="text-xs text-outline line-through">450k</span>
+<div class="text-lg font-bold text-primary">320.000đ</div>
+<span class="text-[10px] text-outline font-medium">/đêm</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-2">
+<!-- [5] Details Link -->
+<a class="text-sm font-bold text-on-surface flex items-center gap-1 group" href="#">
+                            Xem chi tiết <span class="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform" data-icon="arrow_forward">arrow_forward</span> [5]
+                        </a>
+<button class="bg-on-surface text-white px-6 py-2.5 rounded-lg text-sm font-bold active:scale-95 transition-all">
+                            Đặt ngay
+                        </button>
+</div>
+</div>
+</div>
+<!-- Room Card 2 -->
+<div class="space-y-4">
+<div class="relative h-72 rounded-2xl overflow-hidden">
+<img alt="Private Suite" class="w-full h-full object-cover" data-alt="luxury boutique hostel private suite with arched mirrors brass accents warm earth tones and professional editorial lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCt2_E_ikPCnshtI-KanzmjqD6-bU7rFiFRDArYn9s0p4mE-dOPgz7ejz2Q3VLb70e51s3O9erB-lePPZVT5rIcnWmQdF3uYq6XJiMqkIkNakQSb2mUZ1lJCjyKfcBH1bDH57Bw2fmo924Ar_xa5y9A8ku7pGWWWRTiYrVjZWfdSEo-3-NgMXgitdB7nLameejAmzgSuEsncTzcRb2n7NyglgYBK9vLnqBZsxp9ZOilhhf7IM-KB34Yp-SPj-8bWbKbcm77HeauP3c"/>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between items-start">
+<div>
+<!-- [4] Room type chips -->
+<div class="flex gap-2 mb-2">
+<span class="bg-surface-container-high text-on-surface-variant text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Private [4]</span>
+<span class="bg-surface-container-high text-on-surface-variant text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Suite</span>
+</div>
+<h3 class="text-xl font-serif italic">Soleil Master Suite</h3>
+</div>
+<div class="text-right">
+<div class="text-lg font-bold text-primary">1.250.000đ</div>
+<span class="text-[10px] text-outline font-medium">/đêm</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-2">
+<!-- [5] Details Link -->
+<a class="text-sm font-bold text-on-surface flex items-center gap-1 group" href="#">
+                            Xem chi tiết <span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span> [5]
+                        </a>
+<button class="bg-on-surface text-white px-6 py-2.5 rounded-lg text-sm font-bold">
+                            Đặt ngay
+                        </button>
+</div>
+</div>
+</div>
+</section>
+<!-- Reviews Section -->
+<section class="py-12 bg-on-surface text-white">
+<div class="px-6 space-y-8">
+<h2 class="text-3xl font-serif italic">Tiếng nói từ <br/> lữ khách</h2>
+<div class="space-y-6">
+<!-- Review 1 -->
+<div class="space-y-4">
+<div class="flex items-center gap-3">
+<!-- [7] Gold Avatar -->
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center font-bold text-white text-sm shrink-0">
+                                MH [7]
+                            </div>
+<div>
+<div class="text-sm font-bold">Minh Huy</div>
+<div class="flex gap-0.5">
+<span class="material-symbols-outlined text-[10px] text-primary" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[10px] text-primary" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[10px] text-primary" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[10px] text-primary" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[10px] text-primary" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</div>
+</div>
+<p class="text-surface-variant/80 text-sm italic leading-relaxed">
+                            "Một trải nghiệm thực sự khác biệt. Không gian tinh tế và phong cách phục vụ vô cùng chuyên nghiệp. Sẽ quay lại!"
+                        </p>
+</div>
+<!-- Review 2 -->
+<div class="space-y-4">
+<div class="flex items-center gap-3">
+<!-- [7] Gold Avatar -->
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center font-bold text-white text-sm shrink-0">
+                                AN [7]
+                            </div>
+<div>
+<div class="text-sm font-bold">An Nhiên</div>
+<div class="flex gap-0.5">
+<span class="material-symbols-outlined text-[10px] text-primary" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[10px] text-primary" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[10px] text-primary" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[10px] text-primary" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[10px] text-primary" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</div>
+</div>
+<p class="text-surface-variant/80 text-sm italic leading-relaxed">
+                            "Hostel đẹp nhất tôi từng ở tại Việt Nam. Từng chi tiết nhỏ đều được chăm chút tỉ mỉ theo phong cách Modern Archivist."
+                        </p>
+</div>
+</div>
+</div>
+</section>
+<!-- Footer -->
+<footer class="w-full py-12 px-8 flex flex-col items-center gap-6 bg-[#1A1612] text-[#F5EFE3]">
+<div class="text-lg font-serif italic text-white tracking-widest">Soleil HOSTEL</div>
+<div class="flex gap-6 text-[11px] uppercase tracking-widest font-bold opacity-70">
+<a class="hover:text-white" href="#">Chính sách bảo mật</a>
+<a class="hover:text-white" href="#">Liên hệ</a>
+</div>
+<p class="text-[10px] opacity-50 font-medium text-center">
+                © 2024 Soleil Hostel. The Modern Archivist Edition.
+            </p>
+</footer>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-4 pt-3 bg-[#1A1612]/80 dark:bg-[#1A1612]/90 backdrop-blur-xl rounded-t-2xl shadow-[0_-10px_30px_rgba(26,22,18,0.1)]">
+<a class="flex flex-col items-center justify-center text-[#C9920A] scale-110" href="#">
+<span class="material-symbols-outlined" data-icon="explore" data-weight="fill" style="font-variation-settings: 'FILL' 1;">explore</span>
+<span class="text-[10px] uppercase tracking-widest font-bold mt-1">Khám phá</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#F5EFE3] opacity-60 hover:opacity-100" href="#">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+<span class="text-[10px] uppercase tracking-widest font-bold mt-1">Tìm kiếm</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#F5EFE3] opacity-60 hover:opacity-100" href="#">
+<span class="material-symbols-outlined" data-icon="bookmark">bookmark</span>
+<span class="text-[10px] uppercase tracking-widest font-bold mt-1">Đã lưu</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#F5EFE3] opacity-60 hover:opacity-100" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="text-[10px] uppercase tracking-widest font-bold mt-1">Cá nhân</span>
+</a>
+</nav>
+</body></html>

@@ -1,0 +1,18 @@
+{
+  "project_title": "Soleil Hostel Design System",
+  "project_id": "16868381520054414937",
+  "screen_name": "Register Page (Mobile)",
+  "screen_id": "be404c4a5e37497a9875b7fa62a09572",
+  "device_type": "MOBILE",
+  "dimensions": { "width": 780, "height": 2448 },
+  "downloaded_at": "2026-04-06T00:00:00Z",
+  "source_urls": {
+    "code": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ7Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpaCiVodG1sX2Q0ZWUxM2IyMWEwYzQ4MGE4OWVmMzU2YWRjZDFiZTU1EgoSBhDhg7XFUhgBkgEkCgpwcm9qZWN0X2lkEhZCFDE2ODY4MzgxNTIwMDU0NDE0OTM3&filename=&opi=89354086",
+    "image": "https://lh3.googleusercontent.com/aida/ADBb0uiBSF7fpyXIY-GTLsEOeiYaCQVwt3onOkbGdBDpAdlgki80ZO7zFWaU5ibBJaVknkjni9bWWYLx8P-k-MHO5DsBdKgPtociqh4ngBvW3X0XKbKOd65YZEheLJZmS2cX7HowvQ3xoDACeciKR_UlCkUI_bLRGBoe4LOpJV3rMlcOluhB9D4kXa8Ur3QOEdewi2TS55nTs1B2cvV8me2ZftLRTS2iRvRzxtd-oO8RitOVIdfZLyjcuhvk7zA"
+  },
+  "original_filenames": ["index.html", "screenshot.png"],
+  "verification": {
+    "index.html": { "exists": true, "bytes": 11480, "readable": true },
+    "screenshot.png": { "exists": true, "bytes": 22922, "readable": true }
+  }
+}

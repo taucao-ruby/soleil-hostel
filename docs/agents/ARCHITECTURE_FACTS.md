@@ -1,6 +1,6 @@
 # Architecture Facts — Soleil Hostel
 
-Domain invariants last verified 2026-03-23. See [AUDIT_2026_02_21.md](../AUDIT_2026_02_21.md) for the original 2026-02-21 audit evidence.
+Domain invariants last verified 2026-04-05 (full-stack 2c audit). See [AUDIT_2026_02_21.md](../AUDIT_2026_02_21.md) for the original 2026-02-21 audit evidence.
 
 ## Booking Domain
 
@@ -122,6 +122,7 @@ Stay lifecycle guard: `App\Enums\StayStatus::canTransitionTo()` + `App\Models\St
 - `2026_03_23_000003` — adds deposit lifecycle fields to `bookings`
 - `2026_03_23_000004` — adds settlement lifecycle fields to `service_recovery_cases`
 - `2026_03_23_000005` — corrects `reviews.room_id` FK delete policy to RESTRICT
+- `2026_04_03_084257` — creates `email_verification_codes` table (SHA-256 `code_hash`, `attempts`/`max_attempts`, `expires_at`, `consumed_at`, `last_sent_at`; FK → `users` CASCADE)
 
 ## Concurrency Control
 
@@ -150,13 +151,14 @@ Added across two migrations (`2025_11_20_000100` + `2025_11_21_150000`):
 |--------|------|---------|
 | `token_identifier` | UUID, unique | Cookie-based token lookup |
 | `token_hash` | string, indexed | Hash of identifier for fast lookup |
+| `remember_token_id` | UUID, nullable | "Remember me" flow link |
+| `type` | string, default `'short_lived'` | Token type (`short_lived` / `long_lived`) |
 | `device_id` | UUID, nullable, indexed | Per-device token binding |
+| `refresh_count` | integer, default 0 | Rotation tracking |
 | `device_fingerprint` | string, nullable | Anti-theft device binding |
 | `expires_at` | timestamp, nullable | Token expiration |
 | `revoked_at` | timestamp, nullable | Token revocation |
-| `refresh_count` | integer, default 0 | Rotation tracking |
 | `last_rotated_at` | timestamp, nullable | Last rotation timestamp |
-| `type` | string, nullable | Token type classification |
 
 ### Auth Enforcement
 - Middleware checks: expiry, revocation, refresh abuse
@@ -190,7 +192,7 @@ Application-level values remain inconsistent across the codebase (`available`, `
 - One review per booking: `reviews_booking_id_unique` constraint
 - `booking_id` is NOT NULL (migration `2026_02_10_000002`)
 - `room_id` is NOT NULL in schema and its FK is `ON DELETE RESTRICT` after the 2026-03-23 correction
-- `approved` column defaults to `false`
+- `approved` column: **DB default is `true`** (migration `2025_11_24_000000`); Eloquent `$attributes` sets `false`. Raw inserts (seeders, `DB::table`, queue jobs) bypass the model and silently auto-approve reviews. Divergence logged as **F-44** — pending migration fix.
 - FK `reviews.booking_id → bookings.id` added via migration (F-09 fix, PR-3 2026-02-21)
 
 ## Key Indexes

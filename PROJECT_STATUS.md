@@ -1,8 +1,8 @@
 # Soleil Hostel - Project Status
 
-**Last Updated:** April 4, 2026
+**Last Updated:** April 6, 2026
 **Current Branch:** `dev`
-**Latest Commit:** `de501e2` — chore(backend): fix Pint style violations in 3 files
+**Latest Commit:** `30ad47e` — chore(backend): fix binary_operator_spaces in RoomSeeder
 
 ## Current Status: Repo Health Green
 
@@ -21,7 +21,7 @@ Gates (verified April 4, 2026):
 - PHPStan Level 5 PASS: **0 errors** (10 errors from Apr 3 new files resolved Apr 4)
 - Psalm: Level 1, 0 blocking errors (4 errors from Apr 3 new files resolved Apr 4)
 
-Open Findings: F-23 (MD lint, low), F-25 (CSRF path, low), F-26–F-62 (2026-03-20 audit — 37 findings, no code changed)
+Open Findings: F-23 (MD lint, low), F-25 (CSRF path, low), F-26–F-62 (2026-03-20 audit — 36 open, F-48 resolved), **F-63–F-66** (2026-04-05 full-stack audit — 4 new: 1 High, 1 Medium, 2 Low)
 Blocked Items: M-11 (migration squash — needs human approval)
 
 Findings backlog: [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md)

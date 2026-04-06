@@ -16,6 +16,7 @@ Source of truth for migrations: `backend/database/migrations/*`.
 - `reviews`: Guest reviews tied to bookings; one review per booking rule.
 - `users`: Accounts and roles used by bookings/reviews/auth flows.
 - `personal_access_tokens`: Sanctum tokens plus hardened cookie-auth/security columns.
+- `email_verification_codes`: OTP email-verification codes (added 2026-04-03, migration `2026_04_03_084257`). Stores SHA-256 `code_hash` (never raw code), `attempts`/`max_attempts` (brute-force guard), `expires_at`, `consumed_at` (NULL = unused), `last_sent_at`. FK `user_id → users.id` CASCADE. Indexes: `idx_evc_user_id`, `idx_evc_expires_consumed`.
 
 Operational domain tables (added 2026-03-20, see `docs/DOMAIN_LAYERS.md`):
 - `stays`: Operational occupancy lifecycle per booking (`stay_status`). One per booking (UNIQUE `booking_id`).

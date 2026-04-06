@@ -15,16 +15,16 @@
 
 ## 1) Current Snapshot (keep under 12 lines)
 
-- Date updated: 2026-04-04
-- Current branch: `dev` (main=`9756bba`, dev=`de501e2`)
-- Latest commit: `de501e2` — chore(backend): fix Pint style violations in 3 files
+- Date updated: 2026-04-06
+- Current branch: `dev` (HEAD=`30ad47e`)
+- Latest commit: `30ad47e` — chore(backend): fix binary_operator_spaces in RoomSeeder
 - Backend test baseline: **re-verification required** — email verification tests heavily revised Apr 3; previous baseline 1047/2875 (2026-03-31)
-- Frontend: `pnpm run build` PASS (TS5103 fixed — `ignoreDeprecations: "6.0"` removed from tsconfig.app.json)
-- Pint: 357 files, **8 style issues** (email-verification cluster — line_ending CRLF + braces_position + unary_operator_spaces). NOT at 0. **PHPStan: Level 5, 0 errors.** Psalm: Level 1, 0 blocking.
-- Email OTP verification flow ✅ Done (Apr 3). Location room availability fix ✅ Done (Apr 3).
-- Open findings: F-23 (MD lint), F-25 (CSRF path), F-26–F-62 (2026-03-20 audit). See FINDINGS_BACKLOG.md.
+- Frontend: `pnpm run build` PASS (TS5103 fixed — `ignoreDeprecations: "6.0"` removed from tsconfig.app.json); Vitest upgraded to v4.1.2 (Apr 5)
+- Pint: **re-verify required** — additional Pint fix landed `30ad47e` (RoomSeeder); previous residual 8 violations (email-verification cluster). **PHPStan: Level 5, 0 errors.** Psalm: Level 1, 0 blocking.
+- Email OTP verification flow ✅ Done (Apr 3). Location room availability fix ✅ Done (Apr 3). Responsive homepage + live room pricing ✅ Done (Apr 5).
+- Open findings: F-23 (MD lint), F-25 (CSRF path), F-26–F-62 (2026-03-20 audit), **F-63–F-66** (2026-04-05 audit — 4 new). See FINDINGS_BACKLOG.md.
 - **H-06**: `phpunit.xml` defaults to PostgreSQL; run `docker compose up -d db` before `php artisan test`.
-- **Pint-residual**: 8 files in email-verification cluster need line_ending fix (CRLF authored on Windows).
+- **F-63 HIGH**: `TodayOperations.tsx` calls `PATCH /v1/rooms/{id}/status` — backend route does not exist (XL-CONTRACT-02). Runtime 404.
 
 ## 2) Invariants
 

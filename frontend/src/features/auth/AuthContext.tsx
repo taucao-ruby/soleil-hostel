@@ -40,7 +40,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
  *
  * Security Benefits:
  * - XSS attacks cannot steal token (httpOnly = no JavaScript access)
- * - CSRF protection via X-XSRF-TOKEN header validation
+ * - CSRF protection via SameSite=Strict cookie (X-XSRF-TOKEN sent as defense-in-depth; not validated server-side)
  * - Token refresh handled transparently
  * - Secure by default
  */

@@ -1,4 +1,4 @@
-# Findings Backlog — Soleil Hostel
+﻿# Findings Backlog — Soleil Hostel
 
 Code issues found during audits (2026-02-21, 2026-03-20). **DO NOT FIX** — document only.
 
@@ -88,3 +88,12 @@ Severity guide:
 | F-60 | `frontend/src/features/admin/bookings/adminBooking.api.ts:4-12` | `AdminBookingsResponse` is declared in this file (shape: `{ bookings, meta }`) and also in `admin.types.ts` (shape: `{ data: { bookings, meta } }`). Two conflicting types with the same name in the same feature. | Low | Remove the duplicate from `adminBooking.api.ts` and import from `admin.types.ts`, or rename one clearly. | Open |
 | F-61 | `frontend/src/features/admin/bookings/TodayOperations.tsx:49-50` | `lock_version: 1` is hardcoded with comment `/* ignoring lock check for brevity */`. This bypasses the optimistic locking contract. | Low | Remove the hardcoded value and properly read `lock_version` from the room/booking entity, or formally defer with a tracked backlog item. | Open |
 | F-62 | `frontend/src/features/locations/LocationDetail.tsx:312` | Room price displayed as `$${room.price}/night` (dollar sign, English "night"). All other price displays use `formatVND` and Vietnamese strings. | Medium | Replace with `{formatVND(room.price)}<span>/đêm</span>`. | Open |
+
+## 2026-04-05 Audit Findings — Full-Stack Scan (2c-A through 2c-F)
+
+| ID   | File:Line | Issue | Severity | Suggested Fix | Status |
+| ---- | --------- | ----- | -------- | ------------- | ------ |
+| F-63 | `frontend/src/features/admin/bookings/TodayOperations.tsx:49,66` | `api.patch("/v1/rooms/{roomId}/status", {...})` calls a backend route that does not exist. `backend/routes/api/v1.php` has no `PATCH /rooms/{id}/status` route. `adminRoom.api.ts:38-39` explicitly TODOs this as `[XL-CONTRACT-02]`. Any user reaching the check-in/check-out action in TodayOperations triggers a 404. | High | Implement `PATCH /api/v1/rooms/{id}/status` on the backend (controller + route + FormRequest) or remove the feature from TodayOperations.tsx until the backend is ready. Tag: XL-CONTRACT-02. | Open |
+| F-64 | `backend/app/Providers/AppServiceProvider.php` + `backend/app/Providers/AuthServiceProvider.php` | Both providers register `Booking::class => BookingPolicy::class` and `Room::class => RoomPolicy::class` via `$policies`. `AuthServiceProvider` is the canonical location (also holds Review policy and all Gate definitions). The duplicate in `AppServiceProvider` is a maintainability hazard: future divergence silently picks whichever provider boots last. | Medium | Remove the `$policies` array from `AppServiceProvider` entirely, leaving `AuthServiceProvider` as the single source of truth for policy registration. | Open |
+| F-65 | `backend/.env.example:67,85` | `MAIL_HOST` is declared twice: `smtp.mailtrap.io` (line 67) then `127.0.0.1` (line 85). Last value wins in .env parsing — effective host is `127.0.0.1`. Developers configuring mailtrap credentials will silently connect to localhost. | Low | Remove the duplicate mail block (lines 83-90). Consolidate into a single mail configuration section with clear dev vs. production comments. | Open |
+| F-66 | `frontend/src/features/auth/AuthContext.tsx:43` | JSDoc comment states "CSRF protection via X-XSRF-TOKEN header validation". `CheckHttpOnlyTokenValid.php` explicitly does NOT validate X-XSRF-TOKEN; the primary CSRF control is `SameSite=Strict` on the cookie. The comment overstates server-side enforcement. | Low | Correct to: "CSRF protection via SameSite=Strict cookie; X-XSRF-TOKEN header is sent as defense-in-depth but is not validated server-side." | Open |

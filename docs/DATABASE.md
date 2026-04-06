@@ -360,7 +360,7 @@ All compensation amounts are stored in **cents** (BIGINT) to match `bookings.amo
 | guest_name  | VARCHAR(255) | NOT NULL (purified)             |
 | guest_email | VARCHAR(255) | NULLABLE                        |
 | rating      | TINYINT      | NOT NULL, CHECK (1-5)           |
-| approved    | BOOLEAN      | DEFAULT FALSE                   |
+| approved    | BOOLEAN      | DEFAULT TRUE                    |
 | created_at  | TIMESTAMP    |                                 |
 | updated_at  | TIMESTAMP    |                                 |
 
@@ -381,6 +381,7 @@ All compensation amounts are stored in **cents** (BIGINT) to match `bookings.amo
 | device_fingerprint | VARCHAR(255) | NULLABLE               |
 | expires_at         | TIMESTAMP    | NULLABLE, INDEX        |
 | revoked_at         | TIMESTAMP    | NULLABLE, INDEX        |
+| remember_token_id  | UUID         | NULLABLE               |
 | refresh_count      | INTEGER      | DEFAULT 0              |
 | last_used_at       | TIMESTAMP    | NULLABLE               |
 | last_rotated_at    | TIMESTAMP    | NULLABLE               |

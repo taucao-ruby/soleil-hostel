@@ -27,6 +27,30 @@ Root contract for the Soleil Hostel instruction system. This file defines consti
 - Detailed frontend patterns and file-level rules have been relocated by reference: see `skills/react/typescript-patterns-skill.md`, `skills/react/api-client-skill.md`, `docs/frontend/SERVICES_LAYER.md`, `docs/frontend/RBAC.md`, and `docs/frontend/APP_LAYER.md`.
 - soleil-ai-review-engine and MCP execution workflows are boundary/tooling guidance, not constitutional text: see `docs/MCP.md` and `.claude/skills/soleil-ai-review-engine/`.
 
+## Output style policy
+
+All complex task output must use a structured output style from `.claude/output-styles/`. Unstructured prose for complex tasks is prohibited.
+
+**Style selection (in priority order):**
+
+| Task type | Output style |
+|-----------|-------------|
+| Bug / build / test / CI / runtime failure | `.claude/output-styles/rca.md` |
+| Auth / booking / payment / RBAC security review | `.claude/output-styles/security-review.md` |
+| Repo / domain / code / contract / pre-release audit | `.claude/output-styles/audit-report.md` |
+| Implementation task / bug fix / migration | `.claude/output-styles/execution-plan.md` |
+| Post-code-change documentation reconciliation | `.claude/output-styles/docs-sync.md` |
+| Architectural or semantic decision | `.claude/output-styles/decision-memo.md` |
+| Post-implementation results (what changed) | `.claude/output-styles/execution.md` |
+
+**Fallback**: when no exact match, default to `audit-report.md`.
+
+**Evidence separation**: every finding in structured output must be tagged `[CONFIRMED]`, `[INFERRED]`, `[UNPROVEN]`, or `[ACTION]`. Untagged claims in complex output are a defect.
+
+## Agent memory policy
+
+All agents must read `.claude/memory/global-invariants.md` and `.claude/memory/repo-truth.md` before acting. Each subagent must additionally read its role-specific file from `.claude/memory/subagents/`. See agent definitions in `.claude/agents/` for explicit bindings.
+
 ## Decision order
 
 1. `CLAUDE.md`
@@ -49,6 +73,7 @@ Root contract for the Soleil Hostel instruction system. This file defines consti
 - Control-plane governance: `docs/agents/CONTROL_PLANE_OWNERSHIP.md`, `docs/agents/TASK_BUNDLES.md`
 - Derived rules: `.agent/rules/booking-integrity.md`, `.agent/rules/auth-token-safety.md`, `.agent/rules/migration-safety.md`
 - Commands and gates: `docs/agents/COMMANDS.md`, `docs/COMMANDS_AND_GATES.md`, `.claude/commands/`, `.claude/output-styles/`
+- Agent memory: `.claude/memory/global-invariants.md`, `.claude/memory/repo-truth.md`, `.claude/memory/recurring-failures.md`, `.claude/memory/unresolved-risks.md`, `.claude/memory/subagents/`
 - Skills and workflows: `skills/README.md`, `skills/laravel/*.md`, `skills/react/*.md`, `.claude/skills/soleil-ai-review-engine/`, `.claude/skills/generated/`
 - Runtime enforcement: `docs/HOOKS.md`, `.claude/hooks/*.sh`, `.claude/settings*.json`
 - Boundary/tooling docs: `docs/MCP.md`

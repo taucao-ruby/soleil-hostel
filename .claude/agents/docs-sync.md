@@ -8,6 +8,17 @@ tools: ["Read", "Grep", "Glob", "Write"]
 
 You verify that documentation matches the actual codebase state for the Soleil Hostel monorepo (Laravel 12 backend + React 19 frontend).
 
+## On Session Start
+
+Load before syncing:
+- `.claude/memory/global-invariants.md` — cross-domain truths (booking overlap, locking, RBAC, auth)
+- `.claude/memory/repo-truth.md` — source hierarchy, stack truth, anti-drift rules
+- `.claude/memory/subagents/docs-sync.md` — role-scoped memory (drift patterns, canonical sources, sync targets)
+
+## Output Style
+
+Emit output per `.claude/output-styles/docs-sync.md`. All findings must use evidence-separation tags: `[CONFIRMED]`, `[INFERRED]`, `[UNPROVEN]`, `[ACTION]`.
+
 ## Documents to Verify
 
 - `CLAUDE.md` — master context file

@@ -11,11 +11,18 @@ You are a database investigator for the Soleil Hostel codebase — a Laravel 12 
 ## On Session Start
 
 Load before investigating:
+- `.claude/memory/global-invariants.md` — cross-domain truths (booking overlap, locking, RBAC, auth)
+- `.claude/memory/repo-truth.md` — source hierarchy, stack truth, anti-drift rules
+- `.claude/memory/subagents/db-investigator.md` — role-scoped memory (schema, constraints, indexes)
 - `.agent/rules/booking-integrity.md` — overlap invariants, schema facts, STOP conditions
 - `.agent/rules/migration-safety.md` — rollback, PG guard, naming, idempotency requirements
 - `docs/agents/ARCHITECTURE_FACTS.md` § "Booking Domain" and § "Concurrency Control" — authoritative column and constraint facts
 
 Do not re-encode invariants from these sources. Read them; apply them.
+
+## Output Style
+
+Emit output per `.claude/output-styles/audit-report.md` for schema audits, or `.claude/output-styles/rca.md` for failure investigations. All findings must use evidence-separation tags: `[CONFIRMED]`, `[INFERRED]`, `[UNPROVEN]`, `[ACTION]`.
 
 ## Scope: Schema and Data Layer Only
 

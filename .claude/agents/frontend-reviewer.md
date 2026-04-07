@@ -11,8 +11,15 @@ You are a frontend code reviewer for the Soleil Hostel React 19 + TypeScript fro
 ## On Session Start
 
 Load before reviewing:
+- `.claude/memory/global-invariants.md` — cross-domain truths (booking overlap, locking, RBAC, auth)
+- `.claude/memory/repo-truth.md` — source hierarchy, stack truth, anti-drift rules
+- `.claude/memory/subagents/frontend-reviewer.md` — role-scoped memory (API contracts, RBAC UX, TypeScript, test patterns)
 - `skills/react/typescript-patterns-skill.md` — TypeScript strict, state pattern, Vitest mock pattern, feature structure
 - `skills/react/testing-vitest-skill.md` — async testing patterns, assertion style
+
+## Output Style
+
+Emit output per `.claude/output-styles/audit-report.md`. All findings must use evidence-separation tags: `[CONFIRMED]`, `[INFERRED]`, `[UNPROVEN]`, `[ACTION]`.
 
 ## Owned Scope
 

@@ -82,11 +82,11 @@ const ArrowNEIcon = () => (
 
 // ── Data ────────────────────────────────────────────────────────────────────
 const BRANCHES = [
-  'Soleil Hostel',
-  'Soleil Boutique Homestay',
-  'Soleil Boutique Upstay',
-  'Soleil House Hải',
-  'Soleil House Huế',
+  { name: 'Soleil Hostel', address: 'Tháp B, 62 Tố Hữu' },
+  { name: 'Soleil House', address: '33 Lý Thường Kiệt' },
+  { name: 'Soleil Urban Villa', address: 'KDT BGI Topaz Downtown' },
+  { name: 'Soleil Boutique Homestay', address: '46 Lê Duẩn' },
+  { name: 'Soleil Riverside Villa', address: 'Quảng Phú, Quảng Điền' },
 ]
 
 const NAV_LINKS = [
@@ -150,19 +150,24 @@ const SiteFooter: React.FC = () => {
             Hệ thống cơ sở
           </p>
           <nav className="flex flex-col gap-1">
-            {BRANCHES.map((name, i) => (
+            {BRANCHES.map(({ name, address }, i) => (
               <Link
                 key={name}
                 to="/locations"
                 className="group flex items-center justify-between
                            py-3 border-b border-white/8 last:border-0
-                           text-white/55 hover:text-[#C9973A]
+                           hover:text-[#C9973A]
                            transition-colors duration-300"
               >
-                <span
-                  className={`text-[14px] lg:text-[16px] tracking-wide ${i === 0 ? 'text-[#C9973A]' : ''}`}
-                >
-                  {name}
+                <span className="flex flex-col gap-0.5">
+                  <span
+                    className={`text-[14px] lg:text-[15px] tracking-wide ${i === 0 ? 'text-[#C9973A]' : 'text-white/55 group-hover:text-[#C9973A]'}`}
+                  >
+                    {name}
+                  </span>
+                  <span className="text-[11px] text-white/30 group-hover:text-white/50 transition-colors">
+                    {address}
+                  </span>
                 </span>
                 <ArrowNEIcon />
               </Link>

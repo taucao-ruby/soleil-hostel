@@ -82,3 +82,7 @@ frontend/.eslintrc.json
 frontend/vite.config.js
 frontend/vite.config.d.ts
 .soleil-ai-review-engine/
+
+# Stitch screenshot outputs (local UI capture artifacts)
+stitch-output/
+stitch-preview/

@@ -89,19 +89,27 @@ const Footer: React.FC = () => {
           </div>
         </div>
 
-        {/* Col 2 — Khám phá */}
+        {/* Col 2 — Hệ thống cơ sở */}
         <div>
           <h4 className="text-[10px] text-[#C9973A]/60 uppercase tracking-[0.25em] font-medium mb-5">
-            Khám phá
+            Hệ thống cơ sở
           </h4>
           <ul className="space-y-3">
-            {NAV_LINKS.map(({ path, label }) => (
-              <li key={path}>
-                <Link
-                  to={path}
-                  className="text-[13px] text-white/55 hover:text-[#C9973A] transition-colors duration-300"
-                >
-                  {label}
+            {[
+              { name: 'Soleil Hostel', address: 'Tháp B, 62 Tố Hữu' },
+              { name: 'Soleil House', address: '33 Lý Thường Kiệt' },
+              { name: 'Soleil Urban Villa', address: 'KDT BGI Topaz Downtown' },
+              { name: 'Soleil Boutique Homestay', address: '46 Lê Duẩn' },
+              { name: 'Soleil Riverside Villa', address: 'Quảng Phú, Quảng Điền' },
+            ].map(({ name, address }) => (
+              <li key={name}>
+                <Link to="/locations" className="group flex flex-col gap-0.5">
+                  <span className="text-[13px] text-white/70 group-hover:text-[#C9973A] transition-colors duration-300 font-medium">
+                    {name}
+                  </span>
+                  <span className="text-[11px] text-white/35 group-hover:text-white/50 transition-colors duration-300">
+                    {address}
+                  </span>
                 </Link>
               </li>
             ))}
@@ -140,7 +148,7 @@ const Footer: React.FC = () => {
               <span aria-hidden="true" className="mt-0.5 shrink-0">
                 📍
               </span>
-              <span>12 Nguyễn Huệ, Phường Phú Hội, Huế</span>
+              <span>Huế, Việt Nam</span>
             </li>
           </ul>
         </div>

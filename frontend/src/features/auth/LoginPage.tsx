@@ -4,6 +4,16 @@ import { useAuth } from './AuthContext'
 
 const FALLBACK_AUTH_ERROR = 'Đăng nhập thất bại. Vui lòng thử lại.'
 
+// Atmospheric background for the dark left panel
+const PANEL_BG_URL =
+  'https://lh3.googleusercontent.com/aida-public/AB6AXuDrrZ-_kbUOiPIjqKGhwKUmHvexBu3MtwoxvXYtyfsenN141FowEmaDKmR6ddeqFZgfdQEzLQ_BTyJRThd95YQcBC5Qz-ZGAOPC8JSqpfVuOZUGp9AUqoN17xRMoyO-m7XpABSh29muTel0bub5gMzmZlq1Sqab2hdvkJDTSqM7xHyCY96lmsbaRFRC_uZdVCa8RxeLGt0FdDVSxV4KxY7IeM7QOeHgnDMjypCScDLcv-VgH4j-jYWeX2B6Qkm-i6Ka7EY3TvDfDDw'
+
+const TRUST_ITEMS = [
+  'Xác nhận đặt phòng tức thì',
+  'Lịch sử booking rõ ràng',
+  'Hủy phòng dễ dàng từ tài khoản',
+]
+
 const LoginPage: React.FC = () => {
   const navigate = useNavigate()
   const { loginHttpOnly, error: authError, clearError } = useAuth()
@@ -50,7 +60,6 @@ const LoginPage: React.FC = () => {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-
     clearError()
     setShowFallbackError(false)
     setRedirecting(false)
@@ -60,12 +69,9 @@ const LoginPage: React.FC = () => {
       redirectTimeoutRef.current = null
     }
 
-    if (!validate()) {
-      return
-    }
+    if (!validate()) return
 
     setLoading(true)
-
     try {
       await loginHttpOnly(formData.email.trim(), formData.password, formData.rememberMe)
       setRedirecting(true)
@@ -81,12 +87,10 @@ const LoginPage: React.FC = () => {
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = event.target
-
     setFormData(current => ({
       ...current,
       [name]: type === 'checkbox' ? checked : value,
     }))
-
     if (errors[name]) {
       setErrors(current => {
         const nextErrors = { ...current }
@@ -94,7 +98,6 @@ const LoginPage: React.FC = () => {
         return nextErrors
       })
     }
-
     if (authError || showFallbackError) {
       clearError()
       setShowFallbackError(false)
@@ -102,159 +105,264 @@ const LoginPage: React.FC = () => {
   }
 
   return (
-    <section className="px-4 bg-hueSurface py-14 sm:px-6 sm:py-16">
-      <div className="mx-auto flex min-h-[70vh] w-full max-w-sm flex-col justify-center">
-        <div className="rounded-lg border border-hueBorder bg-white p-6 shadow-[0_20px_45px_rgba(28,26,23,0.08)] sm:p-8">
-          <div className="mb-8">
-            <p className="text-sm font-medium uppercase tracking-[0.2em] text-brandAmber">
-              Soleil Hostel
-            </p>
-            <h1 className="mt-3 text-3xl font-medium text-hueBlack">Đăng nhập tài khoản</h1>
-            <p className="mt-3 text-sm leading-6 text-hueMuted">
-              Tiếp tục quản lý đặt phòng và theo dõi chuyến đi của bạn tại Soleil Hostel.
+    <section className="flex flex-col md:flex-row min-h-[calc(100vh-3.5rem)]">
+      {/* ── LEFT PANEL: dark editorial identity (desktop only) ─────────────── */}
+      <div className="hidden md:flex md:w-1/2 bg-[#1A1612] relative overflow-hidden flex-col justify-center px-16 xl:px-24">
+        {/* Atmospheric background */}
+        <div
+          className="absolute inset-0 opacity-20 pointer-events-none"
+          aria-hidden="true"
+          style={{
+            backgroundImage: `url('${PANEL_BG_URL}')`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        />
+
+        <div className="relative z-10 space-y-12">
+          {/* Brand logotype */}
+          <div>
+            <p className="flex items-baseline gap-2 leading-none">
+              <span className="font-serif italic text-[#C9920A] text-4xl tracking-tight">
+                Soleil
+              </span>
+              <span
+                className="text-white text-2xl font-light tracking-[0.25em] opacity-90"
+                style={{ fontVariant: 'small-caps' }}
+              >
+                HOSTEL
+              </span>
             </p>
           </div>
 
+          {/* Headline */}
+          <div className="space-y-4">
+            <h2 className="font-serif italic text-5xl leading-tight text-white">
+              Chào mừng trở lại
+            </h2>
+            <p className="text-white/70 text-lg max-w-md leading-relaxed">
+              Đặt phòng, theo dõi lịch ở, quản lý tài khoản chỉ trong vài click.
+            </p>
+          </div>
+
+          {/* Trust items */}
+          <ul className="space-y-6 pt-4">
+            {TRUST_ITEMS.map(item => (
+              <li
+                key={item}
+                className="flex items-center gap-4 text-white/60 text-sm tracking-wide"
+              >
+                <svg
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  className="w-5 h-5 shrink-0 text-[#C9920A]"
+                  aria-hidden="true"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Copyright */}
+        <p className="absolute bottom-12 left-16 xl:left-24 text-[10px] uppercase tracking-[0.3em] text-white/30 font-medium">
+          The Modern Archivist © 2024
+        </p>
+      </div>
+
+      {/* ── RIGHT PANEL: auth form ─────────────────────────────────────────── */}
+      <div className="flex-1 md:w-1/2 bg-[#F5EFE3] flex flex-col justify-center items-center px-6 py-12">
+        {/* Mobile-only logo */}
+        <div className="md:hidden mb-8 text-center">
+          <p className="font-serif italic text-[#C9920A] text-3xl leading-none">Soleil</p>
+          <span
+            className="text-[#1C1A17] text-[11px] font-bold tracking-[0.25em] mt-1 block"
+            style={{ fontVariant: 'small-caps' }}
+          >
+            HOSTEL
+          </span>
+        </div>
+
+        {/* Auth card */}
+        <div className="w-full max-w-md bg-white rounded-2xl p-8 md:p-10 shadow-[0_20px_40px_rgba(26,22,18,0.06)] border border-[#D4C4AE]/10">
+          {/* Back link */}
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1.5 text-[#7C5800] text-[11px] font-bold tracking-widest uppercase mb-8 hover:opacity-70 transition-opacity focus-visible:outline-none focus-visible:underline"
+          >
+            ← Quay về trang chủ
+          </Link>
+
+          <header className="mb-8">
+            <h1 className="font-serif italic text-3xl text-[#1C1A17] mb-2">Đăng nhập tài khoản</h1>
+            <p className="text-[#504534] text-sm">
+              Chưa có tài khoản?{' '}
+              <Link
+                to="/register"
+                className="text-[#7C5800] font-bold hover:underline decoration-2 underline-offset-4 focus-visible:outline-none"
+              >
+                Đăng ký ngay
+              </Link>
+            </p>
+          </header>
+
+          {/* Error alert */}
           {errorMessage && (
-            <div className="px-4 py-3 mb-6 border border-red-200 rounded-lg bg-red-50" role="alert">
+            <div role="alert" className="mb-6 px-4 py-3 rounded-lg border border-red-200 bg-red-50">
               <p className="text-sm font-medium text-red-800">{errorMessage}</p>
             </div>
           )}
 
-          <form className="space-y-5" noValidate onSubmit={handleSubmit}>
-            <div>
-              <label htmlFor="email" className="block mb-2 text-sm font-medium text-hueBlack">
+          <form className="space-y-6" noValidate onSubmit={handleSubmit}>
+            {/* Email */}
+            <div className="space-y-2">
+              <label
+                htmlFor="email"
+                className="block text-[11px] font-bold uppercase tracking-widest text-[#504534]/80"
+              >
                 Địa chỉ email
               </label>
               <input
-                autoComplete="email"
-                className={`w-full rounded-lg border bg-white px-4 py-3 text-sm text-hueBlack outline-none transition focus:border-brandAmber focus:ring-2 focus:ring-brandAmber/20 ${
-                  errors.email ? 'border-red-300' : 'border-hueBorder'
-                } ${isBusy ? 'cursor-not-allowed bg-stone-50 text-hueMuted' : ''}`}
-                disabled={isBusy}
                 id="email"
                 name="email"
-                onChange={handleChange}
-                placeholder="Nhập email của bạn"
                 type="email"
+                autoComplete="email"
+                placeholder="example@gmail.com"
                 value={formData.email}
-                aria-describedby={errors.email ? 'login-email-error' : undefined}
+                onChange={handleChange}
+                disabled={isBusy}
                 aria-invalid={errors.email ? 'true' : 'false'}
+                aria-describedby={errors.email ? 'login-email-error' : undefined}
+                className={`w-full px-4 py-3.5 bg-white border rounded-lg text-sm text-[#1C1A17] placeholder:text-[#D4C4AE] focus:outline-none focus:ring-1 focus:ring-[#7C5800] focus:border-[#7C5800] transition-all disabled:opacity-60 ${errors.email ? 'border-red-400' : 'border-[#D4C4AE]'}`}
               />
               {errors.email && (
-                <p id="login-email-error" className="mt-2 text-sm font-medium text-red-700">
+                <p
+                  id="login-email-error"
+                  className="text-[11px] font-medium text-red-700 flex items-center gap-1"
+                >
                   {errors.email}
                 </p>
               )}
             </div>
 
-            <div>
-              <label htmlFor="password" className="block mb-2 text-sm font-medium text-hueBlack">
-                Mật khẩu
-              </label>
+            {/* Password */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-end">
+                <label
+                  htmlFor="password"
+                  className="block text-[11px] font-bold uppercase tracking-widest text-[#504534]/80"
+                >
+                  Mật khẩu
+                </label>
+              </div>
               <div className="relative">
                 <input
-                  autoComplete="current-password"
-                  className={`w-full rounded-lg border bg-white px-4 py-3 pr-12 text-sm text-hueBlack outline-none transition focus:border-brandAmber focus:ring-2 focus:ring-brandAmber/20 ${
-                    errors.password ? 'border-red-300' : 'border-hueBorder'
-                  } ${isBusy ? 'cursor-not-allowed bg-stone-50 text-hueMuted' : ''}`}
-                  disabled={isBusy}
                   id="password"
                   name="password"
-                  onChange={handleChange}
-                  placeholder="Nhập mật khẩu"
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  placeholder="••••••••"
                   value={formData.password}
-                  aria-describedby={errors.password ? 'login-password-error' : undefined}
+                  onChange={handleChange}
+                  disabled={isBusy}
                   aria-invalid={errors.password ? 'true' : 'false'}
+                  aria-describedby={errors.password ? 'login-password-error' : undefined}
+                  className={`w-full px-4 pr-12 py-3.5 bg-white border rounded-lg text-sm text-[#1C1A17] placeholder:text-[#D4C4AE] focus:outline-none focus:ring-1 focus:ring-[#7C5800] focus:border-[#7C5800] transition-all disabled:opacity-60 ${errors.password ? 'border-red-400' : 'border-[#D4C4AE]'}`}
                 />
                 <button
-                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-                  className="absolute transition -translate-y-1/2 right-3 top-1/2 text-hueMuted hover:text-hueBlack focus:outline-none focus:ring-2 focus:ring-brandAmber/30"
-                  disabled={isBusy}
                   type="button"
-                  onClick={() => setShowPassword(current => !current)}
+                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                  disabled={isBusy}
+                  onClick={() => setShowPassword(c => !c)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#827562] hover:text-[#7C5800] transition-colors focus-visible:outline-none"
                 >
                   {showPassword ? (
                     <svg
-                      aria-hidden="true"
-                      className="w-5 h-5"
+                      viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
-                      viewBox="0 0 24 24"
+                      strokeWidth="1.8"
+                      className="w-5 h-5"
+                      aria-hidden="true"
                     >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18" />
                       <path
-                        d="M3 3l18 18"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        strokeWidth="1.8"
-                      />
-                      <path
                         d="M10.58 10.58a2 2 0 102.83 2.83"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="1.8"
                       />
                       <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                         d="M9.88 5.09A10.94 10.94 0 0112 4.91c4.85 0 8.93 3.04 10.5 7.09a11.82 11.82 0 01-4.04 5.27"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="1.8"
                       />
                       <path
-                        d="M6.61 6.61A11.86 11.86 0 001.5 12c1.57 4.05 5.65 7.09 10.5 7.09 1.77 0 3.44-.4 4.89-1.1"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        strokeWidth="1.8"
+                        d="M6.61 6.61A11.86 11.86 0 001.5 12c1.57 4.05 5.65 7.09 10.5 7.09 1.77 0 3.44-.4 4.89-1.1"
                       />
                     </svg>
                   ) : (
                     <svg
-                      aria-hidden="true"
-                      className="w-5 h-5"
+                      viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
-                      viewBox="0 0 24 24"
+                      strokeWidth="1.8"
+                      className="w-5 h-5"
+                      aria-hidden="true"
                     >
                       <path
-                        d="M1.5 12C3.07 7.95 7.15 4.91 12 4.91S20.93 7.95 22.5 12C20.93 16.05 16.85 19.09 12 19.09S3.07 16.05 1.5 12z"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        strokeWidth="1.8"
+                        d="M1.5 12C3.07 7.95 7.15 4.91 12 4.91S20.93 7.95 22.5 12C20.93 16.05 16.85 19.09 12 19.09S3.07 16.05 1.5 12z"
                       />
-                      <circle cx="12" cy="12" r="3.25" strokeWidth="1.8" />
+                      <circle cx="12" cy="12" r="3.25" />
                     </svg>
                   )}
                 </button>
               </div>
               {errors.password && (
-                <p id="login-password-error" className="mt-2 text-sm font-medium text-red-700">
+                <p id="login-password-error" className="text-[11px] font-medium text-red-700">
                   {errors.password}
                 </p>
               )}
             </div>
 
-            <label className="flex items-start gap-3 text-sm text-hueMuted" htmlFor="rememberMe">
+            {/* Remember me */}
+            <div className="flex items-center gap-3">
               <input
-                checked={formData.rememberMe}
-                className="mt-0.5 h-4 w-4 rounded border-hueBorder text-brandAmber focus:ring-brandAmber"
-                disabled={isBusy}
                 id="rememberMe"
                 name="rememberMe"
-                onChange={handleChange}
                 type="checkbox"
+                checked={formData.rememberMe}
+                onChange={handleChange}
+                disabled={isBusy}
+                className="w-4 h-4 rounded border-[#D4C4AE] text-[#7C5800] focus:ring-[#7C5800]/20"
               />
-              <span>Ghi nhớ đăng nhập trong 30 ngày</span>
-            </label>
+              <label
+                htmlFor="rememberMe"
+                className="text-xs text-[#504534] font-medium select-none cursor-pointer"
+              >
+                Ghi nhớ đăng nhập trong 30 ngày
+              </label>
+            </div>
 
+            {/* CTA */}
             <button
-              aria-busy={isBusy}
-              className="flex w-full items-center justify-center rounded-lg bg-brandAmber px-4 py-3 text-sm font-medium text-hueBlack transition hover:bg-[#b88933] focus:outline-none focus:ring-2 focus:ring-brandAmber/30 disabled:cursor-not-allowed disabled:bg-[#d6b173] disabled:text-hueBlack/75"
-              disabled={isBusy}
               type="submit"
+              disabled={isBusy}
+              aria-busy={isBusy}
+              className="w-full py-4 rounded-lg font-bold text-xs tracking-[0.2em] uppercase text-white shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+              style={{ background: 'linear-gradient(135deg, #C9920A 0%, #A87808 100%)' }}
             >
               {isBusy ? (
-                <span className="flex items-center gap-2">
+                <span className="flex items-center justify-center gap-2">
                   <svg
                     aria-hidden="true"
                     className="w-4 h-4 animate-spin"
@@ -285,23 +393,40 @@ const LoginPage: React.FC = () => {
             </button>
           </form>
 
-          <div className="mt-6 space-y-3 text-sm">
-            <p className="text-center text-hueMuted">
-              Chưa có tài khoản?{' '}
-              <Link
-                className="font-medium transition text-brandAmber hover:text-hueBlack"
-                to="/register"
-              >
-                Đăng ký ngay
-              </Link>
-            </p>
-            <p className="text-center">
-              <Link className="font-medium transition text-hueMuted hover:text-hueBlack" to="/">
-                ← Quay về trang chủ
-              </Link>
-            </p>
+          {/* Divider */}
+          <div className="relative my-8">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-[#D4C4AE]/30" />
+            </div>
+            <div className="relative flex justify-center">
+              <span className="px-4 bg-white text-[10px] font-bold uppercase tracking-[0.2em] text-[#827562]">
+                hoặc
+              </span>
+            </div>
           </div>
         </div>
+
+        {/* Footer links */}
+        <footer className="mt-10 flex gap-6">
+          <Link
+            to="/privacy"
+            className="text-[10px] font-bold uppercase tracking-widest text-[#504534]/50 hover:text-[#7C5800] transition-colors focus-visible:outline-none"
+          >
+            Chính sách bảo mật
+          </Link>
+          <Link
+            to="/terms"
+            className="text-[10px] font-bold uppercase tracking-widest text-[#504534]/50 hover:text-[#7C5800] transition-colors focus-visible:outline-none"
+          >
+            Điều khoản
+          </Link>
+          <Link
+            to="/support"
+            className="text-[10px] font-bold uppercase tracking-widest text-[#504534]/50 hover:text-[#7C5800] transition-colors focus-visible:outline-none"
+          >
+            Hỗ trợ
+          </Link>
+        </footer>
       </div>
     </section>
   )

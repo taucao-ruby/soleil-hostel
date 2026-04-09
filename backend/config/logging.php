@@ -165,6 +165,30 @@ return [
 
         /*
         |--------------------------------------------------------------------------
+        | AI Harness Logging Channel
+        |--------------------------------------------------------------------------
+        |
+        | Append-only trace log for all AI harness requests.
+        | Captures: request traces, policy decisions, tool executions, cost.
+        | 90-day retention for incident investigation and replay.
+        |
+        */
+
+        'ai' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/ai/harness.log'),
+            'level' => 'debug',
+            'days' => 90,
+            'formatter' => JsonFormatter::class,
+            'processors' => [
+                ContextProcessor::class,
+                SensitiveDataProcessor::class,
+                PsrLogMessageProcessor::class,
+            ],
+        ],
+
+        /*
+        |--------------------------------------------------------------------------
         | Sentry Channel (for error tracking)
         |--------------------------------------------------------------------------
         */

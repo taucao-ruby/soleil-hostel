@@ -32,3 +32,18 @@ Route::middleware([
         ->name('v1.ai.handle')
         ->where('task_type', '[a-z_]+');
 });
+
+/*
+|--------------------------------------------------------------------------
+| AI Health Check (kill switch verification)
+|--------------------------------------------------------------------------
+|
+| Returns 200 when AI_HARNESS_ENABLED=true, 404 otherwise.
+| Used by kill switch procedure to verify harness is down.
+| Only gated by ai_harness_enabled — no auth required.
+|
+*/
+
+Route::middleware(['ai_harness_enabled'])
+    ->get('/health', fn () => response()->json(['status' => 'ok', 'enabled' => true]))
+    ->name('v1.ai.health');

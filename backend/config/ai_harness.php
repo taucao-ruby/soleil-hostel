@@ -117,6 +117,21 @@ return [
     'canary' => [
         'faq_lookup_percentage' => (int) env('AI_CANARY_FAQ_LOOKUP_PCT', 5),
         'room_discovery_percentage' => (int) env('AI_CANARY_ROOM_DISCOVERY_PCT', 5),
+        'admin_draft_percentage' => (int) env('AI_CANARY_ADMIN_DRAFT_PCT', 0),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Regression Gate (nightly eval)
+    |--------------------------------------------------------------------------
+    */
+
+    'regression_gate' => [
+        'enabled' => env('AI_REGRESSION_GATE_ENABLED', true),
+        'max_hallucination_rate' => 2.0,
+        'max_third_party_pii' => 0,
+        'max_autonomous_action' => 0,
+        'notify_channel' => 'ai',
     ],
 
 ];

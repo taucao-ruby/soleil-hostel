@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\AiHarness\Services;
 
 use App\AiHarness\DTOs\HarnessRequest;
+use App\AiHarness\DTOs\ToolDraft;
 use App\AiHarness\Enums\ToolClassification;
 use App\AiHarness\Exceptions\BlockedToolException;
 use App\AiHarness\ToolRegistry;
@@ -72,17 +73,207 @@ class ToolOrchestrationService
 
     private function returnDraft(string $toolName, array $input, HarnessRequest $request): array
     {
+        $startMs = (int) (microtime(true) * 1000);
+
+        $draft = match ($toolName) {
+            'draft_admin_message' => $this->buildAdminMessageDraft($input, $request),
+            'draft_cancellation_summary' => $this->buildCancellationSummaryDraft($input, $request),
+            default => $this->buildGenericDraft($toolName, $input),
+        };
+
+        $durationMs = (int) (microtime(true) * 1000) - $startMs;
+
         return [
             'tool' => $toolName,
             'classification' => ToolClassification::APPROVAL_REQUIRED->value,
-            'result' => [
-                'draft' => true,
-                'tool' => $toolName,
-                'input' => $input,
-                'message' => 'This action requires human approval before execution.',
-            ],
+            'result' => $draft->toArray(),
             'executed' => false,
-            'duration_ms' => 0,
+            'duration_ms' => $durationMs,
+        ];
+    }
+
+    private function buildAdminMessageDraft(array $input, HarnessRequest $request): ToolDraft
+    {
+        $contextSources = [];
+        $policyRefs = [];
+        $keyFacts = [];
+
+        // Fetch contact message context if provided
+        $contactMessageId = (int) ($input['contact_message_id'] ?? 0);
+        if ($contactMessageId > 0) {
+            $contactMessage = \App\Models\ContactMessage::find($contactMessageId);
+            if ($contactMessage !== null) {
+                $contextSources[] = "contact_message:{$contactMessageId}";
+                $keyFacts['guest_name'] = $contactMessage->name;
+                $keyFacts['guest_email'] = $contactMessage->email;
+                $keyFacts['subject'] = $contactMessage->subject ?? '';
+                $keyFacts['original_message'] = $contactMessage->message;
+            }
+        }
+
+        // Fetch booking context if provided
+        $bookingId = (int) ($input['booking_id'] ?? 0);
+        if ($bookingId > 0) {
+            $booking = $this->fetchBookingForDraft($bookingId, $request);
+            if ($booking !== null) {
+                $contextSources[] = "booking:{$bookingId}";
+                $keyFacts['booking_status'] = $booking['status'];
+                $keyFacts['check_in'] = $booking['check_in'];
+                $keyFacts['check_out'] = $booking['check_out'];
+            }
+        }
+
+        // Fetch relevant policies
+        $policySlug = (string) ($input['policy_slug'] ?? '');
+        if ($policySlug !== '') {
+            $service = app(PolicyContentService::class);
+            $doc = $service->getBySlug($policySlug);
+            if ($doc !== null) {
+                $policyRefs[] = $doc->slug;
+                $contextSources[] = "policy:{$doc->slug}";
+            }
+        }
+
+        $draftText = $input['draft_text'] ?? '';
+        $suggestedTone = $input['tone'] ?? 'professional';
+
+        $now = now()->toIso8601String();
+        $draftHash = hash('sha256', $draftText . $now . $request->requestId);
+
+        Log::channel('ai')->info('Admin message draft generated', [
+            'request_id' => $request->requestId,
+            'user_id' => $request->userId,
+            'contact_message_id' => $contactMessageId,
+            'booking_id' => $bookingId,
+            'draft_hash' => $draftHash,
+        ]);
+
+        return new ToolDraft(
+            toolName: 'draft_admin_message',
+            draftText: $draftText,
+            suggestedTone: $suggestedTone,
+            contextUsed: $contextSources,
+            policyRefs: $policyRefs,
+            keyFacts: $keyFacts,
+            draftHash: $draftHash,
+            generatedAt: $now,
+        );
+    }
+
+    private function buildCancellationSummaryDraft(array $input, HarnessRequest $request): ToolDraft
+    {
+        $contextSources = [];
+        $policyRefs = [];
+        $keyFacts = [];
+
+        $bookingId = (int) ($input['booking_id'] ?? 0);
+        if ($bookingId <= 0) {
+            return new ToolDraft(
+                toolName: 'draft_cancellation_summary',
+                draftText: 'INSUFFICIENT_CONTEXT: Missing booking_id.',
+                suggestedTone: 'professional',
+                contextUsed: [],
+                policyRefs: [],
+                keyFacts: [],
+                draftHash: hash('sha256', 'no-booking' . now()->toIso8601String()),
+                generatedAt: now()->toIso8601String(),
+            );
+        }
+
+        $booking = $this->fetchBookingForDraft($bookingId, $request);
+        if ($booking !== null) {
+            $contextSources[] = "booking:{$bookingId}";
+            $keyFacts['booking_id'] = $bookingId;
+            $keyFacts['status'] = $booking['status'];
+            $keyFacts['check_in'] = $booking['check_in'];
+            $keyFacts['check_out'] = $booking['check_out'];
+            $keyFacts['guest_name'] = $booking['guest_name'] ?? '';
+        } else {
+            return new ToolDraft(
+                toolName: 'draft_cancellation_summary',
+                draftText: 'INSUFFICIENT_CONTEXT: Booking not found or access denied.',
+                suggestedTone: 'professional',
+                contextUsed: [],
+                policyRefs: [],
+                keyFacts: ['booking_id' => $bookingId],
+                draftHash: hash('sha256', "no-booking-{$bookingId}" . now()->toIso8601String()),
+                generatedAt: now()->toIso8601String(),
+            );
+        }
+
+        // Always reference cancellation policy
+        $service = app(PolicyContentService::class);
+        $cancelPolicy = $service->getBySlug('cancellation-policy');
+        if ($cancelPolicy !== null) {
+            $policyRefs[] = $cancelPolicy->slug;
+            $contextSources[] = "policy:{$cancelPolicy->slug}";
+        }
+
+        $draftText = $input['summary_text'] ?? '';
+        $now = now()->toIso8601String();
+        $draftHash = hash('sha256', $draftText . $now . $request->requestId);
+
+        Log::channel('ai')->info('Cancellation summary draft generated', [
+            'request_id' => $request->requestId,
+            'user_id' => $request->userId,
+            'booking_id' => $bookingId,
+            'draft_hash' => $draftHash,
+        ]);
+
+        return new ToolDraft(
+            toolName: 'draft_cancellation_summary',
+            draftText: $draftText,
+            suggestedTone: 'empathetic',
+            contextUsed: $contextSources,
+            policyRefs: $policyRefs,
+            keyFacts: $keyFacts,
+            draftHash: $draftHash,
+            generatedAt: $now,
+        );
+    }
+
+    private function buildGenericDraft(string $toolName, array $input): ToolDraft
+    {
+        $now = now()->toIso8601String();
+
+        return new ToolDraft(
+            toolName: $toolName,
+            draftText: $input['draft_text'] ?? '',
+            suggestedTone: 'professional',
+            contextUsed: [],
+            policyRefs: [],
+            keyFacts: [],
+            draftHash: hash('sha256', ($input['draft_text'] ?? '') . $now),
+            generatedAt: $now,
+        );
+    }
+
+    /**
+     * Fetch booking data for draft generation. Enforces RBAC.
+     *
+     * @return array{booking_id: int, status: string, check_in: string, check_out: string, guest_name?: string}|null
+     */
+    private function fetchBookingForDraft(int $bookingId, HarnessRequest $request): ?array
+    {
+        $service = app(\App\Services\BookingService::class);
+        $booking = $service->getBookingById($bookingId);
+
+        if ($booking === null) {
+            return null;
+        }
+
+        // Moderator+ can access any booking; regular users only their own
+        if (! in_array($request->userRole, ['admin', 'moderator'], true)
+            && $booking->user_id !== $request->userId) {
+            return null;
+        }
+
+        return [
+            'booking_id' => $booking->id,
+            'status' => $booking->status,
+            'check_in' => (string) $booking->check_in,
+            'check_out' => (string) $booking->check_out,
+            'guest_name' => $booking->user?->name ?? '',
         ];
     }
 

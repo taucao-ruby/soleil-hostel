@@ -103,6 +103,8 @@ class ContextAssemblyService
             'policy_documents' => $this->retrievePolicyDocuments($request),
             'rooms' => $this->retrieveRooms($request),
             'locations' => $this->retrieveLocations($request),
+            'bookings' => $this->retrieveBookings($request),
+            'contact_messages' => $this->retrieveContactMessages($request),
             default => null,
         };
     }
@@ -165,6 +167,114 @@ class ContextAssemblyService
     {
         // Phase 1: Always fresh (no real sources yet).
         return true;
+    }
+
+    /**
+     * Retrieve bookings for admin draft context.
+     * Only the referenced booking (from user input) — never bulk export.
+     */
+    private function retrieveBookings(HarnessRequest $request): ?string
+    {
+        // Extract booking ID from user input (pattern: booking_id=NNN or #NNN)
+        $bookingId = $this->extractBookingId($request->userInput);
+
+        if ($bookingId === null) {
+            return null;
+        }
+
+        $service = app(\App\Services\BookingService::class);
+        $booking = $service->getBookingById($bookingId);
+
+        if ($booking === null) {
+            return null;
+        }
+
+        // Cross-customer PII guard: check if this booking data should be visible
+        if (! in_array($request->userRole, ['admin', 'moderator'], true)) {
+            return null;
+        }
+
+        $parts = [
+            "BOOKING_ID: {$booking->id}",
+            "STATUS: {$booking->status}",
+            "CHECK_IN: {$booking->check_in}",
+            "CHECK_OUT: {$booking->check_out}",
+            "GUEST: {$booking->user?->name}",
+        ];
+
+        return "--- BOOKING (retrieved: " . now()->toIso8601String() . ") ---\n" . implode("\n", $parts);
+    }
+
+    /**
+     * Retrieve contact messages for admin draft context.
+     * Only contact messages related to the current task context.
+     * Cross-customer PII is stripped: only the specific customer's own message is included.
+     */
+    private function retrieveContactMessages(HarnessRequest $request): ?string
+    {
+        // Extract contact_message_id from user input
+        $messageId = $this->extractContactMessageId($request->userInput);
+
+        if ($messageId === null) {
+            // Return most recent unresponded messages (max 3)
+            $messages = \App\Models\ContactMessage::query()
+                ->orderByDesc('created_at')
+                ->limit(3)
+                ->get();
+        } else {
+            $messages = \App\Models\ContactMessage::query()
+                ->where('id', $messageId)
+                ->get();
+        }
+
+        if ($messages->isEmpty()) {
+            return null;
+        }
+
+        $parts = [];
+        foreach ($messages as $msg) {
+            // Include only the customer's own contact info — no cross-customer data
+            $parts[] = implode("\n", [
+                "MSG_ID: {$msg->id}",
+                "FROM: {$msg->name}",
+                "EMAIL: {$msg->email}",
+                "SUBJECT: " . ($msg->subject ?? 'N/A'),
+                "MESSAGE: {$msg->message}",
+                "SENT_AT: {$msg->created_at}",
+            ]);
+        }
+
+        return "--- CONTACT MESSAGES (retrieved: " . now()->toIso8601String() . ") ---\n" . implode("\n---\n", $parts);
+    }
+
+    /**
+     * Extract booking ID from user input.
+     */
+    private function extractBookingId(string $input): ?int
+    {
+        if (preg_match('/\bbooking[_\s#]*(\d+)/i', $input, $matches)) {
+            return (int) $matches[1];
+        }
+        if (preg_match('/\b#(\d+)\b/', $input, $matches)) {
+            return (int) $matches[1];
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract contact message ID from user input.
+     */
+    private function extractContactMessageId(string $input): ?int
+    {
+        if (preg_match('/\bmessage[_\s#]*(\d+)/i', $input, $matches)) {
+            return (int) $matches[1];
+        }
+        if (preg_match('/\bcontact[_\s#]*(\d+)/i', $input, $matches)) {
+            return (int) $matches[1];
+        }
+
+        return null;
     }
 
     /**

@@ -30,6 +30,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
             'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,
             'deprecated' => \App\Http\Middleware\DeprecatedEndpoint::class,
+            'ai_harness_enabled' => \App\AiHarness\Middleware\AiHarnessEnabled::class,
+            'ai_request_normalizer' => \App\AiHarness\Middleware\AiRequestNormalizer::class,
+            'ai_canary_router' => \App\AiHarness\Middleware\AiCanaryRouter::class,
         ]);
 
         // ========== Register global middleware ==========

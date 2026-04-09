@@ -53,6 +53,12 @@ class AppServiceProvider extends ServiceProvider
             ContactMessageRepositoryInterface::class,
             EloquentContactMessageRepository::class
         );
+
+        // Bind AI Harness model provider interface to Anthropic implementation
+        $this->app->bind(
+            \App\AiHarness\Providers\ModelProviderInterface::class,
+            \App\AiHarness\Providers\AnthropicProvider::class
+        );
     }
 
     /**

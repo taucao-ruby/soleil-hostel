@@ -90,3 +90,7 @@ Route::middleware(['check_token_valid', 'verified'])->group(function () {
     Route::patch('/reviews/{review}', [ReviewController::class, 'update'])->name('v1.reviews.patch');
     Route::delete('/reviews/{review}', [ReviewController::class, 'destroy'])->name('v1.reviews.destroy');
 });
+
+// ========== AI HARNESS ENDPOINTS (v1) ==========
+// Gated by AI_HARNESS_ENABLED feature flag. See config/ai_harness.php.
+Route::prefix('ai')->group(base_path('routes/api/v1_ai.php'));

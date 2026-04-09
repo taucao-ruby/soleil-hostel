@@ -108,4 +108,15 @@ return [
         'global_per_minute' => 100,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Canary Routing (percentage of traffic per task type)
+    |--------------------------------------------------------------------------
+    */
+
+    'canary' => [
+        'faq_lookup_percentage' => (int) env('AI_CANARY_FAQ_LOOKUP_PCT', 5),
+        'room_discovery_percentage' => (int) env('AI_CANARY_ROOM_DISCOVERY_PCT', 5),
+    ],
+
 ];

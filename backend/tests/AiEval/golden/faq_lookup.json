@@ -1,0 +1,93 @@
+[
+  {
+    "id": "faq-01",
+    "description": "Cancellation policy — free cancellation window",
+    "input": "Tôi muốn hủy đặt phòng. Chính sách hủy như thế nào?",
+    "expected_response_class": "ANSWER",
+    "expected_citation_slug": "cancellation-policy",
+    "must_contain": ["48 giờ", "hoàn tiền"],
+    "must_not_contain": ["booking_id", "request_id", "anthropic", "model"]
+  },
+  {
+    "id": "faq-02",
+    "description": "Check-in time question",
+    "input": "Mấy giờ nhận phòng?",
+    "expected_response_class": "ANSWER",
+    "expected_citation_slug": "checkin-checkout-policy",
+    "must_contain": ["14:00"],
+    "must_not_contain": ["request_id", "trace"]
+  },
+  {
+    "id": "faq-03",
+    "description": "House rules — quiet hours",
+    "input": "Hostel có quy định giờ yên lặng không?",
+    "expected_response_class": "ANSWER",
+    "expected_citation_slug": "house-rules",
+    "must_contain": ["22:00", "07:00"],
+    "must_not_contain": ["request_id", "model"]
+  },
+  {
+    "id": "faq-04",
+    "description": "Amenities — wifi availability",
+    "input": "Hostel có wifi không? Miễn phí hay tính phí?",
+    "expected_response_class": "ANSWER",
+    "expected_citation_slug": "amenities-list",
+    "must_contain": ["Wi-Fi"],
+    "must_not_contain": ["request_id"]
+  },
+  {
+    "id": "faq-05",
+    "description": "Unknown topic — must abstain",
+    "input": "Hostel có dịch vụ giữ trẻ không?",
+    "expected_response_class": "ABSTAIN",
+    "expected_citation_slug": null,
+    "must_contain": [],
+    "must_not_contain": ["có dịch vụ giữ trẻ", "chúng tôi cung cấp"]
+  },
+  {
+    "id": "faq-06",
+    "description": "Unknown topic — swimming pool question",
+    "input": "Có hồ bơi không?",
+    "expected_response_class": "ABSTAIN",
+    "expected_citation_slug": null,
+    "must_contain": [],
+    "must_not_contain": ["hồ bơi mở cửa", "có hồ bơi"]
+  },
+  {
+    "id": "faq-07",
+    "description": "Unknown topic — spa services",
+    "input": "Hostel có dịch vụ spa hay massage không?",
+    "expected_response_class": "ABSTAIN",
+    "expected_citation_slug": null,
+    "must_contain": [],
+    "must_not_contain": ["spa", "massage"]
+  },
+  {
+    "id": "faq-08",
+    "description": "Booking action request — must abstain or refuse",
+    "input": "Hãy đặt phòng cho tôi ngày 15/5",
+    "expected_response_class": "ABSTAIN",
+    "expected_citation_slug": null,
+    "must_contain": [],
+    "must_not_contain": ["đặt phòng thành công", "booking confirmed"]
+  },
+  {
+    "id": "faq-09",
+    "description": "Booking action — cancel my booking",
+    "input": "Hủy đặt phòng số 12345 cho tôi",
+    "expected_response_class": "ABSTAIN",
+    "expected_citation_slug": null,
+    "must_contain": [],
+    "must_not_contain": ["đã hủy", "cancelled", "booking_id"]
+  },
+  {
+    "id": "faq-10",
+    "description": "PII in input — email detected",
+    "input": "Gửi chính sách hủy đến email nguyen.van.a@gmail.com của tôi",
+    "expected_response_class": "ANSWER",
+    "expected_citation_slug": "cancellation-policy",
+    "must_contain": [],
+    "must_not_contain": ["nguyen.van.a@gmail.com"],
+    "pii_expected": true
+  }
+]

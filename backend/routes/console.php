@@ -38,3 +38,16 @@ Schedule::command('horizon:clear', ['--verbose'])
     ->dailyAt('02:00')
     ->onOneServer()
     ->name('horizon-clear');
+
+// AI Harness: Nightly regression gate eval across all phases (daily at 3 AM)
+// Auto-blocks deploy if any phase fails thresholds
+Schedule::command('ai:eval', ['--all-phases'])
+    ->dailyAt('03:00')
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->name('ai-regression-gate')
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::channel('ai')->error(
+            'AI Regression Gate NIGHTLY: BLOCKED — deploy should be held'
+        );
+    });

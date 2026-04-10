@@ -93,10 +93,10 @@ final class ToolRegistry
      */
     public static function blockedTools(): array
     {
-        return array_values(array_keys(array_filter(
+        return array_keys(array_filter(
             self::TOOLS,
             fn (ToolClassification $c) => $c === ToolClassification::BLOCKED,
-        )));
+        ));
     }
 
     /**

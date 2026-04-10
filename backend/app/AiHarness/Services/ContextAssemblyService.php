@@ -84,7 +84,8 @@ class ContextAssemblyService
             $totalTokens += $estimatedTokens;
         }
 
-        $provenanceHash = hash('sha256', json_encode(array_column($sources, 'source_id')));
+        $encodedSources = json_encode(array_column($sources, 'source_id'));
+        $provenanceHash = hash('sha256', $encodedSources !== false ? $encodedSources : '');
 
         return new GroundedContext(
             sources: $sources,

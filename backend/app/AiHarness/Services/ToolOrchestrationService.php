@@ -21,6 +21,21 @@ use Illuminate\Support\Facades\Log;
  *
  * NEVER bypasses existing policies or service layer.
  * NEVER calls raw Eloquent.
+ *
+ * @psalm-type ToolExecutionResult = array{
+ *   tool: non-empty-string,
+ *   classification: non-empty-string,
+ *   duration_ms: int,
+ *   executed: bool,
+ *   result: mixed
+ * }
+ * @psalm-type DraftBooking = array{
+ *   booking_id: int,
+ *   status: string,
+ *   check_in: string,
+ *   check_out: string,
+ *   guest_name?: non-empty-string
+ * }
  */
 class ToolOrchestrationService
 {
@@ -28,13 +43,13 @@ class ToolOrchestrationService
      * Execute a tool proposal after policy has authorized it.
      *
      * @param  array{tool: string, input: array}  $proposal
-     * @return array{tool: string, classification: string, result: mixed, executed: bool, duration_ms: int}
+     * @return ToolExecutionResult
      *
      * @throws BlockedToolException
      */
     public function execute(array $proposal, HarnessRequest $request): array
     {
-        $toolName = $proposal['tool'] ?? 'unknown';
+        $toolName = $proposal['tool'] ?: 'unknown';
         $input = $proposal['input'] ?? [];
         $classification = ToolRegistry::classify($toolName);
 
@@ -45,6 +60,9 @@ class ToolOrchestrationService
         };
     }
 
+    /**
+     * @return ToolExecutionResult
+     */
     private function executeReadOnly(string $toolName, array $input, HarnessRequest $request): array
     {
         $startMs = (int) (microtime(true) * 1000);
@@ -61,16 +79,20 @@ class ToolOrchestrationService
         };
 
         $durationMs = (int) (microtime(true) * 1000) - $startMs;
+        $classification = ToolClassification::READ_ONLY->value;
 
         return [
-            'tool' => $toolName,
-            'classification' => ToolClassification::READ_ONLY->value,
+            'tool' => $toolName ?: 'unknown',
+            'classification' => $classification,
             'result' => $result,
             'executed' => true,
             'duration_ms' => $durationMs,
         ];
     }
 
+    /**
+     * @return ToolExecutionResult
+     */
     private function returnDraft(string $toolName, array $input, HarnessRequest $request): array
     {
         $startMs = (int) (microtime(true) * 1000);
@@ -82,10 +104,11 @@ class ToolOrchestrationService
         };
 
         $durationMs = (int) (microtime(true) * 1000) - $startMs;
+        $classification = ToolClassification::APPROVAL_REQUIRED->value;
 
         return [
-            'tool' => $toolName,
-            'classification' => ToolClassification::APPROVAL_REQUIRED->value,
+            'tool' => $toolName ?: 'unknown',
+            'classification' => $classification,
             'result' => $draft->toArray(),
             'executed' => false,
             'duration_ms' => $durationMs,
@@ -251,7 +274,7 @@ class ToolOrchestrationService
     /**
      * Fetch booking data for draft generation. Enforces RBAC.
      *
-     * @return array{booking_id: int, status: string, check_in: string, check_out: string, guest_name?: string}|null
+     * @return DraftBooking|null
      */
     private function fetchBookingForDraft(int $bookingId, HarnessRequest $request): ?array
     {
@@ -268,13 +291,31 @@ class ToolOrchestrationService
             return null;
         }
 
-        return [
-            'booking_id' => $booking->id,
-            'status' => $booking->status,
-            'check_in' => (string) $booking->check_in,
-            'check_out' => (string) $booking->check_out,
-            'guest_name' => $booking->user?->name ?? '',
+        $rawId = $booking->id;
+        $bookingIdInt = is_numeric($rawId) ? (int) $rawId : 0;
+        if ($bookingIdInt <= 0) {
+            return null;
+        }
+
+        $status = (string) $booking->status;
+        $checkIn = (string) $booking->check_in;
+        $checkOut = (string) $booking->check_out;
+
+        $rawName = $booking->user?->name;
+        $guestName = is_string($rawName) && $rawName !== '' ? $rawName : null;
+
+        $data = [
+            'booking_id' => $bookingIdInt,
+            'status' => $status,
+            'check_in' => $checkIn,
+            'check_out' => $checkOut,
         ];
+
+        if ($guestName !== null) {
+            $data['guest_name'] = $guestName;
+        }
+
+        return $data;
     }
 
     /**

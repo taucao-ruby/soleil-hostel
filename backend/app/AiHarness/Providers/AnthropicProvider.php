@@ -17,6 +17,11 @@ use Illuminate\Support\Facades\Log;
  *
  * Uses Laravel's HTTP client — no external SDK dependency.
  * Includes circuit breaker (cache-based) and retry with exponential backoff.
+ *
+ * @psalm-type ToolProposal = array{
+ *   tool: non-empty-string,
+ *   input: array<array-key, mixed>
+ * }
  */
 class AnthropicProvider implements ModelProviderInterface
 {
@@ -44,9 +49,14 @@ class AnthropicProvider implements ModelProviderInterface
 
         $lastException = null;
 
+        if (! is_array($backoffMs) || empty($backoffMs)) {
+            $backoffMs = [500, 2000];
+        }
+
         for ($attempt = 0; $attempt <= $maxAttempts; $attempt++) {
             if ($attempt > 0) {
-                $delayMs = $backoffMs[min($attempt - 1, count($backoffMs) - 1)] ?? 1000;
+                $index = max(0, min($attempt - 1, count($backoffMs) - 1));
+                $delayMs = (int) ($backoffMs[$index] ?? 1000);
                 // Add jitter: ±25%
                 $jitter = (int) ($delayMs * 0.25);
                 $delayMs += random_int(-$jitter, $jitter);
@@ -202,18 +212,31 @@ class AnthropicProvider implements ModelProviderInterface
     }
 
     /**
-     * @return list<array{tool: string, input: array}>
+     * @return list<ToolProposal>
      */
     private function extractToolProposals(array $body): array
     {
         $proposals = [];
-        foreach (($body['content'] ?? []) as $block) {
-            if (($block['type'] ?? '') === 'tool_use') {
-                $proposals[] = [
-                    'tool' => $block['name'] ?? 'unknown',
-                    'input' => $block['input'] ?? [],
-                ];
+        $blocks = $body['content'] ?? [];
+        if (! is_array($blocks)) {
+            return [];
+        }
+
+        foreach ($blocks as $block) {
+            if (! is_array($block)) {
+                continue;
             }
+            if (($block['type'] ?? '') !== 'tool_use') {
+                continue;
+            }
+            $rawName = $block['name'] ?? null;
+            $tool = is_string($rawName) && $rawName !== '' ? $rawName : 'unknown';
+            $rawInput = $block['input'] ?? [];
+            $input = is_array($rawInput) ? $rawInput : [];
+            $proposals[] = [
+                'tool' => $tool,
+                'input' => $input,
+            ];
         }
 
         return $proposals;

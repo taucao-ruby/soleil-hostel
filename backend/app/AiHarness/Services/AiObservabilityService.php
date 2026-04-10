@@ -18,6 +18,16 @@ use Illuminate\Support\Facades\Log;
  *
  * NEVER logs: raw user PII (beyond masked form), full prompt text.
  * ALWAYS logs: all 17 RequestTrace fields.
+ *
+ * @psalm-type ToolClassificationEntry = array{
+ *   tool: non-empty-string,
+ *   classification: 'approval_required'|'blocked'|'read_only'
+ * }
+ * @psalm-type ToolExecutionEntry = array{
+ *   tool: non-empty-string,
+ *   result: string,
+ *   duration_ms: int
+ * }
  */
 class AiObservabilityService
 {
@@ -50,11 +60,8 @@ class AiObservabilityService
                 'freshness_ok' => $s['freshness_ok'],
                 'token_count' => $this->estimateTokens($s['content'] ?? ''),
             ], $context->sources),
-            toolProposals: array_map(fn (array $p) => [
-                'tool' => $p['tool'] ?? 'unknown',
-                'classification' => \App\AiHarness\ToolRegistry::classify($p['tool'] ?? 'unknown')->value,
-            ], $modelResponse?->toolProposals ?? []),
-            toolExecutions: $toolExecutions,
+            toolProposals: $this->normalizeToolClassifications($modelResponse?->toolProposals ?? []),
+            toolExecutions: $this->normalizeToolExecutions($toolExecutions),
             policyDecisions: $this->collectPolicyDecisions($preCallDecision, $postCallDecision),
             latencyBreakdown: $latencyBreakdown,
             promptTokens: $modelResponse?->promptTokens ?? 0,
@@ -76,6 +83,55 @@ class AiObservabilityService
     private function writeTrace(RequestTrace $trace): void
     {
         Log::channel('ai')->info('AI harness request trace', $trace->toLogContext());
+    }
+
+    /**
+     * @param  array<array-key, mixed>  $proposals
+     * @return list<array{tool: non-empty-string, classification: 'approval_required'|'blocked'|'read_only'}>
+     */
+    private function normalizeToolClassifications(array $proposals): array
+    {
+        $result = [];
+        foreach ($proposals as $p) {
+            if (! is_array($p)) {
+                continue;
+            }
+            $rawTool = $p['tool'] ?? null;
+            $tool = is_string($rawTool) && $rawTool !== '' ? $rawTool : 'unknown';
+            $result[] = [
+                'tool' => $tool,
+                'classification' => \App\AiHarness\ToolRegistry::classify($tool)->value,
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param  array<array-key, mixed>  $executions
+     * @return list<array{tool: non-empty-string, result: string, duration_ms: int}>
+     */
+    private function normalizeToolExecutions(array $executions): array
+    {
+        $result = [];
+        foreach ($executions as $e) {
+            if (! is_array($e)) {
+                continue;
+            }
+            $rawTool = $e['tool'] ?? null;
+            $tool = is_string($rawTool) && $rawTool !== '' ? $rawTool : 'unknown';
+            $rawDuration = $e['duration_ms'] ?? 0;
+            $durationMs = is_int($rawDuration) ? $rawDuration : 0;
+            $rawResult = $e['result'] ?? null;
+            $resultStr = is_string($rawResult) ? $rawResult : (string) json_encode($rawResult);
+            $result[] = [
+                'tool' => $tool,
+                'result' => $resultStr,
+                'duration_ms' => $durationMs,
+            ];
+        }
+
+        return $result;
     }
 
     /**

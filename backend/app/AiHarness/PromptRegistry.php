@@ -15,13 +15,21 @@ use App\AiHarness\Enums\TaskType;
  *
  * Prompt text is NOT a safety control — policy layer enforces safety.
  * Prompts instruct behavior only.
+ *
+ * @psalm-type PromptTemplate = array{
+ *   version: non-empty-string,
+ *   system_instruction: non-empty-string,
+ *   context_injection_placeholder: non-empty-string,
+ *   abstain_instruction: non-empty-string,
+ *   citation_requirement: non-empty-string
+ * }
  */
 final class PromptRegistry
 {
     /**
      * Prompt templates indexed by TaskType value.
      *
-     * @var array<string, array{version: string, system_instruction: string, context_injection_placeholder: string, abstain_instruction: string, citation_requirement: string}>
+     * @psalm-var array<string, PromptTemplate>
      */
     private const TEMPLATES = [
         'faq_lookup' => [
@@ -98,7 +106,7 @@ SYS,
     /**
      * Get the full template for a task type.
      *
-     * @return array{version: string, system_instruction: string, context_injection_placeholder: string, abstain_instruction: string, citation_requirement: string}
+     * @return PromptTemplate
      */
     public static function getTemplate(TaskType $type): array
     {
@@ -126,10 +134,14 @@ SYS,
             'citation_requirement',
         ];
 
-        $template = self::TEMPLATES[$type->value] ?? [];
+        $template = self::TEMPLATES[$type->value] ?? null;
+
+        if ($template === null) {
+            return false;
+        }
 
         foreach ($required as $field) {
-            if (! isset($template[$field]) || $template[$field] === '') {
+            if (! isset($template[$field])) {
                 return false;
             }
         }
@@ -137,6 +149,6 @@ SYS,
         // Validate version format: {task_type}-v{major}.{minor}.{patch}
         $versionPattern = '/^'.preg_quote($type->value, '/').'-v\d+\.\d+\.\d+$/';
 
-        return (bool) preg_match($versionPattern, $template['version']);
+        return (bool) preg_match($versionPattern, $template['version'] ?? '');
     }
 }

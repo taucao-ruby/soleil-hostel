@@ -130,6 +130,7 @@ class ContextAssemblyService
     private function retrieveRooms(HarnessRequest $request): ?string
     {
         $service = app(\App\Services\RoomAvailabilityService::class);
+        /** @var \Illuminate\Database\Eloquent\Collection<int, \App\Models\Room> $rooms */
         $rooms = $service->getAllRoomsWithAvailability();
 
         if ($rooms->isEmpty()) {
@@ -195,12 +196,14 @@ class ContextAssemblyService
             return null;
         }
 
+        /** @var \App\Models\User|null $bookingUser */
+        $bookingUser = $booking->user;
         $parts = [
             "BOOKING_ID: {$booking->id}",
-            "STATUS: {$booking->status}",
+            "STATUS: {$booking->status->value}",
             "CHECK_IN: {$booking->check_in}",
             "CHECK_OUT: {$booking->check_out}",
-            "GUEST: {$booking->user?->name}",
+            "GUEST: {$bookingUser?->name}",
         ];
 
         return '--- BOOKING (retrieved: '.now()->toIso8601String().") ---\n".implode("\n", $parts);

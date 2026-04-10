@@ -378,7 +378,7 @@ class AiEvalCommand extends Command
             'pass' => empty($failures),
             'failures' => $failures,
             'expected_class' => $expectedClass,
-            'actual_class' => $actualClass !== '' ? $actualClass : 'UNKNOWN',
+            'actual_class' => $actualClass,
             'citation_present' => $citationPresent,
             'pii_expected' => $piiExpected,
             'pii_detected' => $piiDetected,
@@ -538,8 +538,7 @@ class AiEvalCommand extends Command
         $slices = [];
 
         foreach ($results as $result) {
-            $rawCat = $result['category'] ?? null;
-            $category = is_string($rawCat) && $rawCat !== '' ? $rawCat : 'general';
+            $category = $result['category'];
             $slices[$category] ??= ['total' => 0, 'failed' => 0];
             $slices[$category]['total']++;
             if (! $result['pass']) {

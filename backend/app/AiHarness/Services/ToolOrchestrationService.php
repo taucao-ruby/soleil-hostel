@@ -34,7 +34,7 @@ use Illuminate\Support\Facades\Log;
  *   status: string,
  *   check_in: string,
  *   check_out: string,
- *   guest_name?: non-empty-string
+ *   guest_name: string|null
  * }
  */
 class ToolOrchestrationService
@@ -291,31 +291,27 @@ class ToolOrchestrationService
             return null;
         }
 
-        $rawId = $booking->id;
-        $bookingIdInt = is_numeric($rawId) ? (int) $rawId : 0;
+        $bookingIdInt = (int) $booking->id;
         if ($bookingIdInt <= 0) {
             return null;
         }
 
-        $status = (string) $booking->status;
+        $status = (string) $booking->status->value;
         $checkIn = (string) $booking->check_in;
         $checkOut = (string) $booking->check_out;
 
-        $rawName = $booking->user?->name;
-        $guestName = is_string($rawName) && $rawName !== '' ? $rawName : null;
+        /** @var \App\Models\User|null $bookingUser */
+        $bookingUser = $booking->user;
+        $rawGuestName = $bookingUser !== null ? (string) $bookingUser->name : '';
+        $guestName = $rawGuestName !== '' ? $rawGuestName : null;
 
-        $data = [
+        return [
             'booking_id' => $bookingIdInt,
             'status' => $status,
             'check_in' => $checkIn,
             'check_out' => $checkOut,
+            'guest_name' => $guestName,
         ];
-
-        if ($guestName !== null) {
-            $data['guest_name'] = $guestName;
-        }
-
-        return $data;
     }
 
     /**
@@ -417,6 +413,9 @@ class ToolOrchestrationService
             return ['found' => false, 'slug' => $slug];
         }
 
+        /** @var \Illuminate\Database\Eloquent\Collection<int, \App\Models\Room> $locationRooms */
+        $locationRooms = $location->rooms;
+
         return [
             'found' => true,
             'slug' => $location->slug,
@@ -427,8 +426,8 @@ class ToolOrchestrationService
             'amenities' => $location->amenities,
             'phone' => $location->phone,
             'email' => $location->email,
-            'total_rooms' => $location->rooms->count(),
-            'rooms' => $location->rooms->map(fn ($room) => [
+            'total_rooms' => $locationRooms->count(),
+            'rooms' => $locationRooms->map(fn (\App\Models\Room $room): array => [
                 'id' => $room->id,
                 'name' => $room->name,
                 'price' => $room->price,

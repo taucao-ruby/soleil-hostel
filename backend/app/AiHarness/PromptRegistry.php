@@ -134,11 +134,7 @@ SYS,
             'citation_requirement',
         ];
 
-        $template = self::TEMPLATES[$type->value] ?? null;
-
-        if ($template === null) {
-            return false;
-        }
+        $template = self::TEMPLATES[$type->value];
 
         foreach ($required as $field) {
             if (! isset($template[$field])) {

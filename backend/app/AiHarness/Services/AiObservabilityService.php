@@ -45,13 +45,18 @@ class AiObservabilityService
         ?string $failureReason,
         array $latencyBreakdown,
     ): RequestTrace {
+        $modelProvider = $modelResponse !== null ? $modelResponse->providerName : 'none';
+        $modelToolProposals = $modelResponse !== null ? $modelResponse->toolProposals : [];
+        $modelPromptTokens = $modelResponse !== null ? $modelResponse->promptTokens : 0;
+        $modelCompletionTokens = $modelResponse !== null ? $modelResponse->completionTokens : 0;
+
         $trace = new RequestTrace(
             requestId: $request->requestId,
             correlationId: $request->correlationId,
             userId: $request->userId,
             featureRoute: $request->featureRoute,
             promptVersion: $request->promptVersion,
-            modelProvider: $modelResponse?->providerName ?? 'none',
+            modelProvider: $modelProvider,
             inferenceParams: [
                 'max_tokens' => config("ai_harness.providers.{$request->taskType->value}.max_tokens", 1024),
             ],
@@ -60,16 +65,16 @@ class AiObservabilityService
                 'freshness_ok' => $s['freshness_ok'],
                 'token_count' => $this->estimateTokens($s['content'] ?? ''),
             ], $context->sources),
-            toolProposals: $this->normalizeToolClassifications($modelResponse?->toolProposals ?? []),
+            toolProposals: $this->normalizeToolClassifications($modelToolProposals),
             toolExecutions: $this->normalizeToolExecutions($toolExecutions),
             policyDecisions: $this->collectPolicyDecisions($preCallDecision, $postCallDecision),
             latencyBreakdown: $latencyBreakdown,
-            promptTokens: $modelResponse?->promptTokens ?? 0,
-            completionTokens: $modelResponse?->completionTokens ?? 0,
+            promptTokens: $modelPromptTokens,
+            completionTokens: $modelCompletionTokens,
             estimatedCostUsd: $this->estimateCost(
-                $modelResponse?->promptTokens ?? 0,
-                $modelResponse?->completionTokens ?? 0,
-                $modelResponse?->providerName ?? 'none',
+                $modelPromptTokens,
+                $modelCompletionTokens,
+                $modelProvider,
             ),
             responseClass: $responseClass,
             failureReason: $failureReason,

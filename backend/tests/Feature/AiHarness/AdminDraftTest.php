@@ -233,8 +233,8 @@ class AdminDraftTest extends TestCase
     private function makeRequest(TaskType $taskType, string $role): HarnessRequest
     {
         return new HarnessRequest(
-            requestId: 'test-' . uniqid(),
-            correlationId: 'test-corr-' . uniqid(),
+            requestId: 'test-'.uniqid(),
+            correlationId: 'test-corr-'.uniqid(),
             taskType: $taskType,
             riskTier: RiskTier::LOW,
             promptVersion: PromptRegistry::getVersion($taskType),

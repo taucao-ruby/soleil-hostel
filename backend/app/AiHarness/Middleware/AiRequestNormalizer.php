@@ -47,7 +47,7 @@ class AiRequestNormalizer
         $correlationId = $request->attributes->get('correlation_id', '');
 
         $harnessRequest = new HarnessRequest(
-            requestId: 'ai-' . bin2hex(random_bytes(12)),
+            requestId: 'ai-'.bin2hex(random_bytes(12)),
             correlationId: $correlationId,
             taskType: $taskType,
             riskTier: self::RISK_MAP[$taskType->value] ?? RiskTier::HIGH,
@@ -56,7 +56,7 @@ class AiRequestNormalizer
             userRole: $this->resolveRole($user),
             userInput: (string) $request->input('message', ''),
             locale: $request->getPreferredLanguage(['vi', 'en']) ?? 'vi',
-            featureRoute: 'ai.' . $taskType->value,
+            featureRoute: 'ai.'.$taskType->value,
         );
 
         $request->attributes->set('harness_request', $harnessRequest);

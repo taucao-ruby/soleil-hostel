@@ -138,7 +138,7 @@ class ToolOrchestrationService
         $suggestedTone = $input['tone'] ?? 'professional';
 
         $now = now()->toIso8601String();
-        $draftHash = hash('sha256', $draftText . $now . $request->requestId);
+        $draftHash = hash('sha256', $draftText.$now.$request->requestId);
 
         Log::channel('ai')->info('Admin message draft generated', [
             'request_id' => $request->requestId,
@@ -175,7 +175,7 @@ class ToolOrchestrationService
                 contextUsed: [],
                 policyRefs: [],
                 keyFacts: [],
-                draftHash: hash('sha256', 'no-booking' . now()->toIso8601String()),
+                draftHash: hash('sha256', 'no-booking'.now()->toIso8601String()),
                 generatedAt: now()->toIso8601String(),
             );
         }
@@ -196,7 +196,7 @@ class ToolOrchestrationService
                 contextUsed: [],
                 policyRefs: [],
                 keyFacts: ['booking_id' => $bookingId],
-                draftHash: hash('sha256', "no-booking-{$bookingId}" . now()->toIso8601String()),
+                draftHash: hash('sha256', "no-booking-{$bookingId}".now()->toIso8601String()),
                 generatedAt: now()->toIso8601String(),
             );
         }
@@ -211,7 +211,7 @@ class ToolOrchestrationService
 
         $draftText = $input['summary_text'] ?? '';
         $now = now()->toIso8601String();
-        $draftHash = hash('sha256', $draftText . $now . $request->requestId);
+        $draftHash = hash('sha256', $draftText.$now.$request->requestId);
 
         Log::channel('ai')->info('Cancellation summary draft generated', [
             'request_id' => $request->requestId,
@@ -243,7 +243,7 @@ class ToolOrchestrationService
             contextUsed: [],
             policyRefs: [],
             keyFacts: [],
-            draftHash: hash('sha256', ($input['draft_text'] ?? '') . $now),
+            draftHash: hash('sha256', ($input['draft_text'] ?? '').$now),
             generatedAt: $now,
         );
     }

@@ -69,7 +69,7 @@ class RequestTraceTest extends TestCase
         $this->assertCount(
             count(self::REQUIRED_FIELDS),
             $array,
-            'RequestTrace must have exactly ' . count(self::REQUIRED_FIELDS) . ' fields',
+            'RequestTrace must have exactly '.count(self::REQUIRED_FIELDS).' fields',
         );
 
         foreach (self::REQUIRED_FIELDS as $field) {

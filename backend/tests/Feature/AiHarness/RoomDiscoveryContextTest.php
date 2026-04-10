@@ -193,7 +193,7 @@ class RoomDiscoveryContextTest extends TestCase
     private function buildRequest(string $input): HarnessRequest
     {
         return new HarnessRequest(
-            requestId: 'test-room-' . bin2hex(random_bytes(4)),
+            requestId: 'test-room-'.bin2hex(random_bytes(4)),
             correlationId: 'test-corr',
             taskType: TaskType::ROOM_DISCOVERY,
             riskTier: RiskTier::LOW,

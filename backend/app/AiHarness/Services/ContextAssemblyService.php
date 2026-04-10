@@ -141,7 +141,7 @@ class ContextAssemblyService
             $parts[] = "ROOM_ID: {$room->id} | NAME: {$room->name} | PRICE: {$room->price} | MAX_GUESTS: {$room->max_guests} | STATUS: {$room->status}";
         }
 
-        return "--- ROOMS (retrieved: " . now()->toIso8601String() . ") ---\n" . implode("\n", $parts);
+        return '--- ROOMS (retrieved: '.now()->toIso8601String().") ---\n".implode("\n", $parts);
     }
 
     private function retrieveLocations(HarnessRequest $request): ?string
@@ -160,7 +160,7 @@ class ContextAssemblyService
             $parts[] = "LOCATION: {$location->slug} | NAME: {$location->name} | ADDRESS: {$location->address} | CITY: {$location->city}";
         }
 
-        return "--- LOCATIONS (retrieved: " . now()->toIso8601String() . ") ---\n" . implode("\n", $parts);
+        return '--- LOCATIONS (retrieved: '.now()->toIso8601String().") ---\n".implode("\n", $parts);
     }
 
     private function checkFreshness(string $sourceId): bool
@@ -202,7 +202,7 @@ class ContextAssemblyService
             "GUEST: {$booking->user?->name}",
         ];
 
-        return "--- BOOKING (retrieved: " . now()->toIso8601String() . ") ---\n" . implode("\n", $parts);
+        return '--- BOOKING (retrieved: '.now()->toIso8601String().") ---\n".implode("\n", $parts);
     }
 
     /**
@@ -238,13 +238,13 @@ class ContextAssemblyService
                 "MSG_ID: {$msg->id}",
                 "FROM: {$msg->name}",
                 "EMAIL: {$msg->email}",
-                "SUBJECT: " . ($msg->subject ?? 'N/A'),
+                'SUBJECT: '.($msg->subject ?? 'N/A'),
                 "MESSAGE: {$msg->message}",
                 "SENT_AT: {$msg->created_at}",
             ]);
         }
 
-        return "--- CONTACT MESSAGES (retrieved: " . now()->toIso8601String() . ") ---\n" . implode("\n---\n", $parts);
+        return '--- CONTACT MESSAGES (retrieved: '.now()->toIso8601String().") ---\n".implode("\n---\n", $parts);
     }
 
     /**

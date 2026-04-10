@@ -120,8 +120,8 @@ class CircuitBreakerTest extends TestCase
     private function buildRequest(): HarnessRequest
     {
         return new HarnessRequest(
-            requestId: 'test-req-' . bin2hex(random_bytes(4)),
-            correlationId: 'sol-test-' . bin2hex(random_bytes(4)),
+            requestId: 'test-req-'.bin2hex(random_bytes(4)),
+            correlationId: 'sol-test-'.bin2hex(random_bytes(4)),
             taskType: TaskType::FAQ_LOOKUP,
             riskTier: RiskTier::LOW,
             promptVersion: 'faq_lookup-v1.0.0',

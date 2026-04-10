@@ -21,8 +21,11 @@ use Illuminate\Support\Facades\Log;
 class AnthropicProvider implements ModelProviderInterface
 {
     private const CIRCUIT_BREAKER_KEY = 'ai_harness:circuit:anthropic';
+
     private const FAILURE_COUNT_KEY = 'ai_harness:failures:anthropic';
+
     private const API_URL = 'https://api.anthropic.com/v1/messages';
+
     private const API_VERSION = '2023-06-01';
 
     public function complete(HarnessRequest $req, GroundedContext $ctx): RawModelResponse
@@ -89,7 +92,7 @@ class AnthropicProvider implements ModelProviderInterface
 
                     throw new ProviderUnavailableException(
                         $this->getProviderName(),
-                        "Anthropic API returned {$response->status()}: " . $response->body(),
+                        "Anthropic API returned {$response->status()}: ".$response->body(),
                     );
                 }
 
@@ -165,15 +168,15 @@ class AnthropicProvider implements ModelProviderInterface
         $contextText = '';
         foreach ($ctx->sources as $source) {
             $contextText .= "--- Source: {$source['source_id']} (retrieved: {$source['retrieved_at']}) ---\n";
-            $contextText .= $source['content'] . "\n\n";
+            $contextText .= $source['content']."\n\n";
         }
 
         $systemInstruction = $template['system_instruction']
-            . "\n\n" . $template['abstain_instruction']
-            . "\n\n" . $template['citation_requirement'];
+            ."\n\n".$template['abstain_instruction']
+            ."\n\n".$template['citation_requirement'];
 
         if ($contextText !== '') {
-            $systemInstruction .= "\n\n--- VERIFIED CONTEXT ---\n" . $contextText;
+            $systemInstruction .= "\n\n--- VERIFIED CONTEXT ---\n".$contextText;
         }
 
         return [

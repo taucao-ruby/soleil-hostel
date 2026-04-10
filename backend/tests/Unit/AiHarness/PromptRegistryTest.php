@@ -30,7 +30,7 @@ class PromptRegistryTest extends TestCase
             $version = PromptRegistry::getVersion($type);
 
             $this->assertMatchesRegularExpression(
-                '/^' . preg_quote($type->value, '/') . '-v\d+\.\d+\.\d+$/',
+                '/^'.preg_quote($type->value, '/').'-v\d+\.\d+\.\d+$/',
                 $version,
                 "Version for {$type->name} must match format {task_type}-v{major}.{minor}.{patch}",
             );

@@ -14,7 +14,7 @@ final readonly class ToolDraft
 {
     /**
      * @param  list<string>  $contextUsed  Source IDs used to generate this draft
-     * @param  list<string>  $policyRefs   Policy document slugs referenced
+     * @param  list<string>  $policyRefs  Policy document slugs referenced
      * @param  array<string, mixed>  $keyFacts  Structured facts extracted from context
      */
     public function __construct(

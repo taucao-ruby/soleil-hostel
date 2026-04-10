@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\AiHarness;
 
-use App\AiHarness\DTOs\GroundedContext;
 use App\AiHarness\DTOs\HarnessRequest;
 use App\AiHarness\Enums\RiskTier;
 use App\AiHarness\Enums\TaskType;
@@ -104,7 +103,7 @@ class PolicyEnforcementTest extends TestCase
     public function test_critical_risk_tier_request_is_abstained(): void
     {
         // Directly test the PolicyEnforcementService with a CRITICAL risk tier
-        $service = new PolicyEnforcementService();
+        $service = new PolicyEnforcementService;
 
         $request = new HarnessRequest(
             requestId: 'test-123',

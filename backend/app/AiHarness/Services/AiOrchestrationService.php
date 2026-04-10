@@ -179,6 +179,6 @@ class AiOrchestrationService
     private function buildRefusalContent(?string $reason): string
     {
         return 'Tôi không thể thực hiện hành động này trực tiếp. '
-            . 'Vui lòng sử dụng giao diện đặt phòng hoặc liên hệ lễ tân.';
+            .'Vui lòng sử dụng giao diện đặt phòng hoặc liên hệ lễ tân.';
     }
 }

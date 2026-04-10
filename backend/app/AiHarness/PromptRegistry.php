@@ -85,7 +85,7 @@ When referencing policies, cite the policy source slug.
 When referencing bookings, cite the booking ID.
 SYS,
             'context_injection_placeholder' => '{{grounded_context}}',
-            'abstain_instruction' => "Tôi cần thêm thông tin để soạn phản hồi phù hợp. Vui lòng cung cấp thêm chi tiết về yêu cầu của khách.",
+            'abstain_instruction' => 'Tôi cần thêm thông tin để soạn phản hồi phù hợp. Vui lòng cung cấp thêm chi tiết về yêu cầu của khách.',
             'citation_requirement' => 'Drafts referencing policies must cite the policy source slug. Drafts referencing booking data must cite the booking ID. Never claim to have executed any action.',
         ],
     ];
@@ -135,7 +135,7 @@ SYS,
         }
 
         // Validate version format: {task_type}-v{major}.{minor}.{patch}
-        $versionPattern = '/^' . preg_quote($type->value, '/') . '-v\d+\.\d+\.\d+$/';
+        $versionPattern = '/^'.preg_quote($type->value, '/').'-v\d+\.\d+\.\d+$/';
 
         return (bool) preg_match($versionPattern, $template['version']);
     }

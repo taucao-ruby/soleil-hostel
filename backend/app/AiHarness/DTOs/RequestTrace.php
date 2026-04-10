@@ -76,7 +76,7 @@ final readonly class RequestTrace
     public function toLogContext(): array
     {
         $data = $this->toArray();
-        $data['user_id'] = $this->userId > 0 ? 'user_' . substr(md5((string) $this->userId), 0, 8) : 'anonymous';
+        $data['user_id'] = $this->userId > 0 ? 'user_'.substr(md5((string) $this->userId), 0, 8) : 'anonymous';
 
         return $data;
     }

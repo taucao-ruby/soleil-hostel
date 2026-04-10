@@ -58,6 +58,7 @@ class ModelExecutionService
                     'provider' => $providerName,
                     'request_id' => $request->requestId,
                 ]);
+
                 continue;
             }
 

@@ -19,8 +19,8 @@ final readonly class BookingActionProposal
 {
     /**
      * @param  array<string, mixed>  $proposedParams  Structured booking/cancellation parameters
-     * @param  list<string>  $policyRefs  Policy document slugs referenced
-     * @param  array{level: string, factors: list<string>}  $riskAssessment  Risk evaluation
+     * @param  list<mixed>  $policyRefs  Policy document slugs referenced
+     * @param  array<string, mixed>  $riskAssessment  Risk evaluation (structure validated by PolicyEnforcementService)
      */
     public function __construct(
         public ProposalActionType $actionType,

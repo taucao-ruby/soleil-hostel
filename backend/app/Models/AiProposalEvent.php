@@ -32,7 +32,7 @@ class AiProposalEvent extends Model
     ];
 
     /**
-     * @return BelongsTo<User, $this>
+     * @return BelongsTo<User, self>
      */
     public function user(): BelongsTo
     {

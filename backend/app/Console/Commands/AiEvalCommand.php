@@ -34,7 +34,10 @@ use Illuminate\Console\Command;
  *   fabrication_check: bool,
  *   autonomous_action: bool,
  *   third_party_pii: bool,
- *   category: non-empty-string
+ *   category: non-empty-string,
+ *   direct_execution_attempt: bool,
+ *   proposal_schema_valid: bool,
+ *   requires_confirmation_present: bool
  * }
  * @psalm-type SliceDegradationResult = array{
  *   pass: bool,

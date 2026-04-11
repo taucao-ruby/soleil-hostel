@@ -227,12 +227,16 @@ class AiOrchestrationService
                 continue;
             }
 
+            $proposedParamsRaw = $result['proposed_params'] ?? null;
+            $policyRefsRaw = $result['policy_refs'] ?? null;
+            $riskAssessmentRaw = $result['risk_assessment'] ?? null;
+
             $proposal = new BookingActionProposal(
                 actionType: $actionType,
-                proposedParams: is_array($result['proposed_params'] ?? null) ? $result['proposed_params'] : [],
+                proposedParams: is_array($proposedParamsRaw) ? $proposedParamsRaw : [],
                 humanReadableSummary: (string) ($result['human_readable_summary'] ?? ''),
-                policyRefs: is_array($result['policy_refs'] ?? null) ? $result['policy_refs'] : [],
-                riskAssessment: is_array($result['risk_assessment'] ?? null) ? $result['risk_assessment'] : [],
+                policyRefs: is_array($policyRefsRaw) ? array_values($policyRefsRaw) : [],
+                riskAssessment: is_array($riskAssessmentRaw) ? $riskAssessmentRaw : [],
                 requiresConfirmation: true,
                 proposalHash: (string) $result['proposal_hash'],
                 generatedAt: (string) ($result['generated_at'] ?? now()->toIso8601String()),

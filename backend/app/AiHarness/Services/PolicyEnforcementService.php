@@ -219,29 +219,11 @@ class PolicyEnforcementService
     {
         $checks = [];
 
-        // Check 1: action_type is a valid ProposalActionType
-        $validActionTypes = array_map(
-            fn (ProposalActionType $t) => $t->value,
-            ProposalActionType::cases(),
-        );
-
-        if (! in_array($proposal->actionType->value, $validActionTypes, true)) {
-            $checks[] = 'proposal_action_type:invalid';
-
-            Log::channel('ai')->error('Invalid proposal action_type', [
-                'action_type' => $proposal->actionType->value,
-                'proposal_hash' => $proposal->proposalHash,
-            ]);
-
-            return new PolicyDecision(
-                decision: 'reject',
-                reason: "Invalid proposal action_type: {$proposal->actionType->value}.",
-                checksPerformed: $checks,
-                piiDetected: false,
-                blockedTool: null,
-                sanitizedFields: [],
-            );
-        }
+        // Check 1: action_type is a valid ProposalActionType.
+        // $proposal->actionType is typed as ProposalActionType — PHP's type system guarantees
+        // validity at construction. An in_array comparison against ProposalActionType::cases()
+        // values is structurally unreachable for any typed enum instance and creates a dead
+        // branch that Psalm correctly flags as impossible.
         $checks[] = 'proposal_action_type:valid';
 
         // Check 2: proposed_params has required fields per action_type

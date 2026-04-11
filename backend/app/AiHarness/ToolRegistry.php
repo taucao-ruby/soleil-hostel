@@ -30,6 +30,7 @@ final class ToolRegistry
         'draft_booking_suggestion' => ToolClassification::APPROVAL_REQUIRED,
         'draft_admin_message' => ToolClassification::APPROVAL_REQUIRED,
         'draft_cancellation_summary' => ToolClassification::APPROVAL_REQUIRED,
+        'suggest_cancellation' => ToolClassification::APPROVAL_REQUIRED,
 
         // BLOCKED — model never executes these directly (PERMANENT)
         'create_booking' => ToolClassification::BLOCKED,

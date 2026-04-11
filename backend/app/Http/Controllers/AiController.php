@@ -36,6 +36,7 @@ class AiController extends Controller
             'response_class' => $response->responseClass->value,
             'content' => $response->content,
             'citations' => $response->citations,
+            'proposals' => $response->proposals,
             'failure_reason' => $response->failureReason,
             'estimated_cost_usd' => $response->estimatedCostUsd,
             'trace_ref' => $response->traceRef,

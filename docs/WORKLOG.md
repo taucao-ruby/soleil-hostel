@@ -1,5 +1,24 @@
 # WORKLOG — Soleil Hostel (Append-only)
 
+## 2026-04-12
+
+- Change: Documentation governance audit + full docs sync for AI Harness Phases 0–4.
+- Updated: ARCHITECTURE_FACTS.md (AI domain section), PERMISSION_MATRIX.md (rows A13-A15, Tables E/F), CONTRACT.md (AI DoD), DB_FACTS.md (AI tables + indexes), DATABASE.md (ER diagram, table defs, migrations, seeders, model relationships), openapi.yaml (3 AI endpoint groups + schemas), THREAT_MODEL_AI.md (Phase 4: T-13, T-14, V-5, V-6), COMMANDS.md (ai:eval), COMPACT.md (snapshot update).
+- Security finding: T-13 ACCEPTED — ProposalConfirmationController has no user-to-proposal ownership check; relies on 256-bit hash entropy + rate limiting.
+
+## 2026-04-09 — 2026-04-11
+
+- Change: AI Harness Phases 0–4 implementation complete.
+- Phase 0: Foundation — `config/ai_harness.php` (kill switch, providers, timeouts, circuit breaker, canary), 3 middleware (`ai_harness_enabled`, `ai_request_normalizer`, `ai_canary_router`), `HarnessRequest` DTO, `TaskType`/`RiskTier`/`ResponseClass` enums.
+- Phase 1: Provider abstraction — `ProviderGateway`, `OpenAiProvider`, `AnthropicProvider`, circuit breaker pattern, cost estimation, token budgets.
+- Phase 2: FAQ pipeline — `FaqPipeline`, `PolicyContentService`, `PromptRegistry`, `GroundedContextAssembler`, `CitationBuilder`. `policy_documents` table + `PolicyDocumentSeeder`.
+- Phase 3: Safety layers — 7-layer pipeline (L1 normalize → L2 intent → L3 context → L4 safety screen → L5 tool orchestration → L6 format → L7 audit), `PolicyScreen` with 7 injection patterns, `ToolRegistry` with static classification, `AuditLogger`.
+- Phase 4: Proposal confirmation — `ProposalConfirmationController`, `BookingActionProposal` DTO, `ProposalDecisionRequest`, downstream delegation to BookingService. `ai_proposal_events` audit table.
+- New routes: 7 endpoints under `/api/v1/ai/*` in `routes/api/v1_ai.php`.
+- New migrations: `2026_04_09_000001_create_policy_documents_table`, `2026_04_11_000001_create_ai_proposal_events_table`.
+- Eval framework: `AiEvalCommand` (`php artisan ai:eval --all-phases`), nightly CI gate at 03:00.
+- Frontend: LoginPage/RegisterPage/RoomList redesign, AI assistant widgets, axios ^1.15.0 (GHSA-3p68-rc4w-qgx5 fix), vite 6.4.2 (GHSA-p9ff-h696-f583 fix).
+
 ## 2026-04-04
 
 - Change: 5 commits across email-verification hardening + static analysis clean + style normalization. Merged dev → main (9756bba), 7 commits, 40 files, 1954 insertions, 403 deletions.

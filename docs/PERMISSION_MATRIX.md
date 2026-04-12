@@ -37,6 +37,10 @@ Quick-reference for UI conditional rendering. Derived from Tables A–E below.
 | Room Create/Edit/Delete | ❌ | ❌ | ✅ |
 | Contact Messages | ❌ | ❌ | ✅ |
 | ReviewForm (for own past confirmed booking) | ✅ | ✅ | ✅ |
+| FAQ Assistant Widget | ✅ (auth required) | ✅ | ✅ |
+| Room Discovery Widget | ✅ (auth required) | ✅ | ✅ |
+| Admin Draft Assistant (`/admin/draft-assistant`) | ❌ | ❌ | ✅ |
+| Proposal Confirmation Modal | ✅ (auth required) | ✅ | ✅ |
 
 > **Status badge color guide**: `pending` → yellow/amber · `confirmed` → green · `cancelled` → red/muted · `refund_failed` → orange + escalation · `refund_pending` → blue/info
 
@@ -60,6 +64,9 @@ What the system actually does. Tier 1 evidence only.
 | A10 | `POST /api/v1/admin/bookings/{b}/restore` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Route `role:admin` (v1.php:57) + Gate `admin` (AdminBookingController:109) | HIERARCHY-DEPENDENT + EXACT-MATCH | YES | CONFIRMED-V1 | OPUS-VERIFY-01 |
 | A11 | `DELETE /api/v1/admin/bookings/{b}/force` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Route `role:admin` (v1.php:57) + Gate `admin` (AdminBookingController:152) | HIERARCHY-DEPENDENT + EXACT-MATCH | YES | CONFIRMED-V1 | OPUS-VERIFY-01 |
 | A12 | `POST /api/v1/admin/bookings/restore-bulk` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Route `role:admin` (v1.php:57) + Gate `admin` (AdminBookingController:178) | HIERARCHY-DEPENDENT + EXACT-MATCH | YES | FOLLOW-UP REQUIRED (no moderator-denial test) | OPUS-VERIFY-01 |
+| A13 | `POST /api/v1/ai/{task_type}` | DENIED-EXPLICIT (401) | ALLOWED (verified) | ALLOWED (verified) | ALLOWED | Route `check_token_valid` + `verified` + `throttle:10,1` + `ai_harness_enabled` + `ai_canary_router` + `ai_request_normalizer` (v1_ai.php:24-30) | AUTH-REQUIRED + FEATURE-GATED | NO (kill switch + rate limit only) | CONFIRMED-V1 | AI-HARNESS-01 |
+| A14 | `POST /api/v1/ai/proposals/{hash}/decide` | DENIED-EXPLICIT (401) | ALLOWED (verified) | ALLOWED (verified) | ALLOWED | Route `check_token_valid` + `verified` + `throttle:10,1` + `ai_harness_enabled` (v1_ai.php:51-55) | AUTH-REQUIRED + FEATURE-GATED | NO (kill switch + rate limit only) | CONFIRMED-V1 | AI-HARNESS-01 |
+| A15 | `GET /api/v1/ai/health` | ALLOWED | ALLOWED | ALLOWED | ALLOWED | Route `ai_harness_enabled` only (v1_ai.php:68-70) | FEATURE-GATED | NO | CONFIRMED-V1 | AI-HARNESS-01 |
 
 **Resources not investigated** (out of scope for current batch):
 - Booking create/update/delete (user endpoints)
@@ -69,6 +76,13 @@ What the system actually does. Tier 1 evidence only.
 - Reviews (`/api/v1/reviews/*`)
 - Locations (`/api/v1/locations/*`)
 - Auth endpoints (`/api/v1/auth/*`)
+
+**AI Harness route notes** (rows A13–A15, added 2026-04-12):
+- AI endpoints use `check_token_valid` + `verified` — any verified user can access. No role-based gate.
+- `ai_harness_enabled` middleware acts as a kill switch (returns 404 when `AI_HARNESS_ENABLED=false`).
+- `ai_canary_router` middleware performs percentage-based traffic routing; not a security gate.
+- Proposal confirmation (`A14`) delegates to `CreateBookingService` / `BookingService::cancelBooking()` — existing booking invariants apply.
+- Health endpoint (`A15`) is public but feature-gated — returns 404 when harness disabled.
 
 **HIERARCHY-DEPENDENT NOTICE**: `role:admin` middleware is enforced via `EnsureUserHasRole` using role hierarchy comparison (`isAtLeast()`), not exact match. Current hierarchy places admin above moderator. If role hierarchy is modified, rows marked HIERARCHY-DEPENDENT may change without code review.
 
@@ -175,6 +189,11 @@ These restrict **when** an action is allowed, not **who** can perform it. They a
 | `/admin/customers` | Blocked | **Allowed** | Allowed | AdminRoute minRole='moderator' |
 | Admin API calls (GET /api/v1/admin/bookings*) | 403 from backend | Allowed (backend) | Allowed | `v1.php` (role:moderator) |
 | Admin API calls (restore, force-delete) | 403 from backend | 403 from backend | Allowed | `v1.php` (role:admin) |
+| FAQ Assistant Widget | Rendered (auth required) | Rendered | Rendered | `FaqAssistantWidget.tsx` |
+| Room Discovery Widget | Rendered (auth required) | Rendered | Rendered | `RoomDiscoveryWidget.tsx` |
+| `/admin/draft-assistant` | Blocked | Blocked | Allowed | `DraftAssistantPanel.tsx` (admin-only) |
+| AI API calls (`POST /api/v1/ai/*`) | 401 (auth required) | Allowed (verified) | Allowed | `v1_ai.php` (check_token_valid + verified) |
+| AI Proposal confirm/decline | 401 (auth required) | Allowed (verified) | Allowed | `v1_ai.php` (check_token_valid + verified) |
 
 **Moderator UI status**: OPERATIONAL (admin booking/customer read) + RESTRICTED (room CUD, restore, force-delete)
 

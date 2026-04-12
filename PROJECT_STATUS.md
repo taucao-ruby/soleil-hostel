@@ -1,8 +1,8 @@
 # Soleil Hostel - Project Status
 
-**Last Updated:** April 6, 2026
+**Last Updated:** April 12, 2026
 **Current Branch:** `dev`
-**Latest Commit:** `30ad47e` — chore(backend): fix binary_operator_spaces in RoomSeeder
+**Latest Commit:** `a67cfcc` — AI Harness Phases 0–4 complete
 
 ## Current Status: Repo Health Green
 
@@ -10,18 +10,20 @@
 > Batches 1–12 + DevSecOps + quality hardening + DB hardening + v3.1 stay domain complete.
 > See [docs/AUDIT_2026_02_21.md](./docs/AUDIT_2026_02_21.md) for detailed audit history.
 
-Gates (verified April 4, 2026):
+Gates (verified April 12, 2026):
 
-- Backend tests: **re-verification required** (email verification tests heavily revised Apr 3; previous baseline 1047/2875)
+- Backend tests: **re-verification required** (AI harness added 50+ files; previous baseline 1047/2875 — Mar 31)
 - Frontend typecheck PASS: 0 errors (`cd frontend && npx tsc --noEmit`) — TS5103 fixed
-- Frontend build PASS: `pnpm run build` exits 0 — verified Apr 4
+- Frontend build PASS: `pnpm run build` exits 0
 - Frontend unit tests: **re-verification required** (previous baseline 261/25 — Mar 31)
 - Compose config PASS (`docker compose config`)
-- Pint style: **8 violations** in email-verification cluster (line_ending CRLF, braces_position, unary_operator_spaces, class_definition) — NOT at 0 (`cd backend && vendor/bin/pint --test`)
-- PHPStan Level 5 PASS: **0 errors** (10 errors from Apr 3 new files resolved Apr 4)
-- Psalm: Level 1, 0 blocking errors (4 errors from Apr 3 new files resolved Apr 4)
+- Pint style: **re-verification required** (AI harness files added; previous 8 violations in email cluster)
+- PHPStan Level 5: **re-verification required** (AI harness files added; previous 0 errors)
+- Psalm: **re-verification required** (AI harness files added; previous 0 blocking)
+- AI eval gate: `php artisan ai:eval --all-phases` — nightly CI at 03:00, blocks deploy on failure
 
-Open Findings: F-23 (MD lint, low), F-25 (CSRF path, low), F-26–F-62 (2026-03-20 audit — 36 open, F-48 resolved), **F-63–F-66** (2026-04-05 full-stack audit — 4 new: 1 High, 1 Medium, 2 Low)
+Open Findings: F-23 (MD lint, low), F-25 (CSRF path, low), F-26–F-62 (2026-03-20 audit — 36 open, F-48 resolved), F-63–F-66 (2026-04-05 audit — 4 findings)
+Security Accepted: T-13 — proposal confirmation has no user-to-proposal ownership check (relies on 256-bit hash entropy + rate limiting)
 Blocked Items: M-11 (migration squash — needs human approval)
 
 Findings backlog: [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md)
@@ -38,11 +40,12 @@ Testing            ████████████████████�
 Audits (v1–v4)     █████████████████████░ 100% ✅ 179/179
 Quality batches    █████████████████████░ 100% ✅ Batches 1–12
 DevSecOps          █████████████████████░ 100% ✅ Docker/Redis/Caddy + CI gates
+AI Harness (Ph 0–4)█████████████████████░ 100% ✅ 7 endpoints, kill switch, eval framework
 Payment bootstrap  ██████████████░░░░░░░░  65% ✅ Cashier + webhooks (checkout UI pending)
-Documentation      █████████████████████░  97%
+Documentation      █████████████████████░  99%
 Deployment         ███████████████░░░░░░░  60%
 ─────────────────────────────────────────────
-Total Progress     █████████████████████░  93%
+Total Progress     █████████████████████░  95%
 ```
 
 ---
@@ -92,6 +95,10 @@ Playwright remains scaffolded; app runtime required for execution
 | [AUDIT_REPORT.md](./AUDIT_REPORT.md)                           | Audit report (v1–v4)                              |
 | [docs/OPERATIONAL_PLAYBOOK.md](./docs/OPERATIONAL_PLAYBOOK.md) | Operational runbooks                              |
 | [docs/DOMAIN_LAYERS.md](./docs/DOMAIN_LAYERS.md)               | Four-layer operational domain model               |
+| [docs/HARNESS_ENGINEERING.md](./docs/HARNESS_ENGINEERING.md)   | AI Harness architecture and engineering guide      |
+| [docs/THREAT_MODEL_AI.md](./docs/THREAT_MODEL_AI.md)           | AI-specific threat model (Phases 1–4)             |
+| [docs/EVAL_STRATEGY.md](./docs/EVAL_STRATEGY.md)               | AI eval framework and regression gates            |
+| [docs/ROLLOUT_AND_KILL_SWITCH.md](./docs/ROLLOUT_AND_KILL_SWITCH.md) | AI rollout checklist and kill switch procedure |
 
 ---
 
@@ -104,6 +111,9 @@ cd backend && php artisan test
 # Frontend verification
 cd frontend && npx tsc --noEmit
 cd frontend && npx vitest run
+
+# AI harness regression gate
+cd backend && php artisan ai:eval --all-phases
 
 # Compose validation
 docker compose config
@@ -129,6 +139,7 @@ See also: `docs/PERMISSION_MATRIX.md` Table E for current moderator access surfa
 
 | Feature                         | Priority | Notes                                                                                |
 | ------------------------------- | -------- | ------------------------------------------------------------------------------------ |
+| **AI Harness Phases 0–4**           | ✅ Done  | 7 endpoints `/v1/ai/*`, 2 tables, 3 middleware, 7-layer safety pipeline, kill switch, canary routing, eval framework (`ai:eval`), proposal confirmation (Apr 9–11) |
 | **Email Verification OTP Flow**     | ✅ Done  | Full-stack 6-digit code: EmailVerificationCodeService, EmailVerificationCode model + migration, controller, notification, listener, VerificationResult enum, EmailVerifyPage.tsx SPA (Apr 3) |
 | **Location Room Availability Fix**  | ✅ Done  | `scopeWithRoomCounts` uses booking-based availability; LocationResource + LocationCard use `rooms_count` (Apr 3) |
 | **PHPStan gate maintained**         | ✅ Done  | 10 errors introduced by new files Apr 3 — all resolved Apr 4 (0 errors, Level 5, no baseline) |
@@ -176,6 +187,8 @@ All audit and batch details are preserved in [AUDIT_REPORT.md](./AUDIT_REPORT.md
 | Mar 23, 2026 | v3.4 operational completion: readiness, classification, deposit lifecycle, settlement, escalation engine, OperationalDashboardService (16 metrics) | 1014 tests at that point |
 | Mar 29, 2026 | Restore path integrity (Wave 1), admin filters (Wave 2), CSRF clarity (Wave 3), ReviewForm (Wave 4), governance docs (Wave 5) | +40 backend tests, +35 frontend tests; TL-02/TL-05 resolved |
 | Mar 30, 2026 | picomatch ReDoS CVE fix (GHSA-c2c7-rcm5-vvqj), Pint cleanup (8 files), null-safe RoomResource fix, AGENT_LEARNINGS scaffold | — |
+| Apr 9–11, 2026 | AI Harness Phases 0–4: foundation, provider abstraction, FAQ pipeline, 7-layer safety, proposal confirmation | 50+ backend files, 2 migrations, 7 endpoints, 3 middleware, eval framework |
+| Apr 12, 2026 | Documentation governance audit + full docs sync for AI Harness | 10 docs updated (ARCHITECTURE_FACTS, PERMISSION_MATRIX, CONTRACT, DB_FACTS, DATABASE, openapi.yaml, THREAT_MODEL_AI, COMMANDS, COMPACT, WORKLOG) |
 | Apr 3–4, 2026 | Email verification OTP flow (full-stack), location availability fix, concurrent booking HTTP 500 fix, mail view assets (infra), PHPStan 10→0 errors, Psalm 4→0 errors, TS5103 tsconfig fix, Pint style fix (3 files) | Merged to main Apr 4 (9756bba, 7 commits, 40 files, 1954+/403−) |
 | Mar 31, 2026 | Docs sync v3: 5 confirmed docs updated, 9 findings patched (F-01, F-02, F-03, F-04, F-05, F-07, F-09) | — |
 
@@ -184,6 +197,7 @@ All audit and batch details are preserved in [AUDIT_REPORT.md](./AUDIT_REPORT.md
 ## Status Note
 
 Audits v1 (61/61), v2 (98/98), v3 (14/14), v4 (6/6) complete. Findings F-01 through F-22 and F-24 resolved. F-23 open (low — MD lint). F-25 open (low — CSRF path). F-26–F-62 open (2026-03-20 audit, code findings — not fixed in docs pass).
+AI Harness Phases 0–4 (Apr 9–11): 7 endpoints, 2 new tables (policy_documents, ai_proposal_events), 3 middleware, 7-layer safety pipeline, eval framework, kill switch + canary routing. T-13 accepted (proposal ownership — hash entropy mitigation).
 RBAC hardening (Mar 10): defense-in-depth verified, PERMISSION_MATRIX.md created, 5 follow-ups open (FU-1..FU-5).
 RBAC phases 1-3 (Mar 11): enforcement gaps closed, admin audit log, moderator activated.
 Admin panel expansion (Mar 12): AdminLayout, sidebar, customer/room/booking management (39556d7); CI hygiene hooks.

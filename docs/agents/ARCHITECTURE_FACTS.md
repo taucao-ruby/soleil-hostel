@@ -226,6 +226,93 @@ Current enforcement status: PASS WITH FOLLOW-UPS. Room CUD and admin booking end
 
 **Role Hierarchy Stability:** `isAtLeast()` at `User.php:134-146` uses level comparison. Adding or reordering roles silently shifts all HIERARCHY-DEPENDENT permissions. See [PERMISSION_MATRIX.md § Role Hierarchy Stability Warning](../PERMISSION_MATRIX.md) for the required change procedure.
 
+## AI Harness Domain (Added 2026-04-09)
+
+### Overview
+
+The AI Harness is a safety-first LLM orchestration pipeline that mediates all interactions between the application and model providers. All AI endpoints are gated by a master kill switch (`AI_HARNESS_ENABLED`, default `false`).
+
+Full architecture: `docs/HARNESS_ENGINEERING.md`. ADR: `docs/ADR-AI-BOUNDARY.md`. Threat model: `docs/THREAT_MODEL_AI.md`. Rollout/kill switch: `docs/ROLLOUT_AND_KILL_SWITCH.md`. Incident runbook: `docs/RUNBOOK_AI_INCIDENT.md`. Eval strategy: `docs/EVAL_STRATEGY.md`.
+
+### Route Surface
+
+All AI routes live in `backend/routes/api/v1_ai.php`, mounted under `/api/v1/ai` via `v1.php`.
+
+| Endpoint | Auth | Middleware Stack | Controller |
+|----------|------|-----------------|------------|
+| `POST /api/v1/ai/{task_type}` | `check_token_valid` + `verified` | `throttle:10,1`, `ai_harness_enabled`, `ai_canary_router`, `ai_request_normalizer` | `AiController::handle` |
+| `POST /api/v1/ai/proposals/{hash}/decide` | `check_token_valid` + `verified` | `throttle:10,1`, `ai_harness_enabled` | `ProposalConfirmationController::decide` |
+| `GET /api/v1/ai/health` | None | `ai_harness_enabled` | Inline closure |
+
+**Task types**: `faq_lookup`, `room_discovery`, `booking_status`, `admin_draft`
+
+### 7-Layer Pipeline
+
+```
+L1  AiRequestNormalizer     → builds HarnessRequest DTO, maps TaskType → RiskTier
+L2  ContextAssemblyService  → allowlisted sources, token budget, RBAC filtering
+L3  ModelExecutionService   → provider selection, timeout ladder, circuit breaker
+L4  PolicyEnforcementService → PII scan, injection heuristics, tool classification
+L5  ToolOrchestrationService → READ_ONLY auto-exec, APPROVAL_REQUIRED → ToolDraft, BLOCKED → throw
+L6  AiObservabilityService  → RequestTrace (17 fields), masked PII, cost estimation
+L7  AiOrchestrationService  → top-level orchestrator composing L1–L6
+```
+
+### AI Safety Boundary
+
+- **No autonomous writes**: AI models cannot create, update, or delete any record
+- **APPROVAL_REQUIRED tools** return `ToolDraft` structs — never written to DB until human confirms
+- **BLOCKED tools** throw `BlockedToolException` — fail-safe, unknown tools default to BLOCKED
+- **Policy enforcement (L4) is authoritative** — prompt instructions are behavioral guidance only
+- **Context is allowlisted** per `TaskType` — model cannot request sources outside its allowlist
+
+### Booking Interaction (Phase 4+)
+
+`ProposalConfirmationController` introduces a **third booking mutation entry point** (alongside `BookingController` and `AdminBookingController`):
+
+- `executeBooking()` → delegates to `CreateBookingService` (same service layer, same invariants)
+- `executeCancellation()` → delegates to `BookingService::cancelBooking()` (same service layer)
+- Proposals are cached with a 64-char SHA-256 hash; user confirms/declines via `POST /api/v1/ai/proposals/{hash}/decide`
+- All proposal events recorded to `ai_proposal_events` table + `ai` log channel
+
+**Invariant preservation**: The controller delegates to existing service layer — it does NOT bypass `lockForUpdate()`, exclusion constraints, or status validation. All booking invariants from §Booking Domain above remain enforced.
+
+### AI Models & Tables
+
+| Model | Table | Purpose |
+|-------|-------|---------|
+| `PolicyDocument` | `policy_documents` | Hostel policy content for FAQ grounding (UUID PK) |
+| `AiProposalEvent` | `ai_proposal_events` | Audit trail for proposal confirm/decline decisions |
+
+### AI Enums
+
+`App\AiHarness\Enums\TaskType`: `faq_lookup`, `room_discovery`, `booking_status`, `admin_draft`
+`App\AiHarness\Enums\RiskTier`: `low`, `medium`, `high`
+`App\AiHarness\Enums\ResponseClass`: `answered`, `refused`, `fallback`, `error`
+`App\AiHarness\Enums\ToolClassification`: `read_only`, `approval_required`, `blocked`
+`App\AiHarness\Enums\ProposalActionType`: `suggest_booking`, `suggest_cancellation`
+
+### AI Middleware (registered in `bootstrap/app.php`)
+
+| Alias | Class | Purpose |
+|-------|-------|---------|
+| `ai_harness_enabled` | `AiHarnessEnabled` | Kill switch — returns 404 when `config('ai_harness.enabled')` is false |
+| `ai_request_normalizer` | `AiRequestNormalizer` | Builds `HarnessRequest` DTO, validates task type |
+| `ai_canary_router` | `AiCanaryRouter` | Percentage-based traffic routing per task type |
+
+### AI Migrations
+
+- `2026_04_09_000001` — creates `policy_documents` table (UUID PK, slug, title, content, category, language, is_active, version)
+- `2026_04_11_000001` — creates `ai_proposal_events` table (user_id FK→users CASCADE, proposal_hash, action_type, user_decision, downstream_result)
+
+### AI Observability
+
+- Dedicated logging channel: `ai` (daily rotation, JSON format, 90-day retention)
+- `SensitiveDataProcessor` masks PII before logging
+- `RequestTrace` DTO captures 17 fields per AI request
+- Nightly regression gate: `php artisan ai:eval --all-phases` (03:00, blocks deploy on failure)
+- Config: `backend/config/ai_harness.php`
+
 ## DB Constraints Added (formerly backlog)
 
 All four previously absent constraints added via migrations (audit v2, PR-2 + PR-3, 2026-02-21):

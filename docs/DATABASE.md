@@ -1,6 +1,6 @@
 # 🗄️ Database Schema & Indexes
 
-> Complete database design for Soleil Hostel (47 migrations, 18 tables)
+> Complete database design for Soleil Hostel (49 migrations, 20 tables)
 
 ## ER Diagram
 
@@ -120,6 +120,21 @@
 │ refresh_count, last_rotated_at ◄── Rotation      │
 │ last_used_at, created_at, updated_at             │
 └─────────────────────────────────────────────────┘
+
+┌────────────────────────────┐   ┌────────────────────────────┐
+│     policy_documents       │   │    ai_proposal_events      │ ◄── AI Harness
+├────────────────────────────┤   ├────────────────────────────┤
+│ id (UUID PK)               │   │ id (PK)                    │
+│ slug (UNIQUE)              │   │ user_id (FK → users)       │
+│ title                      │   │ proposal_hash (64-char)    │
+│ content (TEXT)             │   │ action_type                │
+│ category                   │   │ user_decision              │
+│ language (default 'vi')    │   │ downstream_result (TEXT)   │
+│ is_active                  │   │ created_at, updated_at     │
+│ last_verified_at           │   └────────────────────────────┘
+│ version                    │
+│ created_at, updated_at     │
+└────────────────────────────┘
 ```
 
 ---
@@ -433,6 +448,43 @@ All compensation amounts are stored in **cents** (BIGINT) to match `bookings.amo
 ### jobs / job_batches / failed_jobs
 
 Queue tables for background job processing. See Laravel Queue documentation.
+
+### policy_documents (AI Harness)
+
+Hostel policy content used for AI FAQ grounding. Added `2026_04_09_000001`.
+
+| Column           | Type         | Constraints                |
+| ---------------- | ------------ | -------------------------- |
+| id               | UUID         | PRIMARY KEY                |
+| slug             | VARCHAR(255) | NOT NULL, UNIQUE           |
+| title            | VARCHAR(255) | NOT NULL                   |
+| content          | TEXT         | NOT NULL                   |
+| category         | VARCHAR(255) | NOT NULL                   |
+| language         | VARCHAR(10)  | NOT NULL, DEFAULT 'vi'     |
+| is_active        | BOOLEAN      | NOT NULL, DEFAULT true     |
+| last_verified_at | TIMESTAMP    | NULLABLE                   |
+| version          | VARCHAR(255) | NOT NULL                   |
+| created_at       | TIMESTAMP    |                            |
+| updated_at       | TIMESTAMP    |                            |
+
+**Indexes:** `(slug, is_active, language)`, `(category, is_active)`
+
+### ai_proposal_events (AI Harness)
+
+Audit trail for AI booking proposal confirm/decline decisions. Added `2026_04_11_000001`.
+
+| Column            | Type         | Constraints                          |
+| ----------------- | ------------ | ------------------------------------ |
+| id                | BIGSERIAL    | PRIMARY KEY                          |
+| user_id           | BIGINT       | FK → users(id) CASCADE ON DELETE     |
+| proposal_hash     | VARCHAR(64)  | NOT NULL, indexed                    |
+| action_type       | VARCHAR(30)  | NOT NULL                             |
+| user_decision     | VARCHAR(20)  | NOT NULL (confirmed/declined/shown)  |
+| downstream_result | TEXT         | NULLABLE                             |
+| created_at        | TIMESTAMP    |                                      |
+| updated_at        | TIMESTAMP    |                                      |
+
+**Indexes:** `(proposal_hash)`, `(proposal_hash, user_decision)`
 
 ---
 
@@ -851,6 +903,9 @@ EXCLUDE USING gist (
 | `2026_03_23_000003_add_deposit_lifecycle_to_bookings_table` | deposit / advance lifecycle tracking            |
 | `2026_03_23_000004_add_settlement_lifecycle_to_service_recovery_cases_table` | settlement tracking on recovery cases |
 | `2026_03_23_000005_fix_reviews_room_fk_delete_policy`     | correct `reviews.room_id` FK to RESTRICT          |
+| `2026_04_03_084257_create_email_verification_codes_table` | email OTP verification (SHA-256 code_hash)        |
+| `2026_04_09_000001_create_policy_documents_table`         | AI harness policy content for FAQ grounding       |
+| `2026_04_11_000001_create_ai_proposal_events_table`       | AI proposal confirm/decline audit trail           |
 
 ### Commands
 
@@ -879,6 +934,7 @@ php artisan migrate:fresh --seed
 | `RoomSeeder`       | Sample rooms data                               |
 | `ReviewSeeder`     | Sample reviews                                  |
 | `RoomsTableSeeder` | Legacy rooms seeder                             |
+| `PolicyDocumentSeeder` | AI harness policy content (FAQ grounding)    |
 
 ### Sample Data (RoomSeeder)
 
@@ -1044,6 +1100,11 @@ Review
 ├── belongsTo → Booking (booking_id)    // required, non-nullable
 │
 ContactMessage (standalone, no FK relationships)
+│
+PolicyDocument (standalone, no FK relationships)
+│
+AiProposalEvent
+├── belongsTo → User (user_id)
 ```
 
 ---

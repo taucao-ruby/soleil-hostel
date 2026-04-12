@@ -86,6 +86,8 @@ docker compose up --build                                      # Docker stack
 | `php artisan stays:backfill-operational --dry-run` | Count eligible bookings without persisting | Prints summary only |
 | `php artisan cache:warmup` | Pre-populate room availability cache | — |
 | `php artisan bookings:prune-soft-deleted` | Purge old soft-deleted booking records | — |
+| `php artisan ai:eval --all-phases` | Run full AI harness regression gate (all phases, all datasets) | Nightly CI at 03:00; blocks deploy on failure |
+| `php artisan ai:eval --phase=N` | Run regression for a specific phase (2, 2plus, 3) | Use `--dataset=faq_lookup\|room_discovery\|admin_draft` to filter |
 
 Selection criteria for `stays:backfill-operational`: `status = 'confirmed'` AND `check_out >= today` AND no existing stay row.
 Does NOT touch cancelled, refund_pending, refunded, refund_failed, or past-checkout bookings. Source: `app/Console/Commands/BackfillOperationalStays.php`.

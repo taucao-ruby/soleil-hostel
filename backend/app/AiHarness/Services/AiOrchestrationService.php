@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace App\AiHarness\Services;
 
+use App\AiHarness\DTOs\BookingActionProposal;
 use App\AiHarness\DTOs\GroundedContext;
 use App\AiHarness\DTOs\HarnessRequest;
 use App\AiHarness\DTOs\HarnessResponse;
+use App\AiHarness\Enums\ProposalActionType;
 use App\AiHarness\Enums\ResponseClass;
 use App\AiHarness\Exceptions\BlockedToolException;
 use App\AiHarness\Exceptions\ProviderTimeoutException;
 use App\AiHarness\Exceptions\ProviderUnavailableException;
 use App\AiHarness\Providers\RawModelResponse;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * L0 — AI Orchestration Service.
@@ -78,6 +81,7 @@ class AiOrchestrationService
                 responseClass: $responseClass,
                 content: $this->buildAbstainContent($preCallDecision),
                 citations: [],
+                proposals: [],
                 failureReason: $preCallDecision->reason,
                 estimatedCostUsd: 0.0,
                 traceRef: ['request_id' => $request->requestId, 'trace_logged' => true],
@@ -137,6 +141,13 @@ class AiOrchestrationService
             }
         }
 
+        // ── Phase 4+: Extract and validate BookingActionProposals ──
+        $validatedProposals = $this->extractAndValidateProposals(
+            $toolExecutions,
+            $responseClass,
+            $failureReason,
+        );
+
         $latency['total_ms'] = (int) (microtime(true) * 1000) - $totalStart;
 
         // ── L6: Observability ──
@@ -165,6 +176,7 @@ class AiOrchestrationService
             responseClass: $responseClass,
             content: $content,
             citations: [],
+            proposals: $validatedProposals,
             failureReason: $failureReason,
             estimatedCostUsd: $trace->estimatedCostUsd,
             traceRef: ['request_id' => $request->requestId, 'trace_logged' => true],
@@ -180,5 +192,74 @@ class AiOrchestrationService
     {
         return 'Tôi không thể thực hiện hành động này trực tiếp. '
             .'Vui lòng sử dụng giao diện đặt phòng hoặc liên hệ lễ tân.';
+    }
+
+    /**
+     * Extract BookingActionProposals from tool execution results.
+     *
+     * Identifies proposals by checking for action_type + requires_confirmation
+     * in the serialized result. Validates each proposal via PolicyEnforcementService.
+     * Stores valid proposals in cache for the confirmation flow.
+     *
+     * @param  list<array{tool: string, classification: string, result: mixed, executed: bool, duration_ms: int}>  $toolExecutions
+     * @return list<array<string, mixed>>
+     */
+    private function extractAndValidateProposals(
+        array $toolExecutions,
+        ResponseClass &$responseClass,
+        ?string &$failureReason,
+    ): array {
+        $validatedProposals = [];
+
+        foreach ($toolExecutions as $execution) {
+            $result = $execution['result'] ?? null;
+            if (! is_array($result)) {
+                continue;
+            }
+
+            // Detect proposal by its schema signature
+            if (! isset($result['action_type'], $result['requires_confirmation'], $result['proposal_hash'])) {
+                continue;
+            }
+
+            $actionType = ProposalActionType::tryFrom((string) $result['action_type']);
+            if ($actionType === null) {
+                continue;
+            }
+
+            $proposedParamsRaw = $result['proposed_params'] ?? null;
+            $policyRefsRaw = $result['policy_refs'] ?? null;
+            $riskAssessmentRaw = $result['risk_assessment'] ?? null;
+
+            $proposal = new BookingActionProposal(
+                actionType: $actionType,
+                proposedParams: is_array($proposedParamsRaw) ? $proposedParamsRaw : [],
+                humanReadableSummary: (string) ($result['human_readable_summary'] ?? ''),
+                policyRefs: is_array($policyRefsRaw) ? array_values($policyRefsRaw) : [],
+                riskAssessment: is_array($riskAssessmentRaw) ? $riskAssessmentRaw : [],
+                requiresConfirmation: true,
+                proposalHash: (string) $result['proposal_hash'],
+                generatedAt: (string) ($result['generated_at'] ?? now()->toIso8601String()),
+            );
+
+            $proposalDecision = $this->policyEnforcement->validateProposal($proposal);
+            if ($proposalDecision->decision === 'reject') {
+                $failureReason = $proposalDecision->reason;
+                $responseClass = ResponseClass::REFUSAL;
+
+                continue;
+            }
+
+            // Store proposal in cache for confirmation flow (30 min TTL)
+            Cache::put(
+                "ai_proposal:{$proposal->proposalHash}",
+                $proposal->toArray(),
+                1800,
+            );
+
+            $validatedProposals[] = $proposal->toArray();
+        }
+
+        return $validatedProposals;
     }
 }

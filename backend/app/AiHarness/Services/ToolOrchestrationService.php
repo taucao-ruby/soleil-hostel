@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\AiHarness\Services;
 
+use App\AiHarness\DTOs\BookingActionProposal;
 use App\AiHarness\DTOs\HarnessRequest;
 use App\AiHarness\DTOs\ToolDraft;
+use App\AiHarness\Enums\ProposalActionType;
 use App\AiHarness\Enums\ToolClassification;
 use App\AiHarness\Exceptions\BlockedToolException;
 use App\AiHarness\ToolRegistry;
@@ -97,6 +99,26 @@ class ToolOrchestrationService
     {
         $startMs = (int) (microtime(true) * 1000);
 
+        // Phase 4+: Booking action proposals produce BookingActionProposal structs
+        $proposal = match ($toolName) {
+            'draft_booking_suggestion' => $this->buildBookingProposal($input, $request),
+            'suggest_cancellation' => $this->buildCancellationProposal($input, $request),
+            default => null,
+        };
+
+        if ($proposal !== null) {
+            $durationMs = (int) (microtime(true) * 1000) - $startMs;
+
+            return [
+                'tool' => $toolName ?: 'unknown',
+                'classification' => ToolClassification::APPROVAL_REQUIRED->value,
+                'result' => $proposal->toArray(),
+                'executed' => false,
+                'duration_ms' => $durationMs,
+            ];
+        }
+
+        // Phase 3: Text drafts produce ToolDraft structs
         $draft = match ($toolName) {
             'draft_admin_message' => $this->buildAdminMessageDraft($input, $request),
             'draft_cancellation_summary' => $this->buildCancellationSummaryDraft($input, $request),
@@ -104,11 +126,10 @@ class ToolOrchestrationService
         };
 
         $durationMs = (int) (microtime(true) * 1000) - $startMs;
-        $classification = ToolClassification::APPROVAL_REQUIRED->value;
 
         return [
             'tool' => $toolName ?: 'unknown',
-            'classification' => $classification,
+            'classification' => ToolClassification::APPROVAL_REQUIRED->value,
             'result' => $draft->toArray(),
             'executed' => false,
             'duration_ms' => $durationMs,
@@ -251,6 +272,150 @@ class ToolOrchestrationService
             policyRefs: $policyRefs,
             keyFacts: $keyFacts,
             draftHash: $draftHash,
+            generatedAt: $now,
+        );
+    }
+
+    /**
+     * Build a BookingActionProposal for suggest_booking.
+     * Checks availability via existing service before proposing.
+     */
+    private function buildBookingProposal(array $input, HarnessRequest $request): BookingActionProposal
+    {
+        $roomId = (int) ($input['room_id'] ?? 0);
+        $checkIn = (string) ($input['check_in'] ?? '');
+        $checkOut = (string) ($input['check_out'] ?? '');
+        $guestCount = (int) ($input['guest_count'] ?? 1);
+
+        $policyRefs = [];
+        $riskFactors = [];
+
+        // Verify room exists
+        $room = \App\Models\Room::find($roomId);
+        if ($room === null) {
+            $riskFactors[] = 'room_not_found';
+        }
+
+        // Check availability via existing service
+        $available = false;
+        if ($roomId > 0 && $checkIn !== '' && $checkOut !== '') {
+            $service = app(\App\Services\RoomAvailabilityService::class);
+            $available = $service->isRoomAvailable($roomId, $checkIn, $checkOut);
+        }
+
+        if (! $available) {
+            $riskFactors[] = 'room_not_available';
+        }
+
+        // Reference booking policy
+        $policyService = app(PolicyContentService::class);
+        $bookingPolicy = $policyService->getBySlug('booking-policy');
+        if ($bookingPolicy !== null) {
+            $policyRefs[] = $bookingPolicy->slug;
+        }
+
+        $riskLevel = ! empty($riskFactors) ? 'high' : 'low';
+
+        $summary = $available
+            ? "Đề xuất đặt phòng #{$roomId} từ {$checkIn} đến {$checkOut} cho {$guestCount} khách."
+            : "Phòng #{$roomId} không khả dụng trong khoảng thời gian yêu cầu ({$checkIn} - {$checkOut}).";
+
+        $now = now()->toIso8601String();
+        $proposalHash = hash('sha256', "suggest_booking:{$roomId}:{$checkIn}:{$checkOut}:{$now}:{$request->requestId}");
+
+        Log::channel('ai')->info('Booking action proposal generated', [
+            'request_id' => $request->requestId,
+            'action_type' => 'suggest_booking',
+            'room_id' => $roomId,
+            'available' => $available,
+            'proposal_hash' => $proposalHash,
+        ]);
+
+        return new BookingActionProposal(
+            actionType: ProposalActionType::SUGGEST_BOOKING,
+            proposedParams: [
+                'room_id' => $roomId,
+                'check_in' => $checkIn,
+                'check_out' => $checkOut,
+                'guest_count' => $guestCount,
+                'available' => $available,
+            ],
+            humanReadableSummary: $summary,
+            policyRefs: $policyRefs,
+            riskAssessment: [
+                'level' => $riskLevel,
+                'factors' => $riskFactors,
+            ],
+            requiresConfirmation: true,
+            proposalHash: $proposalHash,
+            generatedAt: $now,
+        );
+    }
+
+    /**
+     * Build a BookingActionProposal for suggest_cancellation.
+     * Fetches booking context, references cancellation policy.
+     */
+    private function buildCancellationProposal(array $input, HarnessRequest $request): BookingActionProposal
+    {
+        $bookingId = (int) ($input['booking_id'] ?? 0);
+
+        $policyRefs = [];
+        $riskFactors = [];
+
+        $booking = $this->fetchBookingForDraft($bookingId, $request);
+        if ($booking === null) {
+            $riskFactors[] = 'booking_not_found_or_access_denied';
+        }
+
+        $bookingStatus = $booking['status'] ?? 'unknown';
+        if (in_array($bookingStatus, ['cancelled', 'completed'], true)) {
+            $riskFactors[] = "booking_already_{$bookingStatus}";
+        }
+
+        // Reference cancellation policy
+        $policyService = app(PolicyContentService::class);
+        $cancelPolicy = $policyService->getBySlug('cancellation-policy');
+        if ($cancelPolicy !== null) {
+            $policyRefs[] = $cancelPolicy->slug;
+        }
+
+        $riskLevel = ! empty($riskFactors) ? 'high' : 'medium';
+
+        if ($booking !== null) {
+            $summary = "Đề xuất hủy booking #{$bookingId} (trạng thái: {$bookingStatus}, "
+                ."check-in: {$booking['check_in']}, check-out: {$booking['check_out']}).";
+        } else {
+            $summary = "Không thể tạo đề xuất hủy: booking #{$bookingId} không tìm thấy hoặc không có quyền truy cập.";
+        }
+
+        $reason = (string) ($input['reason'] ?? '');
+        $now = now()->toIso8601String();
+        $proposalHash = hash('sha256', "suggest_cancellation:{$bookingId}:{$now}:{$request->requestId}");
+
+        Log::channel('ai')->info('Cancellation proposal generated', [
+            'request_id' => $request->requestId,
+            'action_type' => 'suggest_cancellation',
+            'booking_id' => $bookingId,
+            'booking_found' => $booking !== null,
+            'proposal_hash' => $proposalHash,
+        ]);
+
+        return new BookingActionProposal(
+            actionType: ProposalActionType::SUGGEST_CANCELLATION,
+            proposedParams: [
+                'booking_id' => $bookingId,
+                'reason' => $reason,
+                'current_status' => $bookingStatus,
+            ],
+            humanReadableSummary: $summary,
+            policyRefs: $policyRefs,
+            riskAssessment: [
+                'level' => $riskLevel,
+                'factors' => $riskFactors,
+            ],
+            requiresConfirmation: true,
+            proposalHash: $proposalHash,
             generatedAt: $now,
         );
     }

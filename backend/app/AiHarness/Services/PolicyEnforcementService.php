@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\AiHarness\Services;
 
+use App\AiHarness\DTOs\BookingActionProposal;
 use App\AiHarness\DTOs\HarnessRequest;
 use App\AiHarness\DTOs\PolicyDecision;
+use App\AiHarness\Enums\ProposalActionType;
 use App\AiHarness\Enums\ToolClassification;
 use App\AiHarness\Providers\RawModelResponse;
 use App\AiHarness\ToolRegistry;
@@ -200,6 +202,129 @@ class PolicyEnforcementService
             piiDetected: $piiDetected,
             blockedTool: null,
             sanitizedFields: $sanitizedFields,
+        );
+    }
+
+    /**
+     * Validate a BookingActionProposal schema before presenting to user.
+     *
+     * Reject if:
+     * - action_type not in allowed list
+     * - proposed_params missing required fields
+     * - risk_assessment missing
+     *
+     * On rejection → proposal is discarded, REFUSAL returned.
+     */
+    public function validateProposal(BookingActionProposal $proposal): PolicyDecision
+    {
+        $checks = [];
+
+        // Check 1: action_type is a valid ProposalActionType.
+        // $proposal->actionType is typed as ProposalActionType — PHP's type system guarantees
+        // validity at construction. An in_array comparison against ProposalActionType::cases()
+        // values is structurally unreachable for any typed enum instance and creates a dead
+        // branch that Psalm correctly flags as impossible.
+        $checks[] = 'proposal_action_type:valid';
+
+        // Check 2: proposed_params has required fields per action_type
+        $requiredParams = match ($proposal->actionType) {
+            ProposalActionType::SUGGEST_BOOKING => ['room_id', 'check_in', 'check_out'],
+            ProposalActionType::SUGGEST_CANCELLATION => ['booking_id'],
+        };
+
+        $missingParams = [];
+        foreach ($requiredParams as $param) {
+            if (! array_key_exists($param, $proposal->proposedParams)
+                || $proposal->proposedParams[$param] === null
+                || $proposal->proposedParams[$param] === '') {
+                $missingParams[] = $param;
+            }
+        }
+
+        if (! empty($missingParams)) {
+            $checks[] = 'proposal_params:missing';
+            $missing = implode(', ', $missingParams);
+
+            Log::channel('ai')->error('Proposal missing required params', [
+                'missing' => $missingParams,
+                'proposal_hash' => $proposal->proposalHash,
+            ]);
+
+            return new PolicyDecision(
+                decision: 'reject',
+                reason: "Proposal missing required parameters: {$missing}.",
+                checksPerformed: $checks,
+                piiDetected: false,
+                blockedTool: null,
+                sanitizedFields: [],
+            );
+        }
+        $checks[] = 'proposal_params:valid';
+
+        // Check 3: risk_assessment present with required structure
+        if (empty($proposal->riskAssessment)
+            || ! isset($proposal->riskAssessment['level'])
+            || ! isset($proposal->riskAssessment['factors'])) {
+            $checks[] = 'proposal_risk_assessment:missing';
+
+            Log::channel('ai')->error('Proposal missing risk_assessment', [
+                'proposal_hash' => $proposal->proposalHash,
+            ]);
+
+            return new PolicyDecision(
+                decision: 'reject',
+                reason: 'Proposal missing required risk_assessment.',
+                checksPerformed: $checks,
+                piiDetected: false,
+                blockedTool: null,
+                sanitizedFields: [],
+            );
+        }
+        $checks[] = 'proposal_risk_assessment:valid';
+
+        // Check 4: requires_confirmation must be true (defensive — struct enforces this,
+        // but validation layer must reject if ever bypassed via deserialization)
+        /** @phpstan-ignore booleanNot.alwaysFalse (defense-in-depth: guard against deserialization bypass) */
+        if ($proposal->requiresConfirmation !== true) {
+            $checks[] = 'proposal_confirmation:bypass_attempt';
+
+            Log::channel('ai')->error('Proposal attempted to bypass confirmation', [
+                'proposal_hash' => $proposal->proposalHash,
+            ]);
+
+            return new PolicyDecision(
+                decision: 'reject',
+                reason: 'Proposal must require confirmation.',
+                checksPerformed: $checks,
+                piiDetected: false,
+                blockedTool: null,
+                sanitizedFields: [],
+            );
+        }
+        $checks[] = 'proposal_confirmation:required';
+
+        // Check 5: human_readable_summary not empty
+        if (trim($proposal->humanReadableSummary) === '') {
+            $checks[] = 'proposal_summary:empty';
+
+            return new PolicyDecision(
+                decision: 'reject',
+                reason: 'Proposal must include a human-readable summary.',
+                checksPerformed: $checks,
+                piiDetected: false,
+                blockedTool: null,
+                sanitizedFields: [],
+            );
+        }
+        $checks[] = 'proposal_summary:present';
+
+        return new PolicyDecision(
+            decision: 'allow',
+            reason: 'Proposal schema validation passed.',
+            checksPerformed: $checks,
+            piiDetected: false,
+            blockedTool: null,
+            sanitizedFields: [],
         );
     }
 }

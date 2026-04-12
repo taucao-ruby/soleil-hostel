@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AiController;
+use App\Http\Controllers\ProposalConfirmationController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -31,6 +32,29 @@ Route::middleware([
     Route::post('/{task_type}', [AiController::class, 'handle'])
         ->name('v1.ai.handle')
         ->where('task_type', '[a-z_]+');
+});
+
+/*
+|--------------------------------------------------------------------------
+| AI Proposal Confirmation (Phase 4+)
+|--------------------------------------------------------------------------
+|
+| User confirms or declines a BookingActionProposal.
+| On confirm: harness dispatches to existing service layer.
+| On decline: logs rejection, returns acknowledgement.
+| No model invocation — this is enforcement, not inference.
+|
+*/
+
+Route::middleware([
+    'check_token_valid',
+    'verified',
+    'throttle:10,1',
+    'ai_harness_enabled',
+])->group(function () {
+    Route::post('/proposals/{hash}/decide', [ProposalConfirmationController::class, 'decide'])
+        ->name('v1.ai.proposals.decide')
+        ->where('hash', '[a-f0-9]{64}');
 });
 
 /*

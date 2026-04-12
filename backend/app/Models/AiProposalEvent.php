@@ -33,6 +33,8 @@ class AiProposalEvent extends Model
 
     /**
      * @return BelongsTo<User, $this>
+     * @phpstan-return BelongsTo<User, $this>
+     * @psalm-return BelongsTo<User, static>
      */
     public function user(): BelongsTo
     {

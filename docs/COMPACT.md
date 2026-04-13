@@ -15,16 +15,16 @@
 
 ## 1) Current Snapshot (keep under 12 lines)
 
-- Date updated: 2026-04-06
-- Current branch: `dev` (HEAD=`30ad47e`)
-- Latest commit: `30ad47e` — chore(backend): fix binary_operator_spaces in RoomSeeder
-- Backend test baseline: **re-verification required** — email verification tests heavily revised Apr 3; previous baseline 1047/2875 (2026-03-31)
-- Frontend: `pnpm run build` PASS (TS5103 fixed — `ignoreDeprecations: "6.0"` removed from tsconfig.app.json); Vitest upgraded to v4.1.2 (Apr 5)
-- Pint: **re-verify required** — additional Pint fix landed `30ad47e` (RoomSeeder); previous residual 8 violations (email-verification cluster). **PHPStan: Level 5, 0 errors.** Psalm: Level 1, 0 blocking.
-- Email OTP verification flow ✅ Done (Apr 3). Location room availability fix ✅ Done (Apr 3). Responsive homepage + live room pricing ✅ Done (Apr 5).
-- Open findings: F-23 (MD lint), F-25 (CSRF path), F-26–F-62 (2026-03-20 audit), **F-63–F-66** (2026-04-05 audit — 4 new). See FINDINGS_BACKLOG.md.
+- Date updated: 2026-04-12
+- Current branch: `dev` (HEAD=`a67cfcc`)
+- Latest commit: `a67cfcc` — AI Harness Phases 0–4 complete
+- Backend test baseline: **re-verification required** — AI harness added 50+ files, eval command, 3 middleware; previous baseline pending re-run
+- Frontend: LoginPage/RegisterPage/RoomList redesign landed; AI assistant widgets added; axios ^1.15.0 (CVE fix), vite 6.4.2 (CVE fix)
+- AI Harness: Phases 0–4 ✅ Done. 7 endpoints (`/v1/ai/*`), 2 new tables (`policy_documents`, `ai_proposal_events`), kill switch, canary routing, eval framework
+- New config: `config/ai_harness.php` — kill switch, providers, timeouts, circuit breaker, canary routing
+- Open findings: F-23 (MD lint), F-25 (CSRF path), F-26–F-62 (2026-03-20 audit), F-63–F-66 (2026-04-05 audit). See FINDINGS_BACKLOG.md.
 - **H-06**: `phpunit.xml` defaults to PostgreSQL; run `docker compose up -d db` before `php artisan test`.
-- **F-63 HIGH**: `TodayOperations.tsx` calls `PATCH /v1/rooms/{id}/status` — backend route does not exist (XL-CONTRACT-02). Runtime 404.
+- **T-13 ACCEPTED**: Proposal confirmation has no user-to-proposal ownership check (relies on 256-bit hash entropy + rate limiting).
 
 ## 2) Invariants
 
@@ -35,8 +35,8 @@ This section intentionally left as a pointer — do not duplicate invariants her
 
 ### Now
 
-- **Pint-residual**: Fix 8 style violations in email-verification cluster (line_ending, braces_position, unary_operator_spaces, class_definition) — CRLF authored on Windows
-- **Backend test re-baseline**: run `php artisan test` and update COMPACT §1 + PROJECT_STATUS after Pint fix
+- **AI Harness Phases 0–4**: ✅ COMPLETE — all 7 endpoints, eval framework, kill switch, canary routing
+- **Documentation sync**: Updating all source-of-truth docs to reflect AI harness (ARCHITECTURE_FACTS, PERMISSION_MATRIX, CONTRACT, DB_FACTS, DATABASE, openapi.yaml, THREAT_MODEL_AI, COMMANDS)
 - PAY-001 Phase 2: Stripe checkout session + frontend payment UI
 - TD-005 RBAC Follow-ups (FU-1..FU-5) — legacy test migration, coverage gaps, config verification (see `docs/PERMISSION_MATRIX.md`)
 - OPS-001: SSH deploy step + automated health check + automatic rollback on health failure

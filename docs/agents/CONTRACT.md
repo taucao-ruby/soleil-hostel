@@ -55,6 +55,21 @@ All items from "Code Changes" above, plus:
 - [ ] Index and constraint names are explicit and production-safe
 - [ ] Idempotent patterns used where production state may vary
 
+## DoD: AI Harness Changes
+
+All items from "Code Changes" above, plus:
+
+- [ ] Kill switch verified: `AI_HARNESS_ENABLED=false` → all AI endpoints return 404
+- [ ] No `env()` calls in runtime code (`backend/app/AiHarness/**`); `config()` only
+- [ ] Policy enforcement layer (L4) tested: blocked tools, PII scan, injection heuristics
+- [ ] Tool classification tested: READ_ONLY auto-exec, APPROVAL_REQUIRED returns ToolDraft, BLOCKED throws
+- [ ] Proposal confirmation tested: downstream delegation to existing service layer, event recording
+- [ ] Context assembly RBAC filtering tested: admin-only sources blocked for non-admin users
+- [ ] Regression gate passes: `php artisan ai:eval --all-phases`
+- [ ] Canary routing percentages verified for each task type
+- [ ] `ai` log channel captures request traces with masked PII
+- [ ] Booking invariants preserved: proposal execution delegates to `CreateBookingService` / `BookingService` — no bypass of `lockForUpdate()` or exclusion constraints
+
 ## Scope Boundaries
 
 - Keep diffs small and scoped to the task

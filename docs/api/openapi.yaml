@@ -69,6 +69,8 @@ tags:
     description: Kubernetes-style health probes and detailed system checks
   - name: Contact
     description: Public contact form
+  - name: AI Harness
+    description: AI-powered assistant endpoints (FAQ, room discovery, booking status, admin drafts) with proposal confirmation
   - name: Deprecated
     description: Legacy endpoints scheduled for removal (sunset July 2026)
 
@@ -361,6 +363,178 @@ components:
               provided_version:
                 type: integer
                 example: 5
+
+    # ─── AI Harness Schemas ───
+
+    AiHandleRequest:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          description: User input text
+          example: "Giá phòng Deluxe bao nhiêu?"
+
+    AiHandleResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            request_id:
+              type: string
+              example: "ai-a1b2c3d4e5f6a1b2c3d4e5f6"
+            response_class:
+              type: string
+              enum: [answer, abstain, refusal, error, fallback]
+              example: "answer"
+            content:
+              type: string
+              description: Vietnamese user-facing reply
+              example: "Phòng Deluxe có giá 150 USD/đêm."
+            citations:
+              type: array
+              items:
+                type: object
+                properties:
+                  source_slug:
+                    type: string
+                  verified_at:
+                    type: string
+                    format: date-time
+            proposals:
+              type: array
+              nullable: true
+              items:
+                $ref: "#/components/schemas/BookingActionProposal"
+            failure_reason:
+              type: string
+              nullable: true
+            estimated_cost_usd:
+              type: number
+              format: float
+              example: 0.0012
+            trace_ref:
+              type: object
+              properties:
+                request_id:
+                  type: string
+                trace_logged:
+                  type: boolean
+        message:
+          type: string
+          nullable: true
+        errors:
+          type: object
+          nullable: true
+        meta:
+          type: object
+          properties:
+            pagination:
+              nullable: true
+        trace_id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    BookingActionProposal:
+      type: object
+      properties:
+        action_type:
+          type: string
+          enum: [suggest_booking, suggest_cancellation]
+        proposed_params:
+          type: object
+          properties:
+            room_id:
+              type: integer
+              nullable: true
+            check_in:
+              type: string
+              format: date-time
+              nullable: true
+            check_out:
+              type: string
+              format: date-time
+              nullable: true
+            available:
+              type: boolean
+              nullable: true
+            booking_id:
+              type: integer
+              nullable: true
+        human_readable_summary:
+          type: string
+        policy_refs:
+          type: array
+          items:
+            type: string
+        risk_assessment:
+          type: object
+        requires_confirmation:
+          type: boolean
+          example: true
+        proposal_hash:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+          description: SHA-256 hex hash for proposal identification
+        generated_at:
+          type: string
+          format: date-time
+
+    ProposalDecisionRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [confirmed, declined]
+          description: User decision on the proposal
+          example: "confirmed"
+
+    ProposalDecisionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            proposal_hash:
+              type: string
+              pattern: "^[a-f0-9]{64}$"
+            decision:
+              type: string
+              enum: [confirmed, declined]
+            downstream_result:
+              type: string
+              nullable: true
+              description: "Result of downstream action (e.g. booking_created:123)"
+              example: "booking_created:123"
+            message:
+              type: string
+              example: "Hành động đã được thực hiện thành công."
+        message:
+          type: string
+          nullable: true
+        errors:
+          type: object
+          nullable: true
+        meta:
+          type: object
+          properties:
+            pagination:
+              nullable: true
+        trace_id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
 
 paths:
   # ═══════════════════════════════════════
@@ -1979,6 +2153,155 @@ paths:
                 properties:
                   csrf_token:
                     type: string
+
+  # ═══════════════════════════════════════
+  # AI HARNESS
+  # ═══════════════════════════════════════
+
+  /v1/ai/{task_type}:
+    post:
+      tags: [AI Harness]
+      summary: AI assistant handler
+      operationId: aiHandle
+      description: |
+        Dispatch a user query to the AI harness pipeline.
+        Task type determines the response pipeline (FAQ grounding, room search, booking status, admin draft).
+        Gated by `ai_harness_enabled` kill switch — returns 404 when disabled.
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: task_type
+          in: path
+          required: true
+          description: AI task type
+          schema:
+            type: string
+            enum: [faq_lookup, room_discovery, booking_status, admin_draft]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiHandleRequest"
+      responses:
+        "200":
+          description: AI response (may include proposals for booking actions)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiHandleResponse"
+        "401":
+          description: Unauthenticated
+        "403":
+          description: Email not verified
+        "404":
+          description: Invalid task type or AI harness disabled (kill switch)
+        "422":
+          description: Invalid task type
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Invalid task type."
+        "429":
+          description: Rate limit exceeded (10 req/min per user)
+
+  /v1/ai/proposals/{hash}/decide:
+    post:
+      tags: [AI Harness]
+      summary: Confirm or decline a booking action proposal
+      operationId: aiProposalDecide
+      description: |
+        User confirms or declines a BookingActionProposal by its SHA-256 hash.
+        On confirm: harness dispatches to existing service layer (booking creation/cancellation).
+        On decline: logs rejection, returns acknowledgement.
+        No model invocation — this is enforcement, not inference.
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: hash
+          in: path
+          required: true
+          description: SHA-256 proposal hash (64 hex characters)
+          schema:
+            type: string
+            pattern: "^[a-f0-9]{64}$"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProposalDecisionRequest"
+      responses:
+        "200":
+          description: Decision recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProposalDecisionResponse"
+        "401":
+          description: Unauthenticated
+        "404":
+          description: Proposal not found or expired
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Proposal not found or expired."
+        "422":
+          description: Downstream execution failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Không thể thực hiện hành động. Vui lòng thử lại."
+                  errors:
+                    type: object
+                    properties:
+                      downstream_result:
+                        type: string
+        "429":
+          description: Rate limit exceeded
+
+  /v1/ai/health:
+    get:
+      tags: [AI Harness]
+      summary: AI harness health check
+      operationId: aiHealthCheck
+      description: |
+        Returns 200 when AI_HARNESS_ENABLED=true, 404 otherwise.
+        Used by kill switch procedure to verify harness is down.
+        No authentication required — only gated by `ai_harness_enabled` middleware.
+      responses:
+        "200":
+          description: AI harness is enabled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  enabled:
+                    type: boolean
+                    example: true
+        "404":
+          description: AI harness is disabled (kill switch active)
 
   # ═══════════════════════════════════════
   # DEPRECATED ENDPOINTS

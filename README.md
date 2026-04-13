@@ -77,6 +77,19 @@ Dự án được xây dựng như một hệ thống có thể sống lâu dài
 
 ---
 
+### 🤖 5. AI Assistant (Harness)
+
+- Trợ lý AI tích hợp cho khách và quản trị viên
+- **FAQ Lookup**: Trả lời câu hỏi thường gặp dựa trên chính sách thực tế (policy-grounded)
+- **Room Discovery**: Tìm phòng phù hợp qua hội thoại tự nhiên
+- **Booking Status**: Tra cứu trạng thái đặt phòng qua AI
+- **Admin Draft**: Soạn thảo nháp phản hồi cho quản trị viên
+- **Proposal Confirmation**: AI đề xuất hành động đặt/huỷ phòng, người dùng xác nhận trước khi thực thi
+- Kill switch tức thì, canary routing, 7-layer safety pipeline
+- Regression gate tự động (`php artisan ai:eval --all-phases`)
+
+---
+
 ## 🧰 Tech Stack
 
 ### 🎨 Frontend
@@ -125,7 +138,8 @@ Dự án được xây dựng như một hệ thống có thể sống lâu dài
 soleil-hostel/
 ├── backend/                          # Laravel 12 Backend
 │   ├── app/                          # Application Code
-│   │   ├── Console/                  # Artisan Commands
+│   │   ├── AiHarness/                # AI Harness (7-layer pipeline, providers, safety)
+│   │   ├── Console/                  # Artisan Commands (incl. ai:eval)
 │   │   ├── Enums/                    # PHP Enums
 │   │   ├── Events/                   # Event Classes
 │   │   ├── Exceptions/               # Custom Exceptions
@@ -184,7 +198,14 @@ soleil-hostel/
 │   │   ├── TESTING.md                # Testing Guide
 │   │   ├── PERFORMANCE_SECURITY.md   # Performance & Security
 │   │   └── DEPLOYMENT.md             # Deployment
+│   ├── agents/                       # Agent Framework & Contracts
+│   ├── api/                          # OpenAPI 3.1 Spec
 │   ├── DATABASE.md                   # Database Schema & Migrations
+│   ├── HARNESS_ENGINEERING.md        # AI Harness Architecture
+│   ├── THREAT_MODEL_AI.md            # AI Threat Model (Phases 1–4)
+│   ├── EVAL_STRATEGY.md              # AI Eval & Regression Gates
+│   ├── ROLLOUT_AND_KILL_SWITCH.md    # AI Rollout & Kill Switch
+│   ├── PERMISSION_MATRIX.md          # RBAC Permission Matrix
 │   └── README.md                     # Documentation Index
 │
 ├── database/                         # Database Files
@@ -281,6 +302,10 @@ Sau đó mở Pull Request trên GitHub.
 - Backend documentation fully organized
 - Both servers verified running successfully
 - Optimistic locking for room concurrency control (January 2026)
+- RBAC hardening — defense-in-depth, 3 roles (USER / MODERATOR / ADMIN) (March 2026)
+- Four-layer operational domain — stays, room assignments, service recovery, escalation engine (March 2026)
+- Email verification OTP flow — full-stack 6-digit code (April 2026)
+- AI Harness Phases 0–4 — 7 endpoints, 7-layer safety pipeline, kill switch, canary routing, eval framework (April 2026)
 
 ---
 
@@ -289,7 +314,7 @@ Sau đó mở Pull Request trên GitHub.
 - Advanced booking calendar
 - Revenue & analytics modules
 - Customer statistics module
-- Role-based access (admin / moderator / user)
+- Stripe payment integration (Cashier bootstrapped, checkout UI pending)
 - UX optimization for non-technical / elderly homestay owners
 
 ---
@@ -300,7 +325,7 @@ Sau đó mở Pull Request trên GitHub.
 - Automated email & invoice sending
 - OTA integration (Booking.com, Agoda…)
 - Mobile application
-- Online payment integration
+- 2FA (TOTP)
 
 ---
 
@@ -405,6 +430,7 @@ Sau đó mở Pull Request trên GitHub.
 - **Repository Pattern**: Data access abstraction
 - **Event-Driven**: Asynchronous processing for performance
 - **Security-First**: Multiple layers of protection (headers, validation, auth)
+- **AI Safety by Design**: 7-layer pipeline with kill switch, policy grounding, and human-in-the-loop confirmation
 - **Test-Driven**: Comprehensive test coverage ensuring reliability
 
 ## 🧪 Test Suite Summary

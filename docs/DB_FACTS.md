@@ -23,6 +23,10 @@ Operational domain tables (added 2026-03-20, see `docs/DOMAIN_LAYERS.md`):
 - `room_assignments`: Physical room allocation history per stay. Partial unique index prevents two active assignments for same stay (PostgreSQL only).
 - `service_recovery_cases`: Incident, compensation, and settlement-tracking audit trail. `stay_id` nullable.
 
+AI harness tables (added 2026-04-09 / 2026-04-11, see `docs/HARNESS_ENGINEERING.md`):
+- `policy_documents`: Hostel policy content for AI FAQ grounding. UUID PK, `slug` (unique), `title`, `content` (text), `category`, `language` (default `vi`), `is_active`, `version`. Indexes: `(slug, is_active, language)`, `(category, is_active)`.
+- `ai_proposal_events`: Audit trail for AI booking proposal confirm/decline decisions. `user_id` FK→`users` CASCADE, `proposal_hash` (64-char, indexed), `action_type`, `user_decision` (`confirmed`/`declined`/`shown`), `downstream_result` (nullable text). Indexes: `(proposal_hash)`, `(proposal_hash, user_decision)`.
+
 Other framework tables exist (`sessions`, `cache`, `jobs`, etc.) but are out of scope for booking/auth invariants.
 
 ## 2) Invariants (must always hold)
@@ -164,6 +168,13 @@ Locations and rooms
 Service recovery financial tracking
 
 - `idx_src_settlement_status_settled_at` on `(settlement_status, settled_at)`.
+
+AI harness
+
+- `policy_documents(slug, is_active, language)` composite index.
+- `policy_documents(category, is_active)` composite index.
+- `ai_proposal_events(proposal_hash)` index.
+- `ai_proposal_events(proposal_hash, user_decision)` composite index.
 
 Reviews and tokens
 

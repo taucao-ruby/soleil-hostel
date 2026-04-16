@@ -14,6 +14,33 @@ import { getLocationBySlug } from './location.api'
 // Static data
 // ─────────────────────────────────────────────────────────────────────────────
 
+const staticReviews = [
+  {
+    name: 'Minh Anh',
+    city: 'Hà Nội',
+    ago: '2 ngày trước',
+    quote:
+      'Phòng ở cực kỳ sạch sẽ và decor rất nghệ thuật. Vị trí thì không còn gì để chê, đi bộ vài bước là đến Đại Nội rồi. Nhân viên hỗ trợ nhiệt tình, đặc biệt là bạn lễ tân ca sáng.',
+    initials: 'MA',
+  },
+  {
+    name: 'Hoàng Nam',
+    city: 'Sài Gòn',
+    ago: '1 tuần trước',
+    quote:
+      'Bữa sáng nhẹ ở bếp chung rất ấm cúng. Thiết kế nhìn rất sang và không bị đại trà như các chỗ khác. Nhất định sẽ quay lại!',
+    initials: 'HN',
+  },
+  {
+    name: 'Thanh Hằng',
+    city: 'Đà Nẵng',
+    ago: '2 tuần trước',
+    quote:
+      'Không gian yên tĩnh lý tưởng để làm việc từ xa. Wifi mạnh và góc cafe rất chill. Rất đáng tiền cho một kỳ nghỉ boutique đúng nghĩa.',
+    initials: 'TH',
+  },
+]
+
 const amenityLabels: Record<string, string> = {
   wifi: 'WiFi miễn phí',
   air_conditioning: 'Điều hòa',
@@ -319,88 +346,92 @@ const LocationDetail: React.FC = () => {
       {/* ══════════════════════════════════════════════════════════════════
           HERO GALLERY
       ══════════════════════════════════════════════════════════════════ */}
-      <section className="mb-12">
-        {/* Main hero image */}
-        <div className="relative h-[340px] overflow-hidden bg-[#1a1612] group sm:h-[460px] lg:h-[560px]">
-          <img
-            src={heroImage}
-            alt={images[heroIndex]?.alt || location.name}
-            className="absolute inset-0 h-full w-full object-cover opacity-70 transition-opacity duration-700 group-hover:opacity-80"
-            loading="eager"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/40" />
+      <section className="mb-12 mx-auto max-w-screen-xl px-6">
+        <div className="grid grid-cols-1 gap-4">
+          {/* Main hero image */}
+          <div className="relative h-[340px] overflow-hidden rounded-2xl bg-[#1a1612] group sm:h-[460px] lg:h-[560px]">
+            <img
+              src={heroImage}
+              alt={images[heroIndex]?.alt || location.name}
+              className="absolute inset-0 h-full w-full object-cover opacity-70 transition-opacity duration-700 group-hover:opacity-80"
+              loading="eager"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/40" />
 
-          {/* Mobile overlay nav */}
-          <div className="absolute inset-x-0 top-0 flex items-start justify-between px-4 pt-4 lg:hidden">
-            <button
-              type="button"
-              aria-label="Quay lại"
-              onClick={() => navigate(-1)}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-[#1a1612] shadow backdrop-blur-md transition hover:bg-white"
-            >
-              <MIcon name="arrow_back" className="text-[20px]" />
-            </button>
-            <div className="flex gap-2">
+            {/* Mobile overlay nav */}
+            <div className="absolute inset-x-0 top-0 flex items-start justify-between px-4 pt-4 lg:hidden">
               <button
                 type="button"
-                aria-label="Chia sẻ"
+                aria-label="Quay lại"
+                onClick={() => navigate(-1)}
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-[#1a1612] shadow backdrop-blur-md transition hover:bg-white"
               >
-                <MIcon name="share" className="text-[20px]" />
+                <MIcon name="arrow_back" className="text-[20px]" />
               </button>
-              <button
-                type="button"
-                aria-label="Lưu yêu thích"
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-[#1a1612] shadow backdrop-blur-md transition hover:bg-white"
-              >
-                <MIcon name="favorite" className="text-[20px]" />
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  aria-label="Chia sẻ"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-[#1a1612] shadow backdrop-blur-md transition hover:bg-white"
+                >
+                  <MIcon name="share" className="text-[20px]" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Lưu yêu thích"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-[#1a1612] shadow backdrop-blur-md transition hover:bg-white"
+                >
+                  <MIcon name="favorite" className="text-[20px]" />
+                </button>
+              </div>
             </div>
+
+            {/* Image counter pill */}
+            {images.length > 1 && (
+              <div className="absolute bottom-6 right-6 rounded-full bg-black/40 px-4 py-2 text-sm text-white backdrop-blur-md">
+                {heroIndex + 1} / {images.length} ảnh
+              </div>
+            )}
           </div>
 
-          {/* Image counter pill */}
+          {/* Thumbnail strip */}
           {images.length > 1 && (
-            <div className="absolute bottom-6 right-6 rounded-full bg-black/40 px-4 py-2 text-sm text-white backdrop-blur-md">
-              {heroIndex + 1} / {images.length} ảnh
+            <div className="grid grid-cols-5 gap-4">
+              {thumbImages.map((img, pos) => {
+                const imgIdx = pos + 1
+                const isLast = pos === thumbImages.length - 1 && extraCount > 0
+                return (
+                  <button
+                    key={imgIdx}
+                    type="button"
+                    aria-label={
+                      isLast ? `Xem tất cả ${images.length} ảnh` : `Xem ảnh ${imgIdx + 1}`
+                    }
+                    aria-pressed={imgIdx === heroIndex}
+                    onClick={() => setHeroIndex(imgIdx)}
+                    className={[
+                      'relative aspect-square overflow-hidden rounded-xl cursor-pointer transition-all',
+                      'hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9920a]',
+                      imgIdx === heroIndex ? 'ring-2 ring-[#c9920a]' : '',
+                    ].join(' ')}
+                  >
+                    <img
+                      src={img.url}
+                      alt={img.alt || `Ảnh ${imgIdx + 1}`}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                    {isLast && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                        <span className="text-sm font-semibold text-white">+{extraCount} ảnh</span>
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
             </div>
           )}
         </div>
-
-        {/* Thumbnail strip */}
-        {images.length > 1 && (
-          <div className="mx-auto mt-4 grid max-w-screen-xl grid-cols-5 gap-3 px-6">
-            {thumbImages.map((img, pos) => {
-              const imgIdx = pos + 1
-              const isLast = pos === thumbImages.length - 1 && extraCount > 0
-              return (
-                <button
-                  key={imgIdx}
-                  type="button"
-                  aria-label={isLast ? `Xem tất cả ${images.length} ảnh` : `Xem ảnh ${imgIdx + 1}`}
-                  aria-pressed={imgIdx === heroIndex}
-                  onClick={() => setHeroIndex(imgIdx)}
-                  className={[
-                    'relative aspect-square overflow-hidden rounded-xl cursor-pointer transition-all',
-                    'hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9920a]',
-                    imgIdx === heroIndex ? 'ring-2 ring-[#c9920a]' : '',
-                  ].join(' ')}
-                >
-                  <img
-                    src={img.url}
-                    alt={img.alt || `Ảnh ${imgIdx + 1}`}
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                  />
-                  {isLast && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                      <span className="text-sm font-semibold text-white">+{extraCount} ảnh</span>
-                    </div>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        )}
       </section>
 
       {/* ══════════════════════════════════════════════════════════════════
@@ -698,12 +729,29 @@ const LocationDetail: React.FC = () => {
                 </button>
               </div>
 
-              <div className="rounded-xl border border-dashed border-[#e5ddd5] bg-[#fff8f4] px-6 py-10 text-center">
-                <p className="text-sm text-[#9a9088]">
-                  Chưa có đánh giá nào được hiển thị.
-                  <br />
-                  Đặt phòng và trải nghiệm để chia sẻ cảm nhận của bạn.
-                </p>
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                {staticReviews.map(review => (
+                  <div
+                    key={review.name}
+                    className="rounded-2xl border border-[#ede5da] bg-white p-6 shadow-sm"
+                  >
+                    <div className="mb-4 flex items-center gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#fef3d7] text-sm font-bold text-[#7c5800]">
+                        {review.initials}
+                      </div>
+                      <div>
+                        <div className="font-semibold text-[#1f1b17]">{review.name}</div>
+                        <div className="text-[10px] font-bold uppercase tracking-widest opacity-40">
+                          {review.city} · {review.ago}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mb-3 flex gap-0.5 text-[#c9920a]">
+                      <Stars count={5} className="h-3.5 w-3.5" />
+                    </div>
+                    <p className="text-sm italic leading-relaxed opacity-70">"{review.quote}"</p>
+                  </div>
+                ))}
               </div>
             </section>
           </div>

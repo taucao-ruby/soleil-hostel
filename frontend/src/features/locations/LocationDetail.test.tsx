@@ -118,7 +118,7 @@ describe('LocationDetail', () => {
     })
 
     expect(screen.getByTestId('location-search-prompt')).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: /Phòng còn trống/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /Phòng & Giường/i })).not.toBeInTheDocument()
   })
 
   it('renders searched results and preserves booking query parameters in room links', async () => {
@@ -129,7 +129,7 @@ describe('LocationDetail', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Phòng còn trống \(3\)/i })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: /Phòng & Giường/i })).toBeInTheDocument()
     })
 
     expect(mockedGetLocationBySlug).toHaveBeenCalledWith(
@@ -184,8 +184,8 @@ describe('LocationDetail', () => {
       expect(screen.getByTestId('location-search-prompt')).toBeInTheDocument()
     })
 
-    const checkInInput = screen.getByLabelText('Ngày nhận phòng')
-    const checkOutInput = screen.getByLabelText('Ngày trả phòng')
+    const checkInInput = screen.getByLabelText('Nhận phòng')
+    const checkOutInput = screen.getByLabelText('Trả phòng')
 
     await user.clear(checkInInput)
     await user.type(checkInInput, '2099-06-10')

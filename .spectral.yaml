@@ -1,0 +1,21 @@
+# Spectral ruleset — Soleil Hostel OpenAPI contract lint.
+#
+# Used by:
+#   - CI (.github/workflows/contract-lint.yml) — blocks PRs with contract errors.
+#   - Local development: `npx @stoplight/spectral-cli lint docs/api/openapi.yaml`.
+#
+# Lane 3 Batch 3.4: added to detect OpenAPI drift surfaced in Lanes 1+2
+# before it merges. The built-in `spectral:oas` ruleset catches:
+#   - Syntax errors (unknown schema refs, malformed parameters).
+#   - Operation ID uniqueness.
+#   - Path-parameter consistency.
+#   - Unsafe markdown (script tags, eval) in descriptions.
+#   - Missing schemas on documented endpoints.
+#
+# CI uses `--fail-severity=error` so genuine contract defects block merges
+# while style warnings remain visible for review but non-blocking. To tune a
+# rule for Soleil conventions, add it under `rules:` with a one-line
+# rationale, e.g.:
+#   rules:
+#     operation-tag-defined: off   # rationale: we document tags inline
+extends: ["spectral:oas"]

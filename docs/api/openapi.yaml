@@ -279,91 +279,6 @@ components:
           type: integer
           example: 3540
 
-  responses:
-    Unauthorized:
-      description: Authentication required
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              message:
-                type: string
-                example: "Unauthenticated"
-
-    Forbidden:
-      description: Insufficient permissions
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              message:
-                type: string
-                example: "This action is unauthorized."
-
-    NotFound:
-      description: Resource not found
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              success:
-                type: boolean
-                example: false
-              message:
-                type: string
-                example: "Room not found"
-
-    ValidationError:
-      description: Input validation failed (422)
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
-
-    RateLimitExceeded:
-      description: Too many requests (429)
-      headers:
-        X-RateLimit-Limit:
-          schema:
-            type: integer
-            example: 60
-        X-RateLimit-Remaining:
-          schema:
-            type: integer
-            example: 0
-        Retry-After:
-          schema:
-            type: integer
-            example: 42
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              message:
-                type: string
-                example: "Too many requests. Please try again in 42 seconds."
-
-    VersionConflict:
-      description: Optimistic locking conflict (409)
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              message:
-                type: string
-                example: "Room data has been modified by another user. Please refresh and try again."
-              current_version:
-                type: integer
-                example: 7
-              provided_version:
-                type: integer
-                example: 5
-
     # ─── AI Harness Schemas ───
 
     AiHandleRequest:
@@ -535,6 +450,129 @@ components:
         timestamp:
           type: string
           format: date-time
+
+  responses:
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Unauthenticated"
+
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "This action is unauthorized."
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Room not found"
+
+    ValidationError:
+      description: Input validation failed (422)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    RateLimitExceeded:
+      description: Too many requests (429)
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+            example: 60
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+            example: 0
+        Retry-After:
+          schema:
+            type: integer
+            example: 42
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Too many requests. Please try again in 42 seconds."
+
+    VersionConflict:
+      description: Optimistic locking conflict (409)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Room data has been modified by another user. Please refresh and try again."
+              current_version:
+                type: integer
+                example: 7
+              provided_version:
+                type: integer
+                example: 5
+
+    BookingConcurrentConflict:
+      description: |
+        Concurrent booking conflict (409). Raised when the PostgreSQL exclusion
+        constraint `no_overlapping_bookings` (EXCLUDE USING gist) rejects a
+        booking insert because another concurrent request claimed the same
+        room/date range first. Distinct from `VersionConflict` (which is for
+        optimistic locking on rooms): no version fields are returned. Safe to
+        retry with a different date range.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Phòng vừa được đặt bởi yêu cầu khác. Vui lòng chọn ngày khác hoặc thử lại."
+
+    InternalServerError:
+      description: |
+        Opaque server error (500). The server logs the underlying cause
+        (including PostgreSQL SQLSTATE for DB errors); the response body
+        intentionally does NOT leak SQLSTATE codes, constraint names, or
+        stack traces.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Đã xảy ra lỗi khi đặt phòng. Vui lòng thử lại."
 
 paths:
   # ═══════════════════════════════════════
@@ -1531,7 +1569,9 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
-          description: Email not verified
+          description: Email not verified (`verified` middleware rejects unverified accounts)
+        "409":
+          $ref: "#/components/responses/BookingConcurrentConflict"
         "422":
           description: Validation error or room not available
           content:
@@ -1543,6 +1583,8 @@ paths:
                 message: "Room is not available for the selected dates"
         "429":
           $ref: "#/components/responses/RateLimitExceeded"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
 
   /v1/bookings/{booking}:
     get:
@@ -1579,7 +1621,14 @@ paths:
       tags: [Bookings]
       summary: Update a booking
       operationId: updateBooking
-      description: Update booking dates and guest info. Room availability is re-validated.
+      description: |
+        Update booking dates and guest info. Room availability is re-validated.
+
+        **Authorization (BookingPolicy::update — two-stage gate):**
+        1. Caller must be the booking owner OR an admin.
+        2. Booking status must be lifecycle-active (`pending` or `confirmed`).
+           Cancelled, refund_pending, and refund_failed bookings are immutable;
+           the policy denies the update with **403 Forbidden** even for admins.
       security:
         - BearerAuth: []
         - CookieAuth: []
@@ -1611,10 +1660,28 @@ paths:
       responses:
         "200":
           description: Booking updated
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          description: |
+            Forbidden. Returned by the policy when the caller is neither the
+            booking owner nor an admin, OR when the booking is in a terminal
+            lifecycle state (cancelled / refund_pending / refund_failed) and
+            therefore immutable.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "This action is unauthorized."
+        "404":
+          $ref: "#/components/responses/NotFound"
         "422":
           $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
 
     delete:
       tags: [Bookings]
@@ -1643,8 +1710,12 @@ paths:
                   message:
                     type: string
                     example: "Booking cancelled successfully"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /v1/bookings/{booking}/confirm:
     post:
@@ -1679,8 +1750,21 @@ paths:
                     $ref: "#/components/schemas/Booking"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "422":
-          description: Booking is not in pending status
+          description: Booking is not in pending status, or confirmation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Chỉ có thể xác nhận booking đang ở trạng thái pending."
 
   /v1/bookings/{booking}/cancel:
     post:
@@ -1692,6 +1776,13 @@ paths:
         - **Full refund**: ≥ 48 hours before check-in
         - **50% refund**: ≥ 24 hours before check-in
         - **No refund**: < 24 hours before check-in
+
+        Error codes surfaced in the `error` field of non-200 responses:
+          - `unauthorized` — actor is not the booking owner and not admin.
+          - `not_cancellable` — booking is in a terminal state.
+          - `already_started` — booking check-in has passed.
+          - `refund_failed` — Stripe refund raised; `retryable` indicates
+             whether the operation can be retried safely.
       security:
         - BearerAuth: []
         - CookieAuth: []
@@ -1716,9 +1807,58 @@ paths:
                   data:
                     $ref: "#/components/schemas/Booking"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          description: Booking cannot be cancelled by this actor (ownership / policy)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                  error:
+                    type: string
+                    enum: [unauthorized, already_started]
+                    example: unauthorized
+        "404":
+          $ref: "#/components/responses/NotFound"
         "422":
-          description: Booking cannot be cancelled (terminal state)
+          description: Booking is not in a cancellable state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                  error:
+                    type: string
+                    enum: [not_cancellable, already_started]
+                    example: not_cancellable
+        "500":
+          description: Refund processing failed (Stripe API error)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                  error:
+                    type: string
+                    example: refund_failed
+                  retryable:
+                    type: boolean
+                    description: Whether the refund can be safely retried
+                    example: true
 
   # ═══════════════════════════════════════
   # ADMIN BOOKINGS (v1)
@@ -1883,8 +2023,58 @@ paths:
       responses:
         "200":
           description: Booking permanently deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           description: Trashed booking not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ═══════════════════════════════════════
+  # ADMIN CUSTOMERS (v1)
+  # ═══════════════════════════════════════
+
+  /v1/admin/customers/{email}/bookings:
+    get:
+      tags: [Admin Bookings]
+      summary: List bookings for a specific customer
+      operationId: adminCustomerBookings
+      description: |
+        Returns the full booking history for the customer identified by
+        their email address. Admin only. Route binding uses email-as-identifier;
+        missing customers return an empty list under `data` (not 404).
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: email
+          required: true
+          schema:
+            type: string
+            format: email
+      responses:
+        "200":
+          description: Customer bookings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Booking"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 
   # ═══════════════════════════════════════
   # HEALTH CHECKS

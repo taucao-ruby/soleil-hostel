@@ -1,0 +1,50 @@
+name: "CI: OpenAPI Contract Lint"
+
+# Lane 3 Batch 3.4: Spectral lint on the published OpenAPI spec.
+# Purpose: detect contract drift / malformed spec before merge so the runtime
+# and the documented contract cannot silently diverge.
+#
+# Non-negotiable gate: `--fail-severity=error` blocks PRs on genuine contract
+# defects (missing schemas, duplicate operationIds, unresolved $refs, unsafe
+# markdown in descriptions). Style warnings remain visible in the workflow
+# log but do NOT block the gate — they can be addressed iteratively.
+on:
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - "docs/api/openapi.yaml"
+      - ".spectral.yaml"
+      - ".github/workflows/contract-lint.yml"
+  push:
+    branches: [main, dev]
+    paths:
+      - "docs/api/openapi.yaml"
+      - ".spectral.yaml"
+      - ".github/workflows/contract-lint.yml"
+
+concurrency:
+  group: contract-lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  spectral:
+    name: Spectral OpenAPI Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Spectral CLI
+        run: npm install -g @stoplight/spectral-cli@6
+
+      - name: Lint OpenAPI spec (fail on error severity)
+        run: |
+          spectral lint docs/api/openapi.yaml \
+            --ruleset .spectral.yaml \
+            --format pretty \
+            --fail-severity error

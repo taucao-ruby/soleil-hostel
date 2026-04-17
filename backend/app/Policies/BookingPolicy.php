@@ -20,11 +20,26 @@ class BookingPolicy
 
     /**
      * Determine whether the user can update the booking.
-     * Admins can update any booking.
+     *
+     * Two-stage gate:
+     *   1. Ownership / admin check (who).
+     *   2. Lifecycle gate (state machine): only PENDING and CONFIRMED bookings
+     *      may be edited. CANCELLED, REFUND_PENDING, and REFUND_FAILED are
+     *      post-cancellation states whose dates/room/guest contact must be
+     *      immutable; allowing edits would corrupt refund accounting and
+     *      violate the BookingStatus state machine.
+     *
+     * Admins are not exempt from the lifecycle gate. Admin edits to a
+     * cancelled booking would be silent state-machine violations; admins
+     * must explicitly cancel/restore via dedicated endpoints instead.
      */
     public function update(User $user, Booking $booking): bool
     {
-        return $user->isAdmin() || $user->id === $booking->user_id;
+        if (! $user->isAdmin() && $user->id !== $booking->user_id) {
+            return false;
+        }
+
+        return $booking->status->isActive();
     }
 
     /**

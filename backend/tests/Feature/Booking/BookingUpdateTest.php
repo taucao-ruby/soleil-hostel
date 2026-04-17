@@ -26,9 +26,12 @@ use Tests\TestCase;
  *   ✅ Non-owner gets 403
  *   ✅ Unauthenticated gets 401
  *   ✅ Unverified user gets 403
- *   ✅ Admin can update any booking
+ *   ✅ Admin can update any active booking
  *   ✅ BookingUpdated event dispatched on success
  *   ✅ Response shape matches BookingResource contract
+ *   ✅ Lifecycle gate: PUT against cancelled / refund_pending / refund_failed
+ *      bookings rejected with 403; row unchanged; BookingUpdated NOT dispatched
+ *   ✅ Lifecycle gate applies to admins as well
  */
 class BookingUpdateTest extends TestCase
 {
@@ -307,6 +310,163 @@ class BookingUpdateTest extends TestCase
 
         // verified middleware returns 403 for unverified users
         $response->assertForbidden();
+    }
+
+    // ─── Lifecycle gate (F-01) ────────────────────────────────────────────────
+    //
+    // The BookingStatus state machine forbids edits once a booking has left
+    // the active set (PENDING, CONFIRMED). Attempts to PUT against CANCELLED,
+    // REFUND_PENDING, or REFUND_FAILED bookings must be rejected by the
+    // BookingPolicy (HTTP 403, not 422 — input is fine, the resource is
+    // simply not editable). Admins are not exempt from the lifecycle gate.
+    //
+    // Each test asserts the row is unchanged after the rejected request.
+
+    /**
+     * @return array{0: Booking, 1: array{check_in: string, check_out: string, guest_name: string, guest_email: string}}
+     */
+    private function snapshotPersistedFields(Booking $booking): array
+    {
+        $fresh = $booking->fresh();
+
+        return [
+            'check_in' => $fresh->check_in->format('Y-m-d'),
+            'check_out' => $fresh->check_out->format('Y-m-d'),
+            'guest_name' => (string) $fresh->guest_name,
+            'guest_email' => (string) $fresh->guest_email,
+            'status' => $fresh->status->value,
+        ];
+    }
+
+    private function assertBookingRowUnchanged(Booking $booking, array $snapshot): void
+    {
+        $this->assertDatabaseHas('bookings', [
+            'id' => $booking->id,
+            'check_in' => $snapshot['check_in'],
+            'check_out' => $snapshot['check_out'],
+            'guest_name' => $snapshot['guest_name'],
+            'guest_email' => $snapshot['guest_email'],
+            'status' => $snapshot['status'],
+        ]);
+    }
+
+    public function test_update_rejected_when_booking_is_cancelled(): void
+    {
+        Event::fake([BookingUpdated::class]);
+
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($this->room)
+            ->cancelled()
+            ->create([
+                'check_in' => Carbon::now()->addDays(5)->startOfDay(),
+                'check_out' => Carbon::now()->addDays(7)->startOfDay(),
+                'guest_name' => 'Original Guest',
+                'guest_email' => 'original@example.com',
+            ]);
+
+        $snapshot = $this->snapshotPersistedFields($booking);
+
+        $response = $this->actingAs($this->user)
+            ->putJson("/api/v1/bookings/{$booking->id}", $this->payload([
+                'check_in' => Carbon::now()->addDays(20)->format('Y-m-d'),
+                'check_out' => Carbon::now()->addDays(22)->format('Y-m-d'),
+                'guest_name' => 'Mutated Guest',
+                'guest_email' => 'mutated@example.com',
+            ]));
+
+        $response->assertForbidden();
+        $this->assertBookingRowUnchanged($booking, $snapshot);
+        Event::assertNotDispatched(BookingUpdated::class);
+    }
+
+    public function test_update_rejected_when_booking_is_refund_pending(): void
+    {
+        Event::fake([BookingUpdated::class]);
+
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($this->room)
+            ->refundPending()
+            ->create([
+                'check_in' => Carbon::now()->addDays(5)->startOfDay(),
+                'check_out' => Carbon::now()->addDays(7)->startOfDay(),
+                'guest_name' => 'Original Guest',
+                'guest_email' => 'original@example.com',
+            ]);
+
+        $snapshot = $this->snapshotPersistedFields($booking);
+
+        $response = $this->actingAs($this->user)
+            ->putJson("/api/v1/bookings/{$booking->id}", $this->payload([
+                'check_in' => Carbon::now()->addDays(20)->format('Y-m-d'),
+                'check_out' => Carbon::now()->addDays(22)->format('Y-m-d'),
+                'guest_name' => 'Mutated Guest',
+                'guest_email' => 'mutated@example.com',
+            ]));
+
+        $response->assertForbidden();
+        $this->assertBookingRowUnchanged($booking, $snapshot);
+        Event::assertNotDispatched(BookingUpdated::class);
+    }
+
+    public function test_update_rejected_when_booking_is_refund_failed(): void
+    {
+        Event::fake([BookingUpdated::class]);
+
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($this->room)
+            ->refundFailed()
+            ->create([
+                'check_in' => Carbon::now()->addDays(5)->startOfDay(),
+                'check_out' => Carbon::now()->addDays(7)->startOfDay(),
+                'guest_name' => 'Original Guest',
+                'guest_email' => 'original@example.com',
+            ]);
+
+        $snapshot = $this->snapshotPersistedFields($booking);
+
+        $response = $this->actingAs($this->user)
+            ->putJson("/api/v1/bookings/{$booking->id}", $this->payload([
+                'check_in' => Carbon::now()->addDays(20)->format('Y-m-d'),
+                'check_out' => Carbon::now()->addDays(22)->format('Y-m-d'),
+                'guest_name' => 'Mutated Guest',
+                'guest_email' => 'mutated@example.com',
+            ]));
+
+        $response->assertForbidden();
+        $this->assertBookingRowUnchanged($booking, $snapshot);
+        Event::assertNotDispatched(BookingUpdated::class);
+    }
+
+    public function test_admin_cannot_update_cancelled_booking(): void
+    {
+        // Lifecycle gate is invariant on the resource, not the actor.
+        // Admins must use restore/cancel endpoints, not PUT, to manipulate
+        // post-cancellation bookings.
+        Event::fake([BookingUpdated::class]);
+
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($this->room)
+            ->cancelled()
+            ->create([
+                'check_in' => Carbon::now()->addDays(5)->startOfDay(),
+                'check_out' => Carbon::now()->addDays(7)->startOfDay(),
+            ]);
+
+        $snapshot = $this->snapshotPersistedFields($booking);
+
+        $response = $this->actingAs($this->admin)
+            ->putJson("/api/v1/bookings/{$booking->id}", $this->payload([
+                'check_in' => Carbon::now()->addDays(20)->format('Y-m-d'),
+                'check_out' => Carbon::now()->addDays(22)->format('Y-m-d'),
+            ]));
+
+        $response->assertForbidden();
+        $this->assertBookingRowUnchanged($booking, $snapshot);
+        Event::assertNotDispatched(BookingUpdated::class);
     }
 
     // ─── Response shape ───────────────────────────────────────────────────────

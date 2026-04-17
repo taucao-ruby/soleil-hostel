@@ -6,6 +6,37 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Pending Booking Expiry (TTL)
+    |--------------------------------------------------------------------------
+    |
+    | Pending bookings that have not been confirmed within this window are
+    | auto-cancelled by ExpireStaleBookings so the room they reserved becomes
+    | available for other guests. A pending booking blocks the room via
+    | Booking::ACTIVE_STATUSES; without a TTL a forgotten pending booking
+    | would hold the room indefinitely.
+    |
+    | Unit: minutes from the booking's created_at.
+    | Default: 30 minutes.
+    |
+    */
+
+    'pending_ttl_minutes' => (int) env('BOOKING_PENDING_TTL_MINUTES', 30),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Pending Expiry Batch Size
+    |--------------------------------------------------------------------------
+    |
+    | Maximum number of pending bookings ExpireStaleBookings will process
+    | in a single scheduled run. Protects a cold-start backlog from DoS'ing
+    | the DB.
+    |
+    */
+
+    'pending_expiry_batch_size' => (int) env('BOOKING_PENDING_EXPIRY_BATCH_SIZE', 100),
+
+    /*
+    |--------------------------------------------------------------------------
     | Cancellation Policy Configuration
     |--------------------------------------------------------------------------
     |

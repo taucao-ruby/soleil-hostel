@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\ExpireStaleBookings;
 use App\Jobs\ReconcileRefundsJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -26,6 +27,16 @@ Schedule::job(new ReconcileRefundsJob)
     ->withoutOverlapping()
     ->onOneServer() // For multi-server deployments
     ->name('reconcile-refunds');
+
+// Expire stale pending bookings every 5 minutes.
+// A pending booking holds a room via Booking::ACTIVE_STATUSES; without this
+// job, abandoned pending bookings block inventory indefinitely. TTL is
+// config('booking.pending_ttl_minutes'), default 30 min.
+Schedule::job(new ExpireStaleBookings)
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->name('expire-stale-bookings');
 
 // Horizon monitoring: Persist queue metrics for dashboard (every 5 minutes)
 Schedule::command('horizon:snapshot')

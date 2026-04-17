@@ -6,8 +6,11 @@ use App\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
+use App\Services\CreateBookingService;
 use Carbon\Carbon;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
 use Tests\TestCase;
 
@@ -333,6 +336,127 @@ class ConcurrentBookingTest extends TestCase
 
         // Verify only 1 booking in database
         $this->assertEquals(1, Booking::where('room_id', $this->room->id)->count());
+    }
+
+    /**
+     * F-03 proof A: PostgreSQL EXCLUDE USING gist constraint actually fires SQLSTATE 23P01
+     *
+     * Bypasses the application service entirely and executes a raw INSERT that
+     * overlaps an existing active booking. If the exclusion constraint is wired
+     * correctly, PG raises SQLSTATE 23P01 and Laravel surfaces it as a
+     * QueryException with code '23P01'. This is the bedrock fact the
+     * controller-side mapping (proof B) depends on.
+     */
+    public function test_postgres_exclusion_constraint_emits_sqlstate_23p01(): void
+    {
+        if (DB::connection()->getDriverName() !== 'pgsql') {
+            $this->markTestSkipped('Exclusion constraint is PostgreSQL-only');
+        }
+
+        $checkIn = Carbon::now()->addDays(20)->startOfDay();
+        $checkOut = $checkIn->clone()->addDays(3);
+
+        // Persist a confirmed booking (matches the constraint predicate:
+        // status IN ('pending','confirmed') AND deleted_at IS NULL)
+        Booking::factory()->create([
+            'room_id' => $this->room->id,
+            'user_id' => $this->user->id,
+            'check_in' => $checkIn->toDateString(),
+            'check_out' => $checkOut->toDateString(),
+            'status' => BookingStatus::CONFIRMED->value,
+        ]);
+
+        $caught = null;
+
+        try {
+            // Raw insert that bypasses the service layer and forces PG to enforce
+            // the exclusion constraint. Same room + overlapping daterange must fail.
+            DB::table('bookings')->insert([
+                'room_id' => $this->room->id,
+                'user_id' => $this->user->id,
+                'check_in' => $checkIn->toDateString(),
+                'check_out' => $checkOut->toDateString(),
+                'guest_name' => 'Race Loser',
+                'guest_email' => 'race-loser@example.com',
+                'status' => BookingStatus::PENDING->value,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        } catch (QueryException $e) {
+            $caught = $e;
+        }
+
+        $this->assertNotNull($caught, 'Expected raw overlap insert to throw QueryException');
+        $this->assertSame('23P01', $caught->getCode(), 'Expected SQLSTATE 23P01 from exclusion constraint');
+        $this->assertStringContainsStringIgnoringCase(
+            'no_overlapping_bookings',
+            $caught->getMessage(),
+            'Expected PG message to reference the exclusion constraint name'
+        );
+    }
+
+    /**
+     * F-03 proof B: BookingController maps QueryException(23P01) → 409 with localized message
+     *
+     * Stubs CreateBookingService to throw a real QueryException whose previous
+     * PDOException carries SQLSTATE 23P01. The controller's QueryException catch
+     * (which must precede the RuntimeException catch — PDOException extends
+     * RuntimeException in PHP's hierarchy) must:
+     *   - return 409 (not 422, not 500)
+     *   - return the localized Vietnamese message
+     *   - NOT leak '23P01' or 'SQLSTATE' to the response body
+     */
+    public function test_create_returns_409_on_concurrent_exclusion_violation(): void
+    {
+        // Build a real QueryException whose previous PDOException carries
+        // SQLSTATE 23P01. QueryException::__construct copies the previous
+        // exception's code via getCode(), so we set it via reflection on the
+        // base Exception class (the $code property is protected).
+        $pdoException = new \PDOException('SQLSTATE[23P01]: Exclusion violation: conflicting key value violates exclusion constraint "no_overlapping_bookings"', 0);
+        $codeProperty = new \ReflectionProperty(\Exception::class, 'code');
+        $codeProperty->setAccessible(true);
+        $codeProperty->setValue($pdoException, '23P01');
+        $pdoException->errorInfo = ['23P01', 0, 'conflicting key value violates exclusion constraint "no_overlapping_bookings"'];
+
+        $queryException = new QueryException(
+            'pgsql',
+            'insert into "bookings" ("room_id", "check_in", "check_out", ...) values (?, ?, ?, ...)',
+            [$this->room->id, '2026-05-01', '2026-05-04'],
+            $pdoException
+        );
+
+        // Sanity check: confirm our fabricated exception will hit the
+        // controller's '23P01' branch.
+        $this->assertSame('23P01', $queryException->getCode());
+
+        // Bind a mock CreateBookingService that throws our QueryException.
+        $this->mock(CreateBookingService::class, function ($mock) use ($queryException) {
+            $mock->shouldReceive('create')->once()->andThrow($queryException);
+        });
+
+        $checkIn = Carbon::now()->addDays(25)->startOfDay();
+        $checkOut = $checkIn->clone()->addDays(2);
+
+        $response = $this->actingAs($this->user, 'sanctum')
+            ->postJson('/api/bookings', [
+                'room_id' => $this->room->id,
+                'check_in' => $checkIn->toDateString(),
+                'check_out' => $checkOut->toDateString(),
+                'guest_name' => 'Race Loser',
+                'guest_email' => 'race-loser@example.com',
+            ]);
+
+        $response->assertStatus(409)
+            ->assertJson([
+                'success' => false,
+                'message' => __('booking.create_concurrent_conflict'),
+            ]);
+
+        // Confirm we did not leak SQLSTATE or constraint internals
+        $body = $response->getContent();
+        $this->assertStringNotContainsString('23P01', (string) $body, 'SQLSTATE 23P01 must not leak to client');
+        $this->assertStringNotContainsString('SQLSTATE', (string) $body, 'SQLSTATE prefix must not leak to client');
+        $this->assertStringNotContainsString('no_overlapping_bookings', (string) $body, 'Constraint name must not leak to client');
     }
 
     /**

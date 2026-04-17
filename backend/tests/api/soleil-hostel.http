@@ -1,0 +1,359 @@
+### ══════════════════════════════════════════════════════════════════════
+### SOLEIL HOSTEL — REST Client API Test Suite
+### Extension: humao.rest-client
+###
+### Select environment: Ctrl+Shift+P → "Rest Client: Switch Environment"
+###   • local    → http://127.0.0.1:8000/api
+###   • staging  → https://staging-api.soleil-hostel.com/api
+###
+### After login, copy the token from the response and paste it in the
+### REST Client environment (settings.json → rest-client.environmentVariables)
+### ══════════════════════════════════════════════════════════════════════
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HEALTH
+# ─────────────────────────────────────────────────────────────────────────────
+
+### Ping
+GET {{baseUrl}}/../ping
+
+### Health check (liveness)
+GET {{baseUrl}}/../health/live
+
+### Health check (readiness)
+GET {{baseUrl}}/../health/ready
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AUTH — Register / Login / Logout
+# ─────────────────────────────────────────────────────────────────────────────
+
+### Register new guest
+# @name register
+POST {{baseUrl}}/{{version}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Test Guest",
+  "email": "test@soleilhostel.dev",
+  "password": "Password123!",
+  "password_confirmation": "Password123!"
+}
+
+###
+
+### Login (Bearer token)
+# @name login
+POST {{baseUrl}}/{{version}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@soleilhostel.dev",
+  "password": "Password123!"
+}
+
+@authToken = {{login.response.body.$.data.token}}
+
+###
+
+### Login (HttpOnly cookie)
+POST {{baseUrl}}/{{version}}/auth/login/cookie
+Content-Type: application/json
+
+{
+  "email": "test@soleilhostel.dev",
+  "password": "Password123!"
+}
+
+###
+
+### Get current user
+GET {{baseUrl}}/{{version}}/auth/me
+Authorization: Bearer {{token}}
+
+###
+
+### Logout
+POST {{baseUrl}}/{{version}}/auth/logout
+Authorization: Bearer {{token}}
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LOCATIONS (Public)
+# ─────────────────────────────────────────────────────────────────────────────
+
+### List all locations
+GET {{baseUrl}}/{{version}}/locations
+
+###
+
+### Show location by slug
+GET {{baseUrl}}/{{version}}/locations/da-nang-beach-hostel
+
+###
+
+### Check availability for a location
+GET {{baseUrl}}/{{version}}/locations/da-nang-beach-hostel/availability?check_in=2025-08-01&check_out=2025-08-05
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ROOMS (Public read / Admin write)
+# ─────────────────────────────────────────────────────────────────────────────
+
+### List all rooms
+GET {{baseUrl}}/{{version}}/rooms
+
+###
+
+### List rooms filtered by location
+GET {{baseUrl}}/{{version}}/rooms?location_id=1
+
+###
+
+### Show single room
+GET {{baseUrl}}/{{version}}/rooms/1
+
+###
+
+### Create room (Admin only)
+POST {{baseUrl}}/{{version}}/rooms
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "location_id": 1,
+  "name": "Deluxe Dorm 8-Bed",
+  "type": "dorm",
+  "capacity": 8,
+  "price_per_night": 15.00,
+  "description": "Spacious air-conditioned dormitory with private lockers."
+}
+
+###
+
+### Update room (Admin only)
+PUT {{baseUrl}}/{{version}}/rooms/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "price_per_night": 18.00
+}
+
+###
+
+### Delete room (Admin only)
+DELETE {{baseUrl}}/{{version}}/rooms/1
+Authorization: Bearer {{token}}
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# BOOKINGS — Core business logic
+# Requires: authenticated + email verified
+# Overlap rule: [check_in, check_out) half-open, pending+confirmed block
+# ─────────────────────────────────────────────────────────────────────────────
+
+### List my bookings
+GET {{baseUrl}}/{{version}}/bookings
+Authorization: Bearer {{token}}
+
+###
+
+### Create booking
+# @name createBooking
+POST {{baseUrl}}/{{version}}/bookings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "room_id": 1,
+  "location_id": 1,
+  "check_in": "2025-08-01",
+  "check_out": "2025-08-05",
+  "guests": 2,
+  "notes": "Early check-in requested"
+}
+
+@bookingId = {{createBooking.response.body.$.data.id}}
+
+###
+
+### Show single booking
+GET {{baseUrl}}/{{version}}/bookings/{{bookingId}}
+Authorization: Bearer {{token}}
+
+###
+
+### Cancel booking (guest-initiated)
+POST {{baseUrl}}/{{version}}/bookings/{{bookingId}}/cancel
+Authorization: Bearer {{token}}
+
+###
+
+### Confirm booking (Admin only)
+POST {{baseUrl}}/{{version}}/bookings/{{bookingId}}/confirm
+Authorization: Bearer {{token}}
+
+###
+
+### Update booking
+PATCH {{baseUrl}}/{{version}}/bookings/{{bookingId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "check_out": "2025-08-06"
+}
+
+###
+
+### Delete booking
+DELETE {{baseUrl}}/{{version}}/bookings/{{bookingId}}
+Authorization: Bearer {{token}}
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# REVIEWS
+# ─────────────────────────────────────────────────────────────────────────────
+
+### List reviews for a location
+GET {{baseUrl}}/{{version}}/locations/da-nang-beach-hostel/reviews
+
+###
+
+### Create review (requires completed booking)
+POST {{baseUrl}}/{{version}}/reviews
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "booking_id": 1,
+  "rating": 5,
+  "title": "Excellent stay!",
+  "body": "Very clean, friendly staff, great location."
+}
+
+###
+
+### Delete review (Admin)
+DELETE {{baseUrl}}/{{version}}/reviews/1
+Authorization: Bearer {{token}}
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CONTACT MESSAGES
+# ─────────────────────────────────────────────────────────────────────────────
+
+### Submit contact message (Public)
+POST {{baseUrl}}/{{version}}/contact
+Content-Type: application/json
+
+{
+  "name": "Nguyen Van A",
+  "email": "vana@example.com",
+  "subject": "Booking inquiry",
+  "message": "Do you have availability for a group of 10 in August?"
+}
+
+###
+
+### List contact messages (Admin/Moderator)
+GET {{baseUrl}}/{{version}}/admin/contact-messages
+Authorization: Bearer {{token}}
+
+###
+
+### Mark message as read
+PATCH {{baseUrl}}/{{version}}/admin/contact-messages/1/read
+Authorization: Bearer {{token}}
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ADMIN — Bookings management
+# ─────────────────────────────────────────────────────────────────────────────
+
+### Admin: all bookings
+GET {{baseUrl}}/{{version}}/admin/bookings
+Authorization: Bearer {{token}}
+
+###
+
+### Admin: soft-deleted (trashed) bookings
+GET {{baseUrl}}/{{version}}/admin/bookings/trashed
+Authorization: Bearer {{token}}
+
+###
+
+### Admin: restore soft-deleted booking
+POST {{baseUrl}}/{{version}}/admin/bookings/1/restore
+Authorization: Bearer {{token}}
+
+###
+
+### Admin: bulk restore
+POST {{baseUrl}}/{{version}}/admin/bookings/restore-bulk
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "ids": [1, 2, 3]
+}
+
+###
+
+### Admin: force delete (permanent)
+DELETE {{baseUrl}}/{{version}}/admin/bookings/1/force
+Authorization: Bearer {{token}}
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ADMIN — Customers
+# ─────────────────────────────────────────────────────────────────────────────
+
+### List all customers
+GET {{baseUrl}}/{{version}}/admin/customers
+Authorization: Bearer {{token}}
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DOUBLE-BOOKING COLLISION TEST
+# Send both requests rapidly to verify the PostgreSQL exclusion constraint
+# and pessimistic locking prevent double-booking.
+# ─────────────────────────────────────────────────────────────────────────────
+
+### Collision attempt 1 — same room, same dates
+POST {{baseUrl}}/{{version}}/bookings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "room_id": 1,
+  "location_id": 1,
+  "check_in": "2025-09-01",
+  "check_out": "2025-09-04"
+}
+
+###
+
+### Collision attempt 2 — overlapping dates (should 409)
+POST {{baseUrl}}/{{version}}/bookings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "room_id": 1,
+  "location_id": 1,
+  "check_in": "2025-09-03",
+  "check_out": "2025-09-06"
+}

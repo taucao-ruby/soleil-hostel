@@ -17,6 +17,7 @@ use App\Services\CancellationService;
 use App\Services\CreateBookingService;
 use App\Services\RoomService;
 use App\Traits\ApiResponse;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -77,6 +78,37 @@ class BookingController extends Controller
                 userId: $request->user()->id,
                 additionalData: []
             );
+        } catch (QueryException $e) {
+            // Map PostgreSQL exclusion violation (SQLSTATE 23P01) to 409 Conflict.
+            //
+            // Why this branch must come BEFORE the RuntimeException catch:
+            // QueryException → PDOException → RuntimeException (PHP class hierarchy).
+            // Without an explicit QueryException catch first, a 23P01 race would
+            // fall into the generic RuntimeException → 422 branch with a raw
+            // PG SQLSTATE error string leaked to the client. Worse, callers
+            // would see 422 (input validation) for what is actually a concurrent
+            // conflict that is safe to retry.
+            //
+            // Mirrors the precedent in AdminBookingController::restore (line 140-145):
+            // 23P01 from the exclusion constraint == 409 with a localized message.
+            if ($e->getCode() === '23P01') {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('booking.create_concurrent_conflict'),
+                ], 409);
+            }
+
+            // Other DB errors: opaque 500 with logging (do not leak SQLSTATE)
+            Log::error('Booking creation failed (DB error): '.$e->getMessage(), [
+                'user_id' => $request->user()?->id,
+                'room_id' => $validated['room_id'] ?? null,
+                'sqlstate' => $e->errorInfo[0] ?? null,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => __('booking.create_error'),
+            ], 500);
         } catch (RuntimeException $e) {
             // Handle business errors from the service (room unavailable, not found, etc.)
             return response()->json([

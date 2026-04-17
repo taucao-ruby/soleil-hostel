@@ -17,6 +17,7 @@ return [
     'checkout_before_checkin' => 'Ngày check-out phải sau ngày check-in.',
     'create_retry_exhausted' => 'Không thể tạo đặt phòng sau 3 lần thử do xung đột database. Vui lòng thử lại.',
     'create_failed' => 'Không thể tạo đặt phòng.',
+    'create_concurrent_conflict' => 'Phòng vừa được đặt bởi yêu cầu khác. Vui lòng chọn ngày khác hoặc thử lại.',
     'already_cancelled' => 'Đặt phòng đã bị hủy.',
     'confirm_wrong_status' => "Không thể xác nhận: trạng thái hiện tại là ':status', cần 'pending'",
 

@@ -150,6 +150,23 @@ foreach ($statusCodes as $code => $count) {
 }
 
 echo "\n";
+
+// F-03 hard gate: ANY HTTP 500 among the losers is a stop-ship leak.
+// A single winner does not absolve a 500 — that means the controller failed
+// to translate a concurrent conflict (23P01) into 409 and instead leaked
+// a server error (or worse, an unhandled exception).
+$serverErrors = array_values(array_filter(
+    $results,
+    fn (array $r): bool => (int) $r['status'] === 500
+));
+if (count($serverErrors) > 0) {
+    echo 'TEST FAILED: '.count($serverErrors)." request(s) returned HTTP 500 — concurrent conflict was not mapped cleanly.\n";
+    echo "First 500 response body:\n";
+    $body = $serverErrors[0]['response'];
+    echo '  Request '.$serverErrors[0]['request'].': '.substr((string) $body, 0, 500)."\n";
+    exit(1);
+}
+
 if ($successCount === 1) {
     echo "TEST PASSED: exactly 1 booking succeeded — pessimistic locking is valid.\n";
     exit(0);

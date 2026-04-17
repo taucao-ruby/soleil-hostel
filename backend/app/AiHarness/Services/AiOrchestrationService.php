@@ -142,10 +142,14 @@ class AiOrchestrationService
         }
 
         // ── Phase 4+: Extract and validate BookingActionProposals ──
+        // F-06: pass proposer user id so the cached proposal is bound to the
+        // originating user. Any decide() call by a different authenticated
+        // user must be rejected to prevent cross-tenant confused-deputy.
         $validatedProposals = $this->extractAndValidateProposals(
             $toolExecutions,
             $responseClass,
             $failureReason,
+            $request->userId,
         );
 
         $latency['total_ms'] = (int) (microtime(true) * 1000) - $totalStart;
@@ -201,6 +205,11 @@ class AiOrchestrationService
      * in the serialized result. Validates each proposal via PolicyEnforcementService.
      * Stores valid proposals in cache for the confirmation flow.
      *
+     * F-06: cached payload includes `proposer_user_id` so the confirmation
+     * controller can enforce that only the originating user may decide on
+     * the proposal. The value is NOT returned to the client — it lives only
+     * inside the cache envelope.
+     *
      * @param  list<array{tool: string, classification: string, result: mixed, executed: bool, duration_ms: int}>  $toolExecutions
      * @return list<array<string, mixed>>
      */
@@ -208,6 +217,7 @@ class AiOrchestrationService
         array $toolExecutions,
         ResponseClass &$responseClass,
         ?string &$failureReason,
+        int $proposerUserId,
     ): array {
         $validatedProposals = [];
 
@@ -250,10 +260,13 @@ class AiOrchestrationService
                 continue;
             }
 
-            // Store proposal in cache for confirmation flow (30 min TTL)
+            // Store proposal in cache for confirmation flow (30 min TTL).
+            // F-06: persist proposer_user_id inside the cache envelope so the
+            // confirmation controller can reject cross-user decide() attempts.
+            // The field is stripped from the client-facing proposal array below.
             Cache::put(
                 "ai_proposal:{$proposal->proposalHash}",
-                $proposal->toArray(),
+                $proposal->toArray() + ['proposer_user_id' => $proposerUserId],
                 1800,
             );
 

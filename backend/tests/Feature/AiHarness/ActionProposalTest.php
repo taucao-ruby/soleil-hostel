@@ -15,7 +15,10 @@ use App\AiHarness\PromptRegistry;
 use App\AiHarness\Services\PolicyEnforcementService;
 use App\AiHarness\Services\ToolOrchestrationService;
 use App\AiHarness\ToolRegistry;
+use App\Enums\BookingStatus;
 use App\Models\AiProposalEvent;
+use App\Models\Booking;
+use App\Models\Room;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -315,6 +318,8 @@ class ActionProposalTest extends TestCase
         Cache::put("ai_proposal:{$hash}", [
             'action_type' => 'suggest_booking',
             'proposed_params' => ['room_id' => 1, 'check_in' => '2026-05-01', 'check_out' => '2026-05-03'],
+            // F-06: proposer-binding; same-user decide is the happy path.
+            'proposer_user_id' => $this->user->id,
         ], 1800);
 
         $response = $this->actingAs($this->user)
@@ -351,7 +356,10 @@ class ActionProposalTest extends TestCase
     public function test_decide_validates_decision_field(): void
     {
         $hash = hash('sha256', 'test-validation');
-        Cache::put("ai_proposal:{$hash}", ['action_type' => 'suggest_booking'], 1800);
+        Cache::put("ai_proposal:{$hash}", [
+            'action_type' => 'suggest_booking',
+            'proposer_user_id' => $this->user->id,
+        ], 1800);
 
         $response = $this->actingAs($this->user)
             ->postJson("/api/v1/ai/proposals/{$hash}/decide", [
@@ -378,6 +386,7 @@ class ActionProposalTest extends TestCase
         Cache::put("ai_proposal:{$hash}", [
             'action_type' => 'suggest_cancellation',
             'proposed_params' => ['booking_id' => 0],
+            'proposer_user_id' => $this->user->id,
         ], 1800);
 
         $this->actingAs($this->user)
@@ -392,6 +401,190 @@ class ActionProposalTest extends TestCase
         $this->assertSame('suggest_cancellation', $event->action_type);
         $this->assertSame('declined', $event->user_decision);
         $this->assertNotNull($event->created_at);
+    }
+
+    // ── F-06 proposer-binding tests ──
+
+    public function test_decide_rejects_cross_user_confirmation(): void
+    {
+        // Proposer (Alice) creates a proposal in cache for cancelling her own booking.
+        $alice = $this->user;
+        $bookingId = 1234;
+        $hash = hash('sha256', 'cross-user-confirm');
+        Cache::put("ai_proposal:{$hash}", [
+            'action_type' => 'suggest_cancellation',
+            'proposed_params' => ['booking_id' => $bookingId],
+            'proposer_user_id' => $alice->id,
+        ], 1800);
+
+        // Attacker (Mallory) learns the hash and tries to confirm it under his own token.
+        $mallory = User::factory()->create();
+
+        $response = $this->actingAs($mallory)
+            ->postJson("/api/v1/ai/proposals/{$hash}/decide", [
+                'decision' => 'confirmed',
+            ]);
+
+        // Response must be 404 (not 403) to avoid leaking hash existence.
+        $response->assertNotFound();
+
+        // Cache must NOT be cleared — Alice can still decide her own proposal.
+        $this->assertNotNull(Cache::get("ai_proposal:{$hash}"));
+
+        // No DB audit row for Mallory (the binding check short-circuits BEFORE recordEvent).
+        $this->assertDatabaseMissing('ai_proposal_events', [
+            'user_id' => $mallory->id,
+            'proposal_hash' => $hash,
+        ]);
+
+        // No downstream action fired for Alice either.
+        $this->assertDatabaseMissing('ai_proposal_events', [
+            'user_id' => $alice->id,
+            'proposal_hash' => $hash,
+        ]);
+    }
+
+    public function test_decide_rejects_cross_user_decline(): void
+    {
+        $alice = $this->user;
+        $hash = hash('sha256', 'cross-user-decline');
+        Cache::put("ai_proposal:{$hash}", [
+            'action_type' => 'suggest_booking',
+            'proposed_params' => ['room_id' => 5, 'check_in' => '2026-06-01', 'check_out' => '2026-06-03'],
+            'proposer_user_id' => $alice->id,
+        ], 1800);
+
+        $mallory = User::factory()->create();
+
+        $response = $this->actingAs($mallory)
+            ->postJson("/api/v1/ai/proposals/{$hash}/decide", [
+                'decision' => 'declined',
+            ]);
+
+        $response->assertNotFound();
+        $this->assertNotNull(Cache::get("ai_proposal:{$hash}"));
+        $this->assertDatabaseMissing('ai_proposal_events', [
+            'proposal_hash' => $hash,
+        ]);
+    }
+
+    public function test_decide_rejects_legacy_unbound_cache_entry(): void
+    {
+        // Legacy (pre-F-06) cache entries have no proposer_user_id. The controller
+        // must treat them as unbound → 404, not as "allow anyone".
+        $hash = hash('sha256', 'legacy-unbound');
+        Cache::put("ai_proposal:{$hash}", [
+            'action_type' => 'suggest_booking',
+            'proposed_params' => ['room_id' => 5, 'check_in' => '2026-06-01', 'check_out' => '2026-06-03'],
+            // no proposer_user_id — represents a cache entry written before F-06
+        ], 1800);
+
+        $response = $this->actingAs($this->user)
+            ->postJson("/api/v1/ai/proposals/{$hash}/decide", [
+                'decision' => 'declined',
+            ]);
+
+        $response->assertNotFound();
+    }
+
+    // ── Lane 3 Batch 3.1: proposal flow × service-layer ownership defense ──
+
+    /**
+     * End-to-end layered defense: Alice (who owns the binding) confirms a
+     * proposal whose proposed_params name Bob's booking_id. The F-06
+     * proposer-binding check passes (she IS the proposer), so the request
+     * reaches the downstream cancellation path. The service-layer ownership
+     * gate in CancellationService::validateCancellation must block it and
+     * the controller must map the rejection to a stable downstream code
+     * (error:unauthorized_booking_owner), WITHOUT mutating Bob's booking.
+     *
+     * This test proves that even if an attacker can get a proposal cached
+     * under their own user id, naming-someone-else's-booking cannot execute.
+     */
+    public function test_confirm_cannot_cancel_other_users_booking_via_proposal(): void
+    {
+        $alice = $this->user;
+        $bob = User::factory()->create();
+        $room = Room::factory()->create();
+
+        $bobsBooking = Booking::factory()
+            ->for($bob)
+            ->for($room)
+            ->confirmed()
+            ->create([
+                'check_in' => now()->addDays(20),
+                'check_out' => now()->addDays(22),
+            ]);
+
+        $hash = hash('sha256', 'cross-owner-cancellation');
+        Cache::put("ai_proposal:{$hash}", [
+            'action_type' => 'suggest_cancellation',
+            'proposed_params' => ['booking_id' => $bobsBooking->id],
+            'proposer_user_id' => $alice->id,
+        ], 1800);
+
+        $response = $this->actingAs($alice)
+            ->postJson("/api/v1/ai/proposals/{$hash}/decide", [
+                'decision' => 'confirmed',
+            ]);
+
+        // Controller returns 422 with the stable downstream code. The
+        // exception message is NOT leaked; the downstream_result carries
+        // the machine-readable marker.
+        $response->assertStatus(422);
+        $response->assertJsonPath('errors.downstream_result', 'error:unauthorized_booking_owner');
+        $response->assertJsonPath('success', false);
+
+        // Bob's booking must be untouched.
+        $bobsBooking->refresh();
+        $this->assertSame(BookingStatus::CONFIRMED, $bobsBooking->status);
+        $this->assertNull($bobsBooking->cancelled_at);
+        $this->assertNull($bobsBooking->cancelled_by);
+
+        // Audit row records the refused confirmation attempt — the decision
+        // IS logged (cache was cleared, event was recorded) so that forensic
+        // review can see Alice tried to cancel Bob's booking.
+        $this->assertDatabaseHas('ai_proposal_events', [
+            'user_id' => $alice->id,
+            'proposal_hash' => $hash,
+            'action_type' => 'suggest_cancellation',
+            'user_decision' => 'confirmed',
+            'downstream_result' => 'error:unauthorized_booking_owner',
+        ]);
+    }
+
+    // ── Rate Limit Tests (Lane 3 Batch 3.2) ──
+
+    /**
+     * Decide endpoint is a confirmed-action surface — each successful POST
+     * can trigger a real booking create or cancel. Its rate limit is
+     * deliberately tighter than the main task endpoint (throttle:10,1).
+     *
+     * Lane 3 Batch 3.2 tightened the group middleware to throttle:5,1. This
+     * test pins that ceiling so a future refactor cannot silently widen it
+     * back to 10/min without failing CI. Each iteration uses a distinct
+     * (non-existent) hash so we are exercising the rate limiter, not the
+     * cache-lookup fast path — the endpoint returns 404 for each call, and
+     * the 6th call must be rejected with 429.
+     */
+    public function test_decide_endpoint_rate_limit_fires_at_five_per_minute(): void
+    {
+        $user = $this->user;
+
+        // First 5 calls succeed the middleware and reach the controller
+        // (which 404s on the missing cache entry). The 6th must be blocked
+        // by the throttle middleware before the controller is invoked.
+        $lastStatus = null;
+        for ($i = 0; $i < 6; $i++) {
+            $hash = hash('sha256', "rate-limit-probe-{$i}");
+            $response = $this->actingAs($user)
+                ->postJson("/api/v1/ai/proposals/{$hash}/decide", [
+                    'decision' => 'declined',
+                ]);
+            $lastStatus = $response->status();
+        }
+
+        $this->assertSame(429, $lastStatus, 'Decide endpoint must enforce throttle:5,1 (6th call within 1 minute rejected)');
     }
 
     // ── Safety Invariant Tests ──

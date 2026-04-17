@@ -44,12 +44,25 @@ Route::middleware([
 | On decline: logs rejection, returns acknowledgement.
 | No model invocation — this is enforcement, not inference.
 |
+| Rate limit (Lane 3 Batch 3.2):
+|   throttle:5,1 — 5 requests per minute per authenticated user.
+|
+|   This is tighter than the main task endpoint (throttle:10,1) because
+|   decide is a confirmed-action surface: each POST can trigger a real
+|   booking create or cancellation via the service layer. A stricter
+|   per-user ceiling reduces abuse in the event of a leaked session or
+|   replayed hash, while still allowing legitimate burst patterns
+|   (review multiple pending proposals, decline a few, confirm one).
+|   Per-hash replay is already neutralised by Cache::forget() after the
+|   first decide — the cache is cleared regardless of success, so
+|   subsequent attempts against the same hash 404 immediately.
+|
 */
 
 Route::middleware([
     'check_token_valid',
     'verified',
-    'throttle:10,1',
+    'throttle:5,1',
     'ai_harness_enabled',
 ])->group(function () {
     Route::post('/proposals/{hash}/decide', [ProposalConfirmationController::class, 'decide'])

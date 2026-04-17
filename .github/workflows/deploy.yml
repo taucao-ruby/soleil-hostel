@@ -364,15 +364,89 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{"git_commit": "${{ github.sha }}"}'
+      # Only SSH-deploy when no managed-provider secret is present.
+      # Otherwise Forge/Render/Coolify already deployed the same commit above
+      # and a second deploy would overwrite with the same ref or race the provider.
       - name: Deploy via SSH
-        if: ${{ secrets.DEPLOY_HOST != '' }}
+        if: ${{ secrets.DEPLOY_HOST != '' && secrets.FORGE_API_TOKEN == '' && secrets.RENDER_DEPLOY_HOOK == '' && secrets.COOLIFY_API_TOKEN == '' }}
         env:
           DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/var/www/soleil-hostel' }}
+          DEPLOY_REF: ${{ github.sha }}
         run: |
-          echo "Deploying via SSH to $DEPLOY_HOST..."
-          echo "Deployment configured"
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          trap 'rm -f ~/.ssh/deploy_key' EXIT
+
+          echo "Deploying ${DEPLOY_REF} to ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}"
+
+          ssh -o StrictHostKeyChecking=accept-new \
+              -o ServerAliveInterval=30 \
+              -o ServerAliveCountMax=4 \
+              -i ~/.ssh/deploy_key \
+              "${DEPLOY_USER}@${DEPLOY_HOST}" \
+              "DEPLOY_PATH='${DEPLOY_PATH}' DEPLOY_REF='${DEPLOY_REF}' bash -s" <<'REMOTE_SCRIPT'
+          set -euo pipefail
+
+          if [ ! -d "${DEPLOY_PATH}/.git" ]; then
+            echo "::error::DEPLOY_PATH=${DEPLOY_PATH} is not a git checkout — initialize it manually first." >&2
+            exit 1
+          fi
+
+          cd "${DEPLOY_PATH}"
+          echo "==> Fetching ${DEPLOY_REF}"
+          git fetch --all --tags --prune
+          git checkout --force "${DEPLOY_REF}"
+          # Discard any accidental local changes on the server; deploy ref is authoritative.
+          git reset --hard "${DEPLOY_REF}"
+
+          cd backend
+          echo "==> Installing PHP dependencies"
+          composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+
+          echo "==> Rebuilding Laravel caches"
+          php artisan config:clear
+          php artisan config:cache
+          php artisan route:cache
+          php artisan view:cache
+
+          echo "==> Reloading services (best-effort; require passwordless sudo entries)"
+          sudo -n systemctl reload php8.3-fpm 2>/dev/null \
+            || sudo -n systemctl reload php-fpm 2>/dev/null \
+            || echo "::warning::PHP-FPM reload skipped (no reloadable unit or sudo rule)"
+          sudo -n systemctl restart supervisor 2>/dev/null \
+            || echo "::warning::supervisor restart skipped (not installed or no sudo rule)"
+
+          echo "==> Signaling queue workers to restart"
+          php artisan queue:restart
+
+          echo "==> SSH deploy of ${DEPLOY_REF} complete"
+          REMOTE_SCRIPT
+      # Migrations run BEFORE the health check so the app is validated against the new schema.
+      # Skipped when a managed provider (Forge/Render/Coolify) is configured — the provider's
+      # own pipeline is expected to run migrations; running them here too would double-migrate.
+      - name: Run database migrations
+        if: startsWith(github.ref, 'refs/tags/v') && secrets.DEPLOY_HOST != '' && secrets.FORGE_API_TOKEN == '' && secrets.RENDER_DEPLOY_HOOK == '' && secrets.COOLIFY_API_TOKEN == ''
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/var/www/soleil-hostel' }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "cd ${DEPLOY_PATH}/backend && php artisan migrate --force --no-interaction"
+          rm -f ~/.ssh/deploy_key
+      - name: Migration skipped (no deploy mechanism)
+        if: startsWith(github.ref, 'refs/tags/v') && secrets.DEPLOY_HOST == '' && secrets.FORGE_API_TOKEN == '' && secrets.RENDER_DEPLOY_HOOK == '' && secrets.COOLIFY_API_TOKEN == ''
+        run: |
+          echo "::notice::Migrations not run — no deploy mechanism (DEPLOY_HOST / FORGE / RENDER / COOLIFY) configured. Run manually: php artisan migrate --force"
       - name: Health Check
         run: |
           APP_URL="${{ vars.APP_URL || 'https://soleilhotel.com' }}"
@@ -390,25 +464,6 @@ jobs:
           curl -X POST "${APP_URL}/api/cache/warmup" \
             -H "Authorization: Bearer ${{ secrets.INTERNAL_API_TOKEN }}" \
             -H "Content-Type: application/json" || true
-      # Migrations: run via SSH when credentials are configured
-      - name: Run database migrations
-        if: startsWith(github.ref, 'refs/tags/v') && secrets.DEPLOY_HOST != ''
-        env:
-          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/var/www/soleil-hostel' }}
-        run: |
-          mkdir -p ~/.ssh
-          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "cd ${DEPLOY_PATH}/backend && php artisan migrate --force --no-interaction"
-          rm -f ~/.ssh/deploy_key
-      - name: Migration skipped (no SSH credentials)
-        if: startsWith(github.ref, 'refs/tags/v') && secrets.DEPLOY_HOST == ''
-        run: |
-          echo "::notice::Migrations not run — DEPLOY_HOST secret not configured. Run manually: php artisan migrate --force"
       - name: Slack notification (Success)
         if: success()
         uses: slackapi/slack-github-action@v1.24.0

@@ -89,10 +89,26 @@ final class CancellationService
     /**
      * Validate that the booking can be cancelled.
      *
+     * Defense-in-depth ownership gate: BookingPolicy::cancel and the
+     * controller-level Gate::authorize('cancel', $booking) are the primary
+     * authorization barrier. This service-layer check protects code paths
+     * that reach cancellation without going through that policy — most
+     * notably ProposalConfirmationController::executeCancellation, which
+     * passes a confirmed proposer id straight into the service. Without
+     * this check, an authenticated user who could craft (or replay) a
+     * proposal naming someone else's booking_id would be able to cancel
+     * that booking even though the controller layer never invoked the
+     * cancel policy. Admins remain exempt — they can cancel any booking,
+     * matching BookingPolicy::cancel.
+     *
      * @throws BookingCancellationException
      */
     private function validateCancellation(Booking $booking, User $actor): void
     {
+        if (! $actor->isAdmin() && (int) $booking->user_id !== (int) $actor->id) {
+            throw BookingCancellationException::unauthorized($booking);
+        }
+
         if (! $booking->status->isCancellable()) {
             throw BookingCancellationException::notCancellable($booking);
         }

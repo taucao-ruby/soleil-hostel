@@ -39,6 +39,30 @@ class ProposalConfirmationController extends Controller
             return ApiResponse::notFound('Proposal not found or expired.');
         }
 
+        // F-06: proposer-binding check.
+        //
+        // The cached proposal was produced for a specific authenticated user
+        // during their harness turn. Another authenticated user who somehow
+        // learned the hash (log leak, IDOR, response interception) must not
+        // be able to confirm/decline it — doing so would execute Alice's
+        // proposed booking/cancellation under Mallory's identity (or worse,
+        // cancel Alice's booking while the audit trail records Mallory).
+        //
+        // A bound proposal without a matching proposer id returns 404 (NOT
+        // 403) to avoid leaking hash existence to an attacker probing for
+        // valid hashes. Legacy cache entries written before this change
+        // lack the field; those are also treated as unbound → 404.
+        $proposerUserId = $proposalData['proposer_user_id'] ?? null;
+        if (! is_int($proposerUserId) || $proposerUserId !== $userId) {
+            Log::channel('ai')->warning('Proposal decide blocked by proposer-binding check', [
+                'proposal_hash' => $hash,
+                'decider_user_id' => $userId,
+                'proposer_user_id_present' => is_int($proposerUserId),
+            ]);
+
+            return ApiResponse::notFound('Proposal not found or expired.');
+        }
+
         $actionType = $proposalData['action_type'] ?? 'unknown';
         $now = now()->toIso8601String();
 
@@ -152,6 +176,17 @@ class ProposalConfirmationController extends Controller
     /**
      * Execute cancellation via existing BookingService.
      * The service owns validation — status checks, policy enforcement.
+     *
+     * F-06 follow-up (Lane 3 Batch 3.1): the proposal flow names a
+     * booking_id from the cached proposed_params. The proposer-binding
+     * check in decide() proves the *decider* equals the *proposer*, but
+     * does NOT prove the proposer owns the booking they are trying to
+     * cancel. CancellationService::validateCancellation now enforces
+     * ownership/admin defense-in-depth and raises
+     * BookingCancellationException::unauthorized() — caught here and
+     * mapped to a stable downstream code so the audit log records the
+     * refusal without leaking the internal exception message to the
+     * client.
      */
     private function executeCancellation(int $userId, array $params): string
     {
@@ -168,7 +203,21 @@ class ProposalConfirmationController extends Controller
             return 'error:booking_not_found';
         }
 
-        $service->cancelBooking($booking, $userId);
+        try {
+            $service->cancelBooking($booking, $userId);
+        } catch (\App\Exceptions\BookingCancellationException $e) {
+            if ($e->getErrorCode() === 'unauthorized') {
+                Log::channel('ai')->warning('Proposal cancellation blocked by service-layer ownership check', [
+                    'decider_user_id' => $userId,
+                    'booking_id' => $bookingId,
+                    'booking_owner_id' => $booking->user_id,
+                ]);
+
+                return 'error:unauthorized_booking_owner';
+            }
+
+            return "error:{$e->getErrorCode()}";
+        }
 
         return "booking_cancelled:{$bookingId}";
     }

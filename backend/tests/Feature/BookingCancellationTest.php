@@ -240,6 +240,80 @@ class BookingCancellationTest extends TestCase
         $response->assertUnauthorized();
     }
 
+    // ===== SERVICE-LAYER DEFENSE-IN-DEPTH TESTS (Lane 3 Batch 3.1) =====
+
+    /**
+     * Direct call to CancellationService::cancel with a non-owner non-admin
+     * actor must be rejected, even though no controller-level Gate ran.
+     *
+     * This proves the defense-in-depth ownership gate added to
+     * validateCancellation(). Threat model: any code path that reaches the
+     * service without going through BookingPolicy::cancel — including the
+     * AI proposal confirmation flow — must not be able to cancel a booking
+     * belonging to another user.
+     */
+    public function test_cancellation_service_rejects_non_owner_non_admin_actor(): void
+    {
+        $owner = $this->user;
+        $intruder = User::factory()->create();
+
+        $booking = Booking::factory()
+            ->for($owner)
+            ->for($this->room)
+            ->confirmed()
+            ->create([
+                'check_in' => now()->addDays(10),
+                'check_out' => now()->addDays(12),
+            ]);
+
+        $service = app(\App\Services\CancellationService::class);
+
+        $thrown = null;
+        try {
+            $service->cancel($booking->fresh(), $intruder);
+        } catch (\App\Exceptions\BookingCancellationException $e) {
+            $thrown = $e;
+        }
+
+        $this->assertNotNull(
+            $thrown,
+            'CancellationService::cancel must reject non-owner non-admin actor'
+        );
+        $this->assertSame('unauthorized', $thrown->getErrorCode());
+        $this->assertSame(403, $thrown->getHttpStatusCode());
+
+        $this->assertDatabaseHas('bookings', [
+            'id' => $booking->id,
+            'status' => BookingStatus::CONFIRMED->value,
+            'cancelled_by' => null,
+            'cancelled_at' => null,
+        ]);
+    }
+
+    /**
+     * Admin actor must still be able to cancel any booking via the service
+     * directly, mirroring BookingPolicy::cancel which exempts admins from
+     * the ownership requirement.
+     */
+    public function test_cancellation_service_allows_admin_to_cancel_any_booking(): void
+    {
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($this->room)
+            ->confirmed()
+            ->create([
+                'check_in' => now()->addDays(10),
+                'check_out' => now()->addDays(12),
+            ]);
+
+        $service = app(\App\Services\CancellationService::class);
+
+        $cancelled = $service->cancel($booking->fresh(), $this->admin);
+
+        $this->assertSame(BookingStatus::CANCELLED, $cancelled->status);
+        $this->assertSame($this->admin->id, $cancelled->cancelled_by);
+    }
+
     // ===== MODERATOR AUTHORIZATION TESTS =====
 
     public function test_moderator_can_cancel_own_booking(): void

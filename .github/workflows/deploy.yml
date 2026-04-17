@@ -334,6 +334,24 @@ jobs:
       - name: Setup deployment tools
         run: |
           sudo apt-get update && sudo apt-get install -y curl jq
+      # F-04 hard gate (pre-flight): a tagged release MUST be able to run
+      # database migrations. If DEPLOY_HOST is not configured, the SSH-based
+      # migration step cannot execute and the application would go live with
+      # stale schema (silent corruption / 5xx storm). Abort BEFORE any
+      # provider deploy step ships code so we never reach a half-migrated
+      # production state. workflow_dispatch is intentionally exempt: it is
+      # operator-driven, and the operator is responsible for running
+      # migrations out-of-band.
+      - name: Migration prerequisite gate (tagged deploys)
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          if [ -z "${DEPLOY_HOST}" ]; then
+            echo "::error::F-04 deploy gate: DEPLOY_HOST secret is empty. Tagged release cannot guarantee database migrations will run. Aborting deploy."
+            exit 1
+          fi
+          echo "F-04 deploy gate passed: DEPLOY_HOST configured; migrations will run during deploy."
       - name: Determine deployment target
         id: deploy-target
         run: |
@@ -373,6 +391,62 @@ jobs:
         run: |
           echo "Deploying via SSH to $DEPLOY_HOST..."
           echo "Deployment configured"
+      # ─────────────────────────────────────────────────────────────────────
+      # Lane 3 Batch 3.3: Migration ordering fix.
+      #
+      # Migrations MUST run before the Health Check step, not after it.
+      #
+      # Prior ordering ran migrations LAST — after health check and cache
+      # warmup had already confirmed the new release was serving live
+      # traffic. Consequences:
+      #   - The new application code was live against the OLD database
+      #     schema during the health-check window. Any new query that
+      #     references a new column/table would 5xx until migrations
+      #     completed, silently breaking real user traffic while CI
+      #     reported success.
+      #   - A migration that failed (constraint violation, lock timeout)
+      #     would leave the new release LIVE with a partial/old schema
+      #     and no automatic rollback — the deploy job would fail but
+      #     production was already serving broken queries.
+      #   - Cache warmup against the old schema could persist stale
+      #     cache entries that outlived the migration.
+      #
+      # New ordering:
+      #   Deploy code (Forge/Render/Coolify/SSH)
+      #     → Run database migrations    ← must finish before traffic
+      #     → Health Check               ← validates post-migration state
+      #     → Warm up cache              ← persists correct cache shape
+      #
+      # Provider-managed deploy paths (Forge, Render, Coolify) already
+      # handle migrations inside their own hook; running `artisan migrate`
+      # via SSH afterwards is idempotent (Laravel tracks applied
+      # migrations), so the new ordering is safe regardless of which
+      # deploy method is configured. If migrations fail here, Health
+      # Check will never run and the deploy job fails fast instead of
+      # masking a half-migrated production.
+      #
+      # F-04 note: the previous "Migration skipped (no SSH credentials)"
+      # soft-notice step was removed at F-04 remediation time because it
+      # silently allowed tagged deploys to proceed with no schema migration.
+      # The pre-flight "Migration prerequisite gate" step at the start of
+      # this job hard-fails the workflow before any code is shipped when
+      # DEPLOY_HOST is missing on a tagged release, so the legacy
+      # "no SSH" branch is unreachable for tagged deploys.
+      # ─────────────────────────────────────────────────────────────────────
+      - name: Run database migrations
+        if: startsWith(github.ref, 'refs/tags/v') && secrets.DEPLOY_HOST != ''
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/var/www/soleil-hostel' }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "cd ${DEPLOY_PATH}/backend && php artisan migrate --force --no-interaction"
+          rm -f ~/.ssh/deploy_key
       - name: Health Check
         run: |
           APP_URL="${{ vars.APP_URL || 'https://soleilhotel.com' }}"
@@ -390,25 +464,6 @@ jobs:
           curl -X POST "${APP_URL}/api/cache/warmup" \
             -H "Authorization: Bearer ${{ secrets.INTERNAL_API_TOKEN }}" \
             -H "Content-Type: application/json" || true
-      # Migrations: run via SSH when credentials are configured
-      - name: Run database migrations
-        if: startsWith(github.ref, 'refs/tags/v') && secrets.DEPLOY_HOST != ''
-        env:
-          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/var/www/soleil-hostel' }}
-        run: |
-          mkdir -p ~/.ssh
-          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "cd ${DEPLOY_PATH}/backend && php artisan migrate --force --no-interaction"
-          rm -f ~/.ssh/deploy_key
-      - name: Migration skipped (no SSH credentials)
-        if: startsWith(github.ref, 'refs/tags/v') && secrets.DEPLOY_HOST == ''
-        run: |
-          echo "::notice::Migrations not run — DEPLOY_HOST secret not configured. Run manually: php artisan migrate --force"
       - name: Slack notification (Success)
         if: success()
         uses: slackapi/slack-github-action@v1.24.0

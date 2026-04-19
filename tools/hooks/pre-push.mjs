@@ -24,9 +24,10 @@ if (changedFiles === null) {
   targetsToRun = ["backend_tests", "frontend_typecheck", "frontend_unit_tests"];
   console.log("[hooks] Could not resolve diff base; running full verification baseline.");
 } else {
-  const hasBackendChanges = changedFiles.some((file) => file.startsWith("backend/"));
-  const hasFrontendChanges = changedFiles.some((file) => file.startsWith("frontend/"));
-  const hasComposeChanges = changedFiles.some(isComposeRelatedPath);
+  const codeChanges = changedFiles.filter((file) => !isNonCodePath(file));
+  const hasBackendChanges = codeChanges.some((file) => file.startsWith("backend/"));
+  const hasFrontendChanges = codeChanges.some((file) => file.startsWith("frontend/"));
+  const hasComposeChanges = codeChanges.some(isComposeRelatedPath);
 
   if (hasBackendChanges) {
     targetsToRun.push("backend_tests");
@@ -150,5 +151,18 @@ function isComposeRelatedPath(filePath) {
     /^docker-compose\..*\.ya?ml$/i.test(normalized) ||
     normalized.startsWith("backend/docker/") ||
     normalized === "redis.conf"
+  );
+}
+
+function isNonCodePath(filePath) {
+  const normalized = filePath.replace(/\\/g, "/");
+  // Docs-equivalent paths that cannot affect runtime behavior and must not
+  // trigger the full test suite:
+  //   *.md                       (READMEs, changelogs, in-repo docs)
+  //   .env.example               (env template)
+  //   .env.<suffix>.example      (env templates like .env.production.example)
+  return (
+    /\.md$/i.test(normalized) ||
+    /(?:^|\/)\.env(?:\.[^/]+)?\.example$/.test(normalized)
   );
 }

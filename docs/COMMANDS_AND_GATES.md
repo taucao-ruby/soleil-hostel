@@ -1,6 +1,6 @@
 # Commands and Quality Gates
 
-Verified against code on 2026-03-23. Source: `composer.json`, `frontend/package.json`, root `package.json`, `.github/workflows/*.yml`, `tools/hooks/`, `mcp/soleil-mcp/policy.json`.
+Verified against code on 2026-04-18. Source: `composer.json`, `frontend/package.json`, root `package.json`, `.github/workflows/*.yml`, `tools/hooks/`, `mcp/soleil-mcp/policy.json`, `.spectral.yaml`.
 
 ## Backend Commands
 
@@ -197,6 +197,16 @@ Triggers: PR to `main`/`dev`, push to `main`/`dev`.
 | ------- | ----------------------------- | ----------------- | -------- |
 | hygiene | `sh scripts/check-hygiene.sh` | H-01..H-05 pass   | Yes      |
 
+### contract-lint.yml (CI)
+
+Triggers: PR / push to `main`/`dev` when `docs/api/openapi.yaml`, `.spectral.yaml`, or `.github/workflows/contract-lint.yml` is touched.
+
+| Job       | Commands                                                                                                   | Expected   | Blocking                         |
+| --------- | ---------------------------------------------------------------------------------------------------------- | ---------- | -------------------------------- |
+| spectral  | `spectral lint docs/api/openapi.yaml --ruleset .spectral.yaml --format pretty --fail-severity error`       | 0 errors   | Yes (`--fail-severity=error`)    |
+
+Rationale: `spectral:oas` detects contract drift (missing schemas, duplicate `operationId`, unresolved `$ref`, unsafe markdown) before the runtime and the documented contract diverge. Style warnings remain visible in the workflow log but are non-blocking. Added 2026-04-17 via commit `4a33755`.
+
 ### deploy.yml (CD)
 
 Triggers: push tags `v*`, manual workflow_dispatch.
@@ -213,15 +223,16 @@ Triggers: push tags `v*`, manual workflow_dispatch.
 
 ## Quality Gates Summary
 
-| Gate                | Command                        | Expected   | Enforced by                             |
-| ------------------- | ------------------------------ | ---------- | --------------------------------------- |
-| Frontend typecheck  | `npx tsc --noEmit`             | 0 errors   | pre-push hook, CI                       |
-| Frontend unit tests | `npx vitest run`               | 0 failures | pre-push hook, CI                       |
-| Backend tests       | `php artisan test`             | 0 failures | pre-push hook, CI                       |
-| Docker validate     | `docker compose config`        | Valid YAML | pre-push hook (if Docker available), CI |
-| PHPStan             | `phpstan analyse`              | 0 errors   | CI                                      |
-| Backend coverage    | `--min-coverage-percentage=95` | >= 95%     | CI                                      |
-| Gitleaks            | Gitleaks action                | No secrets | CI                                      |
+| Gate                | Command                                                                         | Expected   | Enforced by                             |
+| ------------------- | ------------------------------------------------------------------------------- | ---------- | --------------------------------------- |
+| Frontend typecheck  | `npx tsc --noEmit`                                                              | 0 errors   | pre-push hook, CI                       |
+| Frontend unit tests | `npx vitest run`                                                                | 0 failures | pre-push hook, CI                       |
+| Backend tests       | `php artisan test`                                                              | 0 failures | pre-push hook, CI                       |
+| Docker validate     | `docker compose config`                                                         | Valid YAML | pre-push hook (if Docker available), CI |
+| PHPStan             | `phpstan analyse`                                                               | 0 errors   | CI                                      |
+| Backend coverage    | `--min-coverage-percentage=95`                                                  | >= 95%     | CI                                      |
+| Gitleaks            | Gitleaks action                                                                 | No secrets | CI                                      |
+| OpenAPI contract    | `spectral lint docs/api/openapi.yaml --ruleset .spectral.yaml --fail-severity error` | 0 errors   | CI (`contract-lint.yml`, path-triggered) |
 
 ## Bypassing Hooks
 

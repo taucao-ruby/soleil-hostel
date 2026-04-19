@@ -1,6 +1,8 @@
 # AI Rollout & Kill Switch Procedure
 
-**Last updated**: 2026-04-09
+**Last updated**: 2026-04-18
+
+> Scope note: this document covers the AI harness rollout/kill switch and — as of 2026-04-18 — the pending-booking TTL implicit kill switch. Deploy-level safety (F-04 pre-flight gate, migration-before-health ordering) lives in `docs/OPERATIONAL_PLAYBOOK.md`.
 
 ## Canary Rollout
 
@@ -110,3 +112,38 @@ Any of the following trigger **immediate rollback** and severity-1 bug filing:
 - Third-party PII leakage confirmed
 - Model bypasses policy enforcement layer
 - Cost exceeds 10x threshold in any 1-hour window
+- Proposer-binding mismatch spike (`Proposal decide blocked by proposer-binding check` log events, `ai` channel) — potential hash-replay or cross-user confirmation attempt (see `docs/THREAT_MODEL_AI.md` T-13 / V-5)
+
+## Pending-Booking TTL Implicit Kill Switch (Non-AI)
+
+The `ExpireStaleBookings` job (`backend/app/Jobs/ExpireStaleBookings.php`, scheduled every 5 minutes) auto-cancels pending bookings older than `config('booking.pending_ttl_minutes')` (default 30). Setting the TTL to 0 disables the job without removing the schedule: the job logs a warning and returns.
+
+This is NOT part of the AI harness kill chain, but it is the fastest way to pause pending-booking expiry during an incident (e.g. to debug a claim that legitimate pending bookings are being cancelled prematurely).
+
+### To pause expiry
+
+```bash
+# .env
+BOOKING_PENDING_TTL_MINUTES=0
+```
+
+```bash
+php artisan config:clear
+```
+
+### Verify
+
+```bash
+grep "ExpireStaleBookings skipped: non-positive TTL configured" storage/logs/laravel.log | tail -5
+```
+
+### To resume
+
+Restore `BOOKING_PENDING_TTL_MINUTES=30` (or the value in `.env.example`), then `php artisan config:clear`. Run the job once by hand to drain the backlog that accumulated while paused:
+
+```bash
+php artisan tinker
+>>> dispatch_sync(new App\Jobs\ExpireStaleBookings);
+```
+
+See `docs/OPERATIONAL_PLAYBOOK.md` §Pending Booking Backlog for the full incident runbook and `docs/agents/ARCHITECTURE_FACTS.md` §Pending TTL for the invariant.

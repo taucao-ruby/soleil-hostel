@@ -1,10 +1,40 @@
 # WORKLOG — Soleil Hostel (Append-only)
 
+## 2026-04-19
+
+- Change: F-ID namespace disambiguation — the 2026-04-18 AI-harness proposer-binding finding, informally cited as "F-06 (2026-04-18)" throughout the prior day's remediation pass, was promoted to canonical **F-67** in `docs/FINDINGS_BACKLOG.md` to eliminate collision with the existing 2026-02-21 F-06 (CHECK `check_out > check_in` constraint, Fixed PR-2).
+- Backlog (FINDINGS_BACKLOG.md): added top-of-file namespace note (explains F-06 collision and the F-06→F-67 promotion) and a new §2026-04-18 Audit Findings — AI Harness Security section containing the F-67 row (status: Fixed — Mitigated; commits `17a4880`, `39cba7a`).
+- Source of truth sweep: ARCHITECTURE_FACTS.md (3 refs), PERMISSION_MATRIX.md (2 refs), THREAT_MODEL_AI.md (4 refs), COMPACT.md (live-status block + §3 Now entries + `last_verified_at`). All "F-06 (2026-04-18)" callouts in live docs now read F-67.
+- Append-only discipline: the 2026-04-18 WORKLOG entry below still references "F-06" (2026-04-18 proposer-binding / namespace collision / T-13 citation); those references are historical record and MUST NOT be rewritten. The namespace note in FINDINGS_BACKLOG and ARCHITECTURE_FACTS explicitly call this out.
+- Historical commit messages (`17a4880`, `39cba7a`, plus the 7 docs-governance commits from 2026-04-18) are also preserved as-is; the commit-message corpus cites F-06 (2026-04-18) which now canonically means F-67.
+- Verification: docs-only pass — no runtime gates re-run. Working tree at start of this entry was clean at `16618a9`; end-of-entry HEAD will advance when the F-67 promotion is committed.
+- Scope: no `backend/`, `frontend/`, `.github/`, or `docker-compose*` touched. Pure docs.
+- Follow-up (push cycle): 10 commits above `aef28a1` pushed to `origin/dev` at HEAD `9261798`.
+- Hook fix (`chore(infra)`, `9261798`): `tools/hooks/pre-push.mjs` added `isNonCodePath()` helper that exempts `*.md` and `.env.example` / `.env.*.example` paths from triggering `backend_tests` / `frontend_unit_tests` / `frontend_typecheck`. Previously the naive `startsWith("backend/")` check caused commits touching `backend/.env.example` to run the full PHPUnit suite, approaching or exceeding the 900000 ms hook timeout on slow dev machines. Source files (`.xml`, `.json`, `.php`, `.ts`, lockfiles, config) still trigger tests as before.
+- Re-index: `npx soleil-engine-cli analyze` advanced `.soleil-ai-review-engine/meta.json.lastCommit` to `9261798`. The indexer also rewrote `AGENTS.md` / `CLAUDE.md` stats-string from `5528` to `5525` symbols (indexer counts digit-tokens in its own output as countable symbols — a known ping-pong loop). Restored both auto-managed files to their committed state so the loop does not propagate into git history.
+- New finding (F-68, Open, Medium): `backend/database/migrations/2026_02_09_000005_assign_rooms_to_locations.php:50` — `->change()` invokes doctrine/dbal which opens a secondary PostgreSQL connection to inspect column type, racing the primary connection's `UPDATE bookings … FROM rooms` at `:27` for locks on `rooms`, producing intermittent `SQLSTATE[40P01]: Deadlock detected` during `RefreshDatabase`. Reproduced 2026-04-19 (`php artisan test --filter=GateTest`: 2 failed / 12 passed). Suggested fix: raw `ALTER TABLE rooms ALTER COLUMN location_id SET NOT NULL` (no doctrine introspection), or split the migration into UPDATE-only and NOT-NULL-only steps. Not a production-code defect — test-infra reliability only.
+
+## 2026-04-18
+
+- Change: Documentation governance remediation pass — 11 docs aligned with post-F-06 code truth spanning commits `e6673dd`→`1deaf8e` (BASE=`3ea3e8b`, HEAD=`aef28a1`; 11 commits, 27 files in audit window). DIFF-FIRST, EVIDENCE-GATED.
+- Evidence anchor: `git diff 3ea3e8b..aef28a1` surfaced 8 drift findings (DF-1..DF-8); this commit lands remediation for all eight.
+- Invariants (ARCHITECTURE_FACTS.md): added §Pending TTL (Auto-Expiry Invariant), §Terminal-State Immutability, §Proposer-Binding Invariant (AI Proposals), §Cancellation Ownership: Defense-in-Depth. Fixed A14 middleware list (`throttle:10,1`→`throttle:5,1`) and added proposer-binding note to §Booking Interaction. Disambiguated F-06 namespace collision (2026-02-21 CHECK constraint vs 2026-04-18 proposer-binding).
+- RBAC source of truth (PERMISSION_MATRIX.md): A14 row corrected (ALLOWED→ALLOWED-OWN-PROPOSAL-ONLY, `throttle:10,1`→`throttle:5,1`, enforcement type +OWNERSHIP-BOUND, defense-in-depth NO→YES, evidence +F-06). BR-1/BR-2 cross-refs updated with terminal-state immutability and service-layer defense-in-depth note. "Resources not investigated" booking-update line replaced with terminal-state immutability pointer.
+- Threat model (THREAT_MODEL_AI.md): T-13 reclassified Accepted→Mitigated with F-06 citation; T-14 mitigation expanded with service-layer ownership gate citation; V-5 residual risk removed ("None after F-06"). Added two monitors: proposer-binding blocks and service-layer ownership blocks on `ai` channel.
+- Gates (CONTRACT.md, COMMANDS_AND_GATES.md): Spectral OpenAPI contract-lint gate registered (CI workflow `contract-lint.yml` added 2026-04-17 via commit `4a33755`). Verification date updated 2026-03-23→2026-04-18.
+- Runbooks (OPERATIONAL_PLAYBOOK.md): new §Pending Booking Backlog runbook, new §F-04 Deploy Gate Triggered runbook, §Failed Deployment Rollback expanded with migration-before-health-check ordering explanation (commits `75bb790`, `ec025ca`).
+- Kill switches (ROLLOUT_AND_KILL_SWITCH.md): new §Pending-Booking TTL Implicit Kill Switch (BOOKING_PENDING_TTL_MINUTES=0); added ABORT condition for proposer-binding mismatch spike.
+- Env examples: added `BOOKING_PENDING_TTL_MINUTES=30` + `BOOKING_PENDING_EXPIRY_BATCH_SIZE=100` to both `backend/.env.example` and `backend/.env.production.example` with rationale + kill-switch note. Production file adds MUST-NOT-be-zero warning.
+- Summary docs: PROJECT_STATUS.md date Apr 12→Apr 18, HEAD `a67cfcc`→`aef28a1`, T-13 Accepted→Resolved-Mitigated, two new completed-work rows. COMPACT.md snapshot fully refreshed (date/HEAD/T-13/F-06 status). WORKLOG.md this entry.
+- Verification: docs-only pass — no runtime gates re-run. Backend + frontend gate re-verification remains open (noted in PROJECT_STATUS.md).
+- Scope note: touched `backend/.env.example` and `backend/.env.production.example` (under `backend/`) because they are configuration documentation keyed to this docs batch; flagged per CLAUDE.md escalation rule. No application code changed.
+
 ## 2026-04-12
 
 - Change: Documentation governance audit + full docs sync for AI Harness Phases 0–4.
 - Updated: ARCHITECTURE_FACTS.md (AI domain section), PERMISSION_MATRIX.md (rows A13-A15, Tables E/F), CONTRACT.md (AI DoD), DB_FACTS.md (AI tables + indexes), DATABASE.md (ER diagram, table defs, migrations, seeders, model relationships), openapi.yaml (3 AI endpoint groups + schemas), THREAT_MODEL_AI.md (Phase 4: T-13, T-14, V-5, V-6), COMMANDS.md (ai:eval), COMPACT.md (snapshot update).
 - Security finding: T-13 ACCEPTED — ProposalConfirmationController has no user-to-proposal ownership check; relies on 256-bit hash entropy + rate limiting.
+- Superseded 2026-04-18: T-13 reclassified Mitigated after F-06 proposer-binding remediation landed (`17a4880`, `39cba7a`).
 
 ## 2026-04-09 — 2026-04-11
 

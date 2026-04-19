@@ -1,6 +1,6 @@
 # Architecture Facts — Soleil Hostel
 
-Domain invariants last verified 2026-04-05 (full-stack 2c audit). See [AUDIT_2026_02_21.md](../AUDIT_2026_02_21.md) for the original 2026-02-21 audit evidence.
+Domain invariants last verified 2026-04-18 (documentation governance audit; ref commits `17a4880`, `39cba7a`, `a86f597`). See [AUDIT_2026_02_21.md](../AUDIT_2026_02_21.md) for the original 2026-02-21 audit evidence.
 
 ## Booking Domain
 
@@ -46,6 +46,45 @@ Deposit lifecycle also lives on `bookings`: `deposit_amount`, `deposit_collected
 
 **VARCHAR column, NOT a PostgreSQL ENUM.** Values enforced at application level (`App\Enums\BookingStatus`) AND DB CHECK constraint `chk_bookings_status` on PostgreSQL (migration `2026_03_17_000003`):
 - `pending`, `confirmed`, `refund_pending`, `cancelled`, `refund_failed`
+
+### Pending TTL (Auto-Expiry Invariant)
+
+Pending bookings block availability via `Booking::ACTIVE_STATUSES`. Without a TTL they would hold inventory indefinitely. The system enforces expiry:
+
+- Config: `config('booking.pending_ttl_minutes')` — default **30 minutes** from `created_at` (not `updated_at`: the TTL is a commitment window, not a heartbeat).
+- Config: `config('booking.pending_expiry_batch_size')` — default **100**; protects a cold-start backlog from DoS'ing the DB.
+- Job: `App\Jobs\ExpireStaleBookings` — scheduled every 5 minutes via `routes/console.php` (`withoutOverlapping()`, `onOneServer()`).
+- Semantics: only `status = PENDING` is considered. Each row is re-read under `lockForUpdate()` inside its own transaction; a concurrent `confirm()` that promoted the booking to `confirmed` wins and the expire is skipped. Expired rows transition PENDING → CANCELLED with `cancellation_reason = 'expired'` and `cancelled_by = null`; `BookingCancelled` event fires so cache invalidation runs.
+- Source: `backend/app/Jobs/ExpireStaleBookings.php`, `backend/config/booking.php`, `backend/routes/console.php`.
+
+**Implicit kill switch**: setting `BOOKING_PENDING_TTL_MINUTES=0` disables the job (it logs a warning and returns). Use this to pause expiry during incident response without removing the schedule.
+
+### Terminal-State Immutability
+
+Terminal booking statuses — `cancelled`, `refund_failed` in a terminal posture, and any soft-deleted booking — must not be mutated back into an active posture except by the explicit restore path (`BookingService::restore()`, which itself is admin-only and wrapped in `DB::transaction()` with `hasOverlappingBookingsWithLock()`).
+
+Applies to:
+- Cancellation service, job, and proposal confirmation paths all transition via the state machine — never `UPDATE bookings SET status = 'pending'` directly.
+- `ExpireStaleBookings` only runs on `status = PENDING` and re-checks under lock — it cannot resurrect a cancelled booking.
+
+### Proposer-Binding Invariant (AI Proposals)
+
+`ProposalConfirmationController::decide` MUST reject any request where the authenticated user is not the original proposer. This is enforced at the cache envelope:
+
+- Producer (`AiOrchestrationService`) writes `proposer_user_id` into the cache payload alongside `action_type` and `proposed_params`.
+- Consumer (`ProposalConfirmationController::decide`) reads `proposer_user_id` from the envelope. If absent or not equal to `(int) $request->user()->id`, the controller **404s** (not 403 — the contract is "this hash is not yours to decide, and we will not acknowledge its existence").
+- Legacy cache entries written before F-67 lack the field; those are also treated as unbound → 404.
+- Log: `ai` channel, event `Proposal decide blocked by proposer-binding check`.
+- Source: `backend/app/Http/Controllers/ProposalConfirmationController.php:55-62`, `backend/app/AiHarness/Services/AiOrchestrationService.php`, test `backend/tests/Feature/AiHarness/ActionProposalTest.php`.
+
+### Cancellation Ownership: Defense-in-Depth
+
+Cancellation ownership is enforced at **two independent layers**:
+
+1. **Policy layer** — `BookingPolicy::cancel` (route gate via `authorize()`): non-admin actors may only cancel their own booking.
+2. **Service layer** — `CancellationService::validateCancellation()` (`backend/app/Services/CancellationService.php:106-109`): rechecks `! $actor->isAdmin() && (int) $booking->user_id !== (int) $actor->id` inside the transaction and throws `BookingCancellationException::unauthorized()`.
+
+The service-layer check is the **last line of defense** for alternate entry points (proposal confirmation, queue jobs, artisan commands) that may bypass the HTTP policy gate. It must not be removed without a matching guarantee at every caller.
 
 ### Booking Model Relationships
 
@@ -241,8 +280,10 @@ All AI routes live in `backend/routes/api/v1_ai.php`, mounted under `/api/v1/ai`
 | Endpoint | Auth | Middleware Stack | Controller |
 |----------|------|-----------------|------------|
 | `POST /api/v1/ai/{task_type}` | `check_token_valid` + `verified` | `throttle:10,1`, `ai_harness_enabled`, `ai_canary_router`, `ai_request_normalizer` | `AiController::handle` |
-| `POST /api/v1/ai/proposals/{hash}/decide` | `check_token_valid` + `verified` | `throttle:10,1`, `ai_harness_enabled` | `ProposalConfirmationController::decide` |
+| `POST /api/v1/ai/proposals/{hash}/decide` | `check_token_valid` + `verified` | `throttle:5,1`, `ai_harness_enabled` | `ProposalConfirmationController::decide` |
 | `GET /api/v1/ai/health` | None | `ai_harness_enabled` | Inline closure |
+
+> **Proposal decide throttle**: `throttle:5,1` is deliberately tighter than the `throttle:10,1` on the main task handler because `decide` is a confirmed-action surface — each POST can trigger a real booking create or cancellation via the service layer. Per-hash replay is already neutralised by `Cache::forget()` after the first decide. See `backend/routes/api/v1_ai.php:47-58` for the full rationale.
 
 **Task types**: `faq_lookup`, `room_discovery`, `booking_status`, `admin_draft`
 
@@ -276,6 +317,8 @@ L7  AiOrchestrationService  → top-level orchestrator composing L1–L6
 - All proposal events recorded to `ai_proposal_events` table + `ai` log channel
 
 **Invariant preservation**: The controller delegates to existing service layer — it does NOT bypass `lockForUpdate()`, exclusion constraints, or status validation. All booking invariants from §Booking Domain above remain enforced.
+
+**Proposer-binding** (F-67, 2026-04-18): every cache envelope carries `proposer_user_id`. `decide()` 404s on absence or mismatch. Service-layer ownership check in `CancellationService::validateCancellation` is the last line of defense for alternate callers — see §Proposer-Binding Invariant and §Cancellation Ownership: Defense-in-Depth above.
 
 ### AI Models & Tables
 
@@ -316,10 +359,12 @@ L7  AiOrchestrationService  → top-level orchestrator composing L1–L6
 ## DB Constraints Added (formerly backlog)
 
 All four previously absent constraints added via migrations (audit v2, PR-2 + PR-3, 2026-02-21):
-- `CHECK (check_out > check_in)` on bookings — **added** (F-06 fixed)
-- `CHECK (rating BETWEEN 1 AND 5)` on reviews — **added** (F-07 fixed)
-- `CHECK (price >= 0)` on rooms — **added** (F-08 fixed)
-- FK `reviews.booking_id -> bookings.id` — **added** (F-09 fixed)
+- `CHECK (check_out > check_in)` on bookings — **added** (2026-02-21 F-06 fixed)
+- `CHECK (rating BETWEEN 1 AND 5)` on reviews — **added** (2026-02-21 F-07 fixed)
+- `CHECK (price >= 0)` on rooms — **added** (2026-02-21 F-08 fixed)
+- FK `reviews.booking_id -> bookings.id` — **added** (2026-02-21 F-09 fixed)
+
+> **F-ID namespace note (updated 2026-04-19)**: the `F-06` above refers to the 2026-02-21 audit (CHECK `check_out > check_in`, Fixed). The AI-harness proposer-binding fix from 2026-04-18 was initially cited as "F-06 (2026-04-18)" during the documentation governance pass; it has since been promoted to **F-67** in `docs/FINDINGS_BACKLOG.md` to eliminate the ID collision. Historical WORKLOG entries and commit messages that still say "F-06 (2026-04-18)" refer to what is now F-67.
 
 ## DB Hardening (2026-03-17 / 2026-03-23)
 

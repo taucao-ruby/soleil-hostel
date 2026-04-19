@@ -65,11 +65,11 @@ What the system actually does. Tier 1 evidence only.
 | A11 | `DELETE /api/v1/admin/bookings/{b}/force` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Route `role:admin` (v1.php:57) + Gate `admin` (AdminBookingController:152) | HIERARCHY-DEPENDENT + EXACT-MATCH | YES | CONFIRMED-V1 | OPUS-VERIFY-01 |
 | A12 | `POST /api/v1/admin/bookings/restore-bulk` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Route `role:admin` (v1.php:57) + Gate `admin` (AdminBookingController:178) | HIERARCHY-DEPENDENT + EXACT-MATCH | YES | FOLLOW-UP REQUIRED (no moderator-denial test) | OPUS-VERIFY-01 |
 | A13 | `POST /api/v1/ai/{task_type}` | DENIED-EXPLICIT (401) | ALLOWED (verified) | ALLOWED (verified) | ALLOWED | Route `check_token_valid` + `verified` + `throttle:10,1` + `ai_harness_enabled` + `ai_canary_router` + `ai_request_normalizer` (v1_ai.php:24-30) | AUTH-REQUIRED + FEATURE-GATED | NO (kill switch + rate limit only) | CONFIRMED-V1 | AI-HARNESS-01 |
-| A14 | `POST /api/v1/ai/proposals/{hash}/decide` | DENIED-EXPLICIT (401) | ALLOWED (verified) | ALLOWED (verified) | ALLOWED | Route `check_token_valid` + `verified` + `throttle:10,1` + `ai_harness_enabled` (v1_ai.php:51-55) | AUTH-REQUIRED + FEATURE-GATED | NO (kill switch + rate limit only) | CONFIRMED-V1 | AI-HARNESS-01 |
+| A14 | `POST /api/v1/ai/proposals/{hash}/decide` | DENIED-EXPLICIT (401) | ALLOWED-OWN-PROPOSAL-ONLY | ALLOWED-OWN-PROPOSAL-ONLY | ALLOWED-OWN-PROPOSAL-ONLY | Route `check_token_valid` + `verified` + `throttle:5,1` + `ai_harness_enabled` (v1_ai.php:62-66) + Controller `proposer_user_id` check (ProposalConfirmationController.php:55-62) | AUTH-REQUIRED + FEATURE-GATED + OWNERSHIP-BOUND | YES (cache envelope proposer-binding + service-layer ownership) | CONFIRMED-V1 | AI-HARNESS-01 + F-67 (2026-04-18) |
 | A15 | `GET /api/v1/ai/health` | ALLOWED | ALLOWED | ALLOWED | ALLOWED | Route `ai_harness_enabled` only (v1_ai.php:68-70) | FEATURE-GATED | NO | CONFIRMED-V1 | AI-HARNESS-01 |
 
 **Resources not investigated** (out of scope for current batch):
-- Booking create/update/delete (user endpoints)
+- Booking create/delete (user endpoints) — update covered by rows A5/A6 (cancel) + the Terminal-State Immutability invariant in `ARCHITECTURE_FACTS.md` (admin is NOT exempt from terminal-state immutability; admin can restore soft-deleted but cannot directly resurrect a `cancelled` booking to `pending`)
 - Booking confirm
 - Contact messages (`/api/v1/admin/contact-messages/*`)
 - Customers (`/api/v1/admin/customers/*`) — gated by `role:moderator`; `CustomerController`
@@ -77,11 +77,13 @@ What the system actually does. Tier 1 evidence only.
 - Locations (`/api/v1/locations/*`)
 - Auth endpoints (`/api/v1/auth/*`)
 
-**AI Harness route notes** (rows A13–A15, added 2026-04-12):
+**AI Harness route notes** (rows A13–A15, last revised 2026-04-18):
 - AI endpoints use `check_token_valid` + `verified` — any verified user can access. No role-based gate.
 - `ai_harness_enabled` middleware acts as a kill switch (returns 404 when `AI_HARNESS_ENABLED=false`).
 - `ai_canary_router` middleware performs percentage-based traffic routing; not a security gate.
 - Proposal confirmation (`A14`) delegates to `CreateBookingService` / `BookingService::cancelBooking()` — existing booking invariants apply.
+- **Proposal decide (`A14`) is proposer-bound (F-67, 2026-04-18)**: the cache envelope carries `proposer_user_id`; `decide()` 404s when the authenticated user differs. Cancellation flow additionally enforces `CancellationService::validateCancellation` ownership check as a last-line service-layer gate. See `ARCHITECTURE_FACTS.md` §Proposer-Binding Invariant and `FINDINGS_BACKLOG.md` §F-67.
+- Proposal decide uses `throttle:5,1` (stricter than the `throttle:10,1` on A13) because each request can trigger a real booking write via the service layer.
 - Health endpoint (`A15`) is public but feature-gated — returns 404 when harness disabled.
 
 **HIERARCHY-DEPENDENT NOTICE**: `role:admin` middleware is enforced via `EnsureUserHasRole` using role hierarchy comparison (`isAtLeast()`), not exact match. Current hierarchy places admin above moderator. If role hierarchy is modified, rows marked HIERARCHY-DEPENDENT may change without code review.
@@ -145,17 +147,18 @@ These restrict **when** an action is allowed, not **who** can perform it. They a
 ### BR-1: Cancellable Status Restriction
 
 - **Rule**: Cancellation blocked when `booking.status` NOT IN `[pending, confirmed, refund_failed]`
-- **Applies to**: All roles equally
+- **Applies to**: All roles equally (admin is NOT exempt from this rule)
 - **Source**: `BookingPolicy.php:116` + `BookingStatus.php:28-35`
-- **Dual-layer**: Also enforced in `CancellationService.php:96`
-- **Note**: Policy and service must be updated together or behavior diverges
+- **Defense-in-depth**: also enforced in `CancellationService.php:96`, which is the last line of defense for alternate callers (proposal confirmation, queue jobs). Policy and service must be updated together or behavior diverges.
+- **Terminal-state immutability** (see `ARCHITECTURE_FACTS.md` §Terminal-State Immutability): `cancelled` is terminal — direct resurrection to `pending` is forbidden at every layer. Admin may restore a soft-deleted booking via `BookingService::restore()` but cannot re-use cancellation as a reversible operation.
 
 ### BR-2: Timing Restriction (Started Booking)
 
 - **Rule**: Non-admin cannot cancel after `booking.isStarted()` returns true
 - **Applies to**: User, Moderator (not admin)
-- **Admin exempt**: YES — admin bypasses at both policy and service layers
+- **Admin exempt**: YES — admin bypasses at both policy and service layers, but ONLY for the timing gate; ownership checks apply only to non-admin actors per `CancellationService::validateCancellation` (`CancellationService.php:106-109`).
 - **Source**: `BookingPolicy.php:121-123` + `CancellationService.php:101`
+- **Note**: the service-layer ownership check (`CancellationService.php:106-109`) is authoritative for alternate entry points — proposal confirmation (`ProposalConfirmationController::executeCancellation`) reuses this gate and logs blocked attempts to the `ai` log channel.
 
 ### BR-3: Config-Variable Timing Override
 

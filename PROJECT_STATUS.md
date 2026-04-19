@@ -1,8 +1,8 @@
 # Soleil Hostel - Project Status
 
-**Last Updated:** April 12, 2026
+**Last Updated:** April 18, 2026
 **Current Branch:** `dev`
-**Latest Commit:** `a67cfcc` — AI Harness Phases 0–4 complete
+**Latest Commit:** `aef28a1` — Merge branch 'main' into dev (post-F-06 remediation + deploy workflow hardening)
 
 ## Current Status: Repo Health Green
 
@@ -10,9 +10,9 @@
 > Batches 1–12 + DevSecOps + quality hardening + DB hardening + v3.1 stay domain complete.
 > See [docs/AUDIT_2026_02_21.md](./docs/AUDIT_2026_02_21.md) for detailed audit history.
 
-Gates (verified April 12, 2026):
+Gates (verified April 18, 2026 — documentation governance pass; re-verification still required for runtime gates):
 
-- Backend tests: **re-verification required** (AI harness added 50+ files; previous baseline 1047/2875 — Mar 31)
+- Backend tests: **re-verification required** (F-01/F-02/F-03 remediations landed in `1451a90`; proposer-binding + ActionProposal tests landed in `17a4880`/`a86f597`; previous baseline 1047/2875 — Mar 31)
 - Frontend typecheck PASS: 0 errors (`cd frontend && npx tsc --noEmit`) — TS5103 fixed
 - Frontend build PASS: `pnpm run build` exits 0
 - Frontend unit tests: **re-verification required** (previous baseline 261/25 — Mar 31)
@@ -21,9 +21,10 @@ Gates (verified April 12, 2026):
 - PHPStan Level 5: **re-verification required** (AI harness files added; previous 0 errors)
 - Psalm: **re-verification required** (AI harness files added; previous 0 blocking)
 - AI eval gate: `php artisan ai:eval --all-phases` — nightly CI at 03:00, blocks deploy on failure
+- OpenAPI contract lint (Spectral): CI gate `contract-lint.yml` added 2026-04-17 (`4a33755`); blocks on `docs/api/openapi.yaml` or `.spectral.yaml` changes
 
 Open Findings: F-23 (MD lint, low), F-25 (CSRF path, low), F-26–F-62 (2026-03-20 audit — 36 open, F-48 resolved), F-63–F-66 (2026-04-05 audit — 4 findings)
-Security Accepted: T-13 — proposal confirmation has no user-to-proposal ownership check (relies on 256-bit hash entropy + rate limiting)
+Security Resolved (2026-04-18): T-13 — proposer-binding (F-06) now enforced at `ProposalConfirmationController::decide` via cache-envelope `proposer_user_id`; see `docs/THREAT_MODEL_AI.md`. Supersedes the 2026-04-12 "Accepted" posture.
 Blocked Items: M-11 (migration squash — needs human approval)
 
 Findings backlog: [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md)
@@ -189,6 +190,8 @@ All audit and batch details are preserved in [AUDIT_REPORT.md](./AUDIT_REPORT.md
 | Mar 30, 2026 | picomatch ReDoS CVE fix (GHSA-c2c7-rcm5-vvqj), Pint cleanup (8 files), null-safe RoomResource fix, AGENT_LEARNINGS scaffold | — |
 | Apr 9–11, 2026 | AI Harness Phases 0–4: foundation, provider abstraction, FAQ pipeline, 7-layer safety, proposal confirmation | 50+ backend files, 2 migrations, 7 endpoints, 3 middleware, eval framework |
 | Apr 12, 2026 | Documentation governance audit + full docs sync for AI Harness | 10 docs updated (ARCHITECTURE_FACTS, PERMISSION_MATRIX, CONTRACT, DB_FACTS, DATABASE, openapi.yaml, THREAT_MODEL_AI, COMMANDS, COMPACT, WORKLOG) |
+| Apr 13–17, 2026 | F-06 proposer-binding + F-01/F-02/F-03 remediations + deploy workflow hardening + OpenAPI contract lint gate | 11 commits (`e6673dd`→`1deaf8e`): proposal decide throttle 10→5, proposer-binding at cache envelope, CancellationService service-layer ownership gate, F-04 pre-flight DEPLOY_HOST gate, migration-before-health reordering, `contract-lint.yml` Spectral workflow |
+| Apr 18, 2026 | Documentation governance remediation pass — docs aligned with post-F-06 code truth | 11 docs updated: ARCHITECTURE_FACTS (TTL/proposer-binding/defense-in-depth invariants), PERMISSION_MATRIX (A14 throttle 10→5, BR-1/BR-2 cross-refs), THREAT_MODEL_AI (T-13 Accepted→Mitigated, V-5 residual risk removed), CONTRACT + COMMANDS_AND_GATES (Spectral gate), OPERATIONAL_PLAYBOOK (F-04 runbook, pending-backlog runbook, migration ordering note), ROLLOUT_AND_KILL_SWITCH (TTL=0 implicit kill switch), backend/.env.example + backend/.env.production.example (BOOKING_PENDING_TTL_MINUTES, BOOKING_PENDING_EXPIRY_BATCH_SIZE), PROJECT_STATUS, COMPACT, WORKLOG |
 | Apr 3–4, 2026 | Email verification OTP flow (full-stack), location availability fix, concurrent booking HTTP 500 fix, mail view assets (infra), PHPStan 10→0 errors, Psalm 4→0 errors, TS5103 tsconfig fix, Pint style fix (3 files) | Merged to main Apr 4 (9756bba, 7 commits, 40 files, 1954+/403−) |
 | Mar 31, 2026 | Docs sync v3: 5 confirmed docs updated, 9 findings patched (F-01, F-02, F-03, F-04, F-05, F-07, F-09) | — |
 
@@ -197,7 +200,8 @@ All audit and batch details are preserved in [AUDIT_REPORT.md](./AUDIT_REPORT.md
 ## Status Note
 
 Audits v1 (61/61), v2 (98/98), v3 (14/14), v4 (6/6) complete. Findings F-01 through F-22 and F-24 resolved. F-23 open (low — MD lint). F-25 open (low — CSRF path). F-26–F-62 open (2026-03-20 audit, code findings — not fixed in docs pass).
-AI Harness Phases 0–4 (Apr 9–11): 7 endpoints, 2 new tables (policy_documents, ai_proposal_events), 3 middleware, 7-layer safety pipeline, eval framework, kill switch + canary routing. T-13 accepted (proposal ownership — hash entropy mitigation).
+AI Harness Phases 0–4 (Apr 9–11): 7 endpoints, 2 new tables (policy_documents, ai_proposal_events), 3 middleware, 7-layer safety pipeline, eval framework, kill switch + canary routing.
+T-13 superseded (Apr 18): proposer-binding (F-06) enforced at `ProposalConfirmationController::decide` via cache-envelope `proposer_user_id`; `decide()` 404s on mismatch. Defense-in-depth at `CancellationService::validateCancellation`. Reclassified as Mitigated in `docs/THREAT_MODEL_AI.md`.
 RBAC hardening (Mar 10): defense-in-depth verified, PERMISSION_MATRIX.md created, 5 follow-ups open (FU-1..FU-5).
 RBAC phases 1-3 (Mar 11): enforcement gaps closed, admin audit log, moderator activated.
 Admin panel expansion (Mar 12): AdminLayout, sidebar, customer/room/booking management (39556d7); CI hygiene hooks.

@@ -9,22 +9,22 @@
 >
 > **Lifetime metadata** (per master contract)
 > - generated_from: ARCHITECTURE_FACTS.md, CONTRACT.md, COMMANDS_AND_GATES.md, FINDINGS_BACKLOG.md
-> - last_verified_at: 2026-03-31
+> - last_verified_at: 2026-04-18
 > - scope: AI session handoff state (current snapshot, active work, known warnings, pointers)
 > - expiry_trigger: any code task, gate run, or milestone change
 
 ## 1) Current Snapshot (keep under 12 lines)
 
-- Date updated: 2026-04-12
-- Current branch: `dev` (HEAD=`a67cfcc`)
-- Latest commit: `a67cfcc` — AI Harness Phases 0–4 complete
-- Backend test baseline: **re-verification required** — AI harness added 50+ files, eval command, 3 middleware; previous baseline pending re-run
-- Frontend: LoginPage/RegisterPage/RoomList redesign landed; AI assistant widgets added; axios ^1.15.0 (CVE fix), vite 6.4.2 (CVE fix)
-- AI Harness: Phases 0–4 ✅ Done. 7 endpoints (`/v1/ai/*`), 2 new tables (`policy_documents`, `ai_proposal_events`), kill switch, canary routing, eval framework
-- New config: `config/ai_harness.php` — kill switch, providers, timeouts, circuit breaker, canary routing
-- Open findings: F-23 (MD lint), F-25 (CSRF path), F-26–F-62 (2026-03-20 audit), F-63–F-66 (2026-04-05 audit). See FINDINGS_BACKLOG.md.
+- Date updated: 2026-04-18
+- Current branch: `dev` (HEAD=`aef28a1`)
+- Latest commit: `aef28a1` — Merge branch 'main' into dev (post-F-06 remediation)
+- Backend test baseline: **re-verification required** — F-06 proposer-binding + F-01/F-02/F-03 remediations added test surface since Mar 31 baseline (1047/2875)
+- Frontend: LoginPage/RegisterPage/RoomList redesign, LocationDetail boutique redesign (`84b25e3`, `e6673dd`), AI assistant widgets; axios ^1.15.0, vite 6.4.2 (CVE fixes)
+- AI Harness: Phases 0–4 ✅ Done. F-06 proposer-binding landed (`17a4880`, `39cba7a`): cache envelope carries `proposer_user_id`; `decide()` 404s on mismatch; service-layer cancellation ownership gate at `CancellationService::validateCancellation`
+- Deploy hardening: F-04 pre-flight `DEPLOY_HOST` gate + migration-before-health reordering (`ec025ca`, `75bb790`). OpenAPI Spectral contract-lint CI gate added (`4a33755`)
+- Open findings: F-23, F-25, F-26–F-62, F-63–F-66. See FINDINGS_BACKLOG.md. Note: 2026-02-21 F-06 (CHECK check_out>check_in) and 2026-04-18 F-06 (proposer-binding) share an ID — always cite with audit date.
 - **H-06**: `phpunit.xml` defaults to PostgreSQL; run `docker compose up -d db` before `php artisan test`.
-- **T-13 ACCEPTED**: Proposal confirmation has no user-to-proposal ownership check (relies on 256-bit hash entropy + rate limiting).
+- **T-13 MITIGATED (2026-04-18)**: proposer-binding enforced; supersedes prior "Accepted" posture.
 
 ## 2) Invariants
 
@@ -36,10 +36,12 @@ This section intentionally left as a pointer — do not duplicate invariants her
 ### Now
 
 - **AI Harness Phases 0–4**: ✅ COMPLETE — all 7 endpoints, eval framework, kill switch, canary routing
-- **Documentation sync**: Updating all source-of-truth docs to reflect AI harness (ARCHITECTURE_FACTS, PERMISSION_MATRIX, CONTRACT, DB_FACTS, DATABASE, openapi.yaml, THREAT_MODEL_AI, COMMANDS)
+- **F-06 proposer-binding**: ✅ COMPLETE (2026-04-18) — cache envelope carries `proposer_user_id`; `decide()` 404s on mismatch; service-layer cancellation ownership gate; T-13 reclassified Accepted→Mitigated
+- **Documentation governance remediation (2026-04-18)**: ✅ COMPLETE — 11 docs aligned with post-F-06 code truth (ARCHITECTURE_FACTS, PERMISSION_MATRIX, THREAT_MODEL_AI, CONTRACT, COMMANDS_AND_GATES, OPERATIONAL_PLAYBOOK, ROLLOUT_AND_KILL_SWITCH, backend/.env.example, backend/.env.production.example, PROJECT_STATUS, COMPACT)
+- **Deploy hardening**: ✅ COMPLETE — F-04 DEPLOY_HOST pre-flight gate + migration-before-health ordering + Spectral OpenAPI contract-lint CI gate
 - PAY-001 Phase 2: Stripe checkout session + frontend payment UI
 - TD-005 RBAC Follow-ups (FU-1..FU-5) — legacy test migration, coverage gaps, config verification (see `docs/PERMISSION_MATRIX.md`)
-- OPS-001: SSH deploy step + automated health check + automatic rollback on health failure
+- OPS-001: SSH deploy step ✅ (real SSH deploy landed `40bcf6c`); automated health check after migration reorder; automatic rollback on health failure still pending
 
 ### Next
 

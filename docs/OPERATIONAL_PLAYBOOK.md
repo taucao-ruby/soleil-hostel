@@ -30,8 +30,10 @@ This playbook provides step-by-step procedures for handling operational events. 
 | [Memory Exhaustion](#memory-exhaustion)                     | High     | [Jump](#memory-exhaustion)            |
 | [Security Incident](#security-incident)                     | Critical | [Jump](#security-incident)            |
 | [Double Booking Reported](#double-booking-reported)         | High     | [Jump](#double-booking-reported)      |
+| [Pending Booking Backlog](#pending-booking-backlog)         | Medium   | [Jump](#pending-booking-backlog)      |
 | [Slow Response Times](#slow-response-times)                 | Medium   | [Jump](#slow-response-times)          |
 | [Failed Deployment Rollback](#failed-deployment-rollback)   | High     | [Jump](#failed-deployment-rollback)   |
+| [F-04 Deploy Gate Triggered](#f-04-deploy-gate-triggered)   | High     | [Jump](#f-04-deploy-gate-triggered)   |
 | [HTTPS / TLS Setup](#https--tls-setup-self-hosted)          | Setup    | [Jump](#https--tls-setup-self-hosted) |
 
 ---
@@ -718,6 +720,71 @@ DB::cursor()->each(function ($row) {
 
 ---
 
+### Pending Booking Backlog
+
+**Severity**: Medium
+**SLA**: Respond within 2 hours
+
+#### Detection
+
+- Availability shows rooms as booked when they should be free.
+- `bookings` table has many rows in `status = 'pending'` older than `config('booking.pending_ttl_minutes')` (default 30).
+- `ExpireStaleBookings` log entries are absent from `storage/logs/laravel.log` despite the 5-minute schedule.
+
+#### Impact
+
+- Pending bookings block availability via `Booking::ACTIVE_STATUSES`.
+- Abandoned carts become inventory-leak bugs.
+- Guest-facing "0 còn trống" despite physical vacancy.
+
+#### Steps
+
+1. **Verify the scheduler is running**
+
+   ```bash
+   # Laravel scheduler must run `php artisan schedule:run` every minute.
+   # On self-host, this is a cron entry or supervisor task.
+   grep "schedule:run" /var/log/syslog | tail -20
+   php artisan schedule:list
+   ```
+
+2. **Check ExpireStaleBookings log output**
+
+   ```bash
+   grep "ExpireStaleBookings" storage/logs/laravel.log | tail -50
+   ```
+
+   Expected (healthy): periodic `ExpireStaleBookings completed` entries when there is something to expire.
+   Unhealthy: `ExpireStaleBookings skipped: non-positive TTL configured` means `BOOKING_PENDING_TTL_MINUTES=0` is set (implicit kill switch — intentional during incident response; restore the env value when done).
+
+3. **Manually run the job once** (safe — it is idempotent and locks per row)
+
+   ```bash
+   php artisan tinker
+   >>> dispatch_sync(new App\Jobs\ExpireStaleBookings);
+   ```
+
+4. **Verify backlog cleared**
+
+   ```bash
+   php artisan tinker
+   >>> App\Models\Booking::where('status', 'pending')
+   >>>    ->where('created_at', '<', now()->subMinutes(config('booking.pending_ttl_minutes', 30)))
+   >>>    ->count();
+   # Expected: 0 or very low.
+   ```
+
+5. **Post-incident review**
+   - Was the scheduler outage operator-side (cron) or app-side (`withoutOverlapping()` deadlock)?
+   - Did availability API return incorrect `rooms_count` during the backlog? Check guest complaints.
+   - If `BOOKING_PENDING_TTL_MINUTES` was set to 0 intentionally, confirm it has been restored to 30 (or the documented baseline).
+
+#### Related invariants
+
+See `docs/agents/ARCHITECTURE_FACTS.md` §Pending TTL (Auto-Expiry Invariant) for the full contract. Source: `backend/app/Jobs/ExpireStaleBookings.php`, `backend/routes/console.php`.
+
+---
+
 ### Slow Response Times
 
 **Severity**: Medium  
@@ -857,7 +924,59 @@ DB::cursor()->each(function ($row) {
 - What broke? Local testing missed issue? CI/CD tests incomplete?
 - Document in post-mortem
 
+#### Deploy Workflow Ordering (2026-04-17)
+
+The `deploy.yml` workflow was reordered so database migrations run **before** the Health Check step and before cache warmup. This closed a class of silent-corruption incidents where the new application code would go live against the old schema during the health-check window. Consequences of the OLD ordering that the new ordering prevents:
+
+- Any new query referencing a not-yet-migrated column/table would 5xx user traffic while CI reported the deploy as successful.
+- Cache warmup populated stale schemas, requiring a second deploy + cache flush to recover.
+
+The Health Check (`/api/health`) now represents "schema AND code are current" rather than "code is responding". Provider-managed deploys (Forge/Render/Coolify) run migrations in their own hooks; the SSH post-deploy `php artisan migrate --force` is idempotent, so the new ordering is safe across all deploy targets. Source: `.github/workflows/deploy.yml` (commits `75bb790`, `ec025ca`).
+
 ---
+
+### F-04 Deploy Gate Triggered
+
+**Severity**: High (deploy blocked — no production impact)
+**SLA**: Respond within 30 minutes
+
+#### Detection
+
+- `deploy.yml` fails at the "Migration prerequisite gate" step on a `refs/tags/v*` push.
+- Error: `F-04 deploy gate: DEPLOY_HOST secret is empty. Tagged release cannot guarantee database migrations will run. Aborting deploy.`
+- No code has shipped to production; the deploy fails closed.
+
+#### Why this gate exists
+
+F-04 is the pre-flight gate that prevents a tagged release from shipping when `DEPLOY_HOST` is not configured. Without it, the SSH-based migration step silently skipped (`if: startsWith(github.ref, 'refs/tags/v') && secrets.DEPLOY_HOST != ''`) and the application went live against stale schema — the same silent-corruption pattern the 2026-04-17 migration-ordering fix closes for the happy path. The gate hard-fails the entire workflow at tagged release so the half-migrated state is unreachable.
+
+`workflow_dispatch` runs are intentionally exempt (operator-driven; the operator is responsible for running migrations out of band).
+
+#### Steps
+
+1. **Identify the missing secret**
+
+   The gate only fires on `refs/tags/v*`. Confirm via the workflow log which secret is empty — `DEPLOY_HOST` is the only one the gate checks, but the downstream SSH step also requires `DEPLOY_KEY` and `DEPLOY_USER`.
+
+2. **Decide which deploy path the release should take**
+
+   - SSH self-host → set `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_KEY` secrets.
+   - Forge → set `FORGE_API_TOKEN` instead; the SSH step is gated off when Forge is configured.
+   - Render → set `RENDER_DEPLOY_HOOK`.
+   - Coolify → set `COOLIFY_API_TOKEN`.
+
+   Only ONE provider should be configured at a time; the "Deploy via SSH" step is gated off when any managed-provider secret is set to avoid double-deploys.
+
+3. **Re-run the workflow** (do NOT delete and re-tag)
+
+   Use the GitHub Actions "Re-run failed jobs" button. The gate will pass and the workflow will proceed through migrations → health check → cache warmup.
+
+4. **Post-mortem**
+
+   - Why was the secret missing at tag time? New repo? Secret rotated? Environment-scoped secret mismatch?
+   - Add the provider rotation to the secret-rotation runbook if this is recurring.
+
+Source: `.github/workflows/deploy.yml:337-354` (commits `ec025ca`, `40bcf6c`).
 
 ---
 

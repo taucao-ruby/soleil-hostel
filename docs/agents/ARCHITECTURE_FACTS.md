@@ -73,7 +73,7 @@ Applies to:
 
 - Producer (`AiOrchestrationService`) writes `proposer_user_id` into the cache payload alongside `action_type` and `proposed_params`.
 - Consumer (`ProposalConfirmationController::decide`) reads `proposer_user_id` from the envelope. If absent or not equal to `(int) $request->user()->id`, the controller **404s** (not 403 — the contract is "this hash is not yours to decide, and we will not acknowledge its existence").
-- Legacy cache entries written before F-06 lack the field; those are also treated as unbound → 404.
+- Legacy cache entries written before F-67 lack the field; those are also treated as unbound → 404.
 - Log: `ai` channel, event `Proposal decide blocked by proposer-binding check`.
 - Source: `backend/app/Http/Controllers/ProposalConfirmationController.php:55-62`, `backend/app/AiHarness/Services/AiOrchestrationService.php`, test `backend/tests/Feature/AiHarness/ActionProposalTest.php`.
 
@@ -318,7 +318,7 @@ L7  AiOrchestrationService  → top-level orchestrator composing L1–L6
 
 **Invariant preservation**: The controller delegates to existing service layer — it does NOT bypass `lockForUpdate()`, exclusion constraints, or status validation. All booking invariants from §Booking Domain above remain enforced.
 
-**Proposer-binding** (F-06, 2026-04-18): every cache envelope carries `proposer_user_id`. `decide()` 404s on absence or mismatch. Service-layer ownership check in `CancellationService::validateCancellation` is the last line of defense for alternate callers — see §Proposer-Binding Invariant and §Cancellation Ownership: Defense-in-Depth above.
+**Proposer-binding** (F-67, 2026-04-18): every cache envelope carries `proposer_user_id`. `decide()` 404s on absence or mismatch. Service-layer ownership check in `CancellationService::validateCancellation` is the last line of defense for alternate callers — see §Proposer-Binding Invariant and §Cancellation Ownership: Defense-in-Depth above.
 
 ### AI Models & Tables
 
@@ -364,7 +364,7 @@ All four previously absent constraints added via migrations (audit v2, PR-2 + PR
 - `CHECK (price >= 0)` on rooms — **added** (2026-02-21 F-08 fixed)
 - FK `reviews.booking_id -> bookings.id` — **added** (2026-02-21 F-09 fixed)
 
-> **F-ID namespace note**: the `F-06` above refers to the 2026-02-21 audit. A separate `F-06` in the 2026-04-18 remediation batch refers to proposer-binding persistence (see commit `39cba7a` and the Proposer-Binding Invariant section above). The two are unrelated; when citing F-06 always include the audit date.
+> **F-ID namespace note (updated 2026-04-19)**: the `F-06` above refers to the 2026-02-21 audit (CHECK `check_out > check_in`, Fixed). The AI-harness proposer-binding fix from 2026-04-18 was initially cited as "F-06 (2026-04-18)" during the documentation governance pass; it has since been promoted to **F-67** in `docs/FINDINGS_BACKLOG.md` to eliminate the ID collision. Historical WORKLOG entries and commit messages that still say "F-06 (2026-04-18)" refer to what is now F-67.
 
 ## DB Hardening (2026-03-17 / 2026-03-23)
 

@@ -1,5 +1,15 @@
 # WORKLOG — Soleil Hostel (Append-only)
 
+## 2026-04-19
+
+- Change: F-ID namespace disambiguation — the 2026-04-18 AI-harness proposer-binding finding, informally cited as "F-06 (2026-04-18)" throughout the prior day's remediation pass, was promoted to canonical **F-67** in `docs/FINDINGS_BACKLOG.md` to eliminate collision with the existing 2026-02-21 F-06 (CHECK `check_out > check_in` constraint, Fixed PR-2).
+- Backlog (FINDINGS_BACKLOG.md): added top-of-file namespace note (explains F-06 collision and the F-06→F-67 promotion) and a new §2026-04-18 Audit Findings — AI Harness Security section containing the F-67 row (status: Fixed — Mitigated; commits `17a4880`, `39cba7a`).
+- Source of truth sweep: ARCHITECTURE_FACTS.md (3 refs), PERMISSION_MATRIX.md (2 refs), THREAT_MODEL_AI.md (4 refs), COMPACT.md (live-status block + §3 Now entries + `last_verified_at`). All "F-06 (2026-04-18)" callouts in live docs now read F-67.
+- Append-only discipline: the 2026-04-18 WORKLOG entry below still references "F-06" (2026-04-18 proposer-binding / namespace collision / T-13 citation); those references are historical record and MUST NOT be rewritten. The namespace note in FINDINGS_BACKLOG and ARCHITECTURE_FACTS explicitly call this out.
+- Historical commit messages (`17a4880`, `39cba7a`, plus the 7 docs-governance commits from 2026-04-18) are also preserved as-is; the commit-message corpus cites F-06 (2026-04-18) which now canonically means F-67.
+- Verification: docs-only pass — no runtime gates re-run. Working tree at start of this entry was clean at `16618a9`; end-of-entry HEAD will advance when the F-67 promotion is committed.
+- Scope: no `backend/`, `frontend/`, `.github/`, or `docker-compose*` touched. Pure docs.
+
 ## 2026-04-18
 
 - Change: Documentation governance remediation pass — 11 docs aligned with post-F-06 code truth spanning commits `e6673dd`→`1deaf8e` (BASE=`3ea3e8b`, HEAD=`aef28a1`; 11 commits, 27 files in audit window). DIFF-FIRST, EVIDENCE-GATED.

@@ -22,7 +22,8 @@
 - Frontend: LoginPage/RegisterPage/RoomList redesign, LocationDetail boutique redesign (`84b25e3`, `e6673dd`), AI assistant widgets; axios ^1.15.0, vite 6.4.2 (CVE fixes)
 - AI Harness: Phases 0–4 ✅ Done. F-67 proposer-binding landed (`17a4880`, `39cba7a`; formerly cited as "F-06 2026-04-18", promoted 2026-04-19): cache envelope carries `proposer_user_id`; `decide()` 404s on mismatch; service-layer cancellation ownership gate at `CancellationService::validateCancellation`
 - Deploy hardening: F-04 pre-flight `DEPLOY_HOST` gate + migration-before-health reordering (`ec025ca`, `75bb790`). OpenAPI Spectral contract-lint CI gate added (`4a33755`)
-- Open findings: F-23, F-25, F-26–F-62, F-63–F-66. F-67 is **Mitigated** (landed). See FINDINGS_BACKLOG.md §F-ID namespace note for the F-06→F-67 promotion.
+- Open findings: F-23, F-25, F-26–F-62, F-63–F-66, F-68. F-67 is **Mitigated** (landed). See FINDINGS_BACKLOG.md §F-ID namespace note for the F-06→F-67 promotion.
+- **F-68 (2026-04-19, Open, Medium)**: `backend/database/migrations/2026_02_09_000005_assign_rooms_to_locations.php:50` — doctrine-routed `->change()` races primary connection for `rooms` locks, producing intermittent `SQLSTATE[40P01]` during `RefreshDatabase`. Test-infra only, no production impact.
 - **H-06**: `phpunit.xml` defaults to PostgreSQL; run `docker compose up -d db` before `php artisan test`.
 - **T-13 MITIGATED (2026-04-18)**: proposer-binding enforced via F-67; supersedes prior "Accepted" posture.
 

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\BookingStatus;
 use App\Enums\StayStatus;
 use App\Events\BookingRestored;
+use App\Exceptions\BookingCancellationException;
 use App\Exceptions\BookingRestoreConflictException;
 use App\Models\Booking;
 use App\Models\Stay;
@@ -155,6 +156,7 @@ class BookingService
      * @return Booking The cancelled booking
      *
      * @throws \RuntimeException If booking is already cancelled
+     * @throws BookingCancellationException If cancellation business rules are violated
      */
     public function cancelBooking(Booking $booking, ?int $cancelledByUserId = null): Booking
     {

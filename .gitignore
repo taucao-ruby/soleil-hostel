@@ -86,3 +86,8 @@ frontend/vite.config.d.ts
 # Stitch screenshot outputs (local UI capture artifacts)
 stitch-output/
 stitch-preview/
+
+# Local tooling / editor / test artifacts
+.obsidian/
+2.x/
+backend/soleil_test

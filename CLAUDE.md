@@ -95,7 +95,7 @@ All agents must read `.claude/memory/global-invariants.md` and `.claude/memory/r
 <!-- soleil-ai-review-engine:start -->
 # soleil-ai-review-engine — Code Intelligence
 
-This project is indexed by soleil-ai-review-engine as **soleil-hostel** (5517 symbols, 14679 relationships, 239 execution flows). Use the soleil-ai-review-engine MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by soleil-ai-review-engine as **soleil-hostel** (5528 symbols, 14785 relationships, 246 execution flows). Use the soleil-ai-review-engine MCP tools to understand code, assess impact, and navigate safely.
 
 > If any soleil-ai-review-engine tool warns the index is stale, run `npx soleil-engine-cli analyze` in terminal first.
 

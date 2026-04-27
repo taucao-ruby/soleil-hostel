@@ -175,6 +175,18 @@ class RoomTest extends TestCase
         $this->assertArrayHasKey('lock_version', $room->toArray());
     }
 
+    public function test_scope_select_columns_includes_image_url(): void
+    {
+        Room::factory()->create([
+            'image_url' => 'https://example.test/storage/rooms/deluxe.jpg',
+        ]);
+
+        $room = Room::selectColumns()->first();
+
+        $this->assertArrayHasKey('image_url', $room->toArray());
+        $this->assertSame('https://example.test/storage/rooms/deluxe.jpg', $room->image_url);
+    }
+
     public function test_scope_with_common_relations_includes_active_bookings_count(): void
     {
         $room = Room::factory()->create();

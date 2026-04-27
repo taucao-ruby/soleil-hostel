@@ -30,7 +30,7 @@ class RoomResource extends JsonResource
             'display_name' => $this->display_name,
             'room_number' => $this->room_number,
             'description' => $this->description,
-            'image_url' => $this->image_url,
+            'image_url' => $room->image_url,
             'price' => (float) $this->price,
             'max_guests' => $this->max_guests,
             'room_type_code' => $room->room_type_code,

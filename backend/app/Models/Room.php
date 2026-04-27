@@ -24,6 +24,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $name
  * @property string|null $room_number
  * @property string $description
+ * @property string|null $image_url
  * @property string $price
  * @property int $max_guests
  * @property string $status
@@ -52,6 +53,7 @@ class Room extends Model
         'name',
         'room_number',
         'description',
+        'image_url',
         'price',
         'max_guests',
         'status',
@@ -151,6 +153,7 @@ class Room extends Model
             'rooms.name',
             'rooms.room_number',
             'rooms.description',
+            'rooms.image_url',
             'rooms.price',
             'rooms.max_guests',
             'rooms.room_type_code',

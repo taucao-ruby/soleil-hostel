@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Room;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 class StoreBookingRequest extends FormRequest
 {
@@ -27,7 +29,34 @@ class StoreBookingRequest extends FormRequest
             'check_out' => 'required|date_format:Y-m-d|after:check_in',
             'guest_name' => 'required|string|min:2|max:255',
             'guest_email' => 'required|email|max:255',
+            'number_of_guests' => 'nullable|integer|min:1',
         ];
+    }
+
+    /**
+     * Cross-field validation: number_of_guests must not exceed the room's max_guests.
+     *
+     * Fires only after base rules pass so room_id is guaranteed valid at this point.
+     */
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            $numberOfGuests = $this->integer('number_of_guests', 0);
+            $roomId = $this->integer('room_id', 0);
+
+            if ($numberOfGuests <= 0 || $roomId <= 0) {
+                return;
+            }
+
+            $room = Room::find($roomId);
+
+            if ($room && $numberOfGuests > $room->max_guests) {
+                $validator->errors()->add(
+                    'number_of_guests',
+                    "Number of guests cannot exceed the room's maximum capacity of {$room->max_guests}."
+                );
+            }
+        });
     }
 
     /**
@@ -49,6 +78,8 @@ class StoreBookingRequest extends FormRequest
             'guest_name.max' => 'Guest name cannot exceed 255 characters.',
             'guest_email.required' => 'Guest email is required.',
             'guest_email.email' => 'Guest email must be a valid email address.',
+            'number_of_guests.integer' => 'Number of guests must be a whole number.',
+            'number_of_guests.min' => 'Number of guests must be at least 1.',
         ];
     }
 

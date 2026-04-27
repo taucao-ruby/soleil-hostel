@@ -296,14 +296,14 @@ class BookingController extends Controller
      * Authorization: Users can cancel their own bookings, admins can cancel any
      * Idempotent: Re-cancelling an already cancelled booking returns success
      */
-    public function cancel(Booking $booking): JsonResponse
+    public function cancel(Request $request, Booking $booking): JsonResponse
     {
         $this->authorize('cancel', $booking);
 
         try {
             $booking = $this->cancellationService->cancel(
                 $booking,
-                auth()->user()
+                $request->user()
             );
 
             // Build response message based on refund status

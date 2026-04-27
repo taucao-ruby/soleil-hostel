@@ -54,7 +54,7 @@ Route::prefix('health')->group(function () {
 
 // ========== DETAILED HEALTH ENDPOINTS (Admin only) ==========
 // These expose sensitive system information - restrict to authenticated admins
-Route::prefix('health')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
+Route::prefix('health')->middleware(['check_token_valid', 'role:admin'])->group(function () {
     // Detailed: Full system health with component breakdown
     Route::get('/detailed', [HealthController::class, 'detailed'])->name('health.detailed');
     Route::get('/full', [HealthController::class, 'detailed'])->name('health.full');

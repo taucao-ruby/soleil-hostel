@@ -665,4 +665,58 @@ class ConcurrentBookingTest extends TestCase
             $this->assertTrue($booking->check_in < $booking->check_out);
         }
     }
+
+    /**
+     * GAP-5: Zero-night booking (check_out == check_in) must be rejected.
+     *
+     * The overlap condition uses half-open interval [check_in, check_out).
+     * A zero-night booking would produce check_in == check_out, which passes
+     * the `check_out > check_in` DB constraint only if the backend validator
+     * uses `after:check_in` (strictly after) — this test proves it does.
+     */
+    public function test_zero_night_booking_rejected(): void
+    {
+        $date = Carbon::now()->addDays(5)->toDateString();
+
+        $response = $this->postJson('/api/bookings', [
+            'room_id' => $this->room->id,
+            'check_in' => $date,
+            'check_out' => $date,
+            'guest_name' => 'Zero Night',
+            'guest_email' => 'zero@example.com',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['check_out']);
+
+        $this->assertDatabaseCount('bookings', 0);
+    }
+
+    /**
+     * GAP-2: Booking with number_of_guests exceeding room.max_guests must be rejected.
+     *
+     * The frontend caps at 10 guests globally. This test proves the backend
+     * validates against the specific room's max_guests capacity, preventing
+     * silent overbooking when a small room receives too many guests.
+     */
+    public function test_booking_exceeding_room_max_guests_rejected(): void
+    {
+        // Room was created with max_guests = 4 in setUp()
+        $checkIn = Carbon::now()->addDays(5)->toDateString();
+        $checkOut = Carbon::now()->addDays(8)->toDateString();
+
+        $response = $this->postJson('/api/bookings', [
+            'room_id' => $this->room->id,
+            'check_in' => $checkIn,
+            'check_out' => $checkOut,
+            'guest_name' => 'Big Group',
+            'guest_email' => 'group@example.com',
+            'number_of_guests' => 5,
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['number_of_guests']);
+
+        $this->assertDatabaseCount('bookings', 0);
+    }
 }

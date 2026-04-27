@@ -89,6 +89,7 @@ class RoomCrudTest extends TestCase
     {
         $room = Room::factory()->create([
             'name' => 'Deluxe Room',
+            'image_url' => 'https://example.test/storage/rooms/deluxe.jpg',
             'price' => 150.00,
         ]);
 
@@ -101,6 +102,7 @@ class RoomCrudTest extends TestCase
                 'data' => [
                     'id' => $room->id,
                     'name' => 'Deluxe Room',
+                    'image_url' => 'https://example.test/storage/rooms/deluxe.jpg',
                 ],
             ]);
     }

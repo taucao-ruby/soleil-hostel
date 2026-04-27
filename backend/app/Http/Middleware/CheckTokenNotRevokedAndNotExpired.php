@@ -88,11 +88,14 @@ class CheckTokenNotRevokedAndNotExpired
         // Set user resolver so $request->user() works
         $request->setUserResolver(fn () => $user);
 
-        // Also authenticate on the 'sanctum' guard for Laravel compatibility
+        // Authenticate on the default guard and sanctum guard for full Laravel compatibility.
+        // Without this, auth()->user() returns null in controllers because the default
+        // 'web' guard has no user set — only $request->user() resolves correctly.
         try {
+            auth()->setUser($user);
             auth()->guard('sanctum')->setUser($user);
         } catch (\Throwable $e) {
-            // If guard doesn't exist, just continue - the request resolver should work
+            // If a guard is unavailable, the request resolver above is sufficient
         }
 
         // Store the access token on the user so currentAccessToken() works

@@ -374,7 +374,7 @@ class CreateBookingService
     private function validateDates(Carbon $checkIn, Carbon $checkOut, bool $isUpdate = false, $request = null): void
     {
         // Skip validation for updates where dates aren't being changed
-        if ($isUpdate && $request && ! $request->has(['check_in_date', 'check_out_date'])) {
+        if ($isUpdate && $request && ! $request->has(['check_in', 'check_out'])) {
             return;
         }
 

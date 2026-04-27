@@ -37,6 +37,7 @@ class RoomTest extends TestCase
                 'name',
                 'room_number',
                 'description',
+                'image_url',
                 'price',
                 'max_guests',
                 'status',

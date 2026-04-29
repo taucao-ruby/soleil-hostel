@@ -5,8 +5,10 @@ namespace App\Services;
 use App\Database\TransactionIsolation;
 use App\Database\TransactionMetrics;
 use App\Enums\BookingStatus;
+use App\Exceptions\PendingBookingLimitExceededException;
 use App\Models\Booking;
 use App\Models\Room;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
@@ -48,6 +50,10 @@ class CreateBookingService
     private const SQLSTATE_SERIALIZATION_FAILURE = '40001';
 
     private const SQLSTATE_DEADLOCK_DETECTED = '40P01';
+
+    public function __construct(
+        private readonly StripeService $stripeService
+    ) {}
 
     /**
      * Create a new booking guaranteed not to overlap with existing bookings
@@ -282,6 +288,10 @@ class CreateBookingService
             $userId,
             $additionalData
         ) {
+            if ($userId !== null) {
+                $this->assertPendingLimitNotExceeded($userId);
+            }
+
             // Step 1: Verify room exists and is bookable
             try {
                 $room = Room::bookable()->findOrFail($roomId);
@@ -309,6 +319,8 @@ class CreateBookingService
             // location_id is set explicitly here from room->location_id so the application
             // path is self-sufficient. The PostgreSQL trigger (trg_booking_set_location)
             // and BookingObserver remain as independent backstops.
+            $amount = $additionalData['amount'] ?? $this->calculateAmount($room, $checkIn, $checkOut);
+
             $booking = Booking::create([
                 'room_id' => $roomId,
                 'location_id' => $room->location_id,
@@ -318,12 +330,53 @@ class CreateBookingService
                 'guest_email' => $guestEmail,
                 'status' => BookingStatus::PENDING,
                 'user_id' => $userId,
+                'amount' => $amount,
                 ...$additionalData,
             ]);
 
+            if ($booking->status === BookingStatus::PENDING) {
+                $paymentIntentId = $this->stripeService->createPaymentIntent($booking);
+
+                $booking->update([
+                    'payment_intent_id' => $paymentIntentId,
+                ]);
+            }
+
             // Step 5: Return booking (transaction auto-commit, lock released)
-            return $booking;
+            return $booking->fresh();
         });
+    }
+
+    /**
+     * Serialize per-user pending-hold creation and enforce the configurable cap.
+     */
+    private function assertPendingLimitNotExceeded(int $userId): void
+    {
+        User::query()
+            ->whereKey($userId)
+            ->lockForUpdate()
+            ->first();
+
+        $pendingCount = Booking::query()
+            ->where('user_id', $userId)
+            ->where('status', BookingStatus::PENDING)
+            ->lockForUpdate()
+            ->get(['id'])
+            ->count();
+
+        if ($pendingCount >= (int) config('bookings.max_pending_per_user', 2)) {
+            throw new PendingBookingLimitExceededException;
+        }
+    }
+
+    /**
+     * Calculate the current booking amount from the room nightly price.
+     */
+    private function calculateAmount(Room $room, Carbon $checkIn, Carbon $checkOut): int
+    {
+        $nights = $checkIn->diffInDays($checkOut);
+
+        return (int) round(((float) $room->price) * $nights);
     }
 
     /**

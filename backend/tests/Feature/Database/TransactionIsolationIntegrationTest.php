@@ -109,6 +109,8 @@ class TransactionIsolationIntegrationTest extends TestCase
      */
     public function test_overlap_detection_patterns(): void
     {
+        config()->set('bookings.max_pending_per_user', 10);
+
         $baseCheckIn = Carbon::now()->addDays(10)->startOfDay();
         $baseCheckOut = $baseCheckIn->clone()->addDays(5); // Days 10-15
 

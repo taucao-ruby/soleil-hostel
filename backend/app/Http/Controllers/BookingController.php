@@ -7,6 +7,7 @@ use App\Events\BookingCreated;
 use App\Events\BookingDeleted;
 use App\Events\BookingUpdated;
 use App\Exceptions\BookingCancellationException;
+use App\Exceptions\PendingBookingLimitExceededException;
 use App\Exceptions\RefundFailedException;
 use App\Http\Requests\StoreBookingRequest;
 use App\Http\Requests\UpdateBookingRequest;
@@ -109,6 +110,14 @@ class BookingController extends Controller
                 'success' => false,
                 'message' => __('booking.create_error'),
             ], 500);
+        } catch (PendingBookingLimitExceededException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'errors' => [
+                    'code' => $e->getErrorCode(),
+                ],
+            ], 422);
         } catch (RuntimeException $e) {
             // Handle business errors from the service (room unavailable, not found, etc.)
             return response()->json([

@@ -81,6 +81,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required in production}
+      SESSION_SECURE_COOKIE: "true"
     healthcheck:
       test: ["CMD-SHELL", "php -r \"exit(file_get_contents('http://localhost:8080/api/health') === false ? 1 : 0);\""]
       interval: 30s

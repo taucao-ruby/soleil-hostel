@@ -136,7 +136,7 @@ class HttpOnlyTokenController extends Controller
             $expiresInMinutes,  // cookie() 3rd param expects minutes — pass $expiresInMinutes directly
             '/',  // path
             config('session.domain'),  // domain
-            app()->isProduction(),  // secure (HTTPS only in production)
+            config('session.secure'),  // secure
             true,  // httpOnly (⚡ XSS cannot steal via JavaScript)
             false,  // raw
             'strict'  // sameSite (⚡ CSRF protected, no cross-site sending)
@@ -240,7 +240,7 @@ class HttpOnlyTokenController extends Controller
                 $expiresInMinutes,
                 '/',
                 config('session.domain'),
-                app()->isProduction(),
+                config('session.secure'),
                 true,
                 false,
                 'strict'
@@ -276,7 +276,7 @@ class HttpOnlyTokenController extends Controller
             -1,  // minutes (expire immediately)
             '/',  // path
             config('session.domain'),  // domain
-            app()->isProduction(),  // secure
+            config('session.secure'),  // secure
             true,  // httpOnly
             false,  // raw
             'strict'  // sameSite

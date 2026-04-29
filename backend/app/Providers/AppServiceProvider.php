@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Directives\PurifyDirective;
+use App\Exceptions\EnvironmentConfigException;
 use App\Macros\FormRequestPurifyMacro;
 use App\Models\Booking;
 use App\Models\PersonalAccessToken;
@@ -63,6 +64,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->assertProductionSecureCookieConfiguration();
+
         // Register BookingObserver for automatic location_id population
         Booking::observe(BookingObserver::class);
 
@@ -120,5 +123,20 @@ class AppServiceProvider extends ServiceProvider
                 'signature' => $parsedQuery['signature'],
             ]);
         });
+    }
+
+    private function assertProductionSecureCookieConfiguration(): void
+    {
+        if (config('app.env') !== 'production') {
+            return;
+        }
+
+        if (config('session.secure') === true) {
+            return;
+        }
+
+        throw new EnvironmentConfigException(
+            'SESSION_SECURE_COOKIE must be true when APP_ENV=production.'
+        );
     }
 }

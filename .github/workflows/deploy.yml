@@ -333,6 +333,8 @@ jobs:
     environment:
       name: production
       url: https://soleilhotel.com
+    env:
+      SESSION_SECURE_COOKIE: "true"
     steps:
       - uses: actions/checkout@v4
       - name: Setup deployment tools
@@ -411,7 +413,7 @@ jobs:
               -o ServerAliveCountMax=4 \
               -i ~/.ssh/deploy_key \
               "${DEPLOY_USER}@${DEPLOY_HOST}" \
-              "DEPLOY_PATH='${DEPLOY_PATH}' DEPLOY_REF='${DEPLOY_REF}' bash -s" <<'REMOTE_SCRIPT'
+              "DEPLOY_PATH='${DEPLOY_PATH}' DEPLOY_REF='${DEPLOY_REF}' SESSION_SECURE_COOKIE='${SESSION_SECURE_COOKIE}' bash -s" <<'REMOTE_SCRIPT'
           set -euo pipefail
 
           if [ ! -d "${DEPLOY_PATH}/.git" ]; then

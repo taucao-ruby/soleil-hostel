@@ -125,7 +125,7 @@ class UnifiedAuthController extends Controller
                 -1,
                 '/',
                 config('session.domain'),
-                app()->isProduction(),
+                config('session.secure'),
                 true,
                 false,
                 'strict'

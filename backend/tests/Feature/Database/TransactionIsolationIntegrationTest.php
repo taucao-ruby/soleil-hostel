@@ -43,7 +43,7 @@ class TransactionIsolationIntegrationTest extends TestCase
         $this->user = User::factory()->create();
         $this->room = Room::factory()->create([
             'name' => 'Test Room',
-            'status' => 'active',
+            'status' => 'available',
         ]);
         $this->bookingService = app(CreateBookingService::class);
 

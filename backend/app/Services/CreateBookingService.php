@@ -282,12 +282,11 @@ class CreateBookingService
             $userId,
             $additionalData
         ) {
-            // Step 1: Verify room exists
-            $room = Room::find($roomId);
-            if (! $room) {
-                throw new ModelNotFoundException(
-                    __('booking.room_not_found', ['id' => $roomId])
-                );
+            // Step 1: Verify room exists and is bookable
+            try {
+                $room = Room::bookable()->findOrFail($roomId);
+            } catch (ModelNotFoundException) {
+                throw new RuntimeException('Room is not available for booking');
             }
 
             // Step 2: Acquire lock on all active bookings for this room

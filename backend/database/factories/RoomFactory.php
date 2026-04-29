@@ -22,7 +22,7 @@ class RoomFactory extends Factory
             'max_guests' => $this->faker->numberBetween(1, 8),
             'room_type_code' => null,
             'room_tier' => 1,
-            'status' => $this->faker->randomElement(['available', 'booked', 'maintenance']),
+            'status' => 'available',
             'readiness_status' => RoomReadinessStatus::READY,
             'readiness_updated_at' => null,
             'readiness_updated_by' => null,

@@ -8,6 +8,7 @@ use App\Repositories\Contracts\RoomRepositoryInterface;
 use App\Traits\HasCacheTagSupport;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
@@ -76,12 +77,21 @@ class RoomAvailabilityService
      */
     public function getRoomAvailability(int $roomId): ?Room
     {
+        $findBookableRoom = function () use ($roomId): ?Room {
+            try {
+                return Room::bookable()
+                    ->withCommonRelations()
+                    ->findOrFail($roomId);
+            } catch (ModelNotFoundException) {
+                return null;
+            }
+        };
+
         if (! $this->supportsTags()) {
             return Cache::remember(
                 "room-availability:room:{$roomId}",
                 self::CACHE_TTL,
-                fn () => Room::withCommonRelations()
-                    ->find($roomId)
+                $findBookableRoom
             );
         }
 
@@ -89,8 +99,7 @@ class RoomAvailabilityService
             ->remember(
                 "room-availability:room:{$roomId}",
                 self::CACHE_TTL,
-                fn () => Room::withCommonRelations()
-                    ->find($roomId)
+                $findBookableRoom
             );
     }
 
@@ -164,8 +173,9 @@ class RoomAvailabilityService
         $cacheKey = "room-availability:available:{$roomId}:{$checkInDate}:{$checkOutDate}";
 
         $checkAvailability = function () use ($roomId, $checkInDate, $checkOutDate): bool {
-            $room = Room::query()->find($roomId);
-            if (! $room instanceof Room) {
+            try {
+                $room = Room::bookable()->findOrFail($roomId);
+            } catch (ModelNotFoundException) {
                 return false;
             }
 

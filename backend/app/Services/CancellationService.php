@@ -152,8 +152,8 @@ final class CancellationService
                 ? BookingStatus::REFUND_PENDING
                 : BookingStatus::CANCELLED;
 
+            $locked = $locked->transitionTo($newStatus, $actor);
             $locked->update([
-                'status' => $newStatus,
                 'cancelled_at' => now(),
                 'cancelled_by' => $actor->id,
             ]);
@@ -282,8 +282,8 @@ final class CancellationService
         int $refundAmount
     ): Booking {
         return DB::transaction(function () use ($booking, $refundId, $refundAmount) {
+            $booking = $booking->transitionTo(BookingStatus::CANCELLED);
             $booking->update([
-                'status' => BookingStatus::CANCELLED,
                 'refund_id' => $refundId,
                 'refund_status' => $refundId ? 'succeeded' : null,
                 'refund_amount' => $refundAmount ?: null,
@@ -312,8 +312,8 @@ final class CancellationService
         ]);
 
         // Update to failed state (allows retry)
+        $booking = $booking->transitionTo(BookingStatus::REFUND_FAILED);
         $booking->update([
-            'status' => BookingStatus::REFUND_FAILED,
             'refund_status' => 'failed',
             'refund_error' => substr($e->getMessage(), 0, 1000),
         ]);
@@ -342,8 +342,8 @@ final class CancellationService
                 return $locked;
             }
 
+            $locked = $locked->transitionTo(BookingStatus::CANCELLED, $actor);
             $locked->update([
-                'status' => BookingStatus::CANCELLED,
                 'cancelled_at' => now(),
                 'cancelled_by' => $actor->id,
                 'refund_error' => "Force cancelled: {$reason}",

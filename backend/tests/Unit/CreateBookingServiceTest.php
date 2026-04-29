@@ -32,7 +32,7 @@ class CreateBookingServiceTest extends TestCase
         parent::setUp();
 
         $this->service = app(CreateBookingService::class);
-        $this->room = Room::factory()->create();
+        $this->room = Room::factory()->available()->ready()->create();
         $this->user = User::factory()->create();
     }
 

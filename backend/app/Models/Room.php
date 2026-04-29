@@ -179,6 +179,17 @@ class Room extends Model
     }
 
     /**
+     * Scope: rooms eligible to accept a new booking.
+     */
+    public function scopeBookable(Builder $query): Builder
+    {
+        return $query
+            ->where('status', 'available')
+            ->where('readiness_status', RoomReadinessStatus::READY->value)
+            ->whereHas('location', fn (Builder $location) => $location->where('is_active', true));
+    }
+
+    /**
      * Scope: Filter rooms by location.
      *
      * Usage: Room::atLocation(1)->get()

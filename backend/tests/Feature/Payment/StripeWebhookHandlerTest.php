@@ -243,6 +243,7 @@ class StripeWebhookHandlerTest extends TestCase
     private function makePaymentIntentPayload(string $paymentIntentId): array
     {
         return [
+            'id' => 'evt_'.$paymentIntentId,
             'type' => 'payment_intent.succeeded',
             'data' => [
                 'object' => [

@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Payment;
 
 use App\Enums\BookingStatus;
 use App\Models\Booking;
+use App\Models\StripeWebhookEvent;
 use App\Services\BookingService;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -31,16 +33,30 @@ class StripeWebhookController extends CashierWebhookController
      */
     protected function handlePaymentIntentSucceeded(array $payload): JsonResponse
     {
+        $stripeEventId = $payload['id'] ?? null;
+        $eventType = $payload['type'] ?? 'payment_intent.succeeded';
         $paymentIntentId = $payload['data']['object']['id'] ?? null;
 
-        if (! $paymentIntentId) {
+        if (! $stripeEventId || ! $paymentIntentId) {
             Log::warning('Stripe webhook: payment_intent.succeeded missing payment_intent_id');
 
             return response()->json(['handled' => false], 400);
         }
 
+        try {
+            $webhookEvent = DB::transaction(fn () => StripeWebhookEvent::create([
+                'stripe_event_id' => $stripeEventId,
+                'type' => $eventType,
+                'status' => 'processing',
+                'payload' => $payload,
+            ]));
+        } catch (UniqueConstraintViolationException) {
+            return response()->json(['handled' => true], 200);
+        }
+
         Log::info('Stripe webhook: payment_intent.succeeded', [
             'payment_intent_id' => $paymentIntentId,
+            'stripe_event_id' => $stripeEventId,
         ]);
 
         $booking = Booking::where('payment_intent_id', $paymentIntentId)->first();
@@ -49,6 +65,7 @@ class StripeWebhookController extends CashierWebhookController
             Log::warning('Stripe webhook: no booking found for payment_intent', [
                 'payment_intent_id' => $paymentIntentId,
             ]);
+            $webhookEvent->markProcessed();
 
             return response()->json(['handled' => true]);
         }
@@ -59,22 +76,30 @@ class StripeWebhookController extends CashierWebhookController
                 'booking_id' => $booking->id,
                 'status' => $booking->status->value,
             ]);
+            $webhookEvent->markProcessed();
 
             return response()->json(['handled' => true]);
         }
 
         try {
-            app(BookingService::class)->confirmBooking($booking);
+            DB::transaction(function () use ($booking): void {
+                app(BookingService::class)->confirmBooking($booking);
+            });
 
             Log::info('Stripe webhook: booking confirmed via payment', [
                 'booking_id' => $booking->id,
                 'payment_intent_id' => $paymentIntentId,
             ]);
+            $webhookEvent->markProcessed();
         } catch (\Throwable $e) {
             Log::error('Stripe webhook: failed to confirm booking', [
                 'booking_id' => $booking->id,
                 'error' => $e->getMessage(),
             ]);
+
+            $webhookEvent->markFailed();
+
+            return response()->json(['handled' => false], 500);
         }
 
         return response()->json(['handled' => true]);
@@ -147,8 +172,8 @@ class StripeWebhookController extends CashierWebhookController
                     ? BookingStatus::CANCELLED
                     : BookingStatus::REFUND_FAILED;
 
+                $booking = $booking->transitionTo($newStatus);
                 $booking->update([
-                    'status' => $newStatus,
                     'refund_id' => $refundId,
                     'refund_status' => $refundStatus,
                     'refund_amount' => $refundAmount,

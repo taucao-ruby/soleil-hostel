@@ -121,8 +121,8 @@ final class ExpireStaleBookings implements ShouldQueue
                 return false;
             }
 
+            $booking = $booking->transitionTo(BookingStatus::CANCELLED);
             $booking->update([
-                'status' => BookingStatus::CANCELLED,
                 'cancelled_at' => now(),
                 'cancelled_by' => null,
                 'cancellation_reason' => self::EXPIRED_REASON,

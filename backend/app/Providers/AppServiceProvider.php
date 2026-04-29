@@ -65,6 +65,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->assertProductionSecureCookieConfiguration();
+        $this->assertRedisAuthenticationConfiguration();
 
         // Register BookingObserver for automatic location_id population
         Booking::observe(BookingObserver::class);
@@ -137,6 +138,27 @@ class AppServiceProvider extends ServiceProvider
 
         throw new EnvironmentConfigException(
             'SESSION_SECURE_COOKIE must be true when APP_ENV=production.'
+        );
+    }
+
+    // Refuse to boot in non-local environments when REDIS_PASSWORD is empty.
+    // The 127.0.0.1 docker bind mitigates network-level exposure but does not
+    // block localhost-accessible processes (compromised app container, sidecar,
+    // CI runner with host network). The DB-level guarantee is enforced by the
+    // Redis server itself via --requirepass; this is the application-side fence.
+    private function assertRedisAuthenticationConfiguration(): void
+    {
+        if (in_array(config('app.env'), ['local', 'testing'], true)) {
+            return;
+        }
+
+        if (! empty(config('database.redis.default.password'))) {
+            return;
+        }
+
+        throw new EnvironmentConfigException(
+            'REDIS_PASSWORD must be set in non-local environments. '.
+            'Refusing to start with unauthenticated Redis.'
         );
     }
 }

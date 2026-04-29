@@ -221,36 +221,3 @@ final class DoubleBookingException extends TransactionException
         );
     }
 }
-
-/**
- * DuplicateOperationException - Idempotency violation
- *
- * Thrown when attempting to perform an operation that has already been completed.
- *
- * Not retryable - the operation was already successful.
- *
- * Data invariant: Each payment/refund processed exactly once
- */
-final class DuplicateOperationException extends TransactionException
-{
-    protected bool $retryable = false;
-
-    private mixed $existingResult;
-
-    public static function create(string $operation, string $key, mixed $existingResult = null): self
-    {
-        $exception = new self(
-            "Operation '{$operation}' with key '{$key}' has already been completed. ".
-            'Returning cached result.'
-        );
-
-        $exception->existingResult = $existingResult;
-
-        return $exception;
-    }
-
-    public function getExistingResult(): mixed
-    {
-        return $this->existingResult;
-    }
-}

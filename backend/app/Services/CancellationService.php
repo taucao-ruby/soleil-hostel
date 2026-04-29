@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Database\IdempotencyGuard;
 use App\Database\TransactionMetrics;
 use App\Enums\BookingStatus;
 use App\Events\BookingCancelled;
@@ -34,7 +33,7 @@ use Illuminate\Support\Facades\Log;
  * Transaction Isolation:
  * - Uses pessimistic locking (FOR UPDATE) for cancellation
  * - READ COMMITTED isolation is sufficient with explicit locks
- * - Idempotency guard prevents double refunds
+ * - Refund initiation is gated by the refund_pending state transition
  *
  * Data Invariants:
  * - Each refund processed exactly once per booking
@@ -178,7 +177,7 @@ final class CancellationService
     }
 
     /**
-     * Phase 2: Process refund via Stripe with idempotency protection.
+     * Phase 2: Process refund via Stripe.
      *
      * This method is intentionally NOT wrapped in a transaction because:
      * 1. Stripe calls are network I/O - holding locks during I/O is bad practice
@@ -186,9 +185,9 @@ final class CancellationService
      *    ReconcileRefundsJob will recover the state
      *
      * Idempotency:
-     * - Uses IdempotencyGuard to ensure refund is processed exactly once
-     * - Key format: "refund:booking:{booking_id}:{payment_intent_id}"
-     * - If same request comes again, returns cached result
+     * - The booking is moved to refund_pending under a row lock before this method runs.
+     * - Concurrent or replayed cancellation attempts re-check that state and do not call Stripe.
+     * - Stripe refund webhook replays are persisted in stripe_refund_events.
      *
      * @throws RefundFailedException If Stripe refund fails
      */
@@ -201,54 +200,23 @@ final class CancellationService
             return $this->finalizeCancellation($booking, null, 0);
         }
 
-        // Generate idempotency key for this specific refund operation
-        $idempotencyKey = IdempotencyGuard::generateKey(
-            'refund',
-            $booking->id,
-            $booking->payment_intent_id ?? 'no_payment'
-        );
-
-        // Check if refund was already processed
-        if (IdempotencyGuard::wasCompleted($idempotencyKey)) {
-            Log::info('Refund already processed (idempotency guard)', [
-                'booking_id' => $booking->id,
-                'idempotency_key' => $idempotencyKey,
-            ]);
-
-            return $booking->fresh();
-        }
-
         try {
-            // Execute refund with idempotency protection
-            $result = IdempotencyGuard::execute(
-                $idempotencyKey,
-                function () use ($booking, $refundAmount) {
-                    // Call Stripe via Laravel Cashier
-                    $refund = $booking->user->refund(
-                        $booking->payment_intent_id,
-                        ['amount' => $refundAmount]
-                    );
-
-                    return [
-                        'refund_id' => $refund->id,
-                        'refund_amount' => $refundAmount,
-                    ];
-                },
-                ['operationName' => 'stripe_refund']
+            $refund = $booking->user->refund(
+                $booking->payment_intent_id,
+                ['amount' => $refundAmount]
             );
 
-            // Record metrics
             TransactionMetrics::recordSuccess(
                 'process_refund',
                 'external_api',
                 0,
-                $result['wasExecuted'] ? 0 : 1
+                0
             );
 
             return $this->finalizeCancellation(
                 $booking,
-                $result['result']['refund_id'],
-                $result['result']['refund_amount']
+                $refund->id,
+                $refundAmount
             );
 
             // TODO: Add Cashier exception handling when payment integration is implemented

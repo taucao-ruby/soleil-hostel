@@ -264,11 +264,14 @@ class StripeWebhookHandlerTest extends TestCase
         int $refundAmount
     ): array {
         return [
+            'id' => 'evt_'.$refundId,
             'type' => 'charge.refunded',
             'data' => [
                 'object' => [
                     'id' => $chargeId,
                     'payment_intent' => $paymentIntentId,
+                    'amount_refunded' => $refundAmount,
+                    'currency' => 'vnd',
                     'refunds' => [
                         'data' => [
                             [

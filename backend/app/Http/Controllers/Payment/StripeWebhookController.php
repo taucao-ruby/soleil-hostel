@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Payment;
 
 use App\Enums\BookingStatus;
 use App\Models\Booking;
+use App\Models\StripeRefundEvent;
 use App\Models\StripeWebhookEvent;
 use App\Services\BookingService;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -109,17 +110,20 @@ class StripeWebhookController extends CashierWebhookController
      * Handle charge.refunded webhook.
      *
      * Updates booking refund status when Stripe processes a refund.
-     * Idempotent: if booking already has this refund_id recorded, no-op.
+     * Idempotent: stripe_refund_events.stripe_refund_id is the durable replay guard.
      */
     protected function handleChargeRefunded(array $payload): JsonResponse
     {
+        $stripeEventId = $payload['id'] ?? null;
         $chargeObject = $payload['data']['object'] ?? [];
         $chargeId = $chargeObject['id'] ?? null;
         $paymentIntentId = $chargeObject['payment_intent'] ?? null;
 
-        if (! $paymentIntentId) {
-            Log::warning('Stripe webhook: charge.refunded missing payment_intent', [
+        if (! $stripeEventId || ! $paymentIntentId) {
+            Log::warning('Stripe webhook: charge.refunded missing identifiers', [
+                'stripe_event_id' => $stripeEventId,
                 'charge_id' => $chargeId,
+                'payment_intent_id' => $paymentIntentId,
             ]);
 
             return response()->json(['handled' => false], 400);
@@ -130,23 +134,13 @@ class StripeWebhookController extends CashierWebhookController
             'payment_intent_id' => $paymentIntentId,
         ]);
 
-        $booking = Booking::where('payment_intent_id', $paymentIntentId)->first();
-
-        if (! $booking) {
-            Log::warning('Stripe webhook: no booking found for payment_intent', [
-                'payment_intent_id' => $paymentIntentId,
-            ]);
-
-            return response()->json(['handled' => true]);
-        }
-
         // Extract refund details from the charge's refunds list
         $refunds = $chargeObject['refunds']['data'] ?? [];
         $latestRefund = $refunds[0] ?? null;
 
         if (! $latestRefund) {
             Log::warning('Stripe webhook: charge.refunded but no refund data', [
-                'booking_id' => $booking->id,
+                'payment_intent_id' => $paymentIntentId,
             ]);
 
             return response()->json(['handled' => true]);
@@ -154,25 +148,53 @@ class StripeWebhookController extends CashierWebhookController
 
         $refundId = $latestRefund['id'] ?? null;
         $refundStatus = $latestRefund['status'] ?? 'unknown';
-        $refundAmount = $latestRefund['amount'] ?? 0;
+        $refundAmount = (int) ($chargeObject['amount_refunded'] ?? $latestRefund['amount'] ?? 0);
+        $currency = $chargeObject['currency'] ?? null;
 
-        // Idempotent: skip if this refund is already recorded
-        if ($booking->refund_id === $refundId && $booking->refund_status === 'succeeded') {
-            Log::info('Stripe webhook: refund already recorded', [
-                'booking_id' => $booking->id,
+        if (! $refundId || ! $currency) {
+            Log::warning('Stripe webhook: charge.refunded missing refund metadata', [
+                'stripe_event_id' => $stripeEventId,
+                'charge_id' => $chargeId,
                 'refund_id' => $refundId,
+                'currency' => $currency,
             ]);
 
-            return response()->json(['handled' => true]);
+            return response()->json(['handled' => false], 400);
         }
 
         try {
-            DB::transaction(function () use ($booking, $refundId, $refundStatus, $refundAmount) {
+            $result = DB::transaction(function () use (
+                $paymentIntentId,
+                $stripeEventId,
+                $refundId,
+                $refundStatus,
+                $refundAmount,
+                $currency
+            ): array {
+                $booking = Booking::where('payment_intent_id', $paymentIntentId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $booking) {
+                    return ['status' => 'missing_booking'];
+                }
+
+                StripeRefundEvent::create([
+                    'stripe_refund_id' => $refundId,
+                    'stripe_event_id' => $stripeEventId,
+                    'booking_id' => $booking->id,
+                    'amount_refunded' => $refundAmount,
+                    'currency' => strtolower((string) $currency),
+                ]);
+
                 $newStatus = $refundStatus === 'succeeded'
                     ? BookingStatus::CANCELLED
                     : BookingStatus::REFUND_FAILED;
 
-                $booking = $booking->transitionTo($newStatus);
+                if ($booking->status !== $newStatus) {
+                    $booking = $booking->transitionTo($newStatus);
+                }
+
                 $booking->update([
                     'refund_id' => $refundId,
                     'refund_status' => $refundStatus,
@@ -181,17 +203,36 @@ class StripeWebhookController extends CashierWebhookController
                         ? 'Refund failed on Stripe'
                         : null,
                 ]);
+
+                return [
+                    'status' => 'processed',
+                    'booking_id' => $booking->id,
+                ];
             });
 
+            if ($result['status'] === 'missing_booking') {
+                Log::warning('Stripe webhook: no booking found for payment_intent', [
+                    'payment_intent_id' => $paymentIntentId,
+                ]);
+
+                return response()->json(['handled' => true]);
+            }
+
             Log::info('Stripe webhook: booking refund status updated', [
-                'booking_id' => $booking->id,
+                'booking_id' => $result['booking_id'],
                 'refund_id' => $refundId,
                 'refund_status' => $refundStatus,
                 'refund_amount' => $refundAmount,
             ]);
+        } catch (UniqueConstraintViolationException) {
+            Log::info('Stripe webhook: refund event replay skipped', [
+                'stripe_event_id' => $stripeEventId,
+                'refund_id' => $refundId,
+            ]);
         } catch (\Throwable $e) {
             Log::error('Stripe webhook: failed to update refund status', [
-                'booking_id' => $booking->id,
+                'payment_intent_id' => $paymentIntentId,
+                'refund_id' => $refundId,
                 'error' => $e->getMessage(),
             ]);
         }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Auth\AuthController as BearerAuthController;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Models\User;
@@ -12,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -51,7 +53,7 @@ class AuthController extends Controller
             ]);
         }
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $token = $this->issueLegacyBearerToken($user, $request, 'auth_token');
 
         return $this->success([
             'user' => [
@@ -94,7 +96,7 @@ class AuthController extends Controller
             }
         }
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $token = $this->issueLegacyBearerToken($user, $request, 'auth_token');
 
         return $this->success([
             'user' => [
@@ -145,12 +147,43 @@ class AuthController extends Controller
         // Revoke old token
         $request->user()->currentAccessToken()->delete();
 
-        // Create new token
-        $token = $user->createToken('auth_token')->plainTextToken;
+        // Create new token with full security columns populated.
+        $token = $this->issueLegacyBearerToken($user, $request, 'auth_token');
 
         return $this->success([
             'access_token' => $token,
             'token_type' => 'Bearer',
         ], 'Token refreshed');
+    }
+
+    /**
+     * Issue a bearer token for legacy auth endpoints with all security columns populated.
+     *
+     * Replaces the default Sanctum createToken() (which leaves type/device_id/refresh_count/
+     * token_hash/token_identifier NULL) with an explicit insert that sets every column required
+     * by the middleware and reconciliation pipeline. Returns the plain-text token for the client.
+     */
+    private function issueLegacyBearerToken(User $user, Request $request, string $name): string
+    {
+        $plainTextToken = Str::random(40);
+        $hashedToken = hash('sha256', $plainTextToken);
+        $tokenIdentifier = (string) Str::uuid();
+        $deviceId = (string) Str::uuid();
+        $expiresAt = now()->addMinutes((int) config('sanctum.short_lived_token_expiration_minutes', 60));
+
+        $user->tokens()->create([
+            'name' => $name,
+            'token' => $hashedToken,
+            'token_identifier' => $tokenIdentifier,
+            'token_hash' => $hashedToken,
+            'abilities' => ['*'],
+            'expires_at' => $expiresAt,
+            'type' => 'short_lived',
+            'device_id' => $deviceId,
+            'device_fingerprint' => BearerAuthController::computeBearerFingerprint($request),
+            'refresh_count' => 0,
+        ]);
+
+        return $plainTextToken;
     }
 }

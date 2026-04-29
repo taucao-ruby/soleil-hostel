@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Http\Controllers\Auth\AuthController as BearerAuthController;
 use App\Models\PersonalAccessToken;
 use Closure;
 use Illuminate\Auth\AuthenticationException;
@@ -102,15 +103,35 @@ class CheckTokenNotRevokedAndNotExpired
         $user->withAccessToken($token);
 
         // ========== CHECK: Refresh count (suspicious activity) ==========
-        if ($token->refresh_count > config('sanctum.max_refresh_count_per_hour')) {
+        // Inclusive cap: refresh_count >= max → blocked. Unified with controllers and cookie middleware.
+        if ($token->refresh_count >= (int) config('sanctum.max_refresh_count_per_hour', 10)) {
             // Too many refreshes in a short period → suspicious
             // Revoke this token to protect the account
             $token->revoke();
 
             return response()->json([
+                'success' => false,
                 'message' => 'Phát hiện hoạt động bất thường. Token đã bị vô hiệu hóa. Vui lòng login lại.',
-                'code' => 'SUSPICIOUS_ACTIVITY',
+                'errors' => ['code' => 'SUSPICIOUS_ACTIVITY'],
             ], 401);
+        }
+
+        // ========== CHECK: Device fingerprint (bearer-mode replay defence) ==========
+        // If a bearer token carries a stored fingerprint, replays from a different
+        // UA/IP-/24 combination are treated as theft and rejected. Tokens without a
+        // stored fingerprint (e.g. legacy tokens issued before binding was added) are
+        // not blocked here — they remain subject to the other checks above.
+        if (config('sanctum.verify_device_fingerprint') && $token->device_fingerprint) {
+            $currentFingerprint = BearerAuthController::computeBearerFingerprint($request);
+            if ($currentFingerprint !== null && $currentFingerprint !== $token->device_fingerprint) {
+                $token->revoke();
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Token được sử dụng từ device khác. Vui lòng login lại.',
+                    'errors' => ['code' => 'DEVICE_MISMATCH'],
+                ], 401);
+            }
         }
 
         // ========== SUCCESS: Token is valid ==========

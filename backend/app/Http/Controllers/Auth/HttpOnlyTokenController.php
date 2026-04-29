@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Http\Requests\Auth\LoginHttpOnlyRequest;
+use App\Models\PersonalAccessToken;
 use App\Models\User;
 use App\Services\EmailVerificationCodeService;
 use App\Traits\ApiResponse;
@@ -9,6 +11,7 @@ use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -38,12 +41,12 @@ class HttpOnlyTokenController extends Controller
      *
      * Result: XSS cannot access the token
      */
-    public function login(Request $request): JsonResponse
+    public function login(LoginHttpOnlyRequest $request): JsonResponse
     {
-        // Validate credentials
-        $user = User::where('email', $request->input('email'))->first();
+        // Validate credentials (email + password come from the validated FormRequest)
+        $user = User::where('email', $request->getEmail())->first();
 
-        if (! $user || ! password_verify($request->input('password'), $user->password)) {
+        if (! $user || ! password_verify($request->getPassword(), $user->password)) {
             throw new AuthenticationException('Email hoặc mật khẩu không đúng.');
         }
 
@@ -67,7 +70,7 @@ class HttpOnlyTokenController extends Controller
         $request->session()->regenerate();
 
         // ========== Token Configuration ==========
-        $rememberMe = $request->boolean('remember_me', false);
+        $rememberMe = $request->shouldRemember();
         $tokenType = $rememberMe ? 'long_lived' : 'short_lived';
 
         if ($tokenType === 'long_lived') {
@@ -159,84 +162,92 @@ class HttpOnlyTokenController extends Controller
     public function refresh(Request $request): JsonResponse
     {
         // Middleware already validated token, get it from request attributes
-        $oldToken = $request->attributes->get('token');
+        $stagedToken = $request->attributes->get('token');
 
-        if (! $oldToken) {
+        if (! $stagedToken) {
             throw new AuthenticationException('Không tìm thấy token cookie.');
         }
 
-        // ========== Validate Token ==========
-        // Middleware already validated expiration/revocation/suspicious activity
-        // No additional validation needed here
+        $stagedTokenId = $stagedToken->getKey();
+        $maxRefreshCount = (int) config('sanctum.max_refresh_count_per_hour', 10);
 
-        // ========== Check Suspicious Activity ==========
-        // Detect token refresh abuse (possible token theft)
-        // Check BEFORE incrementing to catch the threshold exactly
-        if ($oldToken->refresh_count >= config('sanctum.max_refresh_count_per_hour', 10)) {
-            $oldToken->revoke();
+        // ========== Atomic rotation ==========
+        // Wrap the full refresh in a single transaction with pessimistic row-lock to prevent
+        // concurrent refresh requests from creating two new tokens for one identifier
+        // (TOCTOU between revoke and create). The lockForUpdate inside the transaction
+        // serializes parallel calls; the second one sees revoked_at != null and returns 401.
+        return DB::transaction(function () use ($stagedTokenId, $maxRefreshCount) {
+            /** @var PersonalAccessToken $oldToken */
+            $oldToken = PersonalAccessToken::where('id', $stagedTokenId)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-            return $this->error('Phát hiện hoạt động bất thường. Vui lòng login lại.', 401, ['code' => 'SUSPICIOUS_ACTIVITY']);
-        }
+            // Re-check state inside the lock — middleware checks were before the row was locked.
+            if ($oldToken->isRevoked() || $oldToken->isExpired()) {
+                return $this->error('Token không hợp lệ. Vui lòng login lại.', 401, ['code' => 'TOKEN_INVALID']);
+            }
 
-        $oldToken->incrementRefreshCount();
+            // Inclusive cap (>=): a token already at the threshold is rejected.
+            if ($oldToken->refresh_count >= $maxRefreshCount) {
+                $oldToken->update(['revoked_at' => now()]);
 
-        // ========== Create New Token ==========
-        $user = $oldToken->tokenable;
-        $tokenType = $oldToken->type;
+                return $this->error('Phát hiện hoạt động bất thường. Vui lòng login lại.', 401, ['code' => 'SUSPICIOUS_ACTIVITY']);
+            }
 
-        if ($tokenType === 'long_lived') {
-            $expiresInMinutes = config('sanctum.long_lived_token_expiration_days') * 24 * 60;
-            $expiresAt = now()->addDays(config('sanctum.long_lived_token_expiration_days'));
-        } else {
-            $expiresInMinutes = config('sanctum.short_lived_token_expiration_minutes');
-            $expiresAt = now()->addMinutes($expiresInMinutes);
-        }
+            $oldToken->increment('refresh_count');
 
-        // New token identifier
-        $newTokenIdentifier = Str::uuid()->toString();
-        $newTokenHash = hash('sha256', $newTokenIdentifier);
+            // ========== Create New Token ==========
+            $user = $oldToken->tokenable;
+            $tokenType = $oldToken->type;
 
-        // Create new token via Eloquent relationship so model events fire.
-        // Accessor returns abilities as array; mutator handles encoding.
-        $user->tokens()->create([
-            'name' => $oldToken->name,
-            'token' => $newTokenHash,
-            'token_identifier' => $newTokenIdentifier,
-            'token_hash' => $newTokenHash,
-            'abilities' => $oldToken->abilities ?? ['*'],
-            'expires_at' => $expiresAt,
-            'type' => $tokenType,
-            'device_id' => $oldToken->device_id,
-            'device_fingerprint' => $oldToken->device_fingerprint,
-            'refresh_count' => $oldToken->refresh_count,
-            'last_rotated_at' => now(),
-        ]);
+            if ($tokenType === 'long_lived') {
+                $expiresInMinutes = config('sanctum.long_lived_token_expiration_days') * 24 * 60;
+                $expiresAt = now()->addDays(config('sanctum.long_lived_token_expiration_days'));
+            } else {
+                $expiresInMinutes = config('sanctum.short_lived_token_expiration_minutes');
+                $expiresAt = now()->addMinutes($expiresInMinutes);
+            }
 
-        // Revoke old token
-        $oldToken->revoke();
+            $newTokenIdentifier = Str::uuid()->toString();
+            $newTokenHash = hash('sha256', $newTokenIdentifier);
 
-        // ========== Response ==========
-        $response = $this->success([
-            'expires_in_minutes' => $expiresInMinutes,
-            'expires_at' => $expiresAt->toIso8601String(),
-            'token_type' => $tokenType,
-            'csrf_token' => csrf_token(),
-        ], 'Token refreshed thành công.');
+            $user->tokens()->create([
+                'name' => $oldToken->name,
+                'token' => $newTokenHash,
+                'token_identifier' => $newTokenIdentifier,
+                'token_hash' => $newTokenHash,
+                'abilities' => $oldToken->abilities ?? ['*'],
+                'expires_at' => $expiresAt,
+                'type' => $tokenType,
+                'device_id' => $oldToken->device_id,
+                'device_fingerprint' => $oldToken->device_fingerprint,
+                'refresh_count' => $oldToken->refresh_count,
+                'last_rotated_at' => now(),
+            ]);
 
-        // ========== Set New httpOnly Cookie ==========
-        $response->cookie(
-            config('sanctum.cookie_name', 'soleil_token'),  // name
-            $newTokenIdentifier,  // value
-            $expiresInMinutes,  // cookie() 3rd param expects minutes — pass $expiresInMinutes directly
-            '/',  // path
-            config('session.domain'),  // domain
-            app()->isProduction(),  // secure
-            true,  // httpOnly
-            false,  // raw
-            'strict'  // sameSite
-        );
+            $oldToken->update(['revoked_at' => now()]);
 
-        return $response;
+            $response = $this->success([
+                'expires_in_minutes' => $expiresInMinutes,
+                'expires_at' => $expiresAt->toIso8601String(),
+                'token_type' => $tokenType,
+                'csrf_token' => csrf_token(),
+            ], 'Token refreshed thành công.');
+
+            $response->cookie(
+                config('sanctum.cookie_name', 'soleil_token'),
+                $newTokenIdentifier,
+                $expiresInMinutes,
+                '/',
+                config('session.domain'),
+                app()->isProduction(),
+                true,
+                false,
+                'strict'
+            );
+
+            return $response;
+        });
     }
 
     /**

@@ -120,6 +120,9 @@ class AuthController extends Controller
         // Hash token (Sanctum stores hashed token in DB)
         $hashedToken = hash('sha256', $plainTextToken);
 
+        // Bind token to UA + IP-/24 (mitigates replay if a bearer token leaks).
+        $deviceFingerprint = self::computeBearerFingerprint($request);
+
         // Create token via Eloquent relationship so model events fire (HasUuids, future observers, etc.)
         // The morphMany relation auto-sets tokenable_id + tokenable_type; mutator handles abilities encoding.
         $user->tokens()->create([
@@ -129,6 +132,7 @@ class AuthController extends Controller
             'expires_at' => $expiresAt,
             'type' => $tokenType,
             'device_id' => $deviceId,
+            'device_fingerprint' => $deviceFingerprint,
             'refresh_count' => 0,
         ]);
 
@@ -243,6 +247,7 @@ class AuthController extends Controller
                 'expires_at' => $expiresAt,
                 'type' => $tokenType,
                 'device_id' => $oldToken->device_id,
+                'device_fingerprint' => $oldToken->device_fingerprint,
                 'remember_token_id' => $oldToken->remember_token_id,
                 'refresh_count' => $oldToken->refresh_count,
             ]);
@@ -433,5 +438,25 @@ class AuthController extends Controller
                 'last_used_at' => $token->last_used_at?->toIso8601String(),
             ],
         ]);
+    }
+
+    /**
+     * Compute device fingerprint for bearer-mode tokens.
+     *
+     * Components: User-Agent + IP /24 prefix. Trade-off: legitimate users behind a NAT
+     * /24 keep the same fingerprint; cross-network movement (mobile ↔ home) requires re-login.
+     * Returns null if the IP is empty (e.g. CLI, unit tests with no remote address).
+     */
+    public static function computeBearerFingerprint(Request $request): ?string
+    {
+        $ua = (string) ($request->userAgent() ?? '');
+        $ip = (string) ($request->ip() ?? '');
+        if ($ip === '') {
+            return null;
+        }
+        $lastDot = strrpos($ip, '.');
+        $ipPrefix = $lastDot !== false ? substr($ip, 0, $lastDot) : $ip;
+
+        return hash('sha256', $ua.'.'.$ipPrefix);
     }
 }

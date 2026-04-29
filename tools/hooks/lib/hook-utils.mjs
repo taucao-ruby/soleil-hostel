@@ -199,6 +199,7 @@ export function resolveTargetCommand(policy, targetName) {
   }
 
   const workingDirectory = path.resolve(REPO_ROOT, target.cwd || ".");
+  const env = target.env ? { ...process.env, ...target.env } : process.env;
 
   return {
     targetName,
@@ -207,6 +208,7 @@ export function resolveTargetCommand(policy, targetName) {
     cwd: workingDirectory,
     timeoutMs: target.timeout_ms || 0,
     optional: Boolean(target.optional),
+    env,
   };
 }
 

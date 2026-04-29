@@ -61,6 +61,7 @@ for (const targetName of targetsToRun) {
     cwd: target.cwd,
     captureOutput: false,
     timeoutMs: target.timeoutMs,
+    env: target.env,
   });
 
   if (result.error?.code === "ENOENT" && target.optional) {

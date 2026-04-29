@@ -88,6 +88,9 @@
         "compose",
         "config"
       ],
+      "env": {
+        "REDIS_PASSWORD": "validate_placeholder"
+      },
       "timeout_ms": 180000,
       "optional": true
     },

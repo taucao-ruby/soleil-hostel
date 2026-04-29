@@ -298,19 +298,23 @@ jobs:
     needs: docker-build
     if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || github.event_name == 'workflow_dispatch'
     timeout-minutes: 10
-    # Non-blocking: Trivy may flag base-image CVEs outside our control.
-    # Review SARIF results in GitHub Security tab; promote to blocking once baseline is clean.
-    continue-on-error: true
+    # Batch 4 / 3C: now blocking. The accepted-CVE baseline lives in .trivyignore
+    # at the repo root and is honored via trivyignores below. Renew quarterly.
     steps:
       - uses: actions/checkout@v4
-      - name: Run Trivy vulnerability scanner
+      - name: Run Trivy vulnerability scanner (HIGH/CRITICAL — blocking)
         uses: aquasecurity/trivy-action@0.29.0
         with:
           image-ref: ${{ needs.docker-build.outputs.image-tag }}
           format: "sarif"
           output: "trivy-results.sarif"
           severity: "CRITICAL,HIGH"
+          # Fail the job on any HIGH/CRITICAL finding NOT in the .trivyignore baseline.
+          exit-code: "1"
+          ignore-unfixed: true
+          trivyignores: ".trivyignore"
       - name: Upload Trivy results to GitHub Security
+        if: always()
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: "trivy-results.sarif"

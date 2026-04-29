@@ -526,12 +526,13 @@ jobs:
         run: composer audit
 
   # ========== SECURITY: NPM Audit ==========
+  # Batch 4 / 3C: now blocking on HIGH/CRITICAL. Accepted advisories must be added
+  # to frontend/.audit-exceptions.json (see file for format + expiry rules).
   npm-audit:
-    name: NPM Audit
+    name: NPM Audit (HIGH/CRITICAL — blocking)
     runs-on: ubuntu-latest
     needs: [frontend-setup, setup]
     timeout-minutes: 10
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node
@@ -547,9 +548,9 @@ jobs:
         with:
           path: frontend/node_modules
           key: frontend-node-${{ needs.setup.outputs.pnpm-hash }}
-      - name: Audit NPM dependencies
+      - name: Audit NPM dependencies (with allowlist)
         working-directory: ./frontend
-        run: pnpm audit --audit-level=high
+        run: node ../scripts/audit-with-exceptions.mjs
 
   # ========== SECURITY: Gitleaks ==========
   security-scan:

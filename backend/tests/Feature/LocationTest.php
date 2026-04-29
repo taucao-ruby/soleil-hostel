@@ -125,7 +125,9 @@ class LocationTest extends TestCase
     {
         $location = Location::factory()->create();
         Room::factory()->count(2)->create(['location_id' => $location->id, 'status' => 'available']);
-        Room::factory()->create(['location_id' => $location->id, 'status' => 'maintenance']);
+        // Batch 4 / 3B: 'maintenance' status retired; pair 'unavailable' with
+        // outOfService() so this room is not bookable, which is what the test wants.
+        Room::factory()->outOfService()->create(['location_id' => $location->id, 'status' => 'unavailable']);
 
         $this->assertCount(2, $location->activeRooms);
     }
@@ -156,7 +158,8 @@ class LocationTest extends TestCase
     {
         $location = Location::factory()->create();
         Room::factory()->count(5)->create(['location_id' => $location->id, 'status' => 'available']);
-        Room::factory()->count(2)->create(['location_id' => $location->id, 'status' => 'maintenance']);
+        // Batch 4 / 3B: 'maintenance' replaced by 'unavailable' + outOfService().
+        Room::factory()->count(2)->outOfService()->create(['location_id' => $location->id, 'status' => 'unavailable']);
 
         $result = Location::withRoomCounts()->find($location->id);
         $this->assertEquals(7, $result->rooms_count);
@@ -170,7 +173,7 @@ class LocationTest extends TestCase
         $location = Location::factory()->create();
         $room1 = Room::factory()->create(['location_id' => $location->id, 'status' => 'available']);
         $room2 = Room::factory()->create(['location_id' => $location->id, 'status' => 'available']);
-        $room3 = Room::factory()->create(['location_id' => $location->id, 'status' => 'maintenance']);
+        $room3 = Room::factory()->outOfService()->create(['location_id' => $location->id, 'status' => 'unavailable']);
 
         $user = User::factory()->create();
 

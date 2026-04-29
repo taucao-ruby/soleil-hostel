@@ -208,8 +208,11 @@ class RoomAvailabilityCache
         Carbon $checkOut,
         ?int $capacity = null
     ): Collection {
+        // Batch 4 / 3B: scopeBookable() is the canonical bookability predicate.
+        // Replaces the prior raw `where('status', 'available')` which coupled this
+        // cache layer to the legacy column without the readiness/location gates.
         $query = Room::query()
-            ->where('status', 'available')
+            ->bookable()
             ->whereDoesntHave('bookings', function ($q) use ($checkIn, $checkOut) {
                 $q->where('status', '!=', 'cancelled')
                     ->whereBetween('check_out', [$checkIn, $checkOut])

@@ -571,7 +571,8 @@ class ToolOrchestrationService
         $location = \App\Models\Location::query()
             ->where('slug', $slug)
             ->where('is_active', true)
-            ->with(['rooms' => fn ($q) => $q->where('status', 'available')->orderBy('price')])
+            // Batch 4 / 3B: bookable() owns the canonical room predicate.
+            ->with(['rooms' => fn ($q) => $q->bookable()->orderBy('price')])
             ->first();
 
         if ($location === null) {

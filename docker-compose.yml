@@ -65,7 +65,10 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     working_dir: /var/www
-    user: root
+    # NOTE (Batch 4 / 3D): runs as the Dockerfile's non-root USER by default.
+    # Local development overrides to `user: root` in docker-compose.override.yml
+    # because the bind-mount hot-reload writes (composer install, key:generate)
+    # need write access to host-owned files. Production never sets root here.
     volumes:
       - ./backend:/var/www
     ports:

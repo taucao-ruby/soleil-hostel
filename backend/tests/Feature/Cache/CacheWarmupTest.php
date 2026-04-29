@@ -41,9 +41,11 @@ class CacheWarmupTest extends TestCase
 
     protected function createTestData(): void
     {
-        // Create rooms
+        // Create rooms (Batch 4 / 3B: status narrowed to {available, unavailable};
+        // operational state moved to readiness_status — outOfService() pairs status
+        // 'unavailable' with readiness_status='out_of_service').
         Room::factory()->count(5)->create(['status' => 'available']);
-        Room::factory()->count(2)->create(['status' => 'maintenance']);
+        Room::factory()->count(2)->outOfService()->create(['status' => 'unavailable']);
 
         // Create users with different roles
         User::factory()->create(['role' => 'admin', 'email' => 'admin@test.com']);

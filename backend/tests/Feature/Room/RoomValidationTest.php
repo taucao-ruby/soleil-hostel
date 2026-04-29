@@ -206,8 +206,28 @@ class RoomValidationTest extends TestCase
         $response->assertStatus(201);
     }
 
-    public function test_store_accepts_valid_status_booked(): void
+    public function test_store_accepts_valid_status_unavailable(): void
     {
+        // Batch 4 / 3B: status valid set narrowed to {available, unavailable}.
+        // Operational distinction (booked / maintenance / cleaning) belongs on
+        // readiness_status now — the request can carry both.
+        $response = $this->actingAs($this->admin, 'sanctum')
+            ->postJson('/api/rooms', [
+                'location_id' => $this->location->id,
+                'name' => 'Test Room',
+                'description' => 'Test description',
+                'price' => 100.00,
+                'max_guests' => 2,
+                'status' => 'unavailable',
+                'readiness_status' => 'occupied',
+            ]);
+
+        $response->assertStatus(201);
+    }
+
+    public function test_store_rejects_legacy_status_booked(): void
+    {
+        // Batch 4 / 3B: 'booked' is no longer a valid status — must 422 at validation.
         $response = $this->actingAs($this->admin, 'sanctum')
             ->postJson('/api/rooms', [
                 'location_id' => $this->location->id,
@@ -218,11 +238,12 @@ class RoomValidationTest extends TestCase
                 'status' => 'booked',
             ]);
 
-        $response->assertStatus(201);
+        $response->assertStatus(422)->assertJsonValidationErrors(['status']);
     }
 
-    public function test_store_accepts_valid_status_maintenance(): void
+    public function test_store_rejects_legacy_status_maintenance(): void
     {
+        // Batch 4 / 3B: 'maintenance' is no longer a valid status — must 422.
         $response = $this->actingAs($this->admin, 'sanctum')
             ->postJson('/api/rooms', [
                 'location_id' => $this->location->id,
@@ -233,7 +254,7 @@ class RoomValidationTest extends TestCase
                 'status' => 'maintenance',
             ]);
 
-        $response->assertStatus(201);
+        $response->assertStatus(422)->assertJsonValidationErrors(['status']);
     }
 
     // ========== UPDATE VALIDATION TESTS ==========

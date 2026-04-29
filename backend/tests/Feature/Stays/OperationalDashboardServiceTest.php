@@ -81,7 +81,7 @@ class OperationalDashboardServiceTest extends TestCase
             'status' => 'available',
             'readiness_status' => 'inspected',
         ]);
-        $outOfServiceRoom = Room::factory()->forLocation($location)->outOfService()->create(['status' => 'maintenance']);
+        $outOfServiceRoom = Room::factory()->forLocation($location)->outOfService()->create(['status' => 'unavailable']);
 
         $this->assertSame([$readyRoom->id], $this->service->readyRooms($location)->pluck('id')->all());
         $this->assertEqualsCanonicalizing(

@@ -15,12 +15,23 @@ on:
       - "docs/api/openapi.yaml"
       - ".spectral.yaml"
       - ".github/workflows/contract-lint.yml"
+      # Batch 4 / 3C: also trigger when the runtime contract surface changes,
+      # not just the spec. Routes/controllers/requests/resources are the source
+      # of contract drift the spec is meant to detect.
+      - "backend/routes/**"
+      - "backend/app/Http/Controllers/**"
+      - "backend/app/Http/Requests/**"
+      - "backend/app/Http/Resources/**"
   push:
     branches: [main, dev]
     paths:
       - "docs/api/openapi.yaml"
       - ".spectral.yaml"
       - ".github/workflows/contract-lint.yml"
+      - "backend/routes/**"
+      - "backend/app/Http/Controllers/**"
+      - "backend/app/Http/Requests/**"
+      - "backend/app/Http/Resources/**"
 
 concurrency:
   group: contract-lint-${{ github.ref }}

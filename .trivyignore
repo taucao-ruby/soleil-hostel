@@ -1,0 +1,25 @@
+# Trivy CVE baseline — Batch 4 / 3C.
+#
+# This file is the agreed allowlist for Trivy findings that we have triaged
+# and accepted. The Trivy gate becomes blocking only AFTER this baseline is
+# committed and the deploy.yml workflow is updated to remove
+# `continue-on-error: true` from the trivy-scan job.
+#
+# Format: one CVE id per line (e.g. CVE-2024-12345). Inline comments allowed.
+# Each entry MUST include:
+#   - the CVE id
+#   - severity at time of triage
+#   - justification: why the finding is acceptable for this image
+#   - expiry: review-by date (YYYY-MM-DD) — Trivy will surface this back to us
+#
+# Re-run triage every quarter. An entry past its review-by date should be
+# either renewed (with fresh justification) or removed so the gate fails on it.
+#
+# When adding entries, prefer the narrowest scope possible (CVE id only).
+# Use full path-scoped suppressions (path:CVE-...) only when a CVE truly
+# affects only one component.
+#
+# ---------------------------------------------------------------------------
+# Active suppressions (none — baseline starts clean).
+# ---------------------------------------------------------------------------
+# (no entries yet — populate during the first Trivy run on dev)

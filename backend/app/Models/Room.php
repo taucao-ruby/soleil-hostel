@@ -169,13 +169,20 @@ class Room extends Model
     }
 
     /**
-     * Scope: Only active (available) rooms
+     * Scope: physically active rooms.
+     *
+     * @deprecated Batch 4 / 3B — prefer scopeBookable() for full bookability or
+     *             scopeReady() when you only need the physical readiness gate.
+     *             This scope now intentionally references *only* readiness_status
+     *             so callers stop coupling to the legacy rooms.status column.
+     *             The architecture test in tests/Unit/Architecture/RoomsStatusUsageTest
+     *             prevents new callers from being added.
      *
      * Usage: Room::active()->get()
      */
     public function scopeActive(Builder $query): Builder
     {
-        return $query->where('status', 'available');
+        return $query->where('readiness_status', RoomReadinessStatus::READY->value);
     }
 
     /**
@@ -256,7 +263,10 @@ class Room extends Model
         $checkInDt = \Carbon\Carbon::parse($checkIn)->startOfDay()->toDateTimeString();
         $checkOutDt = \Carbon\Carbon::parse($checkOut)->startOfDay()->toDateTimeString();
 
-        return $query->where('status', 'available')
+        // Batch 4 / 3B: route through scopeBookable() so the bookability predicate
+        // is owned by exactly one scope. scopeBookable already enforces
+        // status='available' AND readiness_status='ready' AND location.is_active.
+        return $query->bookable()
             ->whereDoesntHave('bookings', function (Builder $q) use ($checkInDt, $checkOutDt) {
                 $q->whereIn('status', [BookingStatus::PENDING, BookingStatus::CONFIRMED])
                     ->where('check_in', '<', $checkOutDt)

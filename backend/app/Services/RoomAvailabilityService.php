@@ -46,12 +46,16 @@ class RoomAvailabilityService
      */
     public function getAllRoomsWithAvailability(): Collection
     {
+        // Batch 4 / 3B: route through scopeBookable() — the canonical bookability
+        // predicate. The legacy ->active() chain coupled this query to rooms.status,
+        // which we are deprecating; scopeBookable() owns the full predicate
+        // (status + readiness_status + location.is_active) in one place.
         if (! $this->supportsTags()) {
             return Cache::remember(
                 'all-rooms-with-availability',
                 self::CACHE_TTL,
                 fn () => Room::withCommonRelations()
-                    ->active()
+                    ->bookable()
                     ->orderBy('created_at', 'desc')
                     ->get()
             );
@@ -62,7 +66,7 @@ class RoomAvailabilityService
                 'all-rooms-with-availability',
                 self::CACHE_TTL,
                 fn () => Room::withCommonRelations()
-                    ->active()
+                    ->bookable()
                     ->orderBy('created_at', 'desc')
                     ->get()
             );

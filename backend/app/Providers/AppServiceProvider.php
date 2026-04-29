@@ -6,10 +6,7 @@ use App\Directives\PurifyDirective;
 use App\Macros\FormRequestPurifyMacro;
 use App\Models\Booking;
 use App\Models\PersonalAccessToken;
-use App\Models\Room;
 use App\Observers\BookingObserver;
-use App\Policies\BookingPolicy;
-use App\Policies\RoomPolicy;
 use App\Repositories\Contracts\BookingRepositoryInterface;
 use App\Repositories\Contracts\ContactMessageRepositoryInterface;
 use App\Repositories\Contracts\RoomRepositoryInterface;
@@ -23,10 +20,10 @@ use Laravel\Sanctum\Sanctum;
 
 class AppServiceProvider extends ServiceProvider
 {
-    protected $policies = [
-        Booking::class => BookingPolicy::class,
-        Room::class => RoomPolicy::class,
-    ];
+    // NOTE: $policies removed (Batch 4, 3A). All model-policy bindings live in
+    // AuthServiceProvider — having two providers declare overlapping arrays is dead
+    // code today (this class never calls parent::boot()) and silently doubles up the
+    // moment someone adds parent::boot() here. AuthServiceProvider is the single source.
 
     /**
      * Register any application services.

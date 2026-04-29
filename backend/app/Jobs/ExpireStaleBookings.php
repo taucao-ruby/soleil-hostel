@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Enums\BookingStatus;
 use App\Events\BookingCancelled;
 use App\Models\Booking;
+use App\Services\FeatureFlag;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -63,6 +64,15 @@ final class ExpireStaleBookings implements ShouldQueue
 
     public function handle(): void
     {
+        // Batch 4 / 3E: Redis-backed kill switch. Defaults to ON so existing
+        // schedulers continue to run; flip OFF via `feature:toggle booking.expire_pending off`
+        // during incident response without touching env / restarting workers.
+        if (! FeatureFlag::get('booking.expire_pending', true)) {
+            Log::info('ExpireStaleBookings skipped: feature flag booking.expire_pending is off');
+
+            return;
+        }
+
         $ttlMinutes = (int) config('booking.pending_ttl_minutes', 30);
         $batchSize = (int) config('booking.pending_expiry_batch_size', 100);
 

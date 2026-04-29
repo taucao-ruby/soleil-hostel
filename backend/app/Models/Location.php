@@ -80,11 +80,14 @@ class Location extends Model
     }
 
     /**
-     * Get active (available) rooms at this location.
+     * Get bookable rooms at this location.
+     *
+     * Batch 4 / 3B: route through Room::scopeBookable() so the bookability
+     * predicate stays owned in one place (status + readiness + location.is_active).
      */
     public function activeRooms(): HasMany
     {
-        return $this->rooms()->where('status', 'available');
+        return $this->rooms()->bookable();
     }
 
     /**

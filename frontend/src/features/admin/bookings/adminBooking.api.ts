@@ -61,7 +61,10 @@ export const forceDeleteBooking = async (id: number): Promise<void> => {
   await api.delete(`/v1/admin/bookings/${id}/force`)
 }
 
-export const getTodayArrivals = async (locationId?: number): Promise<BookingDetailRaw[]> => {
+export const getTodayArrivals = async (
+  locationId?: number,
+  signal?: AbortSignal
+): Promise<BookingDetailRaw[]> => {
   const today = new Date().toISOString().split('T')[0]
   const response = await api.get('/v1/admin/bookings', {
     params: {
@@ -70,11 +73,15 @@ export const getTodayArrivals = async (locationId?: number): Promise<BookingDeta
       check_in_end: today,
       status: 'confirmed',
     },
+    signal,
   })
   return response.data.data.bookings
 }
 
-export const getTodayDepartures = async (locationId?: number): Promise<BookingDetailRaw[]> => {
+export const getTodayDepartures = async (
+  locationId?: number,
+  signal?: AbortSignal
+): Promise<BookingDetailRaw[]> => {
   const today = new Date().toISOString().split('T')[0]
   const response = await api.get('/v1/admin/bookings', {
     params: {
@@ -83,6 +90,7 @@ export const getTodayDepartures = async (locationId?: number): Promise<BookingDe
       check_out_end: today,
       status: 'confirmed',
     },
+    signal,
   })
   return response.data.data.bookings
 }

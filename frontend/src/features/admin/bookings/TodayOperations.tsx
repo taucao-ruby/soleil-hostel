@@ -1,10 +1,24 @@
-import React, { useState, useEffect } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getTodayArrivals, getTodayDepartures } from './adminBooking.api'
 import type { BookingDetailRaw } from '@/features/booking/booking.types'
-import api from '@/shared/lib/api'
 import LoadingSpinner from '@/shared/components/feedback/LoadingSpinner'
+import { getLocations } from '@/shared/lib/location.api'
+import { roomApi } from '@/shared/lib/room.api'
 import * as toast from '@/shared/utils/toast'
+
+const isAbortError = (error: unknown): boolean => {
+  if (error instanceof DOMException) {
+    return error.name === 'AbortError'
+  }
+
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (('name' in error && error.name === 'AbortError') ||
+      ('code' in error && error.code === 'ERR_CANCELED'))
+  )
+}
 
 const TodayOperations: React.FC = () => {
   const [locations, setLocations] = useState<{ id: number; name: string }[]>([])
@@ -14,44 +28,91 @@ const TodayOperations: React.FC = () => {
   const [departures, setDepartures] = useState<BookingDetailRaw[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isProcessing, setIsProcessing] = useState<number | null>(null)
+  const [errorMessage, setErrorMessage] = useState('')
 
   useEffect(() => {
-    api.get('/v1/locations').then(res => {
-      setLocations(res.data.data)
-      if (res.data.data.length > 0) setSelectedLocationId(res.data.data[0].id)
+    const controller = new AbortController()
+
+    const loadLocations = async () => {
+      const data = await getLocations(controller.signal)
+
+      if (controller.signal.aborted) {
+        return
+      }
+
+      setLocations(data.map(location => ({ id: location.id, name: location.name })))
+      if (data.length > 0) setSelectedLocationId(data[0].id)
+    }
+
+    loadLocations().catch(error => {
+      if (!isAbortError(error)) {
+        setErrorMessage('Không thể tải danh sách cơ sở.')
+        setIsLoading(false)
+      }
     })
+
+    return () => controller.abort()
   }, [])
 
-  const loadData = async () => {
-    if (!selectedLocationId) return
-    setIsLoading(true)
-    try {
-      const arr = await getTodayArrivals(Number(selectedLocationId))
-      const dep = await getTodayDepartures(Number(selectedLocationId))
-      setArrivals(arr)
-      setDepartures(dep)
-    } catch {
-      // fetch error handled silently
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const loadData = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!selectedLocationId) {
+        setArrivals([])
+        setDepartures([])
+        setIsLoading(false)
+        return
+      }
+
+      setErrorMessage('')
+      setIsLoading(true)
+
+      try {
+        const [arr, dep] = await Promise.all([
+          getTodayArrivals(Number(selectedLocationId), signal),
+          getTodayDepartures(Number(selectedLocationId), signal),
+        ])
+
+        if (signal?.aborted) {
+          return
+        }
+
+        setArrivals(arr)
+        setDepartures(dep)
+      } finally {
+        if (!signal?.aborted) {
+          setIsLoading(false)
+        }
+      }
+    },
+    [selectedLocationId]
+  )
 
   useEffect(() => {
-    loadData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedLocationId])
+    const controller = new AbortController()
+
+    loadData(controller.signal).catch(error => {
+      if (!isAbortError(error)) {
+        setErrorMessage('Không thể tải dữ liệu nghiệp vụ hôm nay.')
+      }
+    })
+
+    return () => controller.abort()
+  }, [loadData])
+
+  const refreshData = () => {
+    loadData().catch(error => {
+      if (!isAbortError(error)) {
+        setErrorMessage('Không thể tải lại dữ liệu nghiệp vụ hôm nay.')
+      }
+    })
+  }
 
   const handleCheckIn = async (bookingId: number, roomId: number) => {
     setIsProcessing(bookingId)
     try {
-      // 1. Mark room as occupied
-      await api.patch(`/v1/rooms/${roomId}/status`, {
-        status: 'occupied',
-        lock_version: 1 /* ignoring lock check for brevity */,
-      })
+      await roomApi.updateStatus(roomId, 'occupied')
       toast.showToast?.success?.(`Nhận phòng #${bookingId} thành công`)
-      loadData()
+      refreshData()
     } catch {
       toast.showToast?.error?.('Lỗi khi Check-in')
     } finally {
@@ -62,13 +123,9 @@ const TodayOperations: React.FC = () => {
   const handleCheckOut = async (bookingId: number, roomId: number) => {
     setIsProcessing(bookingId)
     try {
-      // 1. Mark room as cleaning (maintenance)
-      await api.patch(`/v1/rooms/${roomId}/status`, {
-        status: 'maintenance',
-        lock_version: 1 /* ignoring lock check for brevity */,
-      })
+      await roomApi.updateStatus(roomId, 'cleaning')
       toast.showToast?.success?.(`Trả phòng #${bookingId} thành công! Phòng chuyển sang dọn dẹp.`)
-      loadData()
+      refreshData()
     } catch {
       toast.showToast?.error?.('Lỗi khi Check-out')
     } finally {
@@ -108,6 +165,12 @@ const TodayOperations: React.FC = () => {
           ))}
         </select>
       </div>
+
+      {errorMessage && (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {errorMessage}
+        </div>
+      )}
 
       {isLoading ? (
         <LoadingSpinner message="Đang tải dữ liệu..." size="lg" />

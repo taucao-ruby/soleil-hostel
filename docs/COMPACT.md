@@ -15,11 +15,11 @@
 
 ## 1) Current Snapshot (keep under 12 lines)
 
-- Date updated: 2026-04-19
-- Current branch: `dev` (HEAD=`16618a9`)
+- Date updated: 2026-04-29
+- Current branch: `dev` (HEAD=`5e258e7`)
 - Latest commit: `16618a9` — docs: refresh soleil-ai-review-engine index stats
 - Backend test baseline: **re-verification required** — F-67 proposer-binding + F-01/F-02/F-03 remediations added test surface since Mar 31 baseline (1047/2875)
-- Frontend: LoginPage/RegisterPage/RoomList redesign, LocationDetail boutique redesign (`84b25e3`, `e6673dd`), AI assistant widgets; axios ^1.15.0, vite 6.4.2 (CVE fixes)
+- Frontend: Ops batch updated TodayOperations/BookingList abort+error handling, internal toast renderer, RoomDiscovery AI DTO alignment; `pnpm type-check` and `pnpm test` pass (418 tests).
 - AI Harness: Phases 0–4 ✅ Done. F-67 proposer-binding landed (`17a4880`, `39cba7a`; formerly cited as "F-06 2026-04-18", promoted 2026-04-19): cache envelope carries `proposer_user_id`; `decide()` 404s on mismatch; service-layer cancellation ownership gate at `CancellationService::validateCancellation`
 - Deploy hardening: F-04 pre-flight `DEPLOY_HOST` gate + migration-before-health reordering (`ec025ca`, `75bb790`). OpenAPI Spectral contract-lint CI gate added (`4a33755`)
 - Open findings: F-23, F-25, F-26–F-62, F-63–F-66, F-68. F-67 is **Mitigated** (landed). See FINDINGS_BACKLOG.md §F-ID namespace note for the F-06→F-67 promotion.
@@ -36,6 +36,7 @@ This section intentionally left as a pointer — do not duplicate invariants her
 
 ### Now
 
+- **Frontend ops/API batch (2026-04-29)**: ✅ COMPLETE — removed react-toastify, corrected TodayOperations room route to shared room API, removed hardcoded `lock_version`, aligned RoomDiscoveryWidget to `{content, proposals, citations}`.
 - **AI Harness Phases 0–4**: ✅ COMPLETE — all 7 endpoints, eval framework, kill switch, canary routing
 - **F-67 proposer-binding** (formerly cited as F-06 2026-04-18): ✅ COMPLETE (2026-04-18) — cache envelope carries `proposer_user_id`; `decide()` 404s on mismatch; service-layer cancellation ownership gate; T-13 reclassified Accepted→Mitigated
 - **Documentation governance remediation (2026-04-18)**: ✅ COMPLETE — 11 docs aligned with post-F-67 code truth (ARCHITECTURE_FACTS, PERMISSION_MATRIX, THREAT_MODEL_AI, CONTRACT, COMMANDS_AND_GATES, OPERATIONAL_PLAYBOOK, ROLLOUT_AND_KILL_SWITCH, backend/.env.example, backend/.env.production.example, PROJECT_STATUS, COMPACT)

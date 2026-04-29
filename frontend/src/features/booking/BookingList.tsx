@@ -5,31 +5,56 @@ import type { BookingApiRaw } from './booking.types'
 import LoadingSpinner from '@/shared/components/feedback/LoadingSpinner'
 import BookingCancelDialog from './BookingCancelDialog'
 
+const isAbortError = (error: unknown): boolean => {
+  if (error instanceof DOMException) {
+    return error.name === 'AbortError'
+  }
+
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (('name' in error && error.name === 'AbortError') ||
+      ('code' in error && error.code === 'ERR_CANCELED'))
+  )
+}
+
 const BookingList: React.FC = () => {
   const [bookings, setBookings] = useState<BookingApiRaw[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState('')
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'past' | 'cancelled'>('all')
 
   // Cancel dialog state
   const [cancelModalBooking, setCancelModalBooking] = useState<BookingApiRaw | null>(null)
 
   useEffect(() => {
-    let active = true
-    const loadBookings = async () => {
+    const controller = new AbortController()
+
+    const loadBookings = async (signal: AbortSignal) => {
       setIsLoading(true)
-      try {
-        const data = await fetchMyBookings()
-        if (active) setBookings(data)
-      } catch {
-        // fetch error handled silently
-      } finally {
-        if (active) setIsLoading(false)
+      setErrorMessage('')
+
+      const data = await fetchMyBookings(signal)
+
+      if (!signal.aborted) {
+        setBookings(data)
       }
     }
-    loadBookings()
-    return () => {
-      active = false
-    }
+
+    loadBookings(controller.signal)
+      .catch(error => {
+        if (!isAbortError(error)) {
+          setBookings([])
+          setErrorMessage('Không thể tải danh sách đặt phòng. Vui lòng thử lại sau.')
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setIsLoading(false)
+        }
+      })
+
+    return () => controller.abort()
   }, [])
 
   const handleCancelSuccess = (updatedBooking: BookingApiRaw) => {
@@ -117,6 +142,16 @@ const BookingList: React.FC = () => {
 
       {isLoading ? (
         <LoadingSpinner size="lg" message="Đang tải danh sách đặt phòng..." />
+      ) : errorMessage ? (
+        <div
+          role="alert"
+          className="bg-white rounded-lg shadow-sm border border-red-200 p-12 text-center text-red-700"
+        >
+          <p className="text-lg font-medium">{errorMessage}</p>
+          <p className="mt-2 text-sm text-gray-500">
+            Dữ liệu đặt phòng chưa được cập nhật trên màn hình này.
+          </p>
+        </div>
       ) : filteredBookings.length === 0 ? (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center text-gray-500">
           <svg

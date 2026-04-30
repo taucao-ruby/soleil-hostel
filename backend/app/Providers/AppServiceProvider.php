@@ -131,7 +131,7 @@ class AppServiceProvider extends ServiceProvider
         // HTTP-runtime invariant; an Artisan command re-checks before traffic admission.
         // Guard only for real console invocations — read the process-level APP_ENV so that
         // tests which override config(['app.env' => 'production']) still exercise this path.
-        if ($this->app->runningInConsole() && env('APP_ENV') !== 'testing') {
+        if ($this->app->runningInConsole() && ! $this->app->runningUnitTests()) {
             return;
         }
 
@@ -155,7 +155,7 @@ class AppServiceProvider extends ServiceProvider
     // Redis server itself via --requirepass; this is the application-side fence.
     private function assertRedisAuthenticationConfiguration(): void
     {
-        if ($this->app->runningInConsole() && env('APP_ENV') !== 'testing') {
+        if ($this->app->runningInConsole() && ! $this->app->runningUnitTests()) {
             return;
         }
 

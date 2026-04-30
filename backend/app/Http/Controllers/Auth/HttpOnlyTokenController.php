@@ -198,6 +198,9 @@ class HttpOnlyTokenController extends Controller
 
             // ========== Create New Token ==========
             $user = $oldToken->tokenable;
+            if (! $user instanceof User) {
+                throw new AuthenticationException('Token tokenable is not a valid user.');
+            }
             $tokenType = $oldToken->type;
 
             if ($tokenType === 'long_lived') {

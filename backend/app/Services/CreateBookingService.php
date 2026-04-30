@@ -357,11 +357,15 @@ class CreateBookingService
             ->lockForUpdate()
             ->first();
 
-        $pendingCount = Booking::query()
-            ->where('user_id', $userId)
-            ->where('status', BookingStatus::PENDING)
-            ->lockForUpdate()
-            ->get(['id'])
+        $pendingCount = DB::query()
+            ->fromSub(
+                Booking::query()
+                    ->where('user_id', $userId)
+                    ->where('status', BookingStatus::PENDING)
+                    ->lockForUpdate()
+                    ->select('id'),
+                'locked_pending'
+            )
             ->count();
 
         if ($pendingCount >= (int) config('bookings.max_pending_per_user', 2)) {

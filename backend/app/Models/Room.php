@@ -256,6 +256,9 @@ class Room extends Model
      * Allows same-day checkout/checkin.
      *
      * Usage: Room::availableBetween('2026-03-01', '2026-03-05')->get()
+     *
+     * @param  Builder<Room>  $query
+     * @return Builder<Room>
      */
     public function scopeAvailableBetween(Builder $query, string $checkIn, string $checkOut): Builder
     {

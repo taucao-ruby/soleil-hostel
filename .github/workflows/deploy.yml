@@ -74,12 +74,13 @@ jobs:
           restore-keys: ${{ runner.os }}-composer-
       - name: Install dependencies
         working-directory: ./backend
-        run: composer install --prefer-dist --no-progress
+        run: composer install --prefer-dist --no-progress --no-scripts
       - name: Setup Laravel environment
         working-directory: ./backend
         run: |
           cp .env.example .env.testing
           php artisan key:generate --env=testing
+          php artisan package:discover --ansi --env=testing
           php artisan migrate --env=testing --force
       - name: Run Tests
         working-directory: ./backend
@@ -175,12 +176,13 @@ jobs:
           extensions: redis,pdo_pgsql
       - name: Install backend dependencies
         working-directory: ./backend
-        run: composer install --prefer-dist --no-progress
+        run: composer install --prefer-dist --no-progress --no-scripts
       - name: Setup backend
         working-directory: ./backend
         run: |
           cp .env.example .env.testing
           php artisan key:generate --env=testing
+          php artisan package:discover --ansi --env=testing
           php artisan migrate --env=testing --force
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -430,7 +432,8 @@ jobs:
 
           cd backend
           echo "==> Installing PHP dependencies"
-          composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+          composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts
+          php artisan package:discover --ansi
 
           echo "==> Rebuilding Laravel caches"
           php artisan config:clear

@@ -7,7 +7,12 @@ import { minimatch } from "minimatch";
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 
 export const REPO_ROOT = path.resolve(currentDir, "../../..");
-export const POLICY_PATH = path.join(REPO_ROOT, "tools", "hooks", "hook-policy.json");
+export const POLICY_PATH = path.join(
+  REPO_ROOT,
+  "tools",
+  "hooks",
+  "hook-policy.json",
+);
 
 export const ALLOWED_BINARY_EXTENSIONS = new Set([
   ".png",
@@ -48,7 +53,11 @@ export function normalizePath(relativePath) {
   return relativePath.replace(/\\/g, "/").replace(/^\.\//, "");
 }
 
-export function matchesBlockedPath(filePath, blockedPatterns, allowedPatterns = []) {
+export function matchesBlockedPath(
+  filePath,
+  blockedPatterns,
+  allowedPatterns = [],
+) {
   const normalized = normalizePath(filePath);
   if (
     allowedPatterns.length > 0 &&
@@ -214,7 +223,7 @@ export function resolveTargetCommand(policy, targetName) {
 
 export function formatTargetCommand(target) {
   const command = [target.command, ...target.args].join(" ");
-  const relativeCwd = normalizePath(path.relative(REPO_ROOT, target.cwd)) || ".";
+  const relativeCwd =
+    normalizePath(path.relative(REPO_ROOT, target.cwd)) || ".";
   return relativeCwd === "." ? command : `cd ${relativeCwd} && ${command}`;
 }
-

@@ -669,4 +669,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate docker-compose config
-        run: docker compose config > /dev/null
+        shell: bash
+        run: |
+          set -euo pipefail
+          unset REDIS_PASSWORD # Host env has precedence over --env-file; avoid empty CI values shadowing the template.
+          docker compose \
+            --project-directory "$GITHUB_WORKSPACE" \
+            --env-file "$GITHUB_WORKSPACE/.env.example" \
+            config -q # Validate structure without printing interpolated values to logs.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # scripts/ship.sh — Pre-release CI gate runner
 #
-# Runs the three mandatory quality gates in sequence.
+# Runs the mandatory quality gates in sequence.
 # Prints "READY TO SHIP" on success; exits non-zero with the failing step label on failure.
 #
 # Usage:
@@ -43,7 +43,18 @@ echo ""
 
 # Gate 4: Docker compose config
 echo "--- Gate 4: docker compose config ---"
-(cd "$REPO_ROOT" && docker compose -f docker-compose.yml config > /dev/null) \
+COMPOSE_ENV_FILE="${COMPOSE_ENV_FILE:-$REPO_ROOT/.env.example}"
+COMPOSE_FILE="${COMPOSE_FILE:-$REPO_ROOT/docker-compose.yml}"
+(
+    cd "$REPO_ROOT"
+    # Host env has precedence over --env-file; avoid empty exported values shadowing the template.
+    unset REDIS_PASSWORD
+    docker compose \
+        --project-directory "$REPO_ROOT" \
+        --env-file "$COMPOSE_ENV_FILE" \
+        -f "$COMPOSE_FILE" \
+        config -q
+) \
     && pass "Docker compose config" \
     || fail "Docker compose config"
 

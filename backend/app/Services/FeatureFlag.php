@@ -67,8 +67,6 @@ class FeatureFlag
     /**
      * Set a flag's state. Used by the artisan command — not intended for hot paths.
      *
-     * @param  string  $key
-     * @param  bool  $on
      * @param  int|null  $ttlSeconds  When set, the Redis key auto-expires (operator-driven temporary toggle).
      */
     public static function set(string $key, bool $on, ?int $ttlSeconds = null): void

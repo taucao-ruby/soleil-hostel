@@ -13,8 +13,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * Events: shown (proposal presented to user), confirmed, declined.
  *
  * @property int $id
- * @property int|null $user_id  // nullable since Batch 4 (3F): user deletion sets this null, audit row survives
- * @property string|null $actor_email  // denormalised at write time so audit survives user deletion
+ * @property int|null $user_id // nullable since Batch 4 (3F): user deletion sets this null, audit row survives
+ * @property string|null $actor_email // denormalised at write time so audit survives user deletion
  * @property string|null $actor_role
  * @property string|null $actor_display_name
  * @property string $proposal_hash

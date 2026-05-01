@@ -67,11 +67,13 @@ What the system actually does. Tier 1 evidence only.
 | A13 | `POST /api/v1/ai/{task_type}` | DENIED-EXPLICIT (401) | ALLOWED (verified) | ALLOWED (verified) | ALLOWED | Route `check_token_valid` + `verified` + `throttle:10,1` + `ai_harness_enabled` + `ai_canary_router` + `ai_request_normalizer` (v1_ai.php:24-30) | AUTH-REQUIRED + FEATURE-GATED | NO (kill switch + rate limit only) | CONFIRMED-V1 | AI-HARNESS-01 |
 | A14 | `POST /api/v1/ai/proposals/{hash}/decide` | DENIED-EXPLICIT (401) | ALLOWED-OWN-PROPOSAL-ONLY | ALLOWED-OWN-PROPOSAL-ONLY | ALLOWED-OWN-PROPOSAL-ONLY | Route `check_token_valid` + `verified` + `throttle:5,1` + `ai_harness_enabled` (v1_ai.php:62-66) + Controller `proposer_user_id` check (ProposalConfirmationController.php:55-62) | AUTH-REQUIRED + FEATURE-GATED + OWNERSHIP-BOUND | YES (cache envelope proposer-binding + service-layer ownership) | CONFIRMED-V1 | AI-HARNESS-01 + F-67 (2026-04-18) |
 | A15 | `GET /api/v1/ai/health` | ALLOWED | ALLOWED | ALLOWED | ALLOWED | Route `ai_harness_enabled` only (v1_ai.php:68-70) | FEATURE-GATED | NO | CONFIRMED-V1 | AI-HARNESS-01 |
+| A16 | `GET /api/v1/admin/contact-messages` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Route `role:admin` (v1.php) + Policy `ContactMessagePolicy::viewAny` | HIERARCHY-DEPENDENT + EXACT-MATCH | YES | CONFIRMED-V1 | RBAC-001 |
+| A17 | `PATCH /api/v1/admin/contact-messages/{id}/read` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Route `role:admin` (v1.php) + Policy `ContactMessagePolicy::markRead` | HIERARCHY-DEPENDENT + EXACT-MATCH | YES | CONFIRMED-V1 | RBAC-001 |
 
 **Resources not investigated** (out of scope for current batch):
 - Booking create/delete (user endpoints) — update covered by rows A5/A6 (cancel) + the Terminal-State Immutability invariant in `ARCHITECTURE_FACTS.md` (admin is NOT exempt from terminal-state immutability; admin can restore soft-deleted but cannot directly resurrect a `cancelled` booking to `pending`)
 - Booking confirm
-- Contact messages (`/api/v1/admin/contact-messages/*`)
+- Contact message rows A16/A17 were added for RBAC-001; other contact-message mutations do not currently exist.
 - Customers (`/api/v1/admin/customers/*`) — gated by `role:moderator`; `CustomerController`
 - Reviews (`/api/v1/reviews/*`)
 - Locations (`/api/v1/locations/*`)
@@ -94,7 +96,7 @@ The `isAtLeast()` method (`User.php:134-146`) uses a static level mapping: `USER
 
 - **Adding a role between existing roles** (e.g., `MANAGER` at level 3, pushing `ADMIN` to 4) silently shifts all `isAtLeast(ADMIN)` checks to include the new role.
 - **Reordering role levels** changes every HIERARCHY-DEPENDENT permission row in Table A without any code change in controllers, policies, or routes.
-- **All rows marked HIERARCHY-DEPENDENT** (A1-A4, A7-A12) are affected by hierarchy changes.
+- **All rows marked HIERARCHY-DEPENDENT** (A1-A4, A7-A12, A16-A17) are affected by hierarchy changes.
 
 **Required procedure before any role hierarchy change:**
 1. Full permission re-audit of all rows in Table A marked HIERARCHY-DEPENDENT
@@ -119,6 +121,8 @@ Owner: Security Lead (see [CONTROL_PLANE_OWNERSHIP.md](./agents/CONTROL_PLANE_OW
 | booking:view-trashed | DENIED-EXPLICIT | DENIED-SIDE-EFFECT | DENIED-SIDE-EFFECT | CURRENT | — | OPUS-VERIFY-01 |
 | booking:restore | DENIED-EXPLICIT | DENIED-SIDE-EFFECT | DENIED-SIDE-EFFECT | CURRENT | — | OPUS-VERIFY-01 |
 | booking:force-delete | DENIED-EXPLICIT | DENIED-SIDE-EFFECT | DENIED-SIDE-EFFECT | CURRENT | — | OPUS-VERIFY-01 |
+| contact-message:view | DENIED-EXPLICIT | DENIED-SIDE-EFFECT | DENIED-SIDE-EFFECT | CURRENT | Admin-only guest communications access | RBAC-001 |
+| contact-message:mark-read | DENIED-EXPLICIT | DENIED-SIDE-EFFECT | DENIED-SIDE-EFFECT | CURRENT | Admin-only guest communications state change | RBAC-001 |
 | gate:view-all-bookings | N/A | DENIED | ALLOWED | ALLOWED | — | AdminBookingController (index, trashed, showTrashed) |
 | gate:manage-rooms | N/A | DENIED | DENIED | WOULD-ALLOW | — | LATENT-UNUSED |
 
@@ -133,7 +137,7 @@ Capabilities that exist in code but are NOT currently enforced in any active exe
 | C1 | `BookingPolicy::viewAny()` moderator grant | LATENT | BookingPolicy.php:50 | N/A — not invoked | Route `role:moderator` and gate `view-all-bookings` both independently allow moderator; policy grant is consistent with but not in the active call path for admin booking reads. | OPUS-01 C1 |
 | C2 | Gate `view-all-bookings` | CURRENT | AuthServiceProvider.php:73 | N/A — invoked by AdminBookingController | `AdminBookingController::index()`, `trashed()`, `showTrashed()` | OPUS-01 C3 |
 | C3 | Gate `manage-rooms` | LATENT-UNUSED | AuthServiceProvider.php:81 | N/A — never invoked | Any controller calls `Gate::authorize('manage-rooms')` | OPUS-01 C3 |
-| C4 | Gate `moderate-content` | LATENT-UNUSED | AuthServiceProvider.php:65 | N/A — never invoked | Any controller calls `Gate::authorize('moderate-content')` | OPUS-01 C3 |
+| C4 | Gate `moderate-content` | LATENT-UNUSED | AuthServiceProvider.php:65 | N/A — never invoked | Any controller calls `Gate::authorize('moderate-content')`; contact messages are intentionally admin-only through `ContactMessagePolicy`. | OPUS-01 C3 + RBAC-001 |
 | C5 | Moderator cancel-any | NO-PATH-FOUND | — | N/A | No route, controller branch, or policy path grants moderator cancel on others' bookings | OPUS-03R |
 | C6 | Moderator admin booking read access | ROUTE-ACCESSIBLE | v1.php:57, AdminBookingController | N/A — active path | Route `role:moderator` + gate `view-all-bookings` both grant moderator read access to A7/A8/A9; no longer latent or shadowed. | OPUS-VERIFY-01 CLAIM-L1 |
 | C7 | Moderator frontend admin access | CURRENT | router.tsx + AdminRoute.tsx | N/A — active path | AdminRoute default minRole='moderator' gates all /admin/* routes; room CUD uses minRole='admin'. Both align with backend enforcement. | 2026-03-29 Wave 2 |
@@ -271,7 +275,7 @@ Actual gates defined in `AuthServiceProvider.php` and their invocation status:
 | `admin` | `$user->isAdmin()` (EXACT-MATCH) | `AdminBookingController` (all 6 methods) | CURRENT |
 | `moderator` | `$user->isModerator()` (HIERARCHY) | Not invoked by any controller | LATENT-UNUSED |
 | `manage-users` | `$user->isAdmin()` (EXACT-MATCH) | Not investigated | EVIDENCE-INCOMPLETE |
-| `moderate-content` | `$user->isModerator()` (HIERARCHY) | Not invoked by any investigated controller | LATENT-UNUSED |
+| `moderate-content` | `$user->isModerator()` (HIERARCHY) | Not invoked by any investigated controller; no longer used for contact messages | LATENT-UNUSED |
 | `view-all-bookings` | `$user->isModerator()` (HIERARCHY) | `AdminBookingController` (`index`, `trashed`, `showTrashed`) | CURRENT |
 | `manage-rooms` | `$user->isAdmin()` (EXACT-MATCH) | Not invoked by any investigated controller | LATENT-UNUSED |
 | `view-queue-monitoring` | `$user->isAdmin()` (EXACT-MATCH) | Horizon authorization (not a controller) | EVIDENCE-INCOMPLETE |

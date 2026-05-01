@@ -70,8 +70,8 @@ Route::middleware(['check_token_valid', 'verified'])->group(function () {
     });
 
     // ========== ADMIN CONTACT MESSAGE ENDPOINTS (v1) ==========
-    // Moderator+ can view and manage contact messages
-    Route::prefix('admin/contact-messages')->middleware('role:moderator')->group(function () {
+    // Contact messages are admin-only per PERMISSION_MATRIX.
+    Route::prefix('admin/contact-messages')->middleware('role:admin')->group(function () {
         Route::get('/', [ContactController::class, 'index'])->name('v1.admin.contactMessages.index');
         Route::patch('/{id}/read', [ContactController::class, 'markAsRead'])->name('v1.admin.contactMessages.markAsRead');
     });

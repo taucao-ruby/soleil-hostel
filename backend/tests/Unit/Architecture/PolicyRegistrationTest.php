@@ -40,10 +40,12 @@ class PolicyRegistrationTest extends TestCase
 
         // Pin the canonical bindings — this is the contract.
         $this->assertArrayHasKey(\App\Models\Booking::class, $registered);
+        $this->assertArrayHasKey(\App\Models\ContactMessage::class, $registered);
         $this->assertArrayHasKey(\App\Models\Room::class, $registered);
         $this->assertArrayHasKey(\App\Models\Review::class, $registered);
 
         $this->assertSame(\App\Policies\BookingPolicy::class, $registered[\App\Models\Booking::class]);
+        $this->assertSame(\App\Policies\ContactMessagePolicy::class, $registered[\App\Models\ContactMessage::class]);
         $this->assertSame(\App\Policies\RoomPolicy::class, $registered[\App\Models\Room::class]);
         $this->assertSame(\App\Policies\ReviewPolicy::class, $registered[\App\Models\Review::class]);
     }

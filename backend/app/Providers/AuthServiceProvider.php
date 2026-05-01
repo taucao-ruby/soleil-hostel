@@ -3,10 +3,12 @@
 namespace App\Providers;
 
 use App\Models\Booking;
+use App\Models\ContactMessage;
 use App\Models\Review;
 use App\Models\Room;
 use App\Models\User;
 use App\Policies\BookingPolicy;
+use App\Policies\ContactMessagePolicy;
 use App\Policies\ReviewPolicy;
 use App\Policies\RoomPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
@@ -21,6 +23,7 @@ class AuthServiceProvider extends ServiceProvider
      */
     protected $policies = [
         Booking::class => BookingPolicy::class,
+        ContactMessage::class => ContactMessagePolicy::class,
         Review::class => ReviewPolicy::class,
         Room::class => RoomPolicy::class,
     ];
@@ -55,8 +58,9 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('view-all-bookings', fn (User $user): bool => $user->isModerator());
 
         /**
-         * Moderate content gate - moderator+ (CURRENT)
-         * Use for: Contact message viewing and management
+         * Moderate content gate - moderator+ (LATENT)
+         * Reserved for future content moderation workflows. Contact messages
+         * are admin-only through ContactMessagePolicy.
          */
         Gate::define('moderate-content', fn (User $user): bool => $user->isModerator());
 

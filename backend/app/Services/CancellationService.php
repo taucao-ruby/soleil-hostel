@@ -11,7 +11,6 @@ use App\Exceptions\BookingCancellationException;
 use App\Exceptions\RefundFailedException;
 use App\Models\Booking;
 use App\Models\User;
-use BackedEnum;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -338,7 +337,7 @@ final class CancellationService
         return [
             'cancelled_by' => $actor->id,
             'cancelled_by_email' => $actor->email,
-            'cancelled_by_role' => $role instanceof BackedEnum ? $role->value : $role,
+            'cancelled_by_role' => $role->value,
             'cancelled_by_display' => $actor->name,
         ];
     }

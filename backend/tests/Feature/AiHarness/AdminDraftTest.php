@@ -188,7 +188,7 @@ class AdminDraftTest extends TestCase
     public function test_admin_draft_prompt_version_is_correct(): void
     {
         $version = PromptRegistry::getVersion(TaskType::ADMIN_DRAFT);
-        $this->assertSame('admin_draft-v1.0.0', $version);
+        $this->assertSame('admin_draft-v1.1.0', $version);
     }
 
     public function test_admin_draft_prompt_validates(): void

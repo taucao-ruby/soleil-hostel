@@ -169,7 +169,9 @@ class AiOrchestrationService
 
         $content = match ($responseClass) {
             ResponseClass::ANSWER => $modelResponse->rawContent ?? '',
-            ResponseClass::REFUSAL => $this->buildRefusalContent($failureReason),
+            ResponseClass::REFUSAL => $postCallDecision?->safeResponse
+                ?? $preCallDecision->safeResponse
+                ?? $this->buildRefusalContent($failureReason),
             ResponseClass::ABSTAIN => $this->buildAbstainContent($postCallDecision ?? $preCallDecision),
             ResponseClass::FALLBACK => 'Hệ thống AI tạm thời không khả dụng. Vui lòng thử lại sau.',
             ResponseClass::ERROR => 'Đã xảy ra lỗi. Vui lòng thử lại sau hoặc liên hệ hỗ trợ.',

@@ -15,9 +15,9 @@
 
 ## 1) Current Snapshot (keep under 12 lines)
 
-- Date updated: 2026-04-29
-- Current branch: `dev` (HEAD=`5e258e7`)
-- Latest commit: `16618a9` — docs: refresh soleil-ai-review-engine index stats
+- Date updated: 2026-05-01
+- Current branch: `dev` (HEAD=`347649a`)
+- Latest commit: `347649a` — fix(backend): implement AI-001 policy-document prompt-injection defense
 - Backend test baseline: `php artisan test` PASS (2026-04-29, 1302 passed / 7 skipped / 3775 assertions) after PAY-006 refund idempotency fix.
 - Frontend: Ops batch updated TodayOperations/BookingList abort+error handling, internal toast renderer, RoomDiscovery AI DTO alignment; `npx tsc --noEmit` and `npx vitest run` pass (418 tests).
 - AI Harness: Phases 0–4 ✅ Done. F-67 proposer-binding landed (`17a4880`, `39cba7a`; formerly cited as "F-06 2026-04-18", promoted 2026-04-19): cache envelope carries `proposer_user_id`; `decide()` 404s on mismatch; service-layer cancellation ownership gate at `CancellationService::validateCancellation`
@@ -37,6 +37,7 @@ This section intentionally left as a pointer — do not duplicate invariants her
 ### Now
 
 - **Frontend ops/API batch (2026-04-29)**: ✅ COMPLETE — removed react-toastify, corrected TodayOperations room route to shared room API, removed hardcoded `lock_version`, aligned RoomDiscoveryWidget to `{content, proposals, citations}`.
+- **AI-002 / AI-003 policy hardening (2026-05-01)**: ✅ COMPLETE — `PolicyEnforcementService` now normalizes Unicode for injection scans (NFC, zero-width/bidi stripping, ICU transliteration, lowercase), blocks output PII with safe response, and writes HMAC-only audit evidence. Targeted AI harness tests pass.
 - **PAY-006 refund idempotency (2026-04-29)**: ✅ COMPLETE — `charge.refunded` uses DB-backed `stripe_refund_events` unique `stripe_refund_id`, booking fetch locks `FOR UPDATE`, Redis/cache guard removed from refund path; targeted and full backend gates pass.
 - **AI Harness Phases 0–4**: ✅ COMPLETE — all 7 endpoints, eval framework, kill switch, canary routing
 - **F-67 proposer-binding** (formerly cited as F-06 2026-04-18): ✅ COMPLETE (2026-04-18) — cache envelope carries `proposer_user_id`; `decide()` 404s on mismatch; service-layer cancellation ownership gate; T-13 reclassified Accepted→Mitigated
@@ -58,7 +59,7 @@ This section intentionally left as a pointer — do not duplicate invariants her
 
 See `docs/agents/COMMANDS.md` for full command catalog.
 
-Latest PAY-006 verification (2026-04-29): `php artisan test`; targeted payment/cancellation suites; `migrate:rollback --step=1` + `migrate` on pgsql test DB; `vendor/bin/pint --test` on changed PHP files; `npx tsc --noEmit`; `npx vitest run`; `docker compose config`.
+Latest AI-002 / AI-003 verification (2026-05-01): `php artisan test tests\Feature\AiHarness\PolicyEnforcementTest.php tests\Feature\AiHarness\PiiBlockTest.php` PASS (21 tests / 53 assertions); `php artisan test tests\Feature\AiHarness` PASS (137 tests / 367 assertions); `vendor\bin\pint --test` on touched PHP files PASS; `git diff --check` PASS. Soleil CLI `impact PolicyDecision` reported CRITICAL due central DTO fan-out; change is additive and covered by full AI harness feature suite.
 
 ## 5) Known warnings / noise (non-blocking)
 

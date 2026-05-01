@@ -177,7 +177,7 @@ class AiOrchestrationService
 
         $content = match ($responseClass) {
             ResponseClass::ANSWER => $modelResponse->rawContent ?? '',
-            ResponseClass::REFUSAL => $postCallDecision?->safeResponse
+            ResponseClass::REFUSAL => $postCallDecision->safeResponse
                 ?? $preCallDecision->safeResponse
                 ?? $this->buildRefusalContent($failureReason),
             ResponseClass::ABSTAIN => $this->buildAbstainContent($postCallDecision ?? $preCallDecision),

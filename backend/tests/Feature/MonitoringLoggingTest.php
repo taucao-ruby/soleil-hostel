@@ -2,8 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Logging\ContextProcessor;
+use App\Logging\JsonFormatter;
+use App\Logging\SensitiveDataProcessor;
+use App\Models\Room;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
+use Monolog\Handler\StreamHandler;
+use Monolog\Processor\PsrLogMessageProcessor;
 use Tests\TestCase;
 
 /**
@@ -186,6 +194,58 @@ class MonitoringLoggingTest extends TestCase
         $data = $response->json();
 
         $this->assertTrue($data['checks']['database']['healthy']);
+    }
+
+    public function test_performance_log_redacts_booking_request_email(): void
+    {
+        $guestEmail = 'obs003.guest@example.com';
+        $logPath = storage_path('logs/testing-performance.log');
+
+        if (file_exists($logPath)) {
+            unlink($logPath);
+        }
+
+        config()->set('logging.channels.performance', [
+            'driver' => 'monolog',
+            'level' => 'info',
+            'handler' => StreamHandler::class,
+            'handler_with' => [
+                'stream' => $logPath,
+            ],
+            'formatter' => JsonFormatter::class,
+            'processors' => [
+                ContextProcessor::class,
+                SensitiveDataProcessor::class,
+                PsrLogMessageProcessor::class,
+            ],
+        ]);
+        Log::forgetChannel('performance');
+
+        $user = User::factory()->create();
+        $room = Room::factory()->create(['price' => 15000]);
+        $checkIn = Carbon::now()->addDays(5)->format('Y-m-d');
+        $checkOut = Carbon::now()->addDays(7)->format('Y-m-d');
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/bookings', [
+                'room_id' => $room->id,
+                'check_in' => $checkIn,
+                'check_out' => $checkOut,
+                'guest_name' => 'OBS Three Guest',
+                'guest_email' => $guestEmail,
+            ])
+            ->assertCreated();
+
+        Log::forgetChannel('performance');
+
+        $this->assertFileExists($logPath);
+
+        $contents = file_get_contents($logPath);
+
+        $this->assertIsString($contents);
+        $this->assertStringContainsString('Request completed', $contents);
+        $this->assertStringNotContainsString($guestEmail, $contents);
+        $this->assertStringNotContainsString('OBS Three Guest', $contents);
     }
 
     /**

@@ -4,6 +4,7 @@ use App\Logging\ContextProcessor;
 use App\Logging\JsonFormatter;
 use App\Logging\SensitiveDataProcessor;
 use Monolog\Handler\NullHandler;
+use Monolog\Handler\RotatingFileHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
 use Monolog\Processor\PsrLogMessageProcessor;
@@ -114,13 +115,17 @@ return [
         */
 
         'performance' => [
-            'driver' => 'daily',
-            'path' => storage_path('logs/performance/performance.log'),
+            'driver' => 'monolog',
             'level' => 'info',
-            'days' => 7,
+            'handler' => RotatingFileHandler::class,
+            'handler_with' => [
+                'filename' => storage_path('logs/performance/performance.log'),
+                'maxFiles' => 7,
+            ],
             'formatter' => JsonFormatter::class,
             'processors' => [
                 ContextProcessor::class,
+                SensitiveDataProcessor::class,
                 PsrLogMessageProcessor::class,
             ],
         ],
@@ -226,7 +231,10 @@ return [
                 'stream' => 'php://stderr',
             ],
             'formatter' => env('LOG_STDERR_FORMATTER'),
-            'processors' => [PsrLogMessageProcessor::class],
+            'processors' => [
+                SensitiveDataProcessor::class,
+                PsrLogMessageProcessor::class,
+            ],
         ],
 
         'syslog' => [

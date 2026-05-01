@@ -5,24 +5,36 @@ namespace App\Logging;
 use Monolog\LogRecord;
 use Monolog\Processor\ProcessorInterface;
 
-/**
- * Monolog processor to mask sensitive data in log records.
- *
- * This processor automatically detects and masks sensitive information
- * like passwords, tokens, credit card numbers, etc.
- */
 class SensitiveDataProcessor implements ProcessorInterface
 {
     /**
-     * Sensitive field patterns to mask.
+     * Sensitive field names to redact.
      *
      * @var array<string>
      */
-    protected array $sensitiveFields = [
+    private const REDACT_KEYS = [
+        'email',
+        'guest_email',
+        'user_email',
+        'customer_email',
         'password',
         'password_confirmation',
         'current_password',
         'new_password',
+        'name',
+        'guest_name',
+        'full_name',
+        'first_name',
+        'last_name',
+        'customer_name',
+        'card_number',
+        'credit_card',
+        'payment_intent_id',
+        'stripe_signature',
+        'cvv',
+        'ssn',
+        'social_security',
+        'authorization',
         'token',
         'api_key',
         'api_token',
@@ -32,39 +44,55 @@ class SensitiveDataProcessor implements ProcessorInterface
         'secret',
         'secret_key',
         'private_key',
-        'credit_card',
-        'card_number',
-        'cvv',
-        'ssn',
-        'social_security',
-        'authorization',
     ];
 
-    /**
-     * The mask string to use for sensitive data.
-     */
-    protected const MASK = '********';
+    private const REDACT_PATTERN = '/\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b/';
+
+    private const CREDIT_CARD_PATTERN = '/\b(?:\d{4}[\s-]?){3}\d{4}\b/';
+
+    private const BEARER_TOKEN_PATTERN = '/Bearer\s+[A-Za-z0-9\-._~+\/]+=*/i';
+
+    private const PAYMENT_INTENT_PATTERN = '/\bpi_[A-Za-z0-9_]+\b/';
+
+    private const REDACTED = '[REDACTED]';
+
+    private const EMAIL = '[EMAIL]';
 
     /**
      * Process a log record.
      */
     public function __invoke(LogRecord $record): LogRecord
     {
-        $context = $this->maskSensitiveData($record->context);
+        return $record->with(
+            message: $this->maskSensitivePatterns($record->message),
+            context: $this->maskSensitiveData($record->context),
+            extra: $this->maskSensitiveData($record->extra),
+        );
+    }
 
-        return $record->with(context: $context);
+    public static function scrubSentryEvent(\Sentry\Event $event, ?\Sentry\EventHint $hint = null): ?\Sentry\Event
+    {
+        $request = $event->getRequest();
+        $request['data'] = [];
+        $event->setRequest($request);
+
+        if ($user = $event->getUser()) {
+            $user->setEmail(null);
+        }
+
+        return $event;
     }
 
     /**
-     * Recursively mask sensitive data in an array.
+     * Recursively redact sensitive data in an array.
      */
-    protected function maskSensitiveData(array $data): array
+    private function maskSensitiveData(array $data): array
     {
         foreach ($data as $key => $value) {
-            if (is_array($value)) {
+            if ($this->isSensitiveField($key)) {
+                $data[$key] = self::REDACTED;
+            } elseif (is_array($value)) {
                 $data[$key] = $this->maskSensitiveData($value);
-            } elseif ($this->isSensitiveField($key)) {
-                $data[$key] = self::MASK;
             } elseif (is_string($value)) {
                 $data[$key] = $this->maskSensitivePatterns($value);
             }
@@ -76,7 +104,7 @@ class SensitiveDataProcessor implements ProcessorInterface
     /**
      * Check if a field name is sensitive.
      */
-    protected function isSensitiveField(string|int $fieldName): bool
+    private function isSensitiveField(string|int $fieldName): bool
     {
         if (is_int($fieldName)) {
             return false;
@@ -84,41 +112,18 @@ class SensitiveDataProcessor implements ProcessorInterface
 
         $fieldName = strtolower($fieldName);
 
-        foreach ($this->sensitiveFields as $sensitiveField) {
-            if (str_contains($fieldName, $sensitiveField)) {
-                return true;
-            }
-        }
-
-        return false;
+        return in_array($fieldName, self::REDACT_KEYS, true);
     }
 
     /**
-     * Mask sensitive patterns in string values.
+     * Redact sensitive patterns in string values.
      */
-    protected function maskSensitivePatterns(string $value): string
+    private function maskSensitivePatterns(string $value): string
     {
-        // Mask email addresses (partial)
-        $value = preg_replace(
-            '/([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/',
-            '***@$2',
-            $value
-        );
+        $value = preg_replace(self::REDACT_PATTERN, self::EMAIL, $value) ?? $value;
+        $value = preg_replace(self::PAYMENT_INTENT_PATTERN, self::REDACTED, $value) ?? $value;
+        $value = preg_replace(self::CREDIT_CARD_PATTERN, self::REDACTED, $value) ?? $value;
 
-        // Mask credit card numbers (keep last 4 digits)
-        $value = preg_replace(
-            '/\b(\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?)(\d{4})\b/',
-            '****-****-****-$2',
-            $value
-        );
-
-        // Mask Bearer tokens
-        $value = preg_replace(
-            '/Bearer\s+[A-Za-z0-9\-._~+\/]+=*/i',
-            'Bearer ********',
-            $value
-        );
-
-        return $value;
+        return preg_replace(self::BEARER_TOKEN_PATTERN, 'Bearer '.self::REDACTED, $value) ?? $value;
     }
 }

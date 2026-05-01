@@ -39,13 +39,17 @@ class HealthController extends Controller
     }
 
     /**
-     * Basic liveness probe.
+     * Public liveness probe.
+     *
+     * OBS-002: Public endpoint MUST NOT leak topology. Returns exactly
+     * {"status":"ok"} on success or 503 with the same body shape on
+     * catastrophic process failure — no timestamps, service names, or
+     * connection details under any circumstance.
      */
     public function liveness(): JsonResponse
     {
-        return response()->json([
-            'status' => 'ok',
-            'timestamp' => now()->toIso8601String(),
+        return response()->json(['status' => 'ok'], 200, [
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
         ]);
     }
 

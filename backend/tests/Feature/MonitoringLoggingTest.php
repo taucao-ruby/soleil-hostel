@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Redis;
 use Tests\TestCase;
 
 /**
@@ -23,30 +22,25 @@ class MonitoringLoggingTest extends TestCase
 
     /**
      * Test liveness health check endpoint.
+     *
+     * OBS-002: Public liveness probe MUST return only {"status":"ok"} with
+     * no other keys, regardless of underlying service state.
      */
     public function test_liveness_endpoint_returns_ok(): void
     {
         $response = $this->getJson('/api/health/live');
 
         $response->assertStatus(200)
-            ->assertJsonStructure([
-                'status',
-                'timestamp',
-            ])
-            ->assertJson([
-                'status' => 'ok',
-            ]);
+            ->assertExactJson(['status' => 'ok']);
     }
 
     /**
-     * Test readiness health check endpoint structure.
-     * Note: Status may be 503 if Redis is not available in test environment.
+     * OBS-002: readiness exposes topology — must require admin auth.
      */
     public function test_readiness_endpoint_returns_correct_structure(): void
     {
-        $response = $this->getJson('/api/health/ready');
+        $response = $this->actingAsAdmin()->getJson('/api/health/ready');
 
-        // Accept both 200 (all healthy) and 503 (some unhealthy)
         $this->assertContains($response->status(), [200, 503]);
 
         $response->assertJsonStructure([
@@ -101,7 +95,7 @@ class MonitoringLoggingTest extends TestCase
     }
 
     /**
-     * Test correlation ID is added to request.
+     * OBS-001: Server-generated correlation ID is present and is a UUID.
      */
     public function test_correlation_id_is_added_to_response(): void
     {
@@ -111,31 +105,41 @@ class MonitoringLoggingTest extends TestCase
 
         $correlationId = $response->headers->get('X-Correlation-ID');
         $this->assertNotNull($correlationId);
-        $this->assertStringStartsWith('sol-', $correlationId);
+        $this->assertMatchesRegularExpression(
+            '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i',
+            $correlationId
+        );
     }
 
     /**
-     * Test correlation ID is propagated from request.
+     * OBS-001: A client-supplied correlation ID is NEVER trusted as the
+     * server identifier. The server still generates its own UUID.
      */
-    public function test_correlation_id_is_propagated_from_request(): void
+    public function test_correlation_id_is_never_propagated_from_request(): void
     {
-        $customCorrelationId = 'sol-test-1234567890';
+        $clientSupplied = 'client-supplied-12345';
 
-        $response = $this->withHeader('X-Correlation-ID', $customCorrelationId)
+        $response = $this->withHeader('X-Correlation-ID', $clientSupplied)
             ->getJson('/api/health/live');
 
-        $response->assertHeader('X-Correlation-ID', $customCorrelationId);
+        $serverId = $response->headers->get('X-Correlation-ID');
+        $this->assertNotSame($clientSupplied, $serverId);
+        $this->assertMatchesRegularExpression(
+            '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i',
+            $serverId
+        );
+
+        // Validated client value is echoed in a distinct header
+        $response->assertHeader('X-Client-Correlation-ID', $clientSupplied);
     }
 
     /**
-     * Test basic health endpoint structure.
-     * Note: Status may be 503 if Redis is not available.
+     * OBS-002: /api/health is a detailed view; admin-only.
      */
     public function test_basic_health_endpoint_returns_correct_structure(): void
     {
-        $response = $this->getJson('/api/health');
+        $response = $this->actingAsAdmin()->getJson('/api/health');
 
-        // Accept both 200 (all healthy) and 503 (some unhealthy)
         $this->assertContains($response->status(), [200, 503]);
 
         $response->assertJsonStructure([
@@ -173,20 +177,19 @@ class MonitoringLoggingTest extends TestCase
     }
 
     /**
-     * Test database health check reports correctly.
+     * Test database health check reports correctly via admin readiness path.
      */
     public function test_database_health_check_is_healthy(): void
     {
-        $response = $this->getJson('/api/health/ready');
+        $response = $this->actingAsAdmin()->getJson('/api/health/ready');
 
         $data = $response->json();
 
-        // Database should always be healthy in test environment
         $this->assertTrue($data['checks']['database']['healthy']);
     }
 
     /**
-     * Test correlation ID format is valid.
+     * OBS-001: server correlation ID format is UUID v4.
      */
     public function test_correlation_id_has_correct_format(): void
     {
@@ -194,9 +197,8 @@ class MonitoringLoggingTest extends TestCase
 
         $correlationId = $response->headers->get('X-Correlation-ID');
 
-        // Format: sol-{timestamp}-{random8chars}
         $this->assertMatchesRegularExpression(
-            '/^sol-\d+-[a-zA-Z0-9]{8}$/',
+            '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i',
             $correlationId
         );
     }

@@ -26,7 +26,7 @@ class AdvancedRateLimitMiddlewareTest extends TestCase
     #[Test]
     public function middleware_allows_requests_within_limit(): void
     {
-        $response = $this->getJson('/api/health');
+        $response = $this->getJson('/api/ping');
         $this->assertNotEquals(429, $response->status());
     }
 
@@ -36,8 +36,8 @@ class AdvancedRateLimitMiddlewareTest extends TestCase
         $user1 = User::factory()->create();
         $user2 = User::factory()->create();
 
-        $response1 = $this->actingAs($user1)->getJson('/api/health');
-        $response2 = $this->actingAs($user2)->getJson('/api/health');
+        $response1 = $this->actingAs($user1)->getJson('/api/ping');
+        $response2 = $this->actingAs($user2)->getJson('/api/ping');
 
         $this->assertNotEquals(429, $response1->status());
         $this->assertNotEquals(429, $response2->status());
@@ -47,7 +47,7 @@ class AdvancedRateLimitMiddlewareTest extends TestCase
     public function authenticated_user_gets_appropriate_limits(): void
     {
         $user = User::factory()->create();
-        $response = $this->actingAs($user)->getJson('/api/health');
+        $response = $this->actingAs($user)->getJson('/api/ping');
 
         $this->assertNotEquals(401, $response->status());
     }
@@ -55,14 +55,14 @@ class AdvancedRateLimitMiddlewareTest extends TestCase
     #[Test]
     public function service_handles_rate_limiting_gracefully(): void
     {
-        $response = $this->getJson('/api/health');
+        $response = $this->getJson('/api/ping');
         $this->assertIsArray($response->json());
     }
 
     #[Test]
     public function metrics_are_tracked(): void
     {
-        $response = $this->getJson('/api/health');
+        $response = $this->getJson('/api/ping');
         // Health check returns 200 or 503 depending on Redis availability
         $this->assertTrue(in_array($response->status(), [200, 503]));
     }
@@ -70,14 +70,14 @@ class AdvancedRateLimitMiddlewareTest extends TestCase
     #[Test]
     public function fallback_works_when_redis_unavailable(): void
     {
-        $response = $this->getJson('/api/health');
+        $response = $this->getJson('/api/ping');
         $this->assertNotNull($response->json());
     }
 
     #[Test]
     public function rate_limit_headers_present(): void
     {
-        $response = $this->getJson('/api/health');
+        $response = $this->getJson('/api/ping');
         $this->assertTrue($response->status() >= 200);
     }
 
@@ -85,7 +85,7 @@ class AdvancedRateLimitMiddlewareTest extends TestCase
     public function multiple_requests_tracked_properly(): void
     {
         for ($i = 0; $i < 3; $i++) {
-            $response = $this->getJson('/api/health');
+            $response = $this->getJson('/api/ping');
             $this->assertNotEquals(500, $response->status());
         }
     }
@@ -93,7 +93,7 @@ class AdvancedRateLimitMiddlewareTest extends TestCase
     #[Test]
     public function api_responds_with_json(): void
     {
-        $response = $this->getJson('/api/health');
+        $response = $this->getJson('/api/ping');
         // Accept 200 (successful), 503 (service unavailable - Redis down), or 429 (rate limited)
         $this->assertTrue(in_array($response->status(), [200, 429, 503]));
     }

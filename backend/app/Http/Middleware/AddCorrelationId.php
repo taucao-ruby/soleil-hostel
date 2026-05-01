@@ -11,62 +11,71 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Middleware to add correlation ID for request tracing.
  *
- * This middleware generates or propagates a correlation ID for each request,
- * enabling end-to-end request tracing across services and log aggregation.
+ * OBS-001: The server ALWAYS generates the canonical correlation ID. A
+ * client-supplied X-Correlation-ID is captured separately and only kept
+ * after format validation. Untrusted client IDs cannot poison server logs
+ * or be returned as the authoritative trace identifier.
  */
 class AddCorrelationId
 {
     /**
-     * The header name for correlation ID.
+     * The header name for the server-generated correlation ID.
      */
     public const HEADER_NAME = 'X-Correlation-ID';
+
+    /**
+     * The header name used when echoing a validated client-supplied ID.
+     */
+    public const CLIENT_HEADER_NAME = 'X-Client-Correlation-ID';
+
+    /**
+     * Allowed format for a client-supplied correlation ID:
+     * 8–64 chars, alphanumerics + hyphen only.
+     */
+    private const CLIENT_ID_PATTERN = '/^[a-zA-Z0-9\-]{8,64}$/';
 
     /**
      * Handle an incoming request.
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Get existing correlation ID from header or generate new one
-        $correlationId = $request->header(self::HEADER_NAME) ?? $this->generateCorrelationId();
+        $serverCorrelationId = (string) Str::uuid();
+        $clientCorrelationId = $this->extractClientCorrelationId($request);
 
-        // Store in request for later use
-        $request->attributes->set('correlation_id', $correlationId);
+        $request->attributes->set('correlation_id', $serverCorrelationId);
+        $request->attributes->set('client_correlation_id', $clientCorrelationId);
 
-        // Add to log context for all subsequent log calls
-        Log::withContext([
-            'correlation_id' => $correlationId,
-            'request_id' => $this->generateRequestId(),
+        Log::shareContext([
+            'correlation_id' => $serverCorrelationId,
+            'client_correlation_id' => $clientCorrelationId,
+            'request_id' => (string) Str::uuid(),
         ]);
 
-        // Process request
         $response = $next($request);
 
-        // Add correlation ID to response headers
-        $response->headers->set(self::HEADER_NAME, $correlationId);
+        $response->headers->set(self::HEADER_NAME, $serverCorrelationId);
+        if ($clientCorrelationId !== null) {
+            $response->headers->set(self::CLIENT_HEADER_NAME, $clientCorrelationId);
+        }
 
         return $response;
     }
 
     /**
-     * Generate a unique correlation ID.
-     *
-     * Format: sol-{timestamp}-{random}
-     * Example: sol-1704153600-a1b2c3d4
+     * Validate and capture a client-supplied correlation ID, or return null.
      */
-    protected function generateCorrelationId(): string
+    private function extractClientCorrelationId(Request $request): ?string
     {
-        return sprintf(
-            'sol-%d-%s',
-            time(),
-            Str::random(8)
-        );
-    }
+        $supplied = $request->header(self::HEADER_NAME);
 
-    /**
-     * Generate a unique request ID.
-     */
-    protected function generateRequestId(): string
-    {
-        return Str::uuid()->toString();
+        if (! is_string($supplied) || $supplied === '') {
+            return null;
+        }
+
+        if (preg_match(self::CLIENT_ID_PATTERN, $supplied) !== 1) {
+            return null;
+        }
+
+        return $supplied;
     }
 }

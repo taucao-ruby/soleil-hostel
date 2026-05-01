@@ -20,10 +20,10 @@ use Tests\TestCase;
  * }
  *
  * Also verifies:
- *  - trace_id is populated from X-Correlation-ID header
+ *  - trace_id is server-generated and never derived from client input (OBS-001)
  *  - ValidationException includes per-field errors
  *  - Stack traces are never leaked in non-debug responses
- *  - Correlation ID is propagated when sent by client
+ *  - A validated client correlation ID is echoed only in X-Client-Correlation-ID
  */
 class ApiErrorFormatTest extends TestCase
 {
@@ -81,10 +81,10 @@ class ApiErrorFormatTest extends TestCase
     }
 
     // =====================================================================
-    // 3. trace_id propagates client-sent correlation ID
+    // 3. OBS-001: trace_id is server-generated, never the client value
     // =====================================================================
 
-    public function test_trace_id_propagates_client_correlation_id(): void
+    public function test_trace_id_never_uses_client_supplied_correlation_id(): void
     {
         $clientCorrelationId = 'test-client-corr-12345';
 
@@ -92,17 +92,28 @@ class ApiErrorFormatTest extends TestCase
             ->getJson('/api/v1/nonexistent-route-12345');
 
         $response->assertStatus(404);
-        $response->assertJson(['trace_id' => $clientCorrelationId]);
 
-        // Also verify response header
-        $response->assertHeader(AddCorrelationId::HEADER_NAME, $clientCorrelationId);
+        $traceId = $response->json('trace_id');
+        $this->assertNotNull($traceId);
+        $this->assertNotSame(
+            $clientCorrelationId,
+            $traceId,
+            'trace_id must be server-generated, not echoed from client header'
+        );
+
+        // Server-generated header MUST also be the UUID, not the client value
+        $serverHeader = $response->headers->get(AddCorrelationId::HEADER_NAME);
+        $this->assertNotSame($clientCorrelationId, $serverHeader);
+
+        // Validated client value is exposed separately for client-side correlation
+        $response->assertHeader(AddCorrelationId::CLIENT_HEADER_NAME, $clientCorrelationId);
     }
 
     // =====================================================================
-    // 4. Auto-generated trace_id when no client header
+    // 4. trace_id is always present and looks like a UUID
     // =====================================================================
 
-    public function test_trace_id_auto_generated_when_no_client_header(): void
+    public function test_trace_id_is_uuid_when_no_client_header(): void
     {
         $response = $this->getJson('/api/v1/nonexistent-route-12345');
 
@@ -110,7 +121,11 @@ class ApiErrorFormatTest extends TestCase
 
         $traceId = $response->json('trace_id');
         $this->assertNotNull($traceId);
-        $this->assertStringStartsWith('sol-', $traceId, 'Auto-generated trace_id must start with sol-');
+        $this->assertMatchesRegularExpression(
+            '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i',
+            $traceId,
+            'Auto-generated trace_id must be a UUID'
+        );
     }
 
     // =====================================================================

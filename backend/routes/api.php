@@ -38,31 +38,37 @@ require __DIR__.'/api/legacy.php';
 // ========== PUBLIC ROUTES (No authentication) ==========
 
 // ========== HEALTH CHECK (Consolidated into HealthController) ==========
-// Public health endpoints (for load balancers and monitoring)
-Route::get('/health', [HealthController::class, 'check']);
+// /api/health is a DETAILED check that exposes service topology
+// (connection driver, redis state, memory). OBS-002: gated behind admin.
+// /api/ping is a non-topological liveness sentinel safe to keep public.
 Route::get('/ping', fn () => response()->json(['ok' => true, 'message' => 'API is working!']));
 
-// ========== KUBERNETES/DOCKER HEALTH PROBES (Public) ==========
-// Failure Semantics: DB=CRITICAL (503), Cache/Queue=DEGRADED (200 with warning)
-Route::prefix('health')->group(function () {
-    // Liveness: Is the app process alive? (shallow check)
-    Route::get('/live', [HealthController::class, 'liveness'])->name('health.liveness');
-
-    // Readiness: Can the app accept traffic? (checks critical deps)
-    Route::get('/ready', [HealthController::class, 'readiness'])->name('health.readiness');
-});
+// ========== PUBLIC LIVENESS PROBE ==========
+// OBS-002: Public endpoint reveals NO topology. Returns only {"status":"ok"}.
+// Used by load balancers / Kubernetes liveness probes.
+Route::get('/health/live', [HealthController::class, 'liveness'])->name('health.liveness');
 
 // ========== DETAILED HEALTH ENDPOINTS (Admin only) ==========
-// These expose sensitive system information - restrict to authenticated admins
-Route::prefix('health')->middleware(['check_token_valid', 'role:admin'])->group(function () {
-    // Detailed: Full system health with component breakdown
-    Route::get('/detailed', [HealthController::class, 'detailed'])->name('health.detailed');
-    Route::get('/full', [HealthController::class, 'detailed'])->name('health.full');
+// OBS-002: Readiness and component checks expose dependency topology
+// (service names, connection drivers, latency). Gated behind authenticated
+// admin to prevent reconnaissance by anonymous callers.
+Route::middleware(['auth:sanctum', 'check_token_valid', 'role:admin'])->group(function () {
+    // Basic health: service breakdown (DB driver, redis status, memory)
+    Route::get('/health', [HealthController::class, 'check'])->name('health.check');
 
-    // Individual component checks for granular monitoring
-    Route::get('/db', [HealthController::class, 'database'])->name('health.database');
-    Route::get('/cache', [HealthController::class, 'cache'])->name('health.cache');
-    Route::get('/queue', [HealthController::class, 'queue'])->name('health.queue');
+    Route::prefix('health')->group(function () {
+        // Readiness: Can the app accept traffic? (checks critical deps)
+        Route::get('/ready', [HealthController::class, 'readiness'])->name('health.readiness');
+
+        // Detailed: Full system health with component breakdown
+        Route::get('/detailed', [HealthController::class, 'detailed'])->name('health.detailed');
+        Route::get('/full', [HealthController::class, 'detailed'])->name('health.full');
+
+        // Individual component checks for granular monitoring
+        Route::get('/db', [HealthController::class, 'database'])->name('health.database');
+        Route::get('/cache', [HealthController::class, 'cache'])->name('health.cache');
+        Route::get('/queue', [HealthController::class, 'queue'])->name('health.queue');
+    });
 });
 
 // ========== LEGACY AUTH ENDPOINTS (Deprecated — Sunset July 2026) ==========

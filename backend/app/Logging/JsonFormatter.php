@@ -33,6 +33,12 @@ class JsonFormatter extends BaseJsonFormatter
             $data['correlation_id'] = $record->context['correlation_id'];
         }
 
+        // Flatten client_correlation_id (validated client-supplied value) for joinable client traces
+        if (array_key_exists('client_correlation_id', $record->context)
+            && $record->context['client_correlation_id'] !== null) {
+            $data['client_correlation_id'] = $record->context['client_correlation_id'];
+        }
+
         // Flatten request_id to top level
         if (isset($record->context['request_id'])) {
             $data['request_id'] = $record->context['request_id'];

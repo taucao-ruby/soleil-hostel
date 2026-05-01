@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Health;
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -9,11 +10,27 @@ class HealthEndpointTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_health_check_returns_expected_structure(): void
+    private function actingAsAdmin(): static
     {
-        $response = $this->getJson('/api/health');
+        $admin = User::factory()->create(['role' => 'admin']);
 
-        // May be 'unhealthy' if Redis is unavailable in test env
+        return $this->actingAs($admin, 'sanctum');
+    }
+
+    public function test_health_check_requires_admin(): void
+    {
+        $this->getJson('/api/health')->assertStatus(401);
+
+        $user = User::factory()->create(['role' => 'user']);
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/health')
+            ->assertStatus(403);
+    }
+
+    public function test_health_check_returns_expected_structure_for_admin(): void
+    {
+        $response = $this->actingAsAdmin()->getJson('/api/health');
+
         $response->assertJsonStructure([
             'status',
             'timestamp',
@@ -27,26 +44,62 @@ class HealthEndpointTest extends TestCase
 
     public function test_health_check_returns_database_up(): void
     {
-        $response = $this->getJson('/api/health');
+        $response = $this->actingAsAdmin()->getJson('/api/health');
 
-        // Status code may be 503 if Redis unavailable in test env
         $response->assertJsonPath('services.database.status', 'up');
     }
 
-    public function test_liveness_returns_ok(): void
+    public function test_health_check_does_not_leak_exception_messages(): void
+    {
+        $response = $this->actingAsAdmin()->getJson('/api/health');
+
+        // Exception messages must NEVER appear; only static error_code is allowed.
+        $body = $response->getContent();
+        $this->assertStringNotContainsString('SQLSTATE', $body);
+        $this->assertStringNotContainsString('Connection refused', $body);
+    }
+
+    public function test_liveness_returns_only_status_ok(): void
     {
         $response = $this->getJson('/api/health/live');
 
         $response->assertStatus(200)
-            ->assertJsonStructure(['status', 'timestamp'])
-            ->assertJson(['status' => 'ok']);
+            ->assertExactJson(['status' => 'ok']);
     }
 
-    public function test_readiness_returns_expected_structure(): void
+    public function test_liveness_does_not_expose_topology(): void
     {
-        $response = $this->getJson('/api/health/ready');
+        $response = $this->getJson('/api/health/live');
 
-        // Status code may be 200 (ok/degraded) depending on Redis availability
+        $body = $response->getContent();
+        // No service names, drivers, hostnames, timestamps, or memory stats.
+        foreach (['database', 'redis', 'cache', 'queue', 'pgsql', 'memory', 'timestamp'] as $forbidden) {
+            $this->assertStringNotContainsString(
+                $forbidden,
+                $body,
+                "Public liveness endpoint must not expose '{$forbidden}'"
+            );
+        }
+    }
+
+    public function test_readiness_requires_authentication(): void
+    {
+        $this->getJson('/api/health/ready')->assertStatus(401);
+    }
+
+    public function test_readiness_requires_admin_role(): void
+    {
+        $user = User::factory()->create(['role' => 'user']);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/health/ready')
+            ->assertStatus(403);
+    }
+
+    public function test_readiness_returns_expected_structure_for_admin(): void
+    {
+        $response = $this->actingAsAdmin()->getJson('/api/health/ready');
+
         $response->assertJsonStructure([
             'status',
             'timestamp',
@@ -58,17 +111,17 @@ class HealthEndpointTest extends TestCase
         ]);
     }
 
-    public function test_readiness_database_check_is_healthy(): void
+    public function test_readiness_database_check_is_healthy_for_admin(): void
     {
-        $response = $this->getJson('/api/health/ready');
+        $response = $this->actingAsAdmin()->getJson('/api/health/ready');
 
         $response->assertStatus(200)
             ->assertJsonPath('checks.database.healthy', true);
     }
 
-    public function test_readiness_cache_check_is_present(): void
+    public function test_readiness_cache_check_is_present_for_admin(): void
     {
-        $response = $this->getJson('/api/health/ready');
+        $response = $this->actingAsAdmin()->getJson('/api/health/ready');
 
         $response->assertStatus(200)
             ->assertJsonStructure(['checks' => ['cache' => ['healthy']]]);
@@ -83,7 +136,7 @@ class HealthEndpointTest extends TestCase
 
     public function test_detailed_requires_admin_role(): void
     {
-        $user = \App\Models\User::factory()->create(['role' => 'user']);
+        $user = User::factory()->create(['role' => 'user']);
 
         $response = $this->actingAs($user, 'sanctum')
             ->getJson('/api/health/detailed');
@@ -93,10 +146,7 @@ class HealthEndpointTest extends TestCase
 
     public function test_detailed_returns_full_health_for_admin(): void
     {
-        $admin = \App\Models\User::factory()->create(['role' => 'admin']);
-
-        $response = $this->actingAs($admin, 'sanctum')
-            ->getJson('/api/health/detailed');
+        $response = $this->actingAsAdmin()->getJson('/api/health/detailed');
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -129,10 +179,7 @@ class HealthEndpointTest extends TestCase
 
     public function test_db_endpoint_returns_healthy_for_admin(): void
     {
-        $admin = \App\Models\User::factory()->create(['role' => 'admin']);
-
-        $response = $this->actingAs($admin, 'sanctum')
-            ->getJson('/api/health/db');
+        $response = $this->actingAsAdmin()->getJson('/api/health/db');
 
         $response->assertStatus(200)
             ->assertJson([
@@ -144,10 +191,7 @@ class HealthEndpointTest extends TestCase
 
     public function test_cache_endpoint_returns_healthy_for_admin(): void
     {
-        $admin = \App\Models\User::factory()->create(['role' => 'admin']);
-
-        $response = $this->actingAs($admin, 'sanctum')
-            ->getJson('/api/health/cache');
+        $response = $this->actingAsAdmin()->getJson('/api/health/cache');
 
         $response->assertStatus(200)
             ->assertJson([
@@ -159,10 +203,7 @@ class HealthEndpointTest extends TestCase
 
     public function test_queue_endpoint_returns_healthy_for_admin(): void
     {
-        $admin = \App\Models\User::factory()->create(['role' => 'admin']);
-
-        $response = $this->actingAs($admin, 'sanctum')
-            ->getJson('/api/health/queue');
+        $response = $this->actingAsAdmin()->getJson('/api/health/queue');
 
         $response->assertStatus(200)
             ->assertJson([
@@ -174,10 +215,7 @@ class HealthEndpointTest extends TestCase
 
     public function test_health_full_alias_works_for_admin(): void
     {
-        $admin = \App\Models\User::factory()->create(['role' => 'admin']);
-
-        $response = $this->actingAs($admin, 'sanctum')
-            ->getJson('/api/health/full');
+        $response = $this->actingAsAdmin()->getJson('/api/health/full');
 
         $response->assertStatus(200)
             ->assertJsonStructure(['status', 'checks', 'metrics']);

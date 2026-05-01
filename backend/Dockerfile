@@ -30,5 +30,5 @@ RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache \
 USER www-data
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD php -r "exit(file_get_contents('http://localhost:8080/api/health') === false ? 1 : 0);"
+  CMD php -r "exit(file_get_contents('http://localhost:8080/api/health/live') === false ? 1 : 0);"
 CMD ["sh", "-c", "php-fpm -D && nginx -g 'daemon off; pid /var/run/nginx/nginx.pid;'"]

@@ -102,6 +102,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: [backend-setup, setup]
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        db: [pgsql]
     services:
       postgres:
         image: postgres:16-alpine
@@ -157,6 +161,18 @@ jobs:
           php artisan key:generate --env=testing
           php artisan package:discover --ansi --env=testing
           php artisan migrate --env=testing --force
+      - name: Assert schema constraints
+        if: matrix.db == 'pgsql'
+        working-directory: ./backend
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: testing
+          DB_USERNAME: testing
+          DB_PASSWORD: password
+        run: php artisan db:assert-schema-constraints
       - name: Run Pest tests (Parallel)
         working-directory: ./backend
         env:

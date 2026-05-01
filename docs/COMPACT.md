@@ -15,7 +15,7 @@
 
 ## 1) Current Snapshot (keep under 12 lines)
 
-- Date updated: 2026-05-01
+- Date updated: 2026-05-02
 - Current branch: `dev` (HEAD=`5a295c0`)
 - Latest commit: `5a295c0` — feat(backend): durable AI proposal lifecycle, drift detection, proposer binding
 - Backend test baseline: `php artisan test` PASS (2026-05-01, 1356 passed / 7 skipped / 3953 assertions) after F-32 unified Bearer detection fix.
@@ -39,6 +39,7 @@ This section intentionally left as a pointer — do not duplicate invariants her
 - **Frontend ops/API batch (2026-04-29)**: ✅ COMPLETE — removed react-toastify, corrected TodayOperations room route to shared room API, removed hardcoded `lock_version`, aligned RoomDiscoveryWidget to `{content, proposals, citations}`.
 - **F-32 unified Bearer detection (2026-05-01)**: ✅ COMPLETE — `UnifiedAuthController::detectAuthMode()` now uses Sanctum `PersonalAccessToken::findToken()` for Bearer lookup; diagnostic Sanctum-format token test fails before fix and passes after. Auth feature slice, full backend suite, frontend gates, and compose config pass.
 - **AI-002 / AI-003 policy hardening (2026-05-01)**: ✅ COMPLETE — `PolicyEnforcementService` now normalizes Unicode for injection scans (NFC, zero-width/bidi stripping, ICU transliteration, lowercase), blocks output PII with safe response, and writes HMAC-only audit evidence. Targeted AI harness tests pass.
+- **ARCH-001 schema constraint gate (2026-05-02)**: ✅ COMPLETE — `php artisan db:assert-schema-constraints` runs after PostgreSQL CI migrations and before deploy provider steps; command verifies `btree_gist`, `no_overlapping_bookings` pg_constraint shape, and soft-delete filter.
 - **PAY-006 refund idempotency (2026-04-29)**: ✅ COMPLETE — `charge.refunded` uses DB-backed `stripe_refund_events` unique `stripe_refund_id`, booking fetch locks `FOR UPDATE`, Redis/cache guard removed from refund path; targeted and full backend gates pass.
 - **AI Harness Phases 0–4**: ✅ COMPLETE — all 7 endpoints, eval framework, kill switch, canary routing
 - **F-67 proposer-binding** (formerly cited as F-06 2026-04-18): ✅ COMPLETE (2026-04-18) — cache envelope carries `proposer_user_id`; `decide()` 404s on mismatch; service-layer cancellation ownership gate; T-13 reclassified Accepted→Mitigated
@@ -60,7 +61,7 @@ This section intentionally left as a pointer — do not duplicate invariants her
 
 See `docs/agents/COMMANDS.md` for full command catalog.
 
-Latest AI-002 / AI-003 verification (2026-05-01): `php artisan test tests\Feature\AiHarness\PolicyEnforcementTest.php tests\Feature\AiHarness\PiiBlockTest.php` PASS (21 tests / 53 assertions); `php artisan test tests\Feature\AiHarness` PASS (137 tests / 367 assertions); `vendor\bin\pint --test` on touched PHP files PASS; `git diff --check` PASS. Soleil CLI `impact PolicyDecision` reported CRITICAL due central DTO fan-out; change is additive and covered by full AI harness feature suite.
+Latest ARCH-001 verification (2026-05-02): `php -l backend/app/Console/Commands/AssertSchemaConstraints.php` PASS; `php artisan list db --format=json` shows `db:assert-schema-constraints`; `vendor\bin\pint --test app\Console\Commands\AssertSchemaConstraints.php` PASS; YAML parse check for `.github/workflows/tests.yml` and `.github/workflows/deploy.yml` PASS; `git diff --check` PASS with existing CRLF warnings on workflow files. Local PostgreSQL success path not run because Docker compose config is blocked by missing `REDIS_PASSWORD`.
 
 ## 5) Known warnings / noise (non-blocking)
 

@@ -16,9 +16,9 @@
 ## 1) Current Snapshot (keep under 12 lines)
 
 - Date updated: 2026-05-01
-- Current branch: `dev` (HEAD=`347649a`)
-- Latest commit: `347649a` — fix(backend): implement AI-001 policy-document prompt-injection defense
-- Backend test baseline: `php artisan test` PASS (2026-04-29, 1302 passed / 7 skipped / 3775 assertions) after PAY-006 refund idempotency fix.
+- Current branch: `dev` (HEAD=`5a295c0`)
+- Latest commit: `5a295c0` — feat(backend): durable AI proposal lifecycle, drift detection, proposer binding
+- Backend test baseline: `php artisan test` PASS (2026-05-01, 1356 passed / 7 skipped / 3953 assertions) after F-32 unified Bearer detection fix.
 - Frontend: Ops batch updated TodayOperations/BookingList abort+error handling, internal toast renderer, RoomDiscovery AI DTO alignment; `npx tsc --noEmit` and `npx vitest run` pass (418 tests).
 - AI Harness: Phases 0–4 ✅ Done. F-67 proposer-binding landed (`17a4880`, `39cba7a`; formerly cited as "F-06 2026-04-18", promoted 2026-04-19): cache envelope carries `proposer_user_id`; `decide()` 404s on mismatch; service-layer cancellation ownership gate at `CancellationService::validateCancellation`
 - Deploy hardening: F-04 pre-flight `DEPLOY_HOST` gate + migration-before-health reordering (`ec025ca`, `75bb790`). OpenAPI Spectral contract-lint CI gate added (`4a33755`)
@@ -37,6 +37,7 @@ This section intentionally left as a pointer — do not duplicate invariants her
 ### Now
 
 - **Frontend ops/API batch (2026-04-29)**: ✅ COMPLETE — removed react-toastify, corrected TodayOperations room route to shared room API, removed hardcoded `lock_version`, aligned RoomDiscoveryWidget to `{content, proposals, citations}`.
+- **F-32 unified Bearer detection (2026-05-01)**: ✅ COMPLETE — `UnifiedAuthController::detectAuthMode()` now uses Sanctum `PersonalAccessToken::findToken()` for Bearer lookup; diagnostic Sanctum-format token test fails before fix and passes after. Auth feature slice, full backend suite, frontend gates, and compose config pass.
 - **AI-002 / AI-003 policy hardening (2026-05-01)**: ✅ COMPLETE — `PolicyEnforcementService` now normalizes Unicode for injection scans (NFC, zero-width/bidi stripping, ICU transliteration, lowercase), blocks output PII with safe response, and writes HMAC-only audit evidence. Targeted AI harness tests pass.
 - **PAY-006 refund idempotency (2026-04-29)**: ✅ COMPLETE — `charge.refunded` uses DB-backed `stripe_refund_events` unique `stripe_refund_id`, booking fetch locks `FOR UPDATE`, Redis/cache guard removed from refund path; targeted and full backend gates pass.
 - **AI Harness Phases 0–4**: ✅ COMPLETE — all 7 endpoints, eval framework, kill switch, canary routing

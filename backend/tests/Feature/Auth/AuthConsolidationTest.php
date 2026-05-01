@@ -2,9 +2,13 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Http\Controllers\Auth\UnifiedAuthController;
 use App\Models\PersonalAccessToken;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use ReflectionMethod;
 use Tests\TestCase;
 
 /**
@@ -138,6 +142,32 @@ class AuthConsolidationTest extends TestCase
     }
 
     // ========== UNIFIED ENDPOINT TESTS (BEARER MODE) ==========
+
+    /**
+     * F-32 diagnostic: a valid Sanctum-format Bearer token must be detected as Bearer mode.
+     */
+    public function test_detect_auth_mode_returns_bearer_for_bearer_token(): void
+    {
+        $user = User::factory()->create();
+        $plainTextToken = Str::random(40);
+        $token = $user->tokens()->create([
+            'name' => 'test',
+            'token' => hash('sha256', $plainTextToken),
+            'abilities' => ['*'],
+            'expires_at' => now()->addHour(),
+            'type' => 'short_lived',
+            'device_id' => Str::uuid()->toString(),
+            'refresh_count' => 0,
+        ]);
+
+        $request = Request::create('/test', 'GET', [], [], [], [
+            'HTTP_AUTHORIZATION' => 'Bearer '.$token->getKey().'|'.$plainTextToken,
+        ]);
+
+        $mode = $this->detectAuthModeForTest($request);
+
+        $this->assertSame('bearer', $mode);
+    }
 
     /**
      * Test 6: Unified /auth/unified/me works with Bearer token
@@ -441,5 +471,14 @@ class AuthConsolidationTest extends TestCase
         ]);
         // Should NOT have token in body
         $this->assertArrayNotHasKey('token', $response->json('data'));
+    }
+
+    private function detectAuthModeForTest(Request $request): ?string
+    {
+        $controller = app(UnifiedAuthController::class);
+        $method = new ReflectionMethod($controller, 'detectAuthMode');
+        $method->setAccessible(true);
+
+        return $method->invoke($controller, $request);
     }
 }

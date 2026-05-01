@@ -266,6 +266,15 @@ final class ReconcileRefundsJob implements ShouldQueue
 
         } catch (\Throwable $e) {
             $booking = $booking->fresh();
+            if (! $booking instanceof Booking) {
+                Log::warning('Refund reconciliation: booking not found after refresh — skipping', [
+                    'job' => self::class,
+                    'attempt' => $attemptNumber,
+                    'error' => $e->getMessage(),
+                ]);
+
+                return;
+            }
             if ($booking->status !== BookingStatus::REFUND_FAILED) {
                 $booking = $booking->transitionTo(BookingStatus::REFUND_FAILED);
             }

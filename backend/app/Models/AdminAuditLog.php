@@ -14,6 +14,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * @property int $id
  * @property int|null $actor_id
+ * @property string|null $actor_email
+ * @property string|null $actor_role
+ * @property string|null $actor_display_name
  * @property string $action
  * @property string $resource_type
  * @property int|null $resource_id
@@ -27,6 +30,9 @@ class AdminAuditLog extends Model
 
     protected $fillable = [
         'actor_id',
+        'actor_email',
+        'actor_role',
+        'actor_display_name',
         'action',
         'resource_type',
         'resource_id',

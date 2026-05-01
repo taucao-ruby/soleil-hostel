@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\AdminAuditLog;
+use App\Models\User;
+use BackedEnum;
 use Illuminate\Http\Request;
 
 /**
@@ -32,8 +34,15 @@ class AdminAuditService
      */
     public function log(string $action, string $resourceType, ?int $resourceId = null, array $metadata = []): AdminAuditLog
     {
+        /** @var User|null $actor */
+        $actor = auth()->user();
+        $actorRole = $actor?->role;
+
         return AdminAuditLog::create([
-            'actor_id' => auth()->id(),
+            'actor_id' => $actor?->id,
+            'actor_email' => $actor?->email,
+            'actor_role' => $actorRole instanceof BackedEnum ? $actorRole->value : $actorRole,
+            'actor_display_name' => $actor?->name,
             'action' => $action,
             'resource_type' => $resourceType,
             'resource_id' => $resourceId,

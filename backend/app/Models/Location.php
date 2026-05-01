@@ -74,7 +74,7 @@ class Location extends Model
     /**
      * Get all rooms at this location.
      *
-     * @return HasMany<Room>
+     * @return HasMany<Room, $this>
      */
     public function rooms(): HasMany
     {

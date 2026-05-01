@@ -65,8 +65,7 @@ class AiProposal extends Model
     ];
 
     /**
-     * @return BelongsTo<User, $this>
-     *
+     * @psalm-return BelongsTo<User, static>
      * @phpstan-return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
@@ -75,8 +74,7 @@ class AiProposal extends Model
     }
 
     /**
-     * @return BelongsTo<Room, $this>
-     *
+     * @psalm-return BelongsTo<Room, static>
      * @phpstan-return BelongsTo<Room, $this>
      */
     public function room(): BelongsTo

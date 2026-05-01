@@ -37,15 +37,9 @@ services:
     volumes:
       - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
       - redisdata:/data
-    command: >
-      sh -c '
-        if [ -n "$$REDIS_PASSWORD" ]; then
-          exec redis-server /usr/local/etc/redis/redis.conf --requirepass "$$REDIS_PASSWORD";
-        else
-          exec redis-server /usr/local/etc/redis/redis.conf;
-        fi'
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env (any non-empty value works for local dev; staging/prod must use a cryptographically random 32+ byte secret)}"]
     environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env (any non-empty value works for local dev; staging/prod must use a cryptographically random 32+ byte secret)}
       # Note: REDIS_REPL_DISKLESS_SYNC and REDIS_MAX_CLIENTS removed — Redis does not
       # read these as environment variables. Use redis.conf directives instead.
     ulimits:
@@ -53,7 +47,7 @@ services:
         soft: 262144
         hard: 262144
     healthcheck:
-      test: ["CMD-SHELL", "if [ -n \"$$REDIS_PASSWORD\" ]; then redis-cli -a \"$$REDIS_PASSWORD\" ping; else redis-cli ping; fi"]
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -65,7 +59,10 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     working_dir: /var/www
-    user: root
+    # NOTE (Batch 4 / 3D): runs as the Dockerfile's non-root USER by default.
+    # Local development overrides to `user: root` in docker-compose.override.yml
+    # because the bind-mount hot-reload writes (composer install, key:generate)
+    # need write access to host-owned files. Production never sets root here.
     volumes:
       - ./backend:/var/www
     ports:
@@ -91,13 +88,14 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-secret}
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env (any non-empty value works for local dev; staging/prod must use a cryptographically random 32+ byte secret)}
       REDIS_CLIENT: phpredis
       CACHE_DRIVER: redis
       SESSION_DRIVER: redis
       QUEUE_CONNECTION: redis
       SANCTUM_STATEFUL_DOMAINS: ${SANCTUM_STATEFUL_DOMAINS:-localhost:5173,127.0.0.1:5173}
       SESSION_DOMAIN: ${SESSION_DOMAIN:-localhost}
+      SESSION_SECURE_COOKIE: ${SESSION_SECURE_COOKIE:-false}
     command: 'bash -lc "set -e; composer install --no-interaction --prefer-dist; (grep -q \"^APP_KEY=base64:\" .env || php artisan key:generate --force); echo \"Run: docker compose exec backend php artisan migrate\"; php-fpm -D && nginx -g \"daemon off;\""'
 
   frontend:

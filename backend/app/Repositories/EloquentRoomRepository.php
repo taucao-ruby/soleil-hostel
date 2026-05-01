@@ -2,6 +2,7 @@
 
 namespace App\Repositories;
 
+use App\Models\Booking;
 use App\Models\Room;
 use App\Repositories\Contracts\RoomRepositoryInterface;
 use Illuminate\Support\Collection;
@@ -88,7 +89,7 @@ class EloquentRoomRepository implements RoomRepositoryInterface
     }
 
     /**
-     * Check if overlapping confirmed bookings exist for a room.
+     * Check if overlapping active bookings exist for a room.
      *
      * @return bool True if overlapping bookings exist
      *
@@ -98,7 +99,10 @@ class EloquentRoomRepository implements RoomRepositoryInterface
     {
         return Room::findOrFail($roomId)
             ->bookings()
-            ->where('status', 'confirmed')
+            ->whereIn('status', array_map(
+                static fn ($status) => $status->value,
+                Booking::ACTIVE_STATUSES
+            ))
             ->where('check_in', '<', $checkOut)
             ->where('check_out', '>', $checkIn)
             ->exists();

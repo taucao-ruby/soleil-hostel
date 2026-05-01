@@ -7,6 +7,8 @@ namespace App\Jobs;
 use App\Enums\BookingStatus;
 use App\Events\BookingCancelled;
 use App\Models\Booking;
+use App\Services\FeatureFlag;
+use App\Services\StripeService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -61,8 +63,17 @@ final class ExpireStaleBookings implements ShouldQueue
      */
     public const EXPIRED_REASON = 'expired';
 
-    public function handle(): void
+    public function handle(?StripeService $stripeService = null): void
     {
+        // Batch 4 / 3E: Redis-backed kill switch. Defaults to ON so existing
+        // schedulers continue to run; flip OFF via `feature:toggle booking.expire_pending off`
+        // during incident response without touching env / restarting workers.
+        if (! FeatureFlag::get('booking.expire_pending', true)) {
+            Log::info('ExpireStaleBookings skipped: feature flag booking.expire_pending is off');
+
+            return;
+        }
+
         $ttlMinutes = (int) config('booking.pending_ttl_minutes', 30);
         $batchSize = (int) config('booking.pending_expiry_batch_size', 100);
 
@@ -76,6 +87,7 @@ final class ExpireStaleBookings implements ShouldQueue
 
         $threshold = now()->subMinutes($ttlMinutes);
         $expiredCount = 0;
+        $stripeService ??= app(StripeService::class);
 
         Booking::query()
             ->where('status', BookingStatus::PENDING)
@@ -83,8 +95,8 @@ final class ExpireStaleBookings implements ShouldQueue
             ->orderBy('id')
             ->limit($batchSize)
             ->pluck('id')
-            ->each(function (int $bookingId) use (&$expiredCount): void {
-                if ($this->expireOne($bookingId)) {
+            ->each(function (int $bookingId) use (&$expiredCount, $stripeService): void {
+                if ($this->expireOne($bookingId, $stripeService)) {
                     $expiredCount++;
                 }
             });
@@ -103,9 +115,9 @@ final class ExpireStaleBookings implements ShouldQueue
      * Returns true if the booking was transitioned to CANCELLED, false if it
      * was no longer eligible (concurrent confirm/cancel raced ahead).
      */
-    private function expireOne(int $bookingId): bool
+    private function expireOne(int $bookingId, StripeService $stripeService): bool
     {
-        return DB::transaction(function () use ($bookingId): bool {
+        return DB::transaction(function () use ($bookingId, $stripeService): bool {
             $booking = Booking::query()
                 ->whereKey($bookingId)
                 ->lockForUpdate()
@@ -121,8 +133,12 @@ final class ExpireStaleBookings implements ShouldQueue
                 return false;
             }
 
+            if ($booking->payment_intent_id !== null) {
+                $stripeService->cancelPaymentIntent($booking->payment_intent_id);
+            }
+
+            $booking = $booking->transitionTo(BookingStatus::CANCELLED);
             $booking->update([
-                'status' => BookingStatus::CANCELLED,
                 'cancelled_at' => now(),
                 'cancelled_by' => null,
                 'cancellation_reason' => self::EXPIRED_REASON,

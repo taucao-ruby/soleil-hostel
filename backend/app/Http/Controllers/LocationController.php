@@ -60,7 +60,8 @@ class LocationController extends Controller
             ->where('slug', $slug)
             ->active()
             ->with(['rooms' => function ($query) use ($request) {
-                $query->where('status', 'available');
+                // Batch 4 / 3B: bookable() owns the status + readiness + location predicate.
+                $query->bookable();
 
                 if ($request->filled(['check_in', 'check_out'])) {
                     $query->availableBetween(

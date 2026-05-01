@@ -233,9 +233,18 @@ class ProposalConfirmationController extends Controller
         ?string $downstreamResult,
         string $now,
     ): void {
+        // Resolve denormalised actor identity. Fields survive user deletion
+        // (Batch 4 / 3F: FK is now ON DELETE SET NULL) so the audit trail
+        // remains attributable even when the user record is gone.
+        $user = \App\Models\User::find($userId);
+        $actorRole = $user?->role;
+
         // Persist to DB
         AiProposalEvent::create([
             'user_id' => $userId,
+            'actor_email' => $user?->email,
+            'actor_role' => $actorRole instanceof \BackedEnum ? $actorRole->value : $actorRole,
+            'actor_display_name' => $user?->name,
             'proposal_hash' => $hash,
             'action_type' => $actionType,
             'user_decision' => $decision,

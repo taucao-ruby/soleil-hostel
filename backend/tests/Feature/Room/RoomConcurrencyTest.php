@@ -305,26 +305,27 @@ class RoomConcurrencyTest extends TestCase
         $room = Room::factory()->create(['status' => 'available']);
         $originalVersion = $room->lock_version;
 
-        // Admin A changes to 'booked'
+        // Admin A changes to 'unavailable' (Batch 4 / 3B: status narrowed to
+        // {available, unavailable}; the operational reason lives on readiness_status).
         $this->actingAs($this->admin, 'sanctum')
             ->putJson("/api/rooms/{$room->id}", [
                 'name' => $room->name,
                 'description' => $room->description,
                 'price' => $room->price,
                 'max_guests' => $room->max_guests,
-                'status' => 'booked',
+                'status' => 'unavailable',
                 'lock_version' => $originalVersion,
             ])
             ->assertStatus(200);
 
-        // Admin B tries to change to 'maintenance' with stale version
+        // Admin B tries to flip back to 'available' with stale version
         $response = $this->actingAs($this->admin, 'sanctum')
             ->putJson("/api/rooms/{$room->id}", [
                 'name' => $room->name,
                 'description' => $room->description,
                 'price' => $room->price,
                 'max_guests' => $room->max_guests,
-                'status' => 'maintenance',
+                'status' => 'available',
                 'lock_version' => $originalVersion, // Stale!
             ]);
 
@@ -332,9 +333,9 @@ class RoomConcurrencyTest extends TestCase
         $response->assertStatus(409)
             ->assertJson(['success' => false]);
 
-        // Verify 'booked' status persisted
+        // Verify Admin A's update persisted
         $room->refresh();
-        $this->assertEquals('booked', $room->status);
+        $this->assertEquals('unavailable', $room->status);
     }
 
     // ========== API RESPONSE FORMAT VERIFICATION ==========

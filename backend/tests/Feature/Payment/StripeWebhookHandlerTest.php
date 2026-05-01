@@ -243,6 +243,7 @@ class StripeWebhookHandlerTest extends TestCase
     private function makePaymentIntentPayload(string $paymentIntentId): array
     {
         return [
+            'id' => 'evt_'.$paymentIntentId,
             'type' => 'payment_intent.succeeded',
             'data' => [
                 'object' => [
@@ -263,11 +264,14 @@ class StripeWebhookHandlerTest extends TestCase
         int $refundAmount
     ): array {
         return [
+            'id' => 'evt_'.$refundId,
             'type' => 'charge.refunded',
             'data' => [
                 'object' => [
                     'id' => $chargeId,
                     'payment_intent' => $paymentIntentId,
+                    'amount_refunded' => $refundAmount,
+                    'currency' => 'vnd',
                     'refunds' => [
                         'data' => [
                             [

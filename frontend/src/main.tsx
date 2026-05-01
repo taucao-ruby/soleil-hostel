@@ -1,7 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import '@/shared/styles/index.css'
-import 'react-toastify/dist/ReactToastify.css'
 import App from './app/App'
 import { initWebVitals } from '@/shared/utils/webVitals'
 

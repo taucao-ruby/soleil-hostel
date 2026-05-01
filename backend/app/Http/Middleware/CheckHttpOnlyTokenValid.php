@@ -82,14 +82,14 @@ class CheckHttpOnlyTokenValid
         }
 
         // ========== Validate Suspicious Activity ==========
-        // Token refresh > threshold suggests token theft
-        if ($token->refresh_count > config('sanctum.max_refresh_count_per_hour', 10)) {
+        // Inclusive cap: refresh_count >= max → blocked. Unified with controllers and bearer middleware.
+        if ($token->refresh_count >= (int) config('sanctum.max_refresh_count_per_hour', 10)) {
             $token->revoke();
 
             return response()->json([
                 'success' => false,
                 'message' => 'Phát hiện hoạt động bất thường.',
-                'code' => 'SUSPICIOUS_ACTIVITY',
+                'errors' => ['code' => 'SUSPICIOUS_ACTIVITY'],
             ], 401);
         }
 

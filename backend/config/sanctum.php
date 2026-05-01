@@ -50,7 +50,7 @@ return [
 
     // httpOnly cookie auth options.
     'cookie_name' => env('SANCTUM_COOKIE_NAME', 'soleil_token'),
-    'cookie_secure' => env('APP_ENV') === 'production',
+    'cookie_secure' => env('SESSION_SECURE_COOKIE', false),
     'cookie_http_only' => true,
     'cookie_same_site' => 'strict',
     'cookie_domain' => env('SESSION_DOMAIN', null),

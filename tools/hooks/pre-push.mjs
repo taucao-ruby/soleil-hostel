@@ -13,7 +13,9 @@ const policy = await loadPolicy();
 const dryRun = process.argv.includes("--dry-run");
 
 if (isHookBypassed(policy)) {
-  console.log(`[hooks] ${getBypassEnvName(policy)} is set, skipping pre-push verification.`);
+  console.log(
+    `[hooks] ${getBypassEnvName(policy)} is set, skipping pre-push verification.`,
+  );
   process.exit(0);
 }
 
@@ -22,11 +24,17 @@ const changedFiles = await detectChangedFiles();
 let targetsToRun = [];
 if (changedFiles === null) {
   targetsToRun = ["backend_tests", "frontend_typecheck", "frontend_unit_tests"];
-  console.log("[hooks] Could not resolve diff base; running full verification baseline.");
+  console.log(
+    "[hooks] Could not resolve diff base; running full verification baseline.",
+  );
 } else {
   const codeChanges = changedFiles.filter((file) => !isNonCodePath(file));
-  const hasBackendChanges = codeChanges.some((file) => file.startsWith("backend/"));
-  const hasFrontendChanges = codeChanges.some((file) => file.startsWith("frontend/"));
+  const hasBackendChanges = codeChanges.some((file) =>
+    file.startsWith("backend/"),
+  );
+  const hasFrontendChanges = codeChanges.some((file) =>
+    file.startsWith("frontend/"),
+  );
   const hasComposeChanges = codeChanges.some(isComposeRelatedPath);
 
   if (hasBackendChanges) {
@@ -45,13 +53,17 @@ if (changedFiles === null) {
 targetsToRun = Array.from(new Set(targetsToRun));
 
 if (targetsToRun.length === 0) {
-  console.log("[hooks] No backend/frontend/compose changes detected; skipping pre-push verification.");
+  console.log(
+    "[hooks] No backend/frontend/compose changes detected; skipping pre-push verification.",
+  );
   process.exit(0);
 }
 
 for (const targetName of targetsToRun) {
   const target = resolveTargetCommand(policy, targetName);
-  console.log(`\n[hooks] Running ${targetName}: ${formatTargetCommand(target)}`);
+  console.log(
+    `\n[hooks] Running ${targetName}: ${formatTargetCommand(target)}`,
+  );
 
   if (dryRun) {
     continue;
@@ -61,20 +73,27 @@ for (const targetName of targetsToRun) {
     cwd: target.cwd,
     captureOutput: false,
     timeoutMs: target.timeoutMs,
+    env: target.env,
   });
 
   if (result.error?.code === "ENOENT" && target.optional) {
-    console.log(`[hooks] Skipping optional target '${targetName}' because command was not found.`);
+    console.log(
+      `[hooks] Skipping optional target '${targetName}' because command was not found.`,
+    );
     continue;
   }
 
   if (result.timedOut) {
-    console.error(`[hooks] '${targetName}' timed out after ${target.timeoutMs}ms.`);
+    console.error(
+      `[hooks] '${targetName}' timed out after ${target.timeoutMs}ms.`,
+    );
     process.exit(1);
   }
 
   if (result.code !== 0) {
-    console.error(`[hooks] '${targetName}' failed with exit code ${result.code}.`);
+    console.error(
+      `[hooks] '${targetName}' failed with exit code ${result.code}.`,
+    );
     process.exit(result.code || 1);
   }
 }
@@ -92,7 +111,11 @@ async function detectChangedFiles() {
     return null;
   }
 
-  const diffResult = await runCommand("git", ["diff", "--name-only", `${upstream}...HEAD`]);
+  const diffResult = await runCommand("git", [
+    "diff",
+    "--name-only",
+    `${upstream}...HEAD`,
+  ]);
   if (diffResult.code !== 0) {
     return null;
   }
@@ -118,7 +141,11 @@ async function resolveDiffBase() {
     }
   }
 
-  const branchResult = await runCommand("git", ["rev-parse", "--abbrev-ref", "HEAD"]);
+  const branchResult = await runCommand("git", [
+    "rev-parse",
+    "--abbrev-ref",
+    "HEAD",
+  ]);
   const branch = branchResult.code === 0 ? branchResult.stdout.trim() : "";
 
   const candidates = [];

@@ -1,0 +1,9 @@
+{
+  "_meta": {
+    "purpose": "Accepted pnpm-audit advisories — see scripts/audit-with-exceptions.mjs.",
+    "format": "Each entry under 'exceptions' is keyed by GHSA id. Each MUST include: severity at triage, justification, expiry (YYYY-MM-DD).",
+    "policy": "Renew quarterly. Past-expiry entries are treated as new findings and fail the gate.",
+    "introduced_in": "Batch 4 / 3C"
+  },
+  "exceptions": {}
+}

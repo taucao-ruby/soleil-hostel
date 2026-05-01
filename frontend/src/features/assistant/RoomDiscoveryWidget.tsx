@@ -8,14 +8,32 @@ interface RoomCard {
   max_guests: number
 }
 
-interface RoomDiscoveryResponse {
+interface AiRoomDiscoveryProposal {
+  action_type?: string
+  proposed_params?: {
+    room_id?: number
+    check_in?: string
+    check_out?: string
+    guest_count?: number
+    available?: boolean
+  }
+  human_readable_summary?: string
+  policy_refs?: string[]
+  proposal_hash?: string
+}
+
+interface AiRoomDiscoveryCitation {
+  source_slug: string
+  verified_at: string
+}
+
+interface AiRoomDiscoveryResponse {
   canary?: boolean
   support_contact?: string
   message?: string
-  response_text?: string
-  tool_results?: {
-    rooms?: RoomCard[]
-  }
+  content: string
+  proposals: AiRoomDiscoveryProposal[]
+  citations: AiRoomDiscoveryCitation[]
 }
 
 export default function RoomDiscoveryWidget() {
@@ -25,6 +43,8 @@ export default function RoomDiscoveryWidget() {
   const [guests, setGuests] = useState(1)
   const [loading, setLoading] = useState(false)
   const [rooms, setRooms] = useState<RoomCard[]>([])
+  const [proposals, setProposals] = useState<AiRoomDiscoveryProposal[]>([])
+  const [citations, setCitations] = useState<AiRoomDiscoveryCitation[]>([])
   const [description, setDescription] = useState('')
   const [error, setError] = useState('')
   const [supportContact, setSupportContact] = useState('')
@@ -35,10 +55,12 @@ export default function RoomDiscoveryWidget() {
     setLoading(true)
     setError('')
     setRooms([])
+    setProposals([])
+    setCitations([])
     setDescription('')
 
     try {
-      const res = await api.post<{ data: RoomDiscoveryResponse }>('/v1/ai/room_discovery', {
+      const res = await api.post<{ data: AiRoomDiscoveryResponse }>('/v1/ai/room_discovery', {
         message: `Tìm phòng từ ${checkIn} đến ${checkOut} cho ${guests} khách`,
       })
 
@@ -50,13 +72,24 @@ export default function RoomDiscoveryWidget() {
         return
       }
 
-      if (data?.tool_results?.rooms) {
-        setRooms(data.tool_results.rooms)
+      setDescription(data?.content ?? '')
+      setProposals(data?.proposals ?? [])
+      setCitations(data?.citations ?? [])
+
+      const proposalRooms = (data?.proposals ?? [])
+        .map(proposal => proposal.proposed_params?.room_id)
+        .filter((roomId): roomId is number => typeof roomId === 'number')
+        .map(roomId => ({
+          id: roomId,
+          name: `Phòng #${roomId}`,
+          price: 0,
+          max_guests: guests,
+        }))
+
+      if (proposalRooms.length > 0) {
+        setRooms(proposalRooms)
       }
-      if (data?.response_text) {
-        setDescription(data.response_text)
-      }
-      if (!data?.tool_results?.rooms?.length && !data?.response_text) {
+      if (!data?.content && proposalRooms.length === 0 && !(data?.proposals ?? []).length) {
         setDescription('Không có phòng trống cho yêu cầu này.')
       }
     } catch {
@@ -91,8 +124,11 @@ export default function RoomDiscoveryWidget() {
       <div className="p-4 space-y-3">
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="block mb-1 text-xs text-gray-600">Nhận phòng</label>
+            <label htmlFor="room-discovery-check-in" className="block mb-1 text-xs text-gray-600">
+              Nhận phòng
+            </label>
             <input
+              id="room-discovery-check-in"
               type="date"
               value={checkIn}
               onChange={e => setCheckIn(e.target.value)}
@@ -101,8 +137,11 @@ export default function RoomDiscoveryWidget() {
             />
           </div>
           <div>
-            <label className="block mb-1 text-xs text-gray-600">Trả phòng</label>
+            <label htmlFor="room-discovery-check-out" className="block mb-1 text-xs text-gray-600">
+              Trả phòng
+            </label>
             <input
+              id="room-discovery-check-out"
               type="date"
               value={checkOut}
               onChange={e => setCheckOut(e.target.value)}
@@ -112,8 +151,11 @@ export default function RoomDiscoveryWidget() {
           </div>
         </div>
         <div>
-          <label className="block mb-1 text-xs text-gray-600">Số khách</label>
+          <label htmlFor="room-discovery-guests" className="block mb-1 text-xs text-gray-600">
+            Số khách
+          </label>
           <input
+            id="room-discovery-guests"
             type="number"
             value={guests}
             onChange={e => setGuests(Math.max(1, parseInt(e.target.value) || 1))}
@@ -164,6 +206,32 @@ export default function RoomDiscoveryWidget() {
 
         {description && !error && (
           <p className="p-2 text-sm text-gray-700 rounded bg-gray-50">{description}</p>
+        )}
+
+        {proposals.map(proposal => (
+          <div
+            key={proposal.proposal_hash ?? proposal.human_readable_summary}
+            className="p-3 text-sm border rounded-lg bg-emerald-50 border-emerald-100 text-emerald-900"
+          >
+            <p className="font-medium">
+              {proposal.human_readable_summary ?? 'Đề xuất đặt phòng cần xác nhận.'}
+            </p>
+            {proposal.proposed_params?.check_in && proposal.proposed_params?.check_out && (
+              <p className="mt-1 text-xs text-emerald-700">
+                {proposal.proposed_params.check_in} - {proposal.proposed_params.check_out}
+              </p>
+            )}
+          </div>
+        ))}
+
+        {citations.length > 0 && !error && (
+          <div className="space-y-1 text-xs text-gray-500">
+            {citations.map(citation => (
+              <p key={`${citation.source_slug}-${citation.verified_at}`}>
+                {citation.source_slug} · {citation.verified_at}
+              </p>
+            ))}
+          </div>
         )}
 
         {supportContact && !error && <p className="text-xs text-gray-500">{supportContact}</p>}

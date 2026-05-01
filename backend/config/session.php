@@ -171,7 +171,7 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE', true),
+    'secure' => env('SESSION_SECURE_COOKIE', false),
 
     // ========== CRITICAL: httpOnly Cookie Configuration ==========
     // Token lưu trong httpOnly cookie → XSS không thể access qua JavaScript

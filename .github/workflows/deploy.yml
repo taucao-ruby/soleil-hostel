@@ -74,12 +74,13 @@ jobs:
           restore-keys: ${{ runner.os }}-composer-
       - name: Install dependencies
         working-directory: ./backend
-        run: composer install --prefer-dist --no-progress
+        run: composer install --prefer-dist --no-progress --no-scripts
       - name: Setup Laravel environment
         working-directory: ./backend
         run: |
           cp .env.example .env.testing
           php artisan key:generate --env=testing
+          php artisan package:discover --ansi --env=testing
           php artisan migrate --env=testing --force
       - name: Run Tests
         working-directory: ./backend
@@ -175,12 +176,13 @@ jobs:
           extensions: redis,pdo_pgsql
       - name: Install backend dependencies
         working-directory: ./backend
-        run: composer install --prefer-dist --no-progress
+        run: composer install --prefer-dist --no-progress --no-scripts
       - name: Setup backend
         working-directory: ./backend
         run: |
           cp .env.example .env.testing
           php artisan key:generate --env=testing
+          php artisan package:discover --ansi --env=testing
           php artisan migrate --env=testing --force
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -298,19 +300,23 @@ jobs:
     needs: docker-build
     if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || github.event_name == 'workflow_dispatch'
     timeout-minutes: 10
-    # Non-blocking: Trivy may flag base-image CVEs outside our control.
-    # Review SARIF results in GitHub Security tab; promote to blocking once baseline is clean.
-    continue-on-error: true
+    # Batch 4 / 3C: now blocking. The accepted-CVE baseline lives in .trivyignore
+    # at the repo root and is honored via trivyignores below. Renew quarterly.
     steps:
       - uses: actions/checkout@v4
-      - name: Run Trivy vulnerability scanner
+      - name: Run Trivy vulnerability scanner (HIGH/CRITICAL — blocking)
         uses: aquasecurity/trivy-action@0.29.0
         with:
           image-ref: ${{ needs.docker-build.outputs.image-tag }}
           format: "sarif"
           output: "trivy-results.sarif"
           severity: "CRITICAL,HIGH"
+          # Fail the job on any HIGH/CRITICAL finding NOT in the .trivyignore baseline.
+          exit-code: "1"
+          ignore-unfixed: true
+          trivyignores: ".trivyignore"
       - name: Upload Trivy results to GitHub Security
+        if: always()
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: "trivy-results.sarif"
@@ -329,6 +335,8 @@ jobs:
     environment:
       name: production
       url: https://soleilhotel.com
+    env:
+      SESSION_SECURE_COOKIE: "true"
     steps:
       - uses: actions/checkout@v4
       - name: Setup deployment tools
@@ -407,7 +415,7 @@ jobs:
               -o ServerAliveCountMax=4 \
               -i ~/.ssh/deploy_key \
               "${DEPLOY_USER}@${DEPLOY_HOST}" \
-              "DEPLOY_PATH='${DEPLOY_PATH}' DEPLOY_REF='${DEPLOY_REF}' bash -s" <<'REMOTE_SCRIPT'
+              "DEPLOY_PATH='${DEPLOY_PATH}' DEPLOY_REF='${DEPLOY_REF}' SESSION_SECURE_COOKIE='${SESSION_SECURE_COOKIE}' bash -s" <<'REMOTE_SCRIPT'
           set -euo pipefail
 
           if [ ! -d "${DEPLOY_PATH}/.git" ]; then
@@ -424,7 +432,8 @@ jobs:
 
           cd backend
           echo "==> Installing PHP dependencies"
-          composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+          composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts
+          php artisan package:discover --ansi
 
           echo "==> Rebuilding Laravel caches"
           php artisan config:clear
@@ -486,6 +495,20 @@ jobs:
       # DEPLOY_HOST is missing on a tagged release, so the legacy
       # "no SSH" branch is unreachable for tagged deploys.
       # ─────────────────────────────────────────────────────────────────────
+      - name: Assert schema constraints
+        if: startsWith(github.ref, 'refs/tags/v') && secrets.DEPLOY_HOST != ''
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/var/www/soleil-hostel' }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "cd ${DEPLOY_PATH}/backend && php artisan app:assert-schema-constraints"
+          rm -f ~/.ssh/deploy_key
       - name: Run database migrations
         if: startsWith(github.ref, 'refs/tags/v') && secrets.DEPLOY_HOST != ''
         env:

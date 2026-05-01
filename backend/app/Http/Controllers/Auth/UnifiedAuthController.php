@@ -125,7 +125,7 @@ class UnifiedAuthController extends Controller
                 -1,
                 '/',
                 config('session.domain'),
-                app()->isProduction(),
+                config('session.secure'),
                 true,
                 false,
                 'strict'
@@ -169,11 +169,14 @@ class UnifiedAuthController extends Controller
             }
         }
 
+        $maxRefreshCount = (int) config('sanctum.max_refresh_count_per_hour', 10);
+
         if ($cookieToken) {
             // Verify cookie token exists in database
             $tokenHash = hash('sha256', $cookieToken);
             $token = PersonalAccessToken::where('token_hash', $tokenHash)->first();
-            if ($token && $token->isValid() && $token->refresh_count <= config('sanctum.max_refresh_count', 50)) {
+            // Inclusive cap (refresh_count >= max → blocked) — matches controller and middleware
+            if ($token && $token->isValid() && $token->refresh_count < $maxRefreshCount) {
                 // Store token in request attributes for downstream use
                 $request->attributes->set('token', $token);
                 $request->attributes->set('user', $token->tokenable);
@@ -187,7 +190,7 @@ class UnifiedAuthController extends Controller
         if ($bearerToken) {
             $tokenHash = hash('sha256', $bearerToken);
             $token = PersonalAccessToken::where('token', $tokenHash)->first();
-            if ($token && $token->isValid() && $token->refresh_count <= config('sanctum.max_refresh_count', 50)) {
+            if ($token && $token->isValid() && $token->refresh_count < $maxRefreshCount) {
                 return 'bearer';
             }
         }

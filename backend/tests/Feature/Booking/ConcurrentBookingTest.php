@@ -56,7 +56,7 @@ class ConcurrentBookingTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$token->plainTextToken);
 
         // Create test room
-        $this->room = Room::factory()->create([
+        $this->room = Room::factory()->available()->ready()->create([
             'name' => 'Deluxe Room',
             'price' => 100.00,
             'max_guests' => 4,
@@ -262,7 +262,7 @@ class ConcurrentBookingTest extends TestCase
     public function test_multiple_users_different_rooms_concurrent(): void
     {
         $user2 = User::factory()->create();
-        $room2 = Room::factory()->create();
+        $room2 = Room::factory()->available()->ready()->create();
 
         $checkIn = Carbon::now()->addDays(5)->startOfDay();
         $checkOut = $checkIn->clone()->addDays(3);

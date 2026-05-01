@@ -3,13 +3,11 @@
 namespace App\Providers;
 
 use App\Directives\PurifyDirective;
+use App\Exceptions\EnvironmentConfigException;
 use App\Macros\FormRequestPurifyMacro;
 use App\Models\Booking;
 use App\Models\PersonalAccessToken;
-use App\Models\Room;
 use App\Observers\BookingObserver;
-use App\Policies\BookingPolicy;
-use App\Policies\RoomPolicy;
 use App\Repositories\Contracts\BookingRepositoryInterface;
 use App\Repositories\Contracts\ContactMessageRepositoryInterface;
 use App\Repositories\Contracts\RoomRepositoryInterface;
@@ -23,10 +21,10 @@ use Laravel\Sanctum\Sanctum;
 
 class AppServiceProvider extends ServiceProvider
 {
-    protected $policies = [
-        Booking::class => BookingPolicy::class,
-        Room::class => RoomPolicy::class,
-    ];
+    // NOTE: $policies removed (Batch 4, 3A). All model-policy bindings live in
+    // AuthServiceProvider — having two providers declare overlapping arrays is dead
+    // code today (this class never calls parent::boot()) and silently doubles up the
+    // moment someone adds parent::boot() here. AuthServiceProvider is the single source.
 
     /**
      * Register any application services.
@@ -66,6 +64,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->assertProductionSecureCookieConfiguration();
+        $this->assertRedisAuthenticationConfiguration();
+
         // Register BookingObserver for automatic location_id population
         Booking::observe(BookingObserver::class);
 
@@ -123,5 +124,52 @@ class AppServiceProvider extends ServiceProvider
                 'signature' => $parsedQuery['signature'],
             ]);
         });
+    }
+
+    private function assertProductionSecureCookieConfiguration(): void
+    {
+        // HTTP-runtime invariant; an Artisan command re-checks before traffic admission.
+        // Guard only for real console invocations — read the process-level APP_ENV so that
+        // tests which override config(['app.env' => 'production']) still exercise this path.
+        if ($this->app->runningInConsole() && ! $this->app->runningUnitTests()) {
+            return;
+        }
+
+        if (config('app.env') !== 'production') {
+            return;
+        }
+
+        if (config('session.secure') === true) {
+            return;
+        }
+
+        throw new EnvironmentConfigException(
+            'SESSION_SECURE_COOKIE must be true when APP_ENV=production.'
+        );
+    }
+
+    // Refuse to boot in non-local environments when REDIS_PASSWORD is empty.
+    // The 127.0.0.1 docker bind mitigates network-level exposure but does not
+    // block localhost-accessible processes (compromised app container, sidecar,
+    // CI runner with host network). The DB-level guarantee is enforced by the
+    // Redis server itself via --requirepass; this is the application-side fence.
+    private function assertRedisAuthenticationConfiguration(): void
+    {
+        if ($this->app->runningInConsole() && ! $this->app->runningUnitTests()) {
+            return;
+        }
+
+        if (in_array(config('app.env'), ['local', 'testing'], true)) {
+            return;
+        }
+
+        if (! empty(config('database.redis.default.password'))) {
+            return;
+        }
+
+        throw new EnvironmentConfigException(
+            'REDIS_PASSWORD must be set in non-local environments. '.
+            'Refusing to start with unauthenticated Redis.'
+        );
     }
 }

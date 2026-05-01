@@ -37,7 +37,7 @@ class CreateBookingConcurrencyTest extends TestCase
         parent::setUp();
 
         // Tạo test room
-        $this->room = Room::factory()->create([
+        $this->room = Room::factory()->available()->ready()->create([
             'name' => 'Test Room',
             'price' => 100,
         ]);
@@ -348,7 +348,7 @@ class CreateBookingConcurrencyTest extends TestCase
      */
     public function test_different_rooms_can_have_same_dates(): void
     {
-        $room2 = Room::factory()->create(['name' => 'Room 2', 'price' => 150]);
+        $room2 = Room::factory()->available()->ready()->create(['name' => 'Room 2', 'price' => 150]);
 
         $checkIn = Carbon::tomorrow()->toDateString();
         $checkOut = Carbon::tomorrow()->addDays(3)->toDateString();

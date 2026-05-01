@@ -3,6 +3,7 @@
 namespace Tests\Feature\Notifications;
 
 use App\Enums\BookingStatus;
+use App\Exceptions\BookingTransitionException;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
@@ -138,8 +139,8 @@ class BookingNotificationTest extends TestCase
             'status' => BookingStatus::CONFIRMED,
         ]);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage("Cannot confirm booking: current status is 'confirmed'");
+        $this->expectException(BookingTransitionException::class);
+        $this->expectExceptionMessage("cannot transition from 'confirmed' to 'confirmed'");
 
         $this->bookingService->confirmBooking($booking);
     }

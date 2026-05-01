@@ -28,6 +28,14 @@ use Illuminate\Support\Str;
  */
 class SecurityHeaders
 {
+    private const STRIPE_API_ORIGIN = 'https://api.stripe.com';
+
+    private const STRIPE_HOOKS_ORIGIN = 'https://hooks.stripe.com';
+
+    private const STRIPE_JS_ORIGIN = 'https://js.stripe.com';
+
+    private const STRIPE_Q_ORIGIN = 'https://q.stripe.com';
+
     private string $nonce = '';
 
     public function handle(Request $request, Closure $next)
@@ -189,7 +197,7 @@ class SecurityHeaders
             "default-src 'self'",
 
             // Script: allow nonce, inline scripts for dev tooling, HMR, and unsafe-eval
-            "script-src 'self' 'nonce-{$nonce}' 'unsafe-inline' 'unsafe-eval' {$viteHost} ws://{$viteHost}",
+            "script-src 'self' 'nonce-{$nonce}' 'unsafe-inline' 'unsafe-eval' {$viteHost} ws://{$viteHost} ".self::STRIPE_JS_ORIGIN,
 
             // Style: allow nonce, inline styles for Vite assets
             "style-src 'self' 'nonce-{$nonce}' 'unsafe-inline' {$viteHost}",
@@ -198,13 +206,13 @@ class SecurityHeaders
             "font-src 'self' data:",
 
             // Image: allow same-origin + data URIs
-            "img-src 'self' data: https:",
+            "img-src 'self' data: https: ".self::STRIPE_Q_ORIGIN,
 
             // Connect: allow same-origin + Vite HMR + localhost
-            "connect-src 'self' {$viteHost} ws://{$viteHost} wss://{$viteHost} localhost:* ws://localhost:*",
+            "connect-src 'self' {$viteHost} ws://{$viteHost} wss://{$viteHost} localhost:* ws://localhost:* ".self::STRIPE_API_ORIGIN,
 
-            // Frame: allow self (for embeds)
-            "frame-src 'self'",
+            // Frame: allow self and Stripe Elements/3DS frames
+            "frame-src 'self' ".self::STRIPE_JS_ORIGIN.' '.self::STRIPE_HOOKS_ORIGIN,
 
             // Object: disable (most dangerous)
             "object-src 'none'",
@@ -235,10 +243,10 @@ class SecurityHeaders
         return implode('; ', [
             "default-src 'none'",
 
-            // Script: ONLY nonce + hashes, strict-dynamic blocks everything else
-            // strict-dynamic = hashes/nonces trusted, ignore allow-list
+            // Script: nonce-based first-party scripts plus Stripe.js for payment UI
+            // strict-dynamic trusts nonce-bearing scripts that load follow-on scripts
             // This forces inline scripts to use nonce
-            "script-src 'nonce-{$nonce}' 'strict-dynamic'",
+            "script-src 'nonce-{$nonce}' 'strict-dynamic' ".self::STRIPE_JS_ORIGIN,
 
             // Style: nonce OR hash (inline styles must have nonce)
             "style-src 'nonce-{$nonce}' 'strict-dynamic'",
@@ -249,14 +257,14 @@ class SecurityHeaders
             // Font: same-origin only
             "font-src 'self'",
 
-            // Image: same-origin only
-            "img-src 'self'",
+            // Image: same-origin plus Stripe telemetry beacon
+            "img-src 'self' ".self::STRIPE_Q_ORIGIN,
 
-            // Connect: API calls to same-origin only
-            "connect-src 'self'",
+            // Connect: API calls to same-origin plus Stripe API
+            "connect-src 'self' ".self::STRIPE_API_ORIGIN,
 
-            // Frame: disable (no embedded iframes)
-            "frame-src 'none'",
+            // Frame: allow only Stripe Elements/3DS frames
+            'frame-src '.self::STRIPE_JS_ORIGIN.' '.self::STRIPE_HOOKS_ORIGIN,
 
             // Object: disable
             "object-src 'none'",

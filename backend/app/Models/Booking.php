@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Enums\BookingStatus;
 use App\Enums\DepositStatus;
+use App\Events\BookingStatusChanged;
+use App\Exceptions\BookingTransitionException;
 use App\Traits\Purifiable;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -11,6 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 class Booking extends Model
 {
@@ -210,6 +213,35 @@ class Booking extends Model
     {
         return $this->status === BookingStatus::REFUND_FAILED
             || $this->refund_status === 'failed';
+    }
+
+    /**
+     * Transition booking status under a row-level lock.
+     */
+    public function transitionTo(BookingStatus $target, ?User $actor = null): self
+    {
+        return DB::transaction(function () use ($target, $actor): self {
+            $locked = self::query()
+                ->whereKey($this->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $from = $locked->status;
+
+            if (! $from->canTransitionTo($target)) {
+                throw new BookingTransitionException($locked, $from, $target);
+            }
+
+            $locked->update([
+                'status' => $target,
+                'updated_at' => now(),
+            ]);
+
+            $changed = $locked->fresh();
+            event(new BookingStatusChanged($changed, $from, $target, $actor));
+
+            return $changed;
+        });
     }
 
     // ===== SCOPES =====

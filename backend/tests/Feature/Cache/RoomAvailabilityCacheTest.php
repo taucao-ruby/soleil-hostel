@@ -20,7 +20,7 @@ class RoomAvailabilityCacheTest extends TestCase
     {
         parent::setUp();
         $this->cache = app(RoomAvailabilityCache::class);
-        $this->room = Room::factory()->create();
+        $this->room = Room::factory()->available()->ready()->create();
     }
 
     #[\PHPUnit\Framework\Attributes\Test]

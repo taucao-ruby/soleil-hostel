@@ -46,7 +46,8 @@ class LocationApiTest extends TestCase
     {
         $location = Location::factory()->create(['is_active' => true]);
         Room::factory()->count(5)->create(['location_id' => $location->id, 'status' => 'available']);
-        Room::factory()->count(2)->create(['location_id' => $location->id, 'status' => 'maintenance']);
+        // Batch 4 / 3B: 'maintenance' replaced by 'unavailable' + outOfService().
+        Room::factory()->count(2)->outOfService()->create(['location_id' => $location->id, 'status' => 'unavailable']);
 
         $response = $this->getJson('/api/v1/locations');
 

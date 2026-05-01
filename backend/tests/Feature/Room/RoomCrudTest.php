@@ -314,9 +314,11 @@ class RoomCrudTest extends TestCase
 
     public function test_room_status_values_are_correct(): void
     {
+        // Batch 4 / 3B: status narrowed to {available, unavailable}; operational
+        // distinction (booked / maintenance / cleaning) moved to readiness_status.
         $availableRoom = Room::factory()->create(['status' => 'available']);
-        $bookedRoom = Room::factory()->create(['status' => 'booked']);
-        $maintenanceRoom = Room::factory()->create(['status' => 'maintenance']);
+        $occupiedRoom = Room::factory()->state(['readiness_status' => \App\Enums\RoomReadinessStatus::OCCUPIED])->create(['status' => 'unavailable']);
+        $oosRoom = Room::factory()->outOfService()->create(['status' => 'unavailable']);
 
         $response = $this->getJson('/api/rooms');
 

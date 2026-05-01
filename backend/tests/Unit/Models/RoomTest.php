@@ -200,15 +200,19 @@ class RoomTest extends TestCase
         $this->assertArrayHasKey('active_bookings_count', $roomWithRelations->toArray());
     }
 
-    public function test_scope_active_filters_by_status(): void
+    public function test_scope_active_filters_by_readiness(): void
     {
-        Room::factory()->create(['status' => 'active']);
-        Room::factory()->create(['status' => 'available']);
-        Room::factory()->create(['status' => 'maintenance']);
+        // Batch 4 / 3B: scopeActive() now filters by readiness_status='ready' only.
+        // status is narrowed to {available, unavailable}; operational state moved
+        // entirely to readiness_status. The pairings below mirror what production
+        // writes: a room out of service has status='unavailable' AND readiness='out_of_service'.
+        Room::factory()->create(['status' => 'available']); // ready by default
+        Room::factory()->outOfService()->create(['status' => 'unavailable']);
+        Room::factory()->dirty()->create(['status' => 'available']); // available but dirty → not ready
 
         $activeRooms = Room::active()->get();
 
-        $this->assertTrue($activeRooms->every(fn ($r) => $r->status === 'available'));
+        $this->assertCount(1, $activeRooms, 'Only the ready room should be returned by scopeActive().');
     }
 
     // ========== STATUS VALUE TESTS ==========
@@ -220,18 +224,15 @@ class RoomTest extends TestCase
         $this->assertEquals('available', $room->status);
     }
 
-    public function test_room_status_can_be_booked(): void
+    public function test_room_status_can_be_unavailable(): void
     {
-        $room = Room::factory()->create(['status' => 'booked']);
+        // Batch 4 / 3B: legacy 'booked'/'maintenance' values were collapsed into
+        // 'unavailable' at the DB layer; readiness_status carries the operational
+        // distinction (see RoomReadinessStatus enum).
+        $room = Room::factory()->outOfService()->create(['status' => 'unavailable']);
 
-        $this->assertEquals('booked', $room->status);
-    }
-
-    public function test_room_status_can_be_maintenance(): void
-    {
-        $room = Room::factory()->create(['status' => 'maintenance']);
-
-        $this->assertEquals('maintenance', $room->status);
+        $this->assertEquals('unavailable', $room->status);
+        $this->assertEquals('out_of_service', $room->readiness_status->value);
     }
 
     // ========== EDGE CASE TESTS ==========

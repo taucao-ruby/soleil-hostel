@@ -58,7 +58,7 @@ jobs:
           restore-keys: composer-${{ runner.os }}-
       - name: Install dependencies
         working-directory: ./backend
-        run: composer install --optimize-autoloader --no-interaction --prefer-dist
+        run: composer install --optimize-autoloader --no-interaction --prefer-dist --no-scripts
       - name: Cache vendor
         uses: actions/cache/save@v4
         with:
@@ -142,7 +142,7 @@ jobs:
       - name: Install Composer dependencies (cache miss fallback)
         if: steps.restore-vendor.outputs.cache-hit != 'true'
         working-directory: ./backend
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
       - name: Setup environment
         working-directory: ./backend
         env:
@@ -155,6 +155,7 @@ jobs:
         run: |
           cp .env.example .env.testing
           php artisan key:generate --env=testing
+          php artisan package:discover --ansi --env=testing
           php artisan migrate --env=testing --force
       - name: Run Pest tests (Parallel)
         working-directory: ./backend
@@ -247,7 +248,7 @@ jobs:
       - name: Install Composer dependencies (cache miss fallback)
         if: steps.restore-vendor.outputs.cache-hit != 'true'
         working-directory: ./backend
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
       - name: Setup environment
         working-directory: ./backend
         env:
@@ -260,6 +261,7 @@ jobs:
         run: |
           cp .env.example .env.testing
           php artisan key:generate --env=testing
+          php artisan package:discover --ansi --env=testing
           php artisan migrate --env=testing --force
       - name: Start server
         working-directory: ./backend
@@ -337,12 +339,13 @@ jobs:
       - name: Install Composer dependencies (cache miss fallback)
         if: steps.restore-vendor.outputs.cache-hit != 'true'
         working-directory: ./backend
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
       - name: Setup Laravel
         run: |
           cd backend
           cp .env.example .env.testing
           php artisan key:generate --env=testing
+          php artisan package:discover --ansi --env=testing
       - name: Setup Database
         run: |
           cd backend
@@ -403,7 +406,7 @@ jobs:
       - name: Install Composer dependencies (cache miss fallback)
         if: steps.restore-vendor.outputs.cache-hit != 'true'
         working-directory: ./backend
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
       - name: PHPStan analysis (Level 5)
         working-directory: ./backend
         run: phpstan analyse --error-format=github
@@ -432,7 +435,7 @@ jobs:
       - name: Install Composer dependencies (cache miss fallback)
         if: steps.restore-vendor.outputs.cache-hit != 'true'
         working-directory: ./backend
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
       - name: Psalm analysis
         working-directory: ./backend
         run: |
@@ -463,7 +466,7 @@ jobs:
       - name: Install Composer dependencies (cache miss fallback)
         if: steps.restore-vendor.outputs.cache-hit != 'true'
         working-directory: ./backend
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
       - name: Check code style
         working-directory: ./backend
         run: vendor/bin/pint --test
@@ -491,7 +494,7 @@ jobs:
       - name: Install Composer dependencies (cache miss fallback)
         if: steps.restore-vendor.outputs.cache-hit != 'true'
         working-directory: ./backend
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
       - name: Check PHP syntax (parallel scan)
         run: |
           cd backend
@@ -520,18 +523,19 @@ jobs:
       - name: Install Composer dependencies (cache miss fallback)
         if: steps.restore-vendor.outputs.cache-hit != 'true'
         working-directory: ./backend
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
       - name: Audit Composer dependencies
         working-directory: ./backend
         run: composer audit
 
   # ========== SECURITY: NPM Audit ==========
+  # Batch 4 / 3C: now blocking on HIGH/CRITICAL. Accepted advisories must be added
+  # to frontend/.audit-exceptions.json (see file for format + expiry rules).
   npm-audit:
-    name: NPM Audit
+    name: NPM Audit (HIGH/CRITICAL — blocking)
     runs-on: ubuntu-latest
     needs: [frontend-setup, setup]
     timeout-minutes: 10
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node
@@ -547,9 +551,9 @@ jobs:
         with:
           path: frontend/node_modules
           key: frontend-node-${{ needs.setup.outputs.pnpm-hash }}
-      - name: Audit NPM dependencies
+      - name: Audit NPM dependencies (with allowlist)
         working-directory: ./frontend
-        run: pnpm audit --audit-level=high
+        run: node ../scripts/audit-with-exceptions.mjs
 
   # ========== SECURITY: Gitleaks ==========
   security-scan:
@@ -665,4 +669,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate docker-compose config
-        run: docker compose config > /dev/null
+        shell: bash
+        run: |
+          set -euo pipefail
+          unset REDIS_PASSWORD # Host env has precedence over --env-file; avoid empty CI values shadowing the template.
+          docker compose \
+            --project-directory "$GITHUB_WORKSPACE" \
+            --env-file "$GITHUB_WORKSPACE/.env.example" \
+            config -q # Validate structure without printing interpolated values to logs.

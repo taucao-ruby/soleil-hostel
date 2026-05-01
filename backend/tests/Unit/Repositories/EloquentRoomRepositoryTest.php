@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Repositories;
 
+use App\Models\Booking;
 use App\Models\Room;
 use App\Repositories\EloquentRoomRepository;
 use Illuminate\Database\Eloquent\Builder;
@@ -299,7 +300,7 @@ class EloquentRoomRepositoryTest extends TestCase
      * @covers \App\Repositories\EloquentRoomRepository::hasOverlappingConfirmedBookings
      *
      * COMPLEX MOCK EXAMPLE: This tests the overlap detection chain:
-     * Room::find($roomId)->bookings()->where(...)->where(...)->where(...)->exists()
+     * Room::find($roomId)->bookings()->whereIn(...)->where(...)->where(...)->exists()
      *
      * This is a critical revenue protection query that checks for booking conflicts.
      * The half-open interval logic [check_in, check_out) is implemented as:
@@ -312,11 +313,14 @@ class EloquentRoomRepositoryTest extends TestCase
         $checkIn = '2026-01-10';
         $checkOut = '2026-01-15';
 
-        // Build mock chain: find() -> bookings() -> where() -> where() -> where() -> exists()
+        // Build mock chain: find() -> bookings() -> whereIn() -> where() -> where() -> exists()
         $mockRelationBuilder = Mockery::mock(HasMany::class);
-        $mockRelationBuilder->shouldReceive('where')
+        $mockRelationBuilder->shouldReceive('whereIn')
             ->once()
-            ->with('status', 'confirmed')
+            ->with('status', array_map(
+                static fn ($status) => $status->value,
+                Booking::ACTIVE_STATUSES
+            ))
             ->andReturnSelf();
         $mockRelationBuilder->shouldReceive('where')
             ->once()
@@ -374,9 +378,12 @@ class EloquentRoomRepositoryTest extends TestCase
         $checkOut = '2026-01-15';
 
         $mockRelationBuilder = Mockery::mock(HasMany::class);
-        $mockRelationBuilder->shouldReceive('where')
+        $mockRelationBuilder->shouldReceive('whereIn')
             ->once()
-            ->with('status', 'confirmed')
+            ->with('status', array_map(
+                static fn ($status) => $status->value,
+                Booking::ACTIVE_STATUSES
+            ))
             ->andReturnSelf();
         $mockRelationBuilder->shouldReceive('where')
             ->once()

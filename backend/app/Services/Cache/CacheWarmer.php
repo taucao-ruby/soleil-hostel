@@ -288,7 +288,9 @@ class CacheWarmer
         $warmed = 0;
 
         if ($this->dryRun) {
-            $roomCount = Room::active()->count();
+            // Batch 4 / 3B: route through scopeBookable() — the canonical predicate
+            // covers status + readiness_status + location.is_active in one place.
+            $roomCount = Room::bookable()->count();
 
             return [
                 'status' => 'dry_run',
@@ -311,8 +313,8 @@ class CacheWarmer
         $cacheEntries = $this->roomAvailabilityCache->warmUpCache($today, $endDate);
         $warmed += $cacheEntries;
 
-        // Warm individual room caches
-        Room::active()->chunk($this->chunkSize, function ($rooms) use (&$warmed) {
+        // Warm individual room caches (Batch 4 / 3B: bookable() is the canonical predicate).
+        Room::bookable()->chunk($this->chunkSize, function ($rooms) use (&$warmed) {
             foreach ($rooms as $room) {
                 $this->roomAvailabilityService->getRoomAvailability($room->id);
                 $warmed++;
@@ -501,11 +503,11 @@ class CacheWarmer
             ];
         }
 
-        // Room statistics
+        // Room statistics (Batch 4 / 3B: bookable() owns the predicate).
         $roomStats = [
             'total_rooms' => Room::count(),
-            'active_rooms' => Room::active()->count(),
-            'total_capacity' => Room::active()->sum('max_guests'),
+            'active_rooms' => Room::bookable()->count(),
+            'total_capacity' => Room::bookable()->sum('max_guests'),
         ];
         Cache::put('stats:rooms', $roomStats, now()->addHours(1));
         $warmed++;
@@ -541,7 +543,7 @@ class CacheWarmer
      */
     private function calculateOccupancyRate(Carbon $date): float
     {
-        $totalRooms = Room::active()->count();
+        $totalRooms = Room::bookable()->count(); // Batch 4 / 3B
         if ($totalRooms === 0) {
             return 0.0;
         }

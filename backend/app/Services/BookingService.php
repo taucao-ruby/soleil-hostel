@@ -94,14 +94,8 @@ class BookingService
      */
     public function confirmBooking(Booking $booking): Booking
     {
-        if ($booking->status !== BookingStatus::PENDING) {
-            throw new \RuntimeException(
-                "Cannot confirm booking: current status is '{$booking->status->value}', expected 'pending'"
-            );
-        }
-
         return DB::transaction(function () use ($booking) {
-            $booking->update(['status' => BookingStatus::CONFIRMED]);
+            $booking = $booking->transitionTo(BookingStatus::CONFIRMED);
 
             // Create the operational stay record (idempotent — skip if already exists).
             // Canonical business hours: 14:00 check-in, 12:00 check-out.

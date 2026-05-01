@@ -1,0 +1,16 @@
+# Local development overrides — automatically merged by `docker compose` when
+# this file lives next to docker-compose.yml. Production deployments use
+# docker-compose.prod.yml (`-f docker-compose.prod.yml`) and DO NOT load this
+# file, so the privileges declared here never reach a production environment.
+#
+# Why this file exists (Batch 4 / 3D): the base docker-compose.yml previously
+# pinned `user: root` on the backend service so local bind-mount hot-reload
+# (composer install, key:generate, artisan migrate) could write into the
+# host-owned ./backend tree. That privilege has no business in a non-dev
+# context, so it was removed from the base file and recreated here as an
+# explicit dev-only escalation.
+#
+# root user required for bind-mount hot reload in dev only.
+services:
+  backend:
+    user: root

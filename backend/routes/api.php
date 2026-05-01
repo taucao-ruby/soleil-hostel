@@ -86,7 +86,7 @@ Route::post('/auth/login-httponly', [HttpOnlyTokenController::class, 'login'])
 Route::get('/auth/csrf-token', function (Request $request) {
     // Return Laravel session CSRF token for form submissions
     return response()->json(['csrf_token' => \Illuminate\Support\Facades\Session::token()]);
-});
+})->middleware('throttle:5,1');
 
 // Security: CSP violation reporting
 Route::post('/csp-violation-report', [CspViolationReportController::class, 'report'])

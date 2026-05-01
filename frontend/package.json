@@ -9,6 +9,7 @@
     "postdev": "node ./scripts/remove-hot.js",
     "dev:docker": "docker compose up --build frontend",
     "build": "tsc -b && vite build",
+    "type-check": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write src/**/*.{ts,tsx}",
@@ -22,7 +23,6 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.9.6",
-    "react-toastify": "^11.0.5",
     "web-vitals": "^5.1.0"
   },
   "pnpm": {

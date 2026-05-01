@@ -16,6 +16,7 @@ use App\AiHarness\Services\PolicyEnforcementService;
 use App\AiHarness\Services\ToolOrchestrationService;
 use App\AiHarness\ToolRegistry;
 use App\Enums\BookingStatus;
+use App\Models\AiProposal;
 use App\Models\AiProposalEvent;
 use App\Models\Booking;
 use App\Models\Room;
@@ -522,6 +523,22 @@ class ActionProposalTest extends TestCase
             'proposed_params' => ['booking_id' => $bobsBooking->id],
             'proposer_user_id' => $alice->id,
         ], 1800);
+
+        // AI-005 / AI-006: durable record is required for confirm. Mark it
+        // as already-shown so the layered-defense scenario under test (Bob's
+        // booking, naming check) is reachable — the F-06 binding gate has
+        // already passed; the next gate is the service-layer ownership
+        // check, NOT a shown/expiry/drift gate.
+        AiProposal::create([
+            'proposal_hash' => $hash,
+            'user_id' => $alice->id,
+            'action_type' => 'suggest_cancellation',
+            'context_version' => hash('sha256', "cancel:{$bobsBooking->id}"),
+            'proposed_params' => ['booking_id' => $bobsBooking->id],
+            'risk_assessment' => ['level' => 'medium', 'factors' => []],
+            'expires_at' => now()->addMinutes(30),
+            'shown_at' => now(),
+        ]);
 
         $response = $this->actingAs($alice)
             ->postJson("/api/v1/ai/proposals/{$hash}/decide", [

@@ -304,6 +304,28 @@ class Room extends Model
     }
 
     /**
+     * Total stay price for the given date range, in the same integer unit
+     * used by `bookings.amount` (smallest currency unit — for VND that is
+     * the đồng itself, matching CreateBookingService::calculateAmount).
+     *
+     * Returns 0 when check_out is not strictly after check_in. The caller
+     * (proposal revalidation, booking creation) is responsible for date
+     * sanity — this method is a pure pricing helper.
+     */
+    public function currentPriceForDates(string $checkIn, string $checkOut): int
+    {
+        $start = \Carbon\Carbon::parse($checkIn)->startOfDay();
+        $end = \Carbon\Carbon::parse($checkOut)->startOfDay();
+
+        $nights = (int) $start->diffInDays($end, false);
+        if ($nights <= 0) {
+            return 0;
+        }
+
+        return (int) round(((float) $this->price) * $nights);
+    }
+
+    /**
      * Determine whether this room is an operational upgrade over the source room.
      */
     public function isUpgradeOver(Room $other): bool

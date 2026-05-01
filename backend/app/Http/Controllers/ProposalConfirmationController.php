@@ -5,11 +5,21 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\AiHarness\DTOs\ProposalEvent;
+use App\AiHarness\Enums\ProposalActionType;
+use App\AiHarness\Exceptions\ProposalExpiredException;
+use App\AiHarness\Exceptions\ProposalLifecycleException;
+use App\AiHarness\Exceptions\ProposalNotShownException;
+use App\AiHarness\Exceptions\ProposalPriceChangedException;
+use App\AiHarness\Exceptions\ProposedRoomNoLongerAvailableException;
 use App\Http\Requests\ProposalDecisionRequest;
 use App\Http\Responses\ApiResponse;
+use App\Models\AiProposal;
 use App\Models\AiProposalEvent;
+use App\Models\Room;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -93,6 +103,40 @@ class ProposalConfirmationController extends Controller
         array $proposalData,
         string $now,
     ): JsonResponse {
+        // AI-005 / AI-006: durable record carries expiry, shown-state, and the
+        // room/price snapshot used for drift detection. Cache alone is not a
+        // sufficient gate at confirm time — an attacker could replay a hash
+        // that was generated minutes ago against a now-unavailable or
+        // re-priced room. The cache lookup above proved the proposer
+        // binding; this lookup proves the proposal is still safe to commit.
+        $proposal = AiProposal::query()
+            ->where('proposal_hash', $hash)
+            ->where('user_id', $userId)
+            ->first();
+
+        if ($proposal === null) {
+            // Mirror the cache-miss 404 so we don't leak whether the cache
+            // entry exists in isolation from the durable record.
+            return ApiResponse::notFound('Proposal not found or expired.');
+        }
+
+        try {
+            $this->revalidateProposal($proposal);
+        } catch (ProposalLifecycleException $e) {
+            $this->recordEvent($userId, $hash, $actionType, 'confirmed', "error:{$e->errorCode()}", $now);
+
+            // Cache and the durable row are both forgotten — this proposal
+            // is dead, no replay path remains.
+            Cache::forget("ai_proposal:{$hash}");
+            $proposal->update(['decision' => 'rejected', 'decided_at' => now()]);
+
+            return ApiResponse::error(
+                $e->getMessage(),
+                ['code' => $e->errorCode()],
+                422,
+            );
+        }
+
         $proposedParams = $proposalData['proposed_params'] ?? [];
         $downstreamResult = null;
 
@@ -115,6 +159,10 @@ class ProposalConfirmationController extends Controller
         $this->recordEvent($userId, $hash, $actionType, 'confirmed', $downstreamResult, $now);
 
         Cache::forget("ai_proposal:{$hash}");
+        $proposal->update([
+            'decision' => 'confirmed',
+            'decided_at' => now(),
+        ]);
 
         $success = ! str_starts_with((string) $downstreamResult, 'error:');
 
@@ -132,6 +180,56 @@ class ProposalConfirmationController extends Controller
             'downstream_result' => $downstreamResult,
             'message' => 'Hành động đã được thực hiện thành công.',
         ]);
+    }
+
+    /**
+     * Revalidate the proposal against current room / price / lifecycle
+     * state. Each precondition maps to a stable error code surfaced on the
+     * 422 response so the frontend can render the right recovery affordance.
+     *
+     * Order matters: expiry first (cheapest), then shown-state (state
+     * machine), then room availability, then price (most expensive — needs
+     * the Room model). The first failed gate short-circuits.
+     *
+     * @throws ProposalLifecycleException
+     */
+    private function revalidateProposal(AiProposal $proposal): void
+    {
+        if ($proposal->isExpired()) {
+            throw new ProposalExpiredException;
+        }
+
+        if (! $proposal->isShown()) {
+            throw new ProposalNotShownException;
+        }
+
+        // Booking-shape proposals carry a room/dates/price triple; drift
+        // checks only apply to those. Cancellation proposals reference an
+        // existing booking — the service layer owns availability there.
+        if ($proposal->action_type !== ProposalActionType::SUGGEST_BOOKING->value) {
+            return;
+        }
+
+        $room = Room::query()->bookable()->find($proposal->room_id);
+        if ($room === null) {
+            throw new ProposedRoomNoLongerAvailableException;
+        }
+
+        if ($proposal->check_in === null || $proposal->check_out === null) {
+            return;
+        }
+
+        $currentPrice = $room->currentPriceForDates(
+            $proposal->check_in->toDateString(),
+            $proposal->check_out->toDateString(),
+        );
+
+        if ($proposal->quoted_price_cents !== $currentPrice) {
+            throw new ProposalPriceChangedException(
+                quotedPriceCents: (int) $proposal->quoted_price_cents,
+                currentPriceCents: $currentPrice,
+            );
+        }
     }
 
     /**
@@ -220,6 +318,83 @@ class ProposalConfirmationController extends Controller
         }
 
         return "booking_cancelled:{$bookingId}";
+    }
+
+    /**
+     * POST /api/v1/ai/proposals/{hash}/shown
+     *
+     * AI-005: emits a `shown` event when the frontend mounts the proposal
+     * UI. Required precondition for `confirmed` — without a prior shown,
+     * the decide() handler raises ProposalNotShown.
+     *
+     * Idempotent: a second call for an already-shown proposal returns 200
+     * without inserting a duplicate event row. The check + write pair is
+     * wrapped in a DB transaction so concurrent calls cannot both win.
+     */
+    public function shown(Request $request, string $hash): JsonResponse
+    {
+        $userId = (int) $request->user()->id;
+
+        $proposal = AiProposal::query()
+            ->where('proposal_hash', $hash)
+            ->where('user_id', $userId)
+            ->first();
+
+        if ($proposal === null) {
+            // Same shape as decide(): 404 hides whether the hash exists at
+            // all or just isn't bound to the requester.
+            return ApiResponse::notFound('Proposal not found or expired.');
+        }
+
+        if ($proposal->isExpired()) {
+            return ApiResponse::error(
+                (new ProposalExpiredException)->getMessage(),
+                ['code' => (new ProposalExpiredException)->errorCode()],
+                422,
+            );
+        }
+
+        $alreadyShown = false;
+
+        DB::transaction(function () use ($proposal, $userId, $hash, &$alreadyShown): void {
+            // Re-fetch under a row lock so concurrent /shown calls cannot
+            // double-insert the audit event when the row started unshown.
+            $locked = AiProposal::query()
+                ->whereKey($proposal->id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($locked === null) {
+                return;
+            }
+
+            if ($locked->shown_at !== null) {
+                $alreadyShown = true;
+
+                return;
+            }
+
+            $locked->update(['shown_at' => now()]);
+
+            $actorRole = $locked->user?->role;
+
+            AiProposalEvent::create([
+                'user_id' => $userId,
+                'actor_email' => $locked->user?->email,
+                'actor_role' => $actorRole instanceof \BackedEnum ? $actorRole->value : $actorRole,
+                'actor_display_name' => $locked->user?->name,
+                'proposal_hash' => $hash,
+                'action_type' => $locked->action_type,
+                'user_decision' => 'shown',
+                'downstream_result' => null,
+            ]);
+        });
+
+        return ApiResponse::success([
+            'proposal_hash' => $hash,
+            'shown' => true,
+            'idempotent' => $alreadyShown,
+        ]);
     }
 
     /**

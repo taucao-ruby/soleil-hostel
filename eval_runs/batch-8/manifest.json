@@ -1,0 +1,29 @@
+{
+  "batch_id": "batch-8",
+  "created_at": "2026-05-03T00:00:00Z",
+  "model_id": "claude-opus-4-7",
+  "findings": [
+    "CONC-005",
+    "CONC-006",
+    "OPS-004",
+    "AUTH-004",
+    "PLATFORM"
+  ],
+  "prompt_hashes": {
+    "CONC-005": "commit:b69a7a0",
+    "CONC-006": "commit:b69a7a0",
+    "OPS-004": "commit:7027adb",
+    "AUTH-004": "sha256:d007389bba5cd0f3fd3ac5418b3629755bdebfad8993b016176b61f8299323c8",
+    "PLATFORM": "sha256:f089ac69ad1f3cd1efe28c3fe438dbb39eef595a3d43a66c79712b97183cae50"
+  },
+  "result_commit": "10799461cda04f544fa4ad8befefe0e5adcd166a",
+  "tests_added": 12,
+  "tests_passing": 12,
+  "red_team_fixtures": [
+    "backend/tests/Feature/Auth/OtpCooldownRaceTest.php",
+    "backend/tests/Feature/FeatureFlagTest.php"
+  ],
+  "token_estimate": null,
+  "evaluator": "human-principal-engineer",
+  "sign_off": "LGTM pending — awaiting human-principal-engineer review 2026-05-03"
+}

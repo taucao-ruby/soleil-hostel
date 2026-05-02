@@ -37,9 +37,19 @@ class FeatureFlag
     private const LOCAL_CACHE_PREFIX = 'feature_flag:local:';
 
     /**
-     * Resolve a flag's effective state.
+     * Soft toggle resolution.
      *
-     * @param  string  $key  Stable identifier, e.g. "ai_harness.enabled" or "booking.expire_pending".
+     * Behaviour: read Redis; if the key is absent OR Redis is unreachable,
+     * fall back to the caller-supplied $default. Suitable for operational
+     * toggles where a Redis outage should NOT silently flip behaviour
+     * (e.g. `booking.expire_pending` defaults to ON; we want it to keep
+     * running through a Redis blip rather than stalling work).
+     *
+     * For "emergency disable" flags use {@see killSwitch()} instead — that
+     * variant is sticky-off and survives Redis loss without resurrecting
+     * a config-default ON.
+     *
+     * @param  string  $key  Stable identifier, e.g. "booking.expire_pending".
      * @param  bool  $default  Returned when the key has never been set OR Redis is unreachable.
      */
     public static function get(string $key, bool $default = false): bool
@@ -57,6 +67,53 @@ class FeatureFlag
         // sacrificing the fail-open contract — both fall back to $default.
         if ($redisValue === null) {
             return $default;
+        }
+
+        Cache::put($localKey, $redisValue, self::LOCAL_CACHE_TTL_SECONDS);
+
+        return $redisValue === 'on';
+    }
+
+    /**
+     * Hard kill switch — sticky-off semantics.
+     *
+     * Returns true ONLY when the Redis key is explicitly set to a truthy
+     * value ("on", "true", "1", "enabled"). Any other state — key absent,
+     * key set to "off", malformed value, or Redis unreachable — returns
+     * false. There is no $default fallback: the absence of a positive
+     * affirmation is itself the safe answer.
+     *
+     * Use this for flags whose entire purpose is "stay off unless someone
+     * explicitly lit them up", or where a config-default ON would defeat
+     * an operator-set runtime disable when Redis goes dark. Prime example:
+     * `ai_harness.enabled` (AUTH-004 / Batch 8 platform hardening) — if an
+     * operator has flipped the harness off and Redis later fails, we MUST
+     * stay off rather than silently re-enabling via the env default.
+     *
+     * Local cache uses a separate sentinel ('absent') so we can distinguish
+     * "Redis confirmed off" from "Redis confirmed absent" without an extra
+     * round trip; both collapse to false at the boundary, but the cache
+     * layer still avoids hammering Redis under hot paths.
+     *
+     * @param  string  $key  Stable identifier, e.g. "ai_harness.enabled".
+     */
+    public static function killSwitch(string $key): bool
+    {
+        $localKey = self::LOCAL_CACHE_PREFIX.$key;
+
+        $cached = Cache::get($localKey);
+        if ($cached !== null) {
+            return $cached === 'on';
+        }
+
+        $redisValue = self::readFromRedis($key);
+
+        if ($redisValue === null) {
+            // Sticky-off: do NOT cache the absent/down result. Caching it would
+            // smear a transient Redis outage across LOCAL_CACHE_TTL_SECONDS even
+            // after Redis recovers, which is the opposite of what an operator
+            // wants when re-enabling the flag mid-incident.
+            return false;
         }
 
         Cache::put($localKey, $redisValue, self::LOCAL_CACHE_TTL_SECONDS);

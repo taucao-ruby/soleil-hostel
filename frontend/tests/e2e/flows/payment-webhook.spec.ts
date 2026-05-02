@@ -15,11 +15,14 @@ import { AdminDashboardPage } from '../pages/AdminDashboardPage'
  * The webhook handler is exercised end-to-end via HTTP, so this flow validates
  * idempotency and signature verification together.
  */
-test.describe('Payment webhook', () => {
+// @smoke — gates every PR via .github/workflows/e2e.yml. Owns the
+// payment-webhook contract: signature verification + booking confirmation
+// must stay green; failures here are a hard merge blocker.
+test.describe('Payment webhook @smoke', () => {
   const apiBase = process.env.E2E_API_BASE ?? 'http://localhost:8000/api'
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET ?? 'whsec_e2e_test_secret'
 
-  test('payment_intent.succeeded → booking becomes confirmed', async ({ page }) => {
+  test('payment_intent.succeeded → booking becomes confirmed @smoke', async ({ page }) => {
     // 1. Set up a pending booking via the test seeder API. The exact endpoint
     //    depends on the test bootstrap; this stub is the documented contract.
     const ctx = await playwrightRequest.newContext({ baseURL: apiBase })

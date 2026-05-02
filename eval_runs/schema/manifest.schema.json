@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://soleil-hostel/eval_runs/schema/manifest.schema.json",
+  "title": "Eval-batch manifest",
+  "description": "Audit record for one prompt batch processed through the harness. Validated by .github/workflows/batch-manifest-check.yml on PRs labelled 'prompt-batch-generated'.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "batch_id",
+    "created_at",
+    "model_id",
+    "findings",
+    "prompt_hashes",
+    "result_commit",
+    "tests_added",
+    "tests_passing",
+    "evaluator",
+    "sign_off"
+  ],
+  "properties": {
+    "batch_id": {
+      "type": "string",
+      "pattern": "^batch-[0-9]+$",
+      "description": "Stable identifier matching the directory name."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp when the batch was sealed."
+    },
+    "model_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Anthropic model ID that produced the batch artifacts (e.g., claude-opus-4-7)."
+    },
+    "findings": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Finding IDs addressed by the batch (CONC-005, AUTH-004, PLATFORM, etc.)."
+    },
+    "prompt_hashes": {
+      "type": "object",
+      "minProperties": 1,
+      "description": "Map of finding_id → fingerprint. SHA-256 of the engineering brief (sha256:HEX), or 'commit:<sha>' for findings whose original brief is not retained but whose artifact is anchored by a commit.",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^(sha256:[a-f0-9]{64}|commit:[a-f0-9]{7,40})$"
+      }
+    },
+    "result_commit": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{7,40}$",
+      "description": "Git SHA at which the batch's work landed."
+    },
+    "tests_added": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of NEW test methods added by this batch."
+    },
+    "tests_passing": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Of those added, how many pass at result_commit. Must equal tests_added before sign-off."
+    },
+    "red_team_fixtures": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Paths to red-team fixture files exercised by this batch's tests."
+    },
+    "token_estimate": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Approximate prompt+completion token count if measured; null if not tracked."
+    },
+    "evaluator": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Role + handle of the human reviewer (e.g., 'human-principal-engineer')."
+    },
+    "sign_off": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Free-form approval line: 'LGTM — <name> <YYYY-MM-DD>'."
+    }
+  }
+}

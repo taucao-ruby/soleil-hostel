@@ -1,0 +1,128 @@
+name: "CI: Batch Manifest Check"
+
+# Enforces the eval-batch audit trail. A PR labelled `prompt-batch-generated`
+# MUST add exactly one new eval_runs/batch-*/manifest.json that is
+#   1. valid JSON,
+#   2. validates against eval_runs/schema/manifest.schema.json,
+#   3. has tests_passing >= tests_added (no un-signed regressions).
+#
+# A PR without the label runs the same workflow but the validation steps short
+# out as no-ops. This keeps the workflow always-green for non-batch PRs while
+# still letting branch protection list it as a required check.
+
+on:
+  pull_request:
+    branches: [main, dev]
+
+concurrency:
+  group: batch-manifest-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  manifest-check:
+    name: Validate batch manifest
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # need history for `git diff` against the base ref
+
+      - name: Detect prompt-batch-generated label
+        id: label
+        env:
+          LABELS: ${{ toJson(github.event.pull_request.labels) }}
+        run: |
+          set -euo pipefail
+          if echo "$LABELS" | grep -q '"name": *"prompt-batch-generated"'; then
+            echo "required=true" >> "$GITHUB_OUTPUT"
+            echo "PR carries 'prompt-batch-generated' — manifest is required."
+          else
+            echo "required=false" >> "$GITHUB_OUTPUT"
+            echo "Label not present — manifest validation is a no-op for this PR."
+          fi
+
+      - name: Setup Node (for AJV CLI)
+        if: steps.label.outputs.required == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install AJV CLI
+        if: steps.label.outputs.required == 'true'
+        run: npm install --no-save --no-audit --no-fund ajv@^8 ajv-cli@^5 ajv-formats@^3
+
+      - name: Locate added manifest
+        if: steps.label.outputs.required == 'true'
+        id: locate
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          # Surface every newly added file under eval_runs/batch-*/manifest.json.
+          # Modifications to an existing manifest also count — they're still a
+          # touch the auditor needs to evaluate.
+          git fetch --no-tags --depth=0 origin "$BASE_SHA" || true
+          mapfile -t MANIFESTS < <(
+            git diff --name-only --diff-filter=AM "$BASE_SHA" "$HEAD_SHA" \
+              | grep -E '^eval_runs/batch-[0-9]+/manifest\.json$' || true
+          )
+          if [ "${#MANIFESTS[@]}" -eq 0 ]; then
+            echo "::error title=Batch manifest missing::PR is labelled prompt-batch-generated but no eval_runs/batch-N/manifest.json was added or modified."
+            exit 1
+          fi
+          if [ "${#MANIFESTS[@]}" -gt 1 ]; then
+            printf '%s\n' "${MANIFESTS[@]}"
+            echo "::error title=Multiple batch manifests::Exactly one batch manifest may be touched per PR (got ${#MANIFESTS[@]})."
+            exit 1
+          fi
+          MANIFEST="${MANIFESTS[0]}"
+          echo "manifest=${MANIFEST}" >> "$GITHUB_OUTPUT"
+          echo "Found manifest: ${MANIFEST}"
+
+      - name: Verify well-formed JSON
+        if: steps.label.outputs.required == 'true'
+        env:
+          MANIFEST: ${{ steps.locate.outputs.manifest }}
+        run: |
+          set -euo pipefail
+          if ! python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$MANIFEST"; then
+            echo "::error title=Malformed JSON::$MANIFEST is not valid JSON."
+            exit 1
+          fi
+          echo "JSON parses cleanly."
+
+      - name: Validate against schema
+        if: steps.label.outputs.required == 'true'
+        env:
+          MANIFEST: ${{ steps.locate.outputs.manifest }}
+        run: |
+          set -euo pipefail
+          npx ajv validate \
+            -s eval_runs/schema/manifest.schema.json \
+            -d "$MANIFEST" \
+            -c ajv-formats \
+            --strict=false
+
+      - name: Sanity-check tests_passing >= tests_added
+        if: steps.label.outputs.required == 'true'
+        env:
+          MANIFEST: ${{ steps.locate.outputs.manifest }}
+        run: |
+          set -euo pipefail
+          python3 - "$MANIFEST" <<'PY'
+          import json, sys
+          m = json.load(open(sys.argv[1]))
+          added = m["tests_added"]
+          passing = m["tests_passing"]
+          if passing < added:
+              print(f"::error title=Test regression::tests_passing ({passing}) < tests_added ({added}); fix or remove failing tests before sealing the manifest.")
+              sys.exit(1)
+          print(f"tests_passing ({passing}) >= tests_added ({added}) — OK.")
+          PY
+
+      - name: Skip note (label absent)
+        if: steps.label.outputs.required == 'false'
+        run: |
+          echo "PR is not labelled 'prompt-batch-generated'; manifest enforcement is skipped for this PR."

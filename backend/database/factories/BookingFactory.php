@@ -243,6 +243,9 @@ class BookingFactory extends Factory
             'status' => BookingStatus::CANCELLED,
             'cancelled_at' => Carbon::now()->subHours($this->faker->numberBetween(1, 48)),
             'cancelled_by' => $admin->id,
+            'cancelled_by_email' => $admin->email,
+            'cancelled_by_role' => $admin->role instanceof \BackedEnum ? $admin->role->value : $admin->role,
+            'cancelled_by_display' => $admin->name,
         ]);
     }
 

@@ -12,6 +12,8 @@ use App\AiHarness\Enums\ToolClassification;
 use App\AiHarness\Providers\RawModelResponse;
 use App\AiHarness\ToolRegistry;
 use Illuminate\Support\Facades\Log;
+use Normalizer;
+use RuntimeException;
 
 /**
  * L4 — Policy Enforcement Service.
@@ -36,16 +38,28 @@ class PolicyEnforcementService
 
     /**
      * Heuristic patterns for prompt injection attempts.
+     *
+     * These run against normalizeForDetection(), not raw user input.
+     *
+     * @var list<string>
      */
     private const INJECTION_PATTERNS = [
-        '/ignore\s+(all\s+)?(previous|prior|above)\s+(instructions?|prompts?|rules?)/i',
-        '/you\s+are\s+now\s+/i',
-        '/system\s*:\s*/i',
-        '/\bDAN\b/',
-        '/do\s+anything\s+now/i',
-        '/jailbreak/i',
-        '/pretend\s+you\s+are/i',
+        '/\bignore\s+(all\s+)?(previous|prior|above)\s+(instructions?|prompts?|rules?)\b/',
+        '/\bignore\s+instructions?\b/',
+        '/\bignore\b/',
+        '/\byou\s+are\s+now\s+(?:(?:a|an|the)\s+)?\w+\b/',
+        '/\bsystem\s*:\s*/',
+        '/\bdan\b/',
+        '/\bdo\s+anything\s+now\b/',
+        '/\bjailbreak\b/',
+        '/\bpretend\s+(you\s+are|to\s+be)\b/',
+        '/\bnew\s+(persona|role|identity)\b/',
+        '/\bdisregard\s+(your\s+)?(guidelines|constraints|rules)\b/',
+        '/\bin\s+(this|your)\s+(new\s+)?role\b/',
+        '/\bact\s+as\s+(if\s+you\s+are|a)\b/',
     ];
+
+    private const PII_SAFE_RESPONSE = 'I cannot share personal information. Please contact the front desk directly.';
 
     /**
      * Pre-call screening. Runs BEFORE model invocation.
@@ -81,8 +95,10 @@ class PolicyEnforcementService
         $checks[] = $piiDetected ? 'pii_input_scan:detected' : 'pii_input_scan:clean';
 
         // Check 3: Prompt injection heuristics
+        $normalizedInput = $this->normalizeForDetection($request->userInput);
+
         foreach (self::INJECTION_PATTERNS as $pattern) {
-            if (preg_match($pattern, $request->userInput)) {
+            if (preg_match($pattern, $normalizedInput)) {
                 $checks[] = 'injection_scan:blocked';
 
                 Log::channel('ai')->warning('Prompt injection attempt detected', [
@@ -148,6 +164,30 @@ class PolicyEnforcementService
         }
         $checks[] = $piiDetected ? 'pii_output_scan:detected' : 'pii_output_scan:clean';
 
+        if ($piiDetected) {
+            $auditPayload = [
+                'output_hmac' => $this->hashForAudit($response->rawContent),
+            ];
+
+            Log::channel('ai')->warning('PII detected in model output; response blocked', [
+                'request_id' => $request->requestId,
+                'correlation_id' => $request->correlationId,
+                'sanitized_fields' => $sanitizedFields,
+                ...$auditPayload,
+            ]);
+
+            return new PolicyDecision(
+                decision: 'reject',
+                reason: 'PII detected in model output',
+                checksPerformed: $checks,
+                piiDetected: true,
+                blockedTool: null,
+                sanitizedFields: $sanitizedFields,
+                safeResponse: self::PII_SAFE_RESPONSE,
+                auditPayload: $auditPayload,
+            );
+        }
+
         // Check 2: Tool proposals — classify and gate each one
         $blockedTool = null;
         foreach ($response->toolProposals as $proposal) {
@@ -194,12 +234,10 @@ class PolicyEnforcementService
         $checks[] = 'content_check:pass';
 
         return new PolicyDecision(
-            decision: $piiDetected ? 'escalate' : 'allow',
-            reason: $piiDetected
-                ? 'Output contains potential PII — requires review.'
-                : 'All post-call checks passed.',
+            decision: 'allow',
+            reason: 'All post-call checks passed.',
             checksPerformed: $checks,
-            piiDetected: $piiDetected,
+            piiDetected: false,
             blockedTool: null,
             sanitizedFields: $sanitizedFields,
         );
@@ -326,5 +364,44 @@ class PolicyEnforcementService
             blockedTool: null,
             sanitizedFields: [],
         );
+    }
+
+    private function normalizeForDetection(string $text): string
+    {
+        $normalized = $text;
+
+        if (class_exists(Normalizer::class)) {
+            $nfc = Normalizer::normalize($normalized, Normalizer::FORM_C);
+            $normalized = $nfc === false ? $normalized : $nfc;
+        }
+
+        $stripped = preg_replace('/[\x{200B}-\x{200F}\x{202A}-\x{202E}\x{FEFF}]/u', '', $normalized);
+        $normalized = $stripped ?? $normalized;
+
+        if (function_exists('transliterator_transliterate')) {
+            $transliterated = transliterator_transliterate('Any-Latin; Latin-ASCII', $normalized);
+            $normalized = $transliterated === false ? $normalized : $transliterated;
+        }
+
+        return mb_strtolower($normalized);
+    }
+
+    /**
+     * Generate a forensic verifier without storing blocked model content.
+     */
+    private function hashForAudit(string $content): string
+    {
+        $key = (string) config('app.key', '');
+
+        if (str_starts_with($key, 'base64:')) {
+            $decoded = base64_decode(substr($key, 7), true);
+            $key = $decoded === false ? $key : $decoded;
+        }
+
+        if ($key === '') {
+            throw new RuntimeException('AI audit HMAC key is not configured.');
+        }
+
+        return hash_hmac('sha256', $content, $key);
     }
 }

@@ -15,10 +15,10 @@
 
 ## 1) Current Snapshot (keep under 12 lines)
 
-- Date updated: 2026-04-29
-- Current branch: `dev` (HEAD=`5e258e7`)
-- Latest commit: `16618a9` — docs: refresh soleil-ai-review-engine index stats
-- Backend test baseline: `php artisan test` PASS (2026-04-29, 1302 passed / 7 skipped / 3775 assertions) after PAY-006 refund idempotency fix.
+- Date updated: 2026-05-02
+- Current branch: `dev` (HEAD=`5a295c0`)
+- Latest commit: `5a295c0` — feat(backend): durable AI proposal lifecycle, drift detection, proposer binding
+- Backend test baseline: `php artisan test` PASS (2026-05-01, 1356 passed / 7 skipped / 3953 assertions) after F-32 unified Bearer detection fix.
 - Frontend: Ops batch updated TodayOperations/BookingList abort+error handling, internal toast renderer, RoomDiscovery AI DTO alignment; `npx tsc --noEmit` and `npx vitest run` pass (418 tests).
 - AI Harness: Phases 0–4 ✅ Done. F-67 proposer-binding landed (`17a4880`, `39cba7a`; formerly cited as "F-06 2026-04-18", promoted 2026-04-19): cache envelope carries `proposer_user_id`; `decide()` 404s on mismatch; service-layer cancellation ownership gate at `CancellationService::validateCancellation`
 - Deploy hardening: F-04 pre-flight `DEPLOY_HOST` gate + migration-before-health reordering (`ec025ca`, `75bb790`). OpenAPI Spectral contract-lint CI gate added (`4a33755`)
@@ -37,6 +37,9 @@ This section intentionally left as a pointer — do not duplicate invariants her
 ### Now
 
 - **Frontend ops/API batch (2026-04-29)**: ✅ COMPLETE — removed react-toastify, corrected TodayOperations room route to shared room API, removed hardcoded `lock_version`, aligned RoomDiscoveryWidget to `{content, proposals, citations}`.
+- **F-32 unified Bearer detection (2026-05-01)**: ✅ COMPLETE — `UnifiedAuthController::detectAuthMode()` now uses Sanctum `PersonalAccessToken::findToken()` for Bearer lookup; diagnostic Sanctum-format token test fails before fix and passes after. Auth feature slice, full backend suite, frontend gates, and compose config pass.
+- **AI-002 / AI-003 policy hardening (2026-05-01)**: ✅ COMPLETE — `PolicyEnforcementService` now normalizes Unicode for injection scans (NFC, zero-width/bidi stripping, ICU transliteration, lowercase), blocks output PII with safe response, and writes HMAC-only audit evidence. Targeted AI harness tests pass.
+- **ARCH-001 schema constraint gate (2026-05-02)**: ✅ COMPLETE — `php artisan db:assert-schema-constraints` runs after PostgreSQL CI migrations and before deploy provider steps; command verifies `btree_gist`, `no_overlapping_bookings` pg_constraint shape, and soft-delete filter.
 - **PAY-006 refund idempotency (2026-04-29)**: ✅ COMPLETE — `charge.refunded` uses DB-backed `stripe_refund_events` unique `stripe_refund_id`, booking fetch locks `FOR UPDATE`, Redis/cache guard removed from refund path; targeted and full backend gates pass.
 - **AI Harness Phases 0–4**: ✅ COMPLETE — all 7 endpoints, eval framework, kill switch, canary routing
 - **F-67 proposer-binding** (formerly cited as F-06 2026-04-18): ✅ COMPLETE (2026-04-18) — cache envelope carries `proposer_user_id`; `decide()` 404s on mismatch; service-layer cancellation ownership gate; T-13 reclassified Accepted→Mitigated
@@ -58,7 +61,7 @@ This section intentionally left as a pointer — do not duplicate invariants her
 
 See `docs/agents/COMMANDS.md` for full command catalog.
 
-Latest PAY-006 verification (2026-04-29): `php artisan test`; targeted payment/cancellation suites; `migrate:rollback --step=1` + `migrate` on pgsql test DB; `vendor/bin/pint --test` on changed PHP files; `npx tsc --noEmit`; `npx vitest run`; `docker compose config`.
+Latest ARCH-001 verification (2026-05-02): `php -l backend/app/Console/Commands/AssertSchemaConstraints.php` PASS; `php artisan list db --format=json` shows `db:assert-schema-constraints`; `vendor\bin\pint --test app\Console\Commands\AssertSchemaConstraints.php` PASS; YAML parse check for `.github/workflows/tests.yml` and `.github/workflows/deploy.yml` PASS; `git diff --check` PASS with existing CRLF warnings on workflow files. Local PostgreSQL success path not run because Docker compose config is blocked by missing `REDIS_PASSWORD`.
 
 ## 5) Known warnings / noise (non-blocking)
 

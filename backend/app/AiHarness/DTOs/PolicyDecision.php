@@ -10,6 +10,7 @@ final readonly class PolicyDecision
      * @param  'allow'|'reject'|'abstain'|'escalate'  $decision
      * @param  list<string>  $checksPerformed
      * @param  list<string>  $sanitizedFields
+     * @param  array<string, string>|null  $auditPayload
      */
     public function __construct(
         public string $decision,
@@ -18,5 +19,7 @@ final readonly class PolicyDecision
         public bool $piiDetected,
         public ?string $blockedTool,
         public array $sanitizedFields,
+        public ?string $safeResponse = null,
+        public ?array $auditPayload = null,
     ) {}
 }

@@ -188,8 +188,7 @@ class UnifiedAuthController extends Controller
         // Check for Bearer token
         $bearerToken = $request->bearerToken();
         if ($bearerToken) {
-            $tokenHash = hash('sha256', $bearerToken);
-            $token = PersonalAccessToken::where('token', $tokenHash)->first();
+            $token = PersonalAccessToken::findToken($bearerToken);
             if ($token && $token->isValid() && $token->refresh_count < $maxRefreshCount) {
                 return 'bearer';
             }

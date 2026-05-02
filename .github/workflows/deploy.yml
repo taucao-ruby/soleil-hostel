@@ -339,6 +339,16 @@ jobs:
       SESSION_SECURE_COOKIE: "true"
     steps:
       - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: pdo_pgsql
+          tools: composer
+          coverage: none
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: composer install --prefer-dist --no-progress --no-scripts --no-interaction
       - name: Setup deployment tools
         run: |
           sudo apt-get update && sudo apt-get install -y curl jq
@@ -370,6 +380,15 @@ jobs:
           elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             echo "environment=production" >> $GITHUB_OUTPUT
           fi
+      - name: Assert schema constraints (pre-deploy)
+        working-directory: ./backend
+        run: php artisan db:assert-schema-constraints
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: ${{ secrets.PROD_DB_HOST }}
+          DB_DATABASE: ${{ secrets.PROD_DB_NAME }}
+          DB_USERNAME: ${{ secrets.PROD_DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.PROD_DB_PASSWORD }}
       - name: Deploy to Forge
         if: ${{ secrets.FORGE_API_TOKEN != '' }}
         run: |
@@ -495,20 +514,6 @@ jobs:
       # DEPLOY_HOST is missing on a tagged release, so the legacy
       # "no SSH" branch is unreachable for tagged deploys.
       # ─────────────────────────────────────────────────────────────────────
-      - name: Assert schema constraints
-        if: startsWith(github.ref, 'refs/tags/v') && secrets.DEPLOY_HOST != ''
-        env:
-          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/var/www/soleil-hostel' }}
-        run: |
-          mkdir -p ~/.ssh
-          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "cd ${DEPLOY_PATH}/backend && php artisan app:assert-schema-constraints"
-          rm -f ~/.ssh/deploy_key
       - name: Run database migrations
         if: startsWith(github.ref, 'refs/tags/v') && secrets.DEPLOY_HOST != ''
         env:

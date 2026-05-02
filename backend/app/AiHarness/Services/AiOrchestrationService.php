@@ -14,6 +14,8 @@ use App\AiHarness\Exceptions\BlockedToolException;
 use App\AiHarness\Exceptions\ProviderTimeoutException;
 use App\AiHarness\Exceptions\ProviderUnavailableException;
 use App\AiHarness\Providers\RawModelResponse;
+use App\Models\AiProposal;
+use App\Models\Room;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -33,6 +35,12 @@ use Illuminate\Support\Facades\Cache;
  */
 class AiOrchestrationService
 {
+    /**
+     * Cache + AiProposal expiry, in seconds.
+     * Aligned so the durable expiry never lags behind the cache.
+     */
+    public const PROPOSAL_TTL_SECONDS = 1800;
+
     public function __construct(
         private readonly ContextAssemblyService $contextAssembly,
         private readonly PolicyEnforcementService $policyEnforcement,
@@ -169,7 +177,9 @@ class AiOrchestrationService
 
         $content = match ($responseClass) {
             ResponseClass::ANSWER => $modelResponse->rawContent ?? '',
-            ResponseClass::REFUSAL => $this->buildRefusalContent($failureReason),
+            ResponseClass::REFUSAL => $postCallDecision->safeResponse
+                ?? $preCallDecision->safeResponse
+                ?? $this->buildRefusalContent($failureReason),
             ResponseClass::ABSTAIN => $this->buildAbstainContent($postCallDecision ?? $preCallDecision),
             ResponseClass::FALLBACK => 'Hệ thống AI tạm thời không khả dụng. Vui lòng thử lại sau.',
             ResponseClass::ERROR => 'Đã xảy ra lỗi. Vui lòng thử lại sau hoặc liên hệ hỗ trợ.',
@@ -267,12 +277,91 @@ class AiOrchestrationService
             Cache::put(
                 "ai_proposal:{$proposal->proposalHash}",
                 $proposal->toArray() + ['proposer_user_id' => $proposerUserId],
-                1800,
+                self::PROPOSAL_TTL_SECONDS,
             );
+
+            // AI-005 / AI-006: durable record used at confirm time to
+            // revalidate room availability, price, and expiry, and to
+            // gate confirm on a prior shown event.
+            $this->persistDurableProposal($proposal, $proposerUserId);
 
             $validatedProposals[] = $proposal->toArray();
         }
 
         return $validatedProposals;
+    }
+
+    /**
+     * Persist the proposal as a durable record. Booking-shape proposals
+     * carry room_id / dates / price for revalidation; cancellation
+     * proposals don't have a price triplet — those columns stay null.
+     */
+    private function persistDurableProposal(BookingActionProposal $proposal, int $proposerUserId): void
+    {
+        $params = $proposal->proposedParams;
+        $roomId = null;
+        $checkIn = null;
+        $checkOut = null;
+        $quotedPriceCents = null;
+
+        if ($proposal->actionType === ProposalActionType::SUGGEST_BOOKING) {
+            $roomId = isset($params['room_id']) ? (int) $params['room_id'] : null;
+            $checkIn = isset($params['check_in']) ? (string) $params['check_in'] : null;
+            $checkOut = isset($params['check_out']) ? (string) $params['check_out'] : null;
+
+            if ($roomId !== null && $checkIn !== null && $checkOut !== null) {
+                $room = Room::find($roomId);
+                if ($room !== null) {
+                    $quotedPriceCents = $room->currentPriceForDates($checkIn, $checkOut);
+                }
+            }
+        }
+
+        AiProposal::create([
+            'proposal_hash' => $proposal->proposalHash,
+            'user_id' => $proposerUserId,
+            'action_type' => $proposal->actionType->value,
+            'room_id' => $roomId,
+            'check_in' => $checkIn,
+            'check_out' => $checkOut,
+            'quoted_price_cents' => $quotedPriceCents,
+            'context_version' => $this->computeContextVersion(
+                $roomId,
+                $checkIn,
+                $checkOut,
+                $quotedPriceCents,
+                $params,
+            ),
+            'proposed_params' => $params,
+            'risk_assessment' => $proposal->riskAssessment,
+            'expires_at' => now()->addSeconds(self::PROPOSAL_TTL_SECONDS),
+        ]);
+    }
+
+    /**
+     * Fast drift signal: hash of the price/availability state that informed
+     * the proposal. Recomputed at confirm time and compared as a single
+     * equality check before the explicit per-field revalidation kicks in.
+     *
+     * @param  array<string, mixed>  $params
+     */
+    private function computeContextVersion(
+        ?int $roomId,
+        ?string $checkIn,
+        ?string $checkOut,
+        ?int $quotedPriceCents,
+        array $params,
+    ): string {
+        $available = (bool) ($params['available'] ?? false);
+
+        $payload = json_encode([
+            'room_id' => $roomId,
+            'check_in' => $checkIn,
+            'check_out' => $checkOut,
+            'quoted_price_cents' => $quotedPriceCents,
+            'available' => $available,
+        ]);
+
+        return hash('sha256', $payload !== false ? $payload : '');
     }
 }

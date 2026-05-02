@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 
 /**
@@ -15,6 +16,10 @@ use Illuminate\Support\Facades\Redis;
  * - Database: CRITICAL — 503 if down (booking engine, optimistic locking, money paths)
  * - Cache: DEGRADED — 200 with warning (system still operable, reduced performance)
  * - Queue: DEGRADED — 200 with warning (async jobs delayed, OTA sync may lag)
+ *
+ * OBS-002: Exception messages are NEVER propagated to HTTP responses. They
+ * are logged server-side and replaced with a static `error_code` so that
+ * connection strings, hostnames, and stack-trace-like text never leak.
  */
 class HealthService
 {
@@ -26,6 +31,13 @@ class HealthService
     public const DEGRADED_COMPONENTS = ['cache', 'queue', 'redis'];
 
     /**
+     * Static error code returned in place of raw exception messages.
+     */
+    private const ERROR_CODE_CHECK_FAILED = 'check_failed';
+
+    private const ERROR_CODE_DEPENDENCY_MISSING = 'dependency_missing';
+
+    /**
      * Run a basic health check (DB + Redis + memory).
      *
      * @return array{status: string, timestamp: string, services: array, status_code: int}
@@ -35,28 +47,27 @@ class HealthService
         $services = [];
         $status = 'healthy';
 
-        // Database check
         try {
             DB::connection()->getPdo();
             $services['database'] = [
                 'status' => 'up',
                 'connection' => config('database.default'),
             ];
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            $this->logCheckFailure('database', $e);
             $status = 'unhealthy';
             $services['database'] = [
                 'status' => 'down',
-                'error' => $e->getMessage(),
+                'error_code' => self::ERROR_CODE_CHECK_FAILED,
             ];
         }
 
-        // Redis check
         try {
             if (! extension_loaded('redis')) {
                 $status = 'unhealthy';
                 $services['redis'] = [
                     'status' => 'down',
-                    'error' => 'Redis PHP extension not loaded',
+                    'error_code' => self::ERROR_CODE_DEPENDENCY_MISSING,
                 ];
             } else {
                 Redis::ping();
@@ -66,14 +77,14 @@ class HealthService
                 ];
             }
         } catch (\Throwable $e) {
+            $this->logCheckFailure('redis', $e);
             $status = 'unhealthy';
             $services['redis'] = [
                 'status' => 'down',
-                'error' => $e->getMessage(),
+                'error_code' => self::ERROR_CODE_CHECK_FAILED,
             ];
         }
 
-        // Memory check
         $services['memory'] = [
             'status' => 'ok',
             'usage_mb' => round(memory_get_usage() / 1024 / 1024, 2),
@@ -208,10 +219,12 @@ class HealthService
                 'latency_ms' => $latency,
                 'connection' => config('database.default'),
             ];
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            $this->logCheckFailure('database', $e);
+
             return [
                 'healthy' => false,
-                'error' => $e->getMessage(),
+                'error_code' => self::ERROR_CODE_CHECK_FAILED,
             ];
         }
     }
@@ -236,10 +249,12 @@ class HealthService
                 'latency_ms' => $latency,
                 'driver' => config('cache.default'),
             ];
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            $this->logCheckFailure('cache', $e);
+
             return [
                 'healthy' => false,
-                'error' => $e->getMessage(),
+                'error_code' => self::ERROR_CODE_CHECK_FAILED,
             ];
         }
     }
@@ -255,7 +270,7 @@ class HealthService
             if (! extension_loaded('redis')) {
                 return [
                     'healthy' => false,
-                    'error' => 'Redis PHP extension not loaded',
+                    'error_code' => self::ERROR_CODE_DEPENDENCY_MISSING,
                 ];
             }
 
@@ -268,9 +283,11 @@ class HealthService
                 'latency_ms' => $latency,
             ];
         } catch (\Throwable $e) {
+            $this->logCheckFailure('redis', $e);
+
             return [
                 'healthy' => false,
-                'error' => $e->getMessage(),
+                'error_code' => self::ERROR_CODE_CHECK_FAILED,
             ];
         }
     }
@@ -292,10 +309,12 @@ class HealthService
                 'healthy' => $content === 'test',
                 'writable' => true,
             ];
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            $this->logCheckFailure('storage', $e);
+
             return [
                 'healthy' => false,
-                'error' => $e->getMessage(),
+                'error_code' => self::ERROR_CODE_CHECK_FAILED,
             ];
         }
     }
@@ -323,7 +342,7 @@ class HealthService
                     return [
                         'healthy' => false,
                         'driver' => $driver,
-                        'error' => 'Redis PHP extension not loaded',
+                        'error_code' => self::ERROR_CODE_DEPENDENCY_MISSING,
                     ];
                 }
 
@@ -340,9 +359,11 @@ class HealthService
                 'driver' => $driver,
             ];
         } catch (\Throwable $e) {
+            $this->logCheckFailure('queue', $e);
+
             return [
                 'healthy' => false,
-                'error' => $e->getMessage(),
+                'error_code' => self::ERROR_CODE_CHECK_FAILED,
             ];
         }
     }
@@ -392,5 +413,17 @@ class HealthService
         }
 
         return 0;
+    }
+
+    /**
+     * Log a health-check exception server-side without surfacing details to the caller.
+     */
+    private function logCheckFailure(string $component, \Throwable $e): void
+    {
+        Log::warning('Health check failed', [
+            'component' => $component,
+            'exception' => $e::class,
+            'message' => $e->getMessage(),
+        ]);
     }
 }

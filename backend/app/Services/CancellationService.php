@@ -152,10 +152,9 @@ final class CancellationService
                 : BookingStatus::CANCELLED;
 
             $locked = $locked->transitionTo($newStatus, $actor);
-            $locked->update([
+            $locked->update(array_merge([
                 'cancelled_at' => now(),
-                'cancelled_by' => $actor->id,
-            ]);
+            ], $this->cancellationActorSnapshot($actor)));
 
             // If not refundable, we can dispatch the event now
             if (! $isRefundable) {
@@ -311,11 +310,10 @@ final class CancellationService
             }
 
             $locked = $locked->transitionTo(BookingStatus::CANCELLED, $actor);
-            $locked->update([
+            $locked->update(array_merge([
                 'cancelled_at' => now(),
-                'cancelled_by' => $actor->id,
                 'refund_error' => "Force cancelled: {$reason}",
-            ]);
+            ], $this->cancellationActorSnapshot($actor)));
 
             event(new BookingCancelled($locked));
 
@@ -327,5 +325,30 @@ final class CancellationService
 
             return $locked->fresh();
         });
+    }
+
+    /**
+     * @return array{cancelled_by: int, cancelled_by_email: string, cancelled_by_role: string|null, cancelled_by_display: string|null}
+     */
+    private function cancellationActorSnapshot(User $actor): array
+    {
+        $cancelledBy = (int) $actor->id;
+
+        $email = $actor->email;
+        if ($email === '') {
+            throw new \LogicException('Cancellation actor must have a valid email.');
+        }
+
+        $role = $actor->role;
+        $roleValue = $role->value;
+
+        $name = $actor->name;
+
+        return [
+            'cancelled_by' => $cancelledBy,
+            'cancelled_by_email' => $email,
+            'cancelled_by_role' => $roleValue,
+            'cancelled_by_display' => $name,
+        ];
     }
 }

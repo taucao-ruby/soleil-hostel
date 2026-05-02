@@ -68,6 +68,13 @@ Route::middleware([
     Route::post('/proposals/{hash}/decide', [ProposalConfirmationController::class, 'decide'])
         ->name('v1.ai.proposals.decide')
         ->where('hash', '[a-f0-9]{64}');
+
+    // AI-005: shown event. Idempotent — frontend calls it on UI mount and
+    // again on remount/re-render. Required precondition for /decide
+    // (confirm) — see ProposalConfirmationController::revalidateProposal.
+    Route::post('/proposals/{hash}/shown', [ProposalConfirmationController::class, 'shown'])
+        ->name('v1.ai.proposals.shown')
+        ->where('hash', '[a-f0-9]{64}');
 });
 
 /*

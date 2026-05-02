@@ -48,6 +48,9 @@ class BookingFillableTest extends TestCase
 
         $this->assertContains('cancelled_at', $fillable);
         $this->assertContains('cancelled_by', $fillable);
+        $this->assertContains('cancelled_by_email', $fillable);
+        $this->assertContains('cancelled_by_role', $fillable);
+        $this->assertContains('cancelled_by_display', $fillable);
         $this->assertContains('cancellation_reason', $fillable);
     }
 }

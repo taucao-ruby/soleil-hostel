@@ -11,10 +11,10 @@ use Tests\TestCase;
 /**
  * ContactAuthorizationTest — Defense-in-depth validation for contact admin endpoints.
  *
- * Validates that ContactController enforces moderator+ access via both
- * route middleware (role:moderator) and controller-level Gate::authorize('moderate-content').
+ * Validates that ContactController enforces admin-only access via both
+ * route middleware (role:admin) and ContactMessagePolicy.
  *
- * Covers: G-02 (Phase 1), Phase 3 (moderator activation)
+ * Covers: RBAC-001.
  */
 class ContactAuthorizationTest extends TestCase
 {
@@ -37,7 +37,7 @@ class ContactAuthorizationTest extends TestCase
 
     // ========== GET /api/v1/admin/contact-messages ==========
 
-    public function test_moderator_can_access_contact_index(): void
+    public function test_moderator_cannot_access_contact_index(): void
     {
         ContactMessage::create([
             'name' => 'Test',
@@ -48,8 +48,7 @@ class ContactAuthorizationTest extends TestCase
         $response = $this->actingAs($this->moderator, 'sanctum')
             ->getJson('/api/v1/admin/contact-messages');
 
-        $response->assertStatus(200)
-            ->assertJsonPath('success', true);
+        $response->assertStatus(403);
     }
 
     public function test_user_cannot_access_contact_index(): void
@@ -84,7 +83,7 @@ class ContactAuthorizationTest extends TestCase
 
     // ========== PATCH /api/v1/admin/contact-messages/{id}/read ==========
 
-    public function test_moderator_can_mark_contact_as_read(): void
+    public function test_moderator_cannot_mark_contact_as_read(): void
     {
         $msg = ContactMessage::create([
             'name' => 'Test',
@@ -95,8 +94,7 @@ class ContactAuthorizationTest extends TestCase
         $response = $this->actingAs($this->moderator, 'sanctum')
             ->patchJson("/api/v1/admin/contact-messages/{$msg->id}/read");
 
-        $response->assertStatus(200)
-            ->assertJsonPath('success', true);
+        $response->assertStatus(403);
     }
 
     public function test_user_cannot_mark_contact_as_read(): void

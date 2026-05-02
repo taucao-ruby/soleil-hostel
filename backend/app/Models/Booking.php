@@ -47,6 +47,9 @@ class Booking extends Model
         // Cancellation audit
         'cancelled_at',
         'cancelled_by',
+        'cancelled_by_email',
+        'cancelled_by_role',
+        'cancelled_by_display',
         'cancellation_reason',
     ];
 
@@ -284,6 +287,9 @@ class Booking extends Model
             'bookings.refund_status',
             'bookings.cancelled_at',
             'bookings.cancelled_by',
+            'bookings.cancelled_by_email',
+            'bookings.cancelled_by_role',
+            'bookings.cancelled_by_display',
             'bookings.cancellation_reason',
             'bookings.created_at',
             'bookings.updated_at',

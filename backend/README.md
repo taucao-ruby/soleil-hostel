@@ -178,11 +178,14 @@ php artisan test --coverage --min=80
 
 ### Health & Monitoring
 
-| Method | Endpoint          | Description       |
-| ------ | ----------------- | ----------------- |
-| GET    | /api/health/live  | Liveness probe    |
-| GET    | /api/health/ready | Readiness probe   |
-| GET    | /api/health/full  | Full health check |
+| Method | Endpoint          | Description                      | Auth        |
+| ------ | ----------------- | -------------------------------- | ----------- |
+| GET    | /api/health/live  | Liveness probe (returns only `{"status":"ok"}`) | Public      |
+| GET    | /api/health/ready | Readiness probe                  | Admin only  |
+| GET    | /api/health/full  | Full health check                | Admin only  |
+| GET    | /api/health       | Basic service breakdown          | Admin only  |
+
+> OBS-002: Detailed health endpoints are gated behind admin auth to avoid leaking topology (driver names, queue stats, exception messages) to anonymous callers.
 
 ---
 

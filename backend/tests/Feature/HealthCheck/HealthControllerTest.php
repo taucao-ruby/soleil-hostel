@@ -34,26 +34,9 @@ class HealthControllerTest extends TestCase
     {
         $response = $this->getJson('/api/health/live');
 
+        // OBS-002: must be exactly {"status":"ok"} — no other keys.
         $response->assertStatus(200)
-            ->assertJsonStructure([
-                'status',
-                'timestamp',
-            ])
-            ->assertJson([
-                'status' => 'ok',
-            ]);
-    }
-
-    #[\PHPUnit\Framework\Attributes\Test]
-    public function test_liveness_endpoint_has_valid_timestamp(): void
-    {
-        $response = $this->getJson('/api/health/live');
-
-        $data = $response->json();
-        $timestamp = \Carbon\Carbon::parse($data['timestamp']);
-
-        $this->assertInstanceOf(\Carbon\Carbon::class, $timestamp);
-        $this->assertTrue($timestamp->diffInSeconds(now()) < 5);
+            ->assertExactJson(['status' => 'ok']);
     }
 
     // ========== READINESS PROBE TESTS ==========
@@ -61,9 +44,8 @@ class HealthControllerTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function test_readiness_endpoint_returns_json(): void
     {
-        $response = $this->getJson('/api/health/ready');
+        $response = $this->actingAsAdmin()->getJson('/api/health/ready');
 
-        // May be 200 (ok/degraded) or 503 (unhealthy) depending on deps
         $this->assertTrue(in_array($response->getStatusCode(), [200, 503]));
 
         $response->assertJsonStructure([
@@ -84,22 +66,19 @@ class HealthControllerTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function test_readiness_returns_ok_when_all_healthy(): void
     {
-        $response = $this->getJson('/api/health/ready');
+        $response = $this->actingAsAdmin()->getJson('/api/health/ready');
 
         $data = $response->json();
 
-        // Verify response has expected structure regardless of health state
         $this->assertArrayHasKey('status', $data);
         $this->assertContains($data['status'], ['ok', 'degraded', 'unhealthy']);
 
-        // If all checks pass, status should be 'ok'
         if ($data['checks']['database']['healthy'] &&
             $data['checks']['cache']['healthy'] &&
             $data['checks']['redis']['healthy']) {
             $this->assertEquals('ok', $data['status']);
             $response->assertStatus(200);
         } else {
-            // Even if not all healthy, status should be one of valid values
             $this->assertContains($data['status'], ['degraded', 'unhealthy']);
         }
     }
@@ -107,7 +86,7 @@ class HealthControllerTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function test_readiness_includes_failure_semantics(): void
     {
-        $response = $this->getJson('/api/health/ready');
+        $response = $this->actingAsAdmin()->getJson('/api/health/ready');
 
         $data = $response->json();
 
@@ -269,19 +248,18 @@ class HealthControllerTest extends TestCase
     // ========== NO CACHE HEADERS ==========
 
     #[\PHPUnit\Framework\Attributes\Test]
-    public function test_health_endpoints_have_no_cache_headers(): void
+    public function test_health_endpoints_return_json(): void
     {
-        // Public endpoints
-        foreach (['/api/health/live', '/api/health/ready'] as $endpoint) {
-            $response = $this->getJson($endpoint);
-            $this->assertTrue(
-                str_contains($response->headers->get('Content-Type', ''), 'json'),
-                "Endpoint {$endpoint} should return JSON"
-            );
-        }
+        // Public liveness endpoint
+        $response = $this->getJson('/api/health/live');
+        $this->assertTrue(
+            str_contains($response->headers->get('Content-Type', ''), 'json'),
+            'Endpoint /api/health/live should return JSON'
+        );
 
         // Admin-only endpoints
         $endpoints = [
+            '/api/health/ready',
             '/api/health/full',
             '/api/health/db',
             '/api/health/cache',
@@ -291,7 +269,6 @@ class HealthControllerTest extends TestCase
         foreach ($endpoints as $endpoint) {
             $response = $this->actingAsAdmin()->getJson($endpoint);
 
-            // Verify response is JSON
             $this->assertTrue(
                 str_contains($response->headers->get('Content-Type', ''), 'json'),
                 "Endpoint {$endpoint} should return JSON"
@@ -321,12 +298,12 @@ class HealthControllerTest extends TestCase
         $queueResponse->assertStatus(200);
     }
 
-    // ========== BASIC HEALTH CHECK TESTS (merged from HealthCheckControllerTest) ==========
+    // ========== BASIC HEALTH CHECK TESTS (admin-only — OBS-002) ==========
 
     #[\PHPUnit\Framework\Attributes\Test]
     public function test_health_check_endpoint_returns_200(): void
     {
-        $response = $this->get('/api/health');
+        $response = $this->actingAsAdmin()->get('/api/health');
 
         $this->assertTrue(in_array($response->getStatusCode(), [200, 503]));
         $response->assertJsonStructure([
@@ -341,6 +318,17 @@ class HealthControllerTest extends TestCase
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
+    public function test_health_check_requires_admin(): void
+    {
+        $this->getJson('/api/health')->assertStatus(401);
+
+        $user = \App\Models\User::factory()->create(['role' => 'user']);
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/health')
+            ->assertStatus(403);
+    }
+
+    #[\PHPUnit\Framework\Attributes\Test]
     public function test_framework_default_up_route_is_not_exposed(): void
     {
         $this->get('/up')->assertNotFound();
@@ -349,7 +337,7 @@ class HealthControllerTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function test_health_check_returns_healthy_when_all_services_up(): void
     {
-        $response = $this->get('/api/health');
+        $response = $this->actingAsAdmin()->get('/api/health');
 
         $data = $response->json();
         $this->assertTrue(in_array($data['status'], ['healthy', 'unhealthy']));
@@ -360,7 +348,7 @@ class HealthControllerTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function test_health_check_returns_503_when_database_down(): void
     {
-        $response = $this->get('/api/health');
+        $response = $this->actingAsAdmin()->get('/api/health');
         $this->assertNotNull($response->json('status'));
         $this->assertTrue(in_array($response->json('status'), ['healthy', 'unhealthy']));
     }
@@ -368,7 +356,7 @@ class HealthControllerTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function test_health_check_returns_503_when_redis_down(): void
     {
-        $response = $this->get('/api/health');
+        $response = $this->actingAsAdmin()->get('/api/health');
         $this->assertIsArray($response->json());
     }
 
@@ -383,7 +371,7 @@ class HealthControllerTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function test_health_check_includes_memory_info(): void
     {
-        $response = $this->get('/api/health');
+        $response = $this->actingAsAdmin()->get('/api/health');
 
         $data = $response->json();
         $this->assertIsNumeric($data['services']['memory']['usage_mb']);
@@ -394,7 +382,7 @@ class HealthControllerTest extends TestCase
     #[\PHPUnit\Framework\Attributes\Test]
     public function test_health_check_has_timestamp(): void
     {
-        $response = $this->get('/api/health');
+        $response = $this->actingAsAdmin()->get('/api/health');
 
         $data = $response->json();
         $this->assertNotNull($data['timestamp']);

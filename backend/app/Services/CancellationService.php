@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Database\TransactionMetrics;
 use App\Enums\BookingStatus;
+use App\Enums\UserRole;
 use App\Events\BookingCancelled;
 use App\Exceptions\BookingCancellationException;
 use App\Exceptions\RefundFailedException;
@@ -332,24 +333,30 @@ final class CancellationService
      */
     private function cancellationActorSnapshot(User $actor): array
     {
-        $actorId = $actor->id;
+        $cancelledBy = (int) $actor->id;
 
         $email = $actor->email;
-        if ($email === '') {
-            throw new \LogicException('Actor email must be a non-empty string; cancellation audit integrity requires a known actor.');
+        if (! is_string($email) || $email === '') {
+            throw new \LogicException('Cancellation actor must have a valid email.');
         }
 
         $role = $actor->role;
-        $roleValue = $role->value;
+        if ($role instanceof UserRole) {
+            $roleValue = $role->value;
+        } else {
+            $roleValue = $role !== null ? (string) $role : null;
+        }
 
         $name = $actor->name;
-        $displayName = $name;
+        if ($name !== null && ! is_string($name)) {
+            $name = (string) $name;
+        }
 
         return [
-            'cancelled_by' => $actorId,
+            'cancelled_by' => $cancelledBy,
             'cancelled_by_email' => $email,
             'cancelled_by_role' => $roleValue,
-            'cancelled_by_display' => $displayName,
+            'cancelled_by_display' => $name,
         ];
     }
 }

@@ -25,6 +25,7 @@ class StayStatusTest extends TestCase
                 StayStatus::NO_SHOW,
                 StayStatus::RELOCATED_INTERNAL,
                 StayStatus::RELOCATED_EXTERNAL,
+                StayStatus::CANCELLED,
             ],
             StayStatus::terminalStatuses()
         );
@@ -34,11 +35,14 @@ class StayStatusTest extends TestCase
     {
         $this->assertTrue(StayStatus::EXPECTED->canTransitionTo(StayStatus::IN_HOUSE));
         $this->assertTrue(StayStatus::EXPECTED->canTransitionTo(StayStatus::NO_SHOW));
+        $this->assertTrue(StayStatus::EXPECTED->canTransitionTo(StayStatus::CANCELLED));
         $this->assertTrue(StayStatus::IN_HOUSE->canTransitionTo(StayStatus::LATE_CHECKOUT));
         $this->assertTrue(StayStatus::IN_HOUSE->canTransitionTo(StayStatus::CHECKED_OUT));
         $this->assertTrue(StayStatus::IN_HOUSE->canTransitionTo(StayStatus::RELOCATED_INTERNAL));
+        $this->assertTrue(StayStatus::IN_HOUSE->canTransitionTo(StayStatus::CANCELLED));
         $this->assertTrue(StayStatus::LATE_CHECKOUT->canTransitionTo(StayStatus::CHECKED_OUT));
         $this->assertTrue(StayStatus::LATE_CHECKOUT->canTransitionTo(StayStatus::RELOCATED_EXTERNAL));
+        $this->assertTrue(StayStatus::LATE_CHECKOUT->canTransitionTo(StayStatus::CANCELLED));
     }
 
     public function test_can_transition_to_rejects_illegal_stay_transitions(): void
@@ -49,5 +53,6 @@ class StayStatusTest extends TestCase
         $this->assertFalse(StayStatus::LATE_CHECKOUT->canTransitionTo(StayStatus::IN_HOUSE));
         $this->assertFalse(StayStatus::CHECKED_OUT->canTransitionTo(StayStatus::IN_HOUSE));
         $this->assertFalse(StayStatus::RELOCATED_INTERNAL->canTransitionTo(StayStatus::CHECKED_OUT));
+        $this->assertFalse(StayStatus::CANCELLED->canTransitionTo(StayStatus::IN_HOUSE));
     }
 }

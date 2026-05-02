@@ -7,6 +7,7 @@ use App\Events\BookingCreated;
 use App\Events\BookingDeleted;
 use App\Events\BookingRestored;
 use App\Events\BookingUpdated;
+use App\Listeners\HandleBookingCancelledForStay;
 use App\Listeners\InvalidateCacheOnBookingChange;
 use App\Listeners\QueryDebuggerListener;
 use App\Listeners\SendBookingCancellation;
@@ -52,6 +53,7 @@ class EventServiceProvider extends ServiceProvider
 
         // Cancellation with refund flow
         BookingCancelled::class => [
+            HandleBookingCancelledForStay::class,
             InvalidateCacheOnBookingChange::class,
             SendBookingCancellation::class,  // ← Send cancellation email with refund info
         ],

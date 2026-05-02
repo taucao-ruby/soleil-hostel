@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\StayStatus;
+use App\Exceptions\StayTransitionException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -105,17 +106,12 @@ class Stay extends Model
      * Full front-desk orchestration is intentionally deferred; this guard only
      * protects the lifecycle boundary so commercial booking status stays separate.
      *
-     * @throws \RuntimeException
+     * @throws StayTransitionException
      */
-    public function transitionTo(StayStatus $target): self
+    public function transitionTo(StayStatus $target, ?string $reason = null, ?User $actor = null): self
     {
         if (! $this->stay_status->canTransitionTo($target)) {
-            throw new \RuntimeException(sprintf(
-                "Cannot transition stay %d from '%s' to '%s'.",
-                $this->id,
-                $this->stay_status->value,
-                $target->value
-            ));
+            throw new StayTransitionException($this, $this->stay_status, $target);
         }
 
         $this->update(['stay_status' => $target]);

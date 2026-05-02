@@ -12,8 +12,9 @@ namespace App\Enums;
  *
  * State machine (simplified):
  * expected → in_house → checked_out
- * expected → no_show
+ * expected → no_show | cancelled
  * in_house → late_checkout → checked_out
+ * in_house | late_checkout → cancelled
  * in_house → relocated_internal | relocated_external (→ closed via new assignment)
  */
 enum StayStatus: string
@@ -25,6 +26,7 @@ enum StayStatus: string
     case NO_SHOW = 'no_show';
     case RELOCATED_INTERNAL = 'relocated_internal';
     case RELOCATED_EXTERNAL = 'relocated_external';
+    case CANCELLED = 'cancelled';
 
     /**
      * Statuses that indicate the guest is physically present.
@@ -48,6 +50,7 @@ enum StayStatus: string
             self::NO_SHOW,
             self::RELOCATED_INTERNAL,
             self::RELOCATED_EXTERNAL,
+            self::CANCELLED,
         ];
     }
 
@@ -76,22 +79,26 @@ enum StayStatus: string
             self::EXPECTED => in_array($target, [
                 self::IN_HOUSE,
                 self::NO_SHOW,
+                self::CANCELLED,
             ], true),
             self::IN_HOUSE => in_array($target, [
                 self::LATE_CHECKOUT,
                 self::CHECKED_OUT,
                 self::RELOCATED_INTERNAL,
                 self::RELOCATED_EXTERNAL,
+                self::CANCELLED,
             ], true),
             self::LATE_CHECKOUT => in_array($target, [
                 self::CHECKED_OUT,
                 self::RELOCATED_INTERNAL,
                 self::RELOCATED_EXTERNAL,
+                self::CANCELLED,
             ], true),
             self::CHECKED_OUT,
             self::NO_SHOW,
             self::RELOCATED_INTERNAL,
-            self::RELOCATED_EXTERNAL => false,
+            self::RELOCATED_EXTERNAL,
+            self::CANCELLED => false,
         };
     }
 }

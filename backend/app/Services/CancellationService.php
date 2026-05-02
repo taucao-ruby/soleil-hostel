@@ -74,7 +74,7 @@ final class CancellationService
 
         // Phase 2: Process refund if applicable (outside transaction)
         if ($booking->status === BookingStatus::REFUND_PENDING) {
-            $booking = $this->processRefund($booking);
+            $booking = $this->processRefund($booking, $actor);
         }
 
         // Phase 3: Transition the deposit lifecycle (CONC-005).
@@ -221,7 +221,7 @@ final class CancellationService
 
             // If not refundable, we can dispatch the event now
             if (! $isRefundable) {
-                event(new BookingCancelled($locked));
+                event(new BookingCancelled($locked, $actor));
             }
 
             return $locked->fresh();
@@ -253,13 +253,13 @@ final class CancellationService
      *
      * @throws RefundFailedException If Stripe refund fails
      */
-    private function processRefund(Booking $booking): Booking
+    private function processRefund(Booking $booking, User $actor): Booking
     {
         $refundAmount = $this->calculateRefundAmount($booking);
 
         // No refund amount = cancel without refund
         if ($refundAmount === 0) {
-            return $this->finalizeCancellation($booking, null, 0);
+            return $this->finalizeCancellation($booking, null, 0, $actor);
         }
 
         try {
@@ -278,7 +278,8 @@ final class CancellationService
             return $this->finalizeCancellation(
                 $booking,
                 $refund->id,
-                $refundAmount
+                $refundAmount,
+                $actor
             );
 
             // TODO: Add Cashier exception handling when payment integration is implemented
@@ -309,10 +310,11 @@ final class CancellationService
     private function finalizeCancellation(
         Booking $booking,
         ?string $refundId,
-        int $refundAmount
+        int $refundAmount,
+        ?User $actor = null
     ): Booking {
-        return DB::transaction(function () use ($booking, $refundId, $refundAmount) {
-            $booking = $booking->transitionTo(BookingStatus::CANCELLED);
+        return DB::transaction(function () use ($booking, $refundId, $refundAmount, $actor) {
+            $booking = $booking->transitionTo(BookingStatus::CANCELLED, $actor);
             $booking->update([
                 'refund_id' => $refundId,
                 'refund_status' => $refundId ? 'succeeded' : null,
@@ -321,7 +323,7 @@ final class CancellationService
             ]);
 
             // Dispatch event (notification listener will pick this up)
-            event(new BookingCancelled($booking));
+            event(new BookingCancelled($booking, $actor));
 
             return $booking->fresh();
         });
@@ -378,7 +380,7 @@ final class CancellationService
                 'refund_error' => "Force cancelled: {$reason}",
             ], $this->cancellationActorSnapshot($actor)));
 
-            event(new BookingCancelled($locked));
+            event(new BookingCancelled($locked, $actor));
 
             Log::warning('Booking force cancelled', [
                 'booking_id' => $locked->id,

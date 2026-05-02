@@ -117,4 +117,24 @@ return [
 
     'password_timeout' => env('PASSWORD_TIMEOUT', 1800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Email-OTP Verification
+    |--------------------------------------------------------------------------
+    |
+    | Tunables for the 6-digit email verification code flow handled by
+    | App\Services\EmailVerificationCodeService.
+    |
+    | otp_cooldown_seconds: minimum seconds between successive resend
+    |     requests for the same user. Enforced inside a per-user
+    |     pessimistic lock (AUTH-004) — two concurrent resends cannot
+    |     both bypass this window.
+    | otp_ttl_minutes: how long an issued code remains redeemable.
+    |
+    */
+
+    'otp_cooldown_seconds' => env('OTP_COOLDOWN_SECONDS', 60),
+
+    'otp_ttl_minutes' => env('OTP_TTL_MINUTES', 15),
+
 ];

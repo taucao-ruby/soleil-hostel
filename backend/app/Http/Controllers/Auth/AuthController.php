@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Exceptions\OtpCooldownException;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RefreshTokenRequest;
 use App\Models\PersonalAccessToken;
@@ -72,6 +73,9 @@ class AuthController extends Controller
         if (! $user->hasVerifiedEmail()) {
             try {
                 app(EmailVerificationCodeService::class)->issue($user);
+            } catch (OtpCooldownException) {
+                // Cooldown active — silently skip; the user can resend via the
+                // dedicated /api/email/send-code endpoint once the window elapses.
             } catch (\Exception $e) {
                 \Log::warning('Failed to send verification code on login', [
                     'user_id' => $user->id,

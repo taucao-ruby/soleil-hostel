@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Booking\CancellationPolicy;
 use App\Enums\BookingStatus;
 use App\Enums\DepositStatus;
 use App\Events\BookingStatusChanged;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
 
@@ -130,6 +132,71 @@ class Booking extends Model
     public function review(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(Review::class, 'booking_id');
+    }
+
+    /**
+     * Append-only deposit transition events for this booking (CONC-005).
+     *
+     * Ordered ascending by created_at so the first row is the genesis event.
+     */
+    public function depositEvents(): HasMany
+    {
+        return $this->hasMany(DepositEvent::class)->orderBy('id');
+    }
+
+    // ===== DEPOSIT VALUE OBJECT =====
+
+    /**
+     * Deposit value object bound to this booking row.
+     *
+     * Use as: $booking->deposit->transitionTo(...);
+     *
+     * The accessor returns a fresh wrapper each access; the wrapper holds a
+     * reference to this booking instance so attribute reads stay live.
+     */
+    public function getDepositAttribute(): Deposit
+    {
+        return new Deposit($this);
+    }
+
+    /**
+     * Compute the cancellation policy that applies right now.
+     *
+     * Returns a CancellationPolicy snapshot whose refundPercent matches
+     * Booking::getRefundPercentage but is captured as a value object so the
+     * deposit transition (CONC-005) and any audit trail share a single
+     * deterministic decision.
+     */
+    public function cancellationPolicy(): CancellationPolicy
+    {
+        $hoursUntilCheckIn = (int) floor(now()->diffInHours($this->check_in, false));
+        $config = config('booking.cancellation');
+
+        $fullWindow = (int) $config['full_refund_hours'];
+        $partialWindow = (int) $config['partial_refund_hours'];
+        $partialPct = (int) $config['partial_refund_pct'];
+        $allowFee = (bool) $config['allow_fee'];
+        $feePct = (int) $config['fee_pct'];
+
+        if ($hoursUntilCheckIn < 0) {
+            return new CancellationPolicy(0, 'cancelled_after_checkin', $hoursUntilCheckIn);
+        }
+
+        if ($hoursUntilCheckIn >= $fullWindow) {
+            $pct = 100;
+            $reason = 'cancelled_within_full_refund_window';
+        } elseif ($hoursUntilCheckIn >= $partialWindow) {
+            $pct = $partialPct;
+            $reason = 'cancelled_within_partial_refund_window';
+        } else {
+            return new CancellationPolicy(0, 'cancelled_within_no_refund_window', $hoursUntilCheckIn);
+        }
+
+        if ($allowFee) {
+            $pct = max(0, $pct - $feePct);
+        }
+
+        return new CancellationPolicy($pct, $reason, $hoursUntilCheckIn);
     }
 
     // ===== PAYMENT / REFUND METHODS =====

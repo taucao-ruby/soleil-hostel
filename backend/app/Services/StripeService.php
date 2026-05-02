@@ -49,6 +49,50 @@ class StripeService
         Cashier::stripe()->paymentIntents->cancel($paymentIntentId);
     }
 
+    /**
+     * Create a Stripe refund for a booking's payment intent (CONC-005).
+     *
+     * Returns the resulting refund id. Uses the booking-id as
+     * idempotency-key + metadata for downstream Stripe webhook reconciliation.
+     *
+     * @param  Booking  $booking  the booking whose payment_intent_id is being refunded
+     * @param  int  $amount  refund amount in cents (must be > 0)
+     * @param  string  $reason  short policy reason captured in metadata
+     */
+    public function createRefund(Booking $booking, int $amount, string $reason): string
+    {
+        if ($amount <= 0) {
+            throw new RuntimeException('Refund amount must be greater than zero.');
+        }
+
+        if (blank($booking->payment_intent_id)) {
+            throw new RuntimeException(
+                "Booking #{$booking->id} has no payment_intent_id; cannot refund.",
+            );
+        }
+
+        if ($this->shouldUseTestingFake()) {
+            return 're_test_'.$booking->id.'_'.Str::lower(Str::random(12));
+        }
+
+        $idempotencyKey = sprintf('deposit_refund_%d_%s', $booking->id, $reason);
+
+        $refund = Cashier::stripe()->refunds->create(
+            [
+                'payment_intent' => $booking->payment_intent_id,
+                'amount' => $amount,
+                'metadata' => [
+                    'booking_id' => (string) $booking->id,
+                    'reason' => $reason,
+                    'kind' => 'deposit_refund',
+                ],
+            ],
+            ['idempotency_key' => $idempotencyKey],
+        );
+
+        return $refund->id;
+    }
+
     private function shouldUseTestingFake(): bool
     {
         return app()->environment('testing') && blank(config('cashier.secret'));

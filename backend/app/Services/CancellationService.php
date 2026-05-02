@@ -8,7 +8,9 @@ use App\Database\TransactionMetrics;
 use App\Enums\BookingStatus;
 use App\Events\BookingCancelled;
 use App\Exceptions\BookingCancellationException;
+use App\Exceptions\DepositTransitionException;
 use App\Exceptions\RefundFailedException;
+use App\Jobs\ProcessDepositRefund;
 use App\Models\Booking;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -75,14 +77,75 @@ final class CancellationService
             $booking = $this->processRefund($booking);
         }
 
+        // Phase 3: Transition the deposit lifecycle (CONC-005).
+        // Booking has reached its terminal cancellation state by now; the
+        // deposit must follow so it cannot linger in 'collected' state.
+        $this->transitionDepositForCancellation($booking, $actor);
+
         Log::info('Booking cancelled successfully', [
             'booking_id' => $booking->id,
             'actor_id' => $actor->id,
             'refund_amount' => $booking->refund_amount,
             'refund_status' => $booking->refund_status,
+            'deposit_status' => $booking->fresh()?->deposit_status?->value,
         ]);
 
         return $booking;
+    }
+
+    /**
+     * Apply the cancellation policy to the booking's deposit (CONC-005).
+     *
+     * No-op when there is no held deposit. Otherwise:
+     *  1. Compute CancellationPolicy from the booking.
+     *  2. Call $booking->deposit->transitionTo() — writes a deposit_events row
+     *     and transitions deposit_status to REFUNDED / PARTIAL_REFUND / FORFEITED.
+     *  3. If refundPercent > 0, dispatch ProcessDepositRefund to issue the
+     *     Stripe refund asynchronously.
+     */
+    private function transitionDepositForCancellation(Booking $booking, User $actor): void
+    {
+        $deposit = $booking->fresh()?->deposit;
+        if ($deposit === null || ! $deposit->isHeld()) {
+            return;
+        }
+
+        $policy = $booking->cancellationPolicy();
+
+        try {
+            $event = $deposit->transitionTo(
+                refundPercent: $policy->refundPercent,
+                reason: $policy->reason,
+                actor: $actor,
+                metadata: [
+                    'hours_until_check_in' => $policy->hoursUntilCheckIn,
+                    'booking_status' => $booking->status->value,
+                ],
+            );
+        } catch (DepositTransitionException $e) {
+            Log::warning('Deposit transition skipped', [
+                'booking_id' => $booking->id,
+                'reason' => $e->getMessage(),
+            ]);
+
+            return;
+        }
+
+        if ($policy->refundPercent <= 0) {
+            return;
+        }
+
+        $refundAmount = (int) ($event->refund_amount ?? 0);
+        if ($refundAmount <= 0) {
+            return;
+        }
+
+        ProcessDepositRefund::dispatch(
+            bookingId: $booking->id,
+            depositEventId: $event->id,
+            refundAmount: $refundAmount,
+            reason: $policy->reason,
+        );
     }
 
     /**
@@ -295,7 +358,7 @@ final class CancellationService
      */
     public function forceCancel(Booking $booking, User $actor, string $reason): Booking
     {
-        return DB::transaction(function () use ($booking, $actor, $reason) {
+        $cancelled = DB::transaction(function () use ($booking, $actor, $reason) {
             $locked = Booking::query()
                 ->where('id', $booking->id)
                 ->lockForUpdate()
@@ -325,6 +388,39 @@ final class CancellationService
 
             return $locked->fresh();
         });
+
+        // Force cancel always forfeits a held deposit — the cancellation
+        // policy is intentionally bypassed at the booking layer, but the
+        // deposit FSM must still resolve away from 'collected' (CONC-005).
+        $this->forfeitHeldDepositOnForceCancel($cancelled, $actor, $reason);
+
+        return $cancelled;
+    }
+
+    private function forfeitHeldDepositOnForceCancel(Booking $booking, User $actor, string $reason): void
+    {
+        $fresh = $booking->fresh();
+        if ($fresh === null) {
+            return;
+        }
+        $deposit = $fresh->deposit;
+        if (! $deposit->isHeld()) {
+            return;
+        }
+
+        try {
+            $deposit->transitionTo(
+                refundPercent: 0,
+                reason: 'force_cancelled:'.$reason,
+                actor: $actor,
+                metadata: ['booking_status' => $fresh->status->value],
+            );
+        } catch (DepositTransitionException $e) {
+            Log::warning('Force-cancel deposit forfeit skipped', [
+                'booking_id' => $booking->id,
+                'reason' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

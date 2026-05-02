@@ -12,6 +12,7 @@ use App\AiHarness\Providers\RawModelResponse;
 use App\AiHarness\Services\PolicyEnforcementService;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\EnablesAiHarness;
 use Tests\TestCase;
 
 /**
@@ -19,7 +20,7 @@ use Tests\TestCase;
  */
 class PolicyEnforcementTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, EnablesAiHarness;
 
     private User $user;
 
@@ -28,7 +29,7 @@ class PolicyEnforcementTest extends TestCase
         parent::setUp();
         $this->user = User::factory()->create();
         config()->set('app.key', 'base64:'.base64_encode(str_repeat('p', 32)));
-        config()->set('ai_harness.enabled', true);
+        $this->enableAiHarness();
         config()->set('ai_harness.canary.faq_lookup_percentage', 100);
     }
 

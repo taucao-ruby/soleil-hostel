@@ -15,6 +15,7 @@ use App\AiHarness\Services\ToolOrchestrationService;
 use App\AiHarness\ToolRegistry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\EnablesAiHarness;
 use Tests\TestCase;
 
 /**
@@ -25,7 +26,7 @@ use Tests\TestCase;
  */
 class AdminDraftTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, EnablesAiHarness;
 
     private User $user;
 
@@ -33,7 +34,7 @@ class AdminDraftTest extends TestCase
     {
         parent::setUp();
         $this->user = User::factory()->create();
-        config()->set('ai_harness.enabled', true);
+        $this->enableAiHarness();
         config()->set('ai_harness.canary.admin_draft_percentage', 100);
     }
 

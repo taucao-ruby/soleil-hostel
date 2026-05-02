@@ -8,15 +8,21 @@ use App\AiHarness\Providers\ModelProviderInterface;
 use App\AiHarness\Providers\RawModelResponse;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\EnablesAiHarness;
 use Tests\TestCase;
 
 class CanaryRouterTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, EnablesAiHarness;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->enableAiHarness();
+    }
 
     public function test_canary_bypass_returns_support_contact(): void
     {
-        config()->set('ai_harness.enabled', true);
         config()->set('ai_harness.canary.faq_lookup_percentage', 0); // 0% = always bypass
 
         $user = User::factory()->create();
@@ -33,7 +39,6 @@ class CanaryRouterTest extends TestCase
 
     public function test_canary_active_routes_to_pipeline(): void
     {
-        config()->set('ai_harness.enabled', true);
         config()->set('ai_harness.canary.faq_lookup_percentage', 100); // 100% = always canary
 
         $this->seed(\Database\Seeders\PolicyDocumentSeeder::class);

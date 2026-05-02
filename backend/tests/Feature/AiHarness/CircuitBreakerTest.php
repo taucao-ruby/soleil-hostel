@@ -15,6 +15,7 @@ use App\AiHarness\Providers\RawModelResponse;
 use App\AiHarness\Services\ModelExecutionService;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\EnablesAiHarness;
 use Tests\TestCase;
 
 /**
@@ -22,7 +23,7 @@ use Tests\TestCase;
  */
 class CircuitBreakerTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, EnablesAiHarness;
 
     public function test_circuit_breaker_opens_after_failure_threshold(): void
     {
@@ -94,7 +95,7 @@ class CircuitBreakerTest extends TestCase
 
     public function test_timeout_triggers_fallback_response_class(): void
     {
-        config()->set('ai_harness.enabled', true);
+        $this->enableAiHarness();
         config()->set('ai_harness.canary.faq_lookup_percentage', 100);
 
         // Mock provider to throw timeout

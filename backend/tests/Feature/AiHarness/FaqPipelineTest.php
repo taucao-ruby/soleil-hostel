@@ -8,6 +8,7 @@ use App\AiHarness\Providers\ModelProviderInterface;
 use App\AiHarness\Providers\RawModelResponse;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\EnablesAiHarness;
 use Tests\TestCase;
 
 /**
@@ -15,7 +16,7 @@ use Tests\TestCase;
  */
 class FaqPipelineTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, EnablesAiHarness;
 
     private User $user;
 
@@ -24,7 +25,7 @@ class FaqPipelineTest extends TestCase
         parent::setUp();
         $this->seed(\Database\Seeders\PolicyDocumentSeeder::class);
         $this->user = User::factory()->create();
-        config()->set('ai_harness.enabled', true);
+        $this->enableAiHarness();
         config()->set('ai_harness.canary.faq_lookup_percentage', 100);
     }
 

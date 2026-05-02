@@ -23,6 +23,7 @@ use App\Models\Room;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Tests\Support\EnablesAiHarness;
 use Tests\TestCase;
 
 /**
@@ -33,7 +34,7 @@ use Tests\TestCase;
  */
 class ActionProposalTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, EnablesAiHarness;
 
     private User $user;
 
@@ -41,7 +42,7 @@ class ActionProposalTest extends TestCase
     {
         parent::setUp();
         $this->user = User::factory()->create();
-        config()->set('ai_harness.enabled', true);
+        $this->enableAiHarness();
         config()->set('ai_harness.canary.room_discovery_percentage', 100);
     }
 

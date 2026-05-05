@@ -1,19 +1,25 @@
 # 📚 Feature Documentation Index
 
-> Detailed documentation for each feature module
+> Detailed documentation for each feature module. Per-feature test counts moved to [PROJECT_STATUS.md](../../../PROJECT_STATUS.md) (single source of truth — historical per-area numbers below were captured Mar 2026 and are no longer in lockstep with the suite).
 
 ## Features
 
-| Feature            | Status | Tests | Documentation                                               |
-| ------------------ | ------ | ----- | ----------------------------------------------------------- |
-| Authentication     | ✅     | 26    | [AUTHENTICATION.md](./AUTHENTICATION.md)                    |
-| Email Verification | ✅     | 14    | [AUTHENTICATION.md](./AUTHENTICATION.md#email-verification) |
-| Booking System     | ✅     | 60    | [BOOKING.md](./BOOKING.md)                                  |
-| Email Templates    | ✅     | 13    | [EMAIL_TEMPLATES.md](./EMAIL_TEMPLATES.md)                  |
-| Room Management    | ✅     | 24    | [ROOMS.md](./ROOMS.md)                                      |
-| Reviews            | ✅     | 48    | [REVIEWS.md](./REVIEWS.md)                                  |
-| RBAC               | ✅     | 47    | [RBAC.md](./RBAC.md)                                        |
-| Redis Caching      | ✅     | 6     | [CACHING.md](./CACHING.md)                                  |
+| Feature            | Status | Documentation                                               |
+| ------------------ | ------ | ----------------------------------------------------------- |
+| Authentication     | ✅     | [AUTHENTICATION.md](./AUTHENTICATION.md)                    |
+| Email Verification (OTP) | ✅ | [AUTHENTICATION.md](./AUTHENTICATION.md#email-verification) |
+| Booking System     | ✅     | [BOOKING.md](./BOOKING.md)                                  |
+| Booking Cancellation & Refund | ✅ | [../architecture/BOOKING_CANCELLATION_REFUND_ARCHITECTURE.md](../architecture/BOOKING_CANCELLATION_REFUND_ARCHITECTURE.md) |
+| Email Templates    | ✅     | [EMAIL_TEMPLATES.md](./EMAIL_TEMPLATES.md)                  |
+| Room Management    | ✅     | [ROOMS.md](./ROOMS.md)                                      |
+| Reviews            | ✅     | [REVIEWS.md](./REVIEWS.md)                                  |
+| RBAC               | ✅     | [RBAC.md](./RBAC.md) — see also [PERMISSION_MATRIX.md](../../PERMISSION_MATRIX.md) |
+| Redis Caching      | ✅     | [CACHING.md](./CACHING.md)                                  |
+| Optimistic Locking | ✅     | [OPTIMISTIC_LOCKING.md](./OPTIMISTIC_LOCKING.md)            |
+| Health Check       | ✅     | [HEALTH_CHECK.md](./HEALTH_CHECK.md) (admin-gated detail per OBS-002) |
+| AI Harness (Ph 0–4)| ✅     | [../../HARNESS_ENGINEERING.md](../../HARNESS_ENGINEERING.md), [THREAT_MODEL_AI](../../THREAT_MODEL_AI.md), [EVAL_STRATEGY](../../EVAL_STRATEGY.md) |
+| Operational Stays  | ✅     | [../../DOMAIN_LAYERS.md](../../DOMAIN_LAYERS.md) (stays, room_assignments, service_recovery_cases) |
+| Stripe Payments    | ✅ Bootstrap | Cashier + signed-webhook idempotency; checkout UI pending |
 
 ---
 
@@ -61,8 +67,9 @@
 
 - Type-safe enum: USER, MODERATOR, ADMIN
 - Helper methods: `isAdmin()`, `isAtLeast()`
-- 6 authorization gates
-- Middleware for route protection
+- 7 authorization gates (single source: [`docs/PERMISSION_MATRIX.md`](../../PERMISSION_MATRIX.md))
+- Middleware for route protection (`role:admin`, `role:moderator`)
+- Defense-in-depth — middleware + Gate::authorize at controller layer
 
 ### ⚡ Caching
 

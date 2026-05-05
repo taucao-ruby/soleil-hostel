@@ -1,6 +1,6 @@
 # 🖥️ Soleil Hostel Backend (Laravel 12)
 
-> **Last Updated:** March 25, 2026 | **Laravel:** 12.x | **PHP:** 8.2+
+> **Last Updated:** May 5, 2026 | **Laravel:** 12.x | **PHP:** 8.2+ (platform pinned to 8.3 in `composer.json`)
 
 ## 🎯 Overview
 
@@ -8,17 +8,18 @@ The Soleil Hostel backend is a REST API built with Laravel 12, implementing clea
 
 ### Key Features
 
-- ✅ **Authentication**: Dual-mode (Bearer Token + HttpOnly Cookie)
-- ✅ **Booking System**: Pessimistic locking prevents double-booking
-- ✅ **Room Management**: Optimistic locking prevents lost updates
-- ✅ **Repository Pattern**: Data access abstraction with 100% unit test coverage
-- ✅ **RBAC**: Enum-based role system (User, Moderator, Admin)
+- ✅ **Authentication**: Dual-mode (Bearer Token + HttpOnly Cookie); OTP email verification (race-hardened — AUTH-004)
+- ✅ **Booking System**: Pessimistic + optimistic (`lock_version`) locking; PostgreSQL `EXCLUDE` constraint enforces no-overlap; immutable actor snapshots; payment-hold lifecycle; deposit FSM (CONC-005/006); stay-cancellation propagation (OPS-004)
+- ✅ **Room Management**: Optimistic locking, real-time availability cache
+- ✅ **Repository Pattern**: Data access abstraction with focused unit tests
+- ✅ **RBAC**: Enum-based role system (USER, MODERATOR, ADMIN); see [`docs/PERMISSION_MATRIX.md`](../docs/PERMISSION_MATRIX.md)
+- ✅ **AI Harness (Phases 0–4)**: 7-layer safety pipeline, kill switch, canary routing, proposal-confirmation flow under `app/AiHarness/`; eval gate `php artisan ai:eval --all-phases`
+- ✅ **Stripe Payments**: Cashier integration; signed-webhook idempotency via `stripe_refund_events` UNIQUE
 - ✅ **Booking Notifications**: Event-driven queued emails (confirm, update, cancel)
-- ✅ **Email Verification**: Laravel's built-in verification with signed URLs
-- ✅ **Security**: XSS protection, CSRF tokens, security headers, rate limiting
-- ✅ **Performance**: Redis caching, N+1 query prevention, database indexes
-- ✅ **Monitoring**: Correlation IDs, performance logging, health probes
-- ✅ **Testing**: Comprehensive test suite (run `php artisan test` for current count)
+- ✅ **Security**: XSS (HTML Purifier), CSRF (Sanctum), security headers, multi-tier rate limiting, PII redaction across log channels + Sentry
+- ✅ **Performance**: Redis caching with event-driven invalidation, N+1 prevention, parallel testing
+- ✅ **Monitoring**: Correlation IDs, structured JSON logging, health probes (admin-gated detail per OBS-002)
+- ✅ **Testing**: Comprehensive PHPUnit suite (Feature + Unit + Repositories) — counts in [PROJECT_STATUS.md](../PROJECT_STATUS.md)
 
 ---
 
@@ -145,47 +146,108 @@ php artisan test --coverage --min=80
 
 ## 📋 API Endpoints
 
-### Authentication
+> Versioned under `/api/v1/*` (current stable). `/api/v2/*` reserved for development. Unprefixed legacy paths (`/api/auth/login`, `/api/auth/register`) are deprecated with `Sunset: 2026-07-01` headers. Authoritative source: [`backend/routes/api/v1.php`](./routes/api/v1.php), [`backend/routes/api/v1_ai.php`](./routes/api/v1_ai.php), [`backend/routes/api.php`](./routes/api.php). Full surface: [`docs/api/openapi.yaml`](../docs/api/openapi.yaml).
 
-| Method | Endpoint                   | Description             |
-| ------ | -------------------------- | ----------------------- |
-| POST   | /api/auth/register         | Register new user       |
-| POST   | /api/auth/login-v2         | Login (Bearer token)    |
-| POST   | /api/auth/login-httponly   | Login (HttpOnly cookie) |
-| POST   | /api/auth/refresh-httponly | Refresh token           |
-| POST   | /api/auth/logout-v2        | Logout single device    |
-| POST   | /api/auth/logout-all-v2    | Logout all devices      |
-| GET    | /api/auth/me-v2            | Get current user        |
+### Authentication (unprefixed — Sunset 2026-07-01)
 
-### Rooms
+| Method | Endpoint                    | Description                                        |
+| ------ | --------------------------- | -------------------------------------------------- |
+| POST   | /api/auth/register          | Register (legacy AuthController response shape)    |
+| POST   | /api/auth/login             | Login (deprecated — use `-v2` or `-httponly`)      |
+| POST   | /api/auth/login-v2          | Login (Bearer token, current)                      |
+| POST   | /api/auth/login-httponly    | Login (HttpOnly cookie, current)                   |
+| POST   | /api/auth/refresh-httponly  | Refresh HttpOnly cookie token                      |
+| POST   | /api/auth/refresh-v2        | Refresh Bearer token                               |
+| POST   | /api/auth/logout-v2         | Logout single device                               |
+| POST   | /api/auth/logout-all-v2     | Logout all devices                                 |
+| GET    | /api/auth/me-v2             | Get current user (token-aware)                     |
+| POST   | /api/email/send-code        | Send 6-digit OTP verification code                 |
+| POST   | /api/email/verify-code      | Verify OTP code                                    |
+| GET    | /api/email/verification-status | Verification status + cooldown                  |
+| GET    | /api/auth/unified/me        | Mode-agnostic identity (Bearer or Cookie)          |
+| POST   | /api/auth/unified/logout    | Mode-agnostic logout                               |
+| POST   | /api/auth/unified/logout-all | Mode-agnostic logout-all                          |
 
-| Method | Endpoint             | Description                         | Auth Required |
-| ------ | -------------------- | ----------------------------------- | ------------- |
-| GET    | /api/rooms           | List all rooms                      | No            |
-| GET    | /api/rooms/{id}      | Get room details                    | No            |
-| POST   | /api/rooms           | Create room                         | Admin only    |
-| PUT    | /api/rooms/{id}      | Update room (requires lock_version) | Admin only    |
-| DELETE | /api/rooms/{id}      | Delete room                         | Admin only    |
-### Bookings
+### Locations (v1)
 
-| Method | Endpoint           | Description         | Auth Required |
-| ------ | ------------------ | ------------------- | ------------- |
-| GET    | /api/bookings      | List all bookings   | Yes           |
-| POST   | /api/bookings      | Create booking      | Yes           |
-| GET    | /api/bookings/{id} | Get booking details | Yes           |
-| PUT    | /api/bookings/{id} | Update booking      | Yes           |
-| DELETE | /api/bookings/{id} | Cancel booking      | Yes           |
+| Method | Endpoint                                  | Description              | Auth |
+| ------ | ----------------------------------------- | ------------------------ | ---- |
+| GET    | /api/v1/locations                         | List locations           | No   |
+| GET    | /api/v1/locations/{slug}                  | Location detail          | No   |
+| GET    | /api/v1/locations/{slug}/availability     | Availability per branch  | No   |
+
+### Rooms (v1)
+
+| Method | Endpoint                | Description                        | Auth        |
+| ------ | ----------------------- | ---------------------------------- | ----------- |
+| GET    | /api/v1/rooms           | List rooms (filters: `location_id`)| No          |
+| GET    | /api/v1/rooms/{room}    | Room detail                        | No          |
+| POST   | /api/v1/rooms           | Create room                        | Admin only  |
+| PUT    | /api/v1/rooms/{room}    | Update room (requires lock_version)| Admin only  |
+| DELETE | /api/v1/rooms/{room}    | Delete room                        | Admin only  |
+
+### Bookings (v1, verified email required)
+
+| Method | Endpoint                                | Description                  | Auth                |
+| ------ | --------------------------------------- | ---------------------------- | ------------------- |
+| GET    | /api/v1/bookings                        | List own bookings            | Yes                 |
+| POST   | /api/v1/bookings                        | Create booking               | Yes (throttle 10/m) |
+| GET    | /api/v1/bookings/{booking}              | Booking detail               | Yes                 |
+| PUT    | /api/v1/bookings/{booking}              | Update booking               | Yes (throttle 10/m) |
+| DELETE | /api/v1/bookings/{booking}              | Cancel booking               | Yes (throttle 10/m) |
+| POST   | /api/v1/bookings/{booking}/confirm      | Admin confirm                | Admin               |
+| POST   | /api/v1/bookings/{booking}/cancel       | Cancel (owner or admin)      | Yes                 |
+
+### Admin (v1)
+
+| Method | Endpoint                                                  | Auth          |
+| ------ | --------------------------------------------------------- | ------------- |
+| GET    | /api/v1/admin/bookings                                    | Moderator+    |
+| GET    | /api/v1/admin/bookings/trashed                            | Moderator+    |
+| GET    | /api/v1/admin/bookings/trashed/{id}                       | Moderator+    |
+| POST   | /api/v1/admin/bookings/{id}/restore                       | Admin         |
+| POST   | /api/v1/admin/bookings/restore-bulk                       | Admin         |
+| DELETE | /api/v1/admin/bookings/{id}/force                         | Admin         |
+| GET    | /api/v1/admin/contact-messages                            | Admin         |
+| PATCH  | /api/v1/admin/contact-messages/{id}/read                  | Admin         |
+| GET    | /api/v1/admin/customers, /stats, /{email}, /{email}/bookings | Moderator+ |
+
+### Reviews (v1)
+
+| Method | Endpoint                          | Auth     |
+| ------ | --------------------------------- | -------- |
+| POST   | /api/v1/reviews                   | Yes      |
+| PUT    | /api/v1/reviews/{review}          | Yes      |
+| DELETE | /api/v1/reviews/{review}          | Yes      |
+
+### AI Harness (v1) — gated by `AI_HARNESS_ENABLED` feature flag
+
+| Method | Endpoint                                       | Description                                  |
+| ------ | ---------------------------------------------- | -------------------------------------------- |
+| POST   | /api/v1/ai/{task_type}                         | `faq_lookup`, `room_discovery`, `booking_status`, `admin_draft` (throttle 10/m) |
+| POST   | /api/v1/ai/proposals/{hash}/shown              | Mark proposal as shown (idempotent)          |
+| POST   | /api/v1/ai/proposals/{hash}/decide             | Confirm/decline proposal (throttle 5/m)      |
+| GET    | /api/v1/ai/health                              | 200 if enabled, 404 if killed                |
 
 ### Health & Monitoring
 
-| Method | Endpoint          | Description                      | Auth        |
-| ------ | ----------------- | -------------------------------- | ----------- |
-| GET    | /api/health/live  | Liveness probe (returns only `{"status":"ok"}`) | Public      |
-| GET    | /api/health/ready | Readiness probe                  | Admin only  |
-| GET    | /api/health/full  | Full health check                | Admin only  |
-| GET    | /api/health       | Basic service breakdown          | Admin only  |
+| Method | Endpoint                | Description                                       | Auth        |
+| ------ | ----------------------- | ------------------------------------------------- | ----------- |
+| GET    | /api/ping               | Public liveness sentinel                          | Public      |
+| GET    | /api/health/live        | Liveness probe (returns only `{"status":"ok"}`)   | Public      |
+| GET    | /api/health             | Service breakdown                                 | Admin       |
+| GET    | /api/health/ready       | Readiness probe                                   | Admin       |
+| GET    | /api/health/detailed    | Full system health                                | Admin       |
+| GET    | /api/health/{db,cache,queue} | Component-level checks                       | Admin       |
 
 > OBS-002: Detailed health endpoints are gated behind admin auth to avoid leaking topology (driver names, queue stats, exception messages) to anonymous callers.
+
+### Webhooks
+
+| Method | Endpoint                | Description                                          |
+| ------ | ----------------------- | ---------------------------------------------------- |
+| POST   | /api/webhooks/stripe    | Cashier-signed webhook; replay-fenced via `stripe_refund_events` UNIQUE (`stripe_refund_id`) |
+| POST   | /api/csp-violation-report | CSP report endpoint                                |
 
 ---
 
@@ -402,7 +464,7 @@ composer install --optimize-autoloader --no-dev
 
 ## 📊 Test Coverage
 
-Run `cd backend && php artisan test` for current test counts. See [PROJECT_STATUS.md](../PROJECT_STATUS.md) for latest verified baselines.
+Run `cd backend && php artisan test` for current counts. The Mar 31, 2026 baseline (1047 tests / 2875 assertions) requires re-verification — Apr–May added AI proposal lifecycle tests, OPS-004 cancellation propagation, CONC-005/006 deposit FSM, AUTH-004 OTP race tests, and Stripe webhook idempotency tests. See [PROJECT_STATUS.md](../PROJECT_STATUS.md) for the canonical, single-source baseline.
 
 ---
 

@@ -2,7 +2,7 @@
 
 > Architecture references for backend design, runtime behavior, and code organization.
 >
-> Last Updated: February 12, 2026
+> Last Updated: May 5, 2026
 
 ## Architecture Index
 
@@ -24,9 +24,8 @@
 
 The folder reference includes all requested folders:
 
+- `app/AiHarness` — AI harness (DTOs, Services, Middleware, Providers, Enums, Exceptions, ToolRegistry, PromptRegistry)
 - `app/Console/Commands`
-- `app/Database`
-- `app/Directives`
 - `app/Enums`
 - `app/Events`
 - `app/Exceptions`
@@ -35,12 +34,7 @@ The folder reference includes all requested folders:
 - `app/Jobs`
 - `app/Listeners`
 - `app/Logging`
-- `app/Macros`
 - `app/Models`
-- `app/Notifications`
-- `app/Observers`
-- `app/Octane`
-- `app/Octane/Tables`
 - `app/Policies`
 - `app/Providers`
 - `app/Repositories`
@@ -48,7 +42,8 @@ The folder reference includes all requested folders:
 - `app/Traits`
 - `config`
 - `database`
-- `database/backups`
 - `database/factories`
 - `database/migrations`
 - `database/seeders`
+
+> If a folder appears in this list but is missing from `backend/app/` on disk, treat the on-disk tree as authoritative — `app/Macros`, `app/Directives`, `app/Notifications`, `app/Observers`, `app/Octane` are listed in legacy reference docs but are not currently present. Verify with `ls backend/app/` or check `[FOLDER_REFERENCE.md](./FOLDER_REFERENCE.md)`.

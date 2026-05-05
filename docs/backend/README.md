@@ -1,8 +1,8 @@
 # Backend Documentation
 
-> Laravel 12 + PHP 8.2+ + PostgreSQL 16 + Redis 7
+> Laravel 12 + PHP 8.2+ (platform 8.3) + PostgreSQL 16 + Redis 7
 >
-> Last Updated: February 12, 2026
+> Last Updated: May 5, 2026
 
 ## Quick Navigation
 
@@ -35,8 +35,8 @@
 
 | Document | Description |
 | --- | --- |
-| [AUTHENTICATION.md](./features/AUTHENTICATION.md) | Authentication modes and flow |
-| [BOOKING.md](./features/BOOKING.md) | Booking lifecycle |
+| [AUTHENTICATION.md](./features/AUTHENTICATION.md) | Authentication modes and flow (incl. OTP email verification — AUTH-004) |
+| [BOOKING.md](./features/BOOKING.md) | Booking lifecycle (FSM, cancellation, payment-hold, deposit) |
 | [ROOMS.md](./features/ROOMS.md) | Room management |
 | [REVIEWS.md](./features/REVIEWS.md) | Reviews and moderation |
 | [RBAC.md](./features/RBAC.md) | Role model and permissions |
@@ -44,6 +44,12 @@
 | [OPTIMISTIC_LOCKING.md](./features/OPTIMISTIC_LOCKING.md) | Concurrency protection |
 | [EMAIL_TEMPLATES.md](./features/EMAIL_TEMPLATES.md) | Notification templates |
 | [HEALTH_CHECK.md](./features/HEALTH_CHECK.md) | Health endpoints |
+
+> **Cross-cutting domains** documented at top-level (not under `backend/features/`):
+> - **AI Harness (Phases 0–4)** — [`../HARNESS_ENGINEERING.md`](../HARNESS_ENGINEERING.md), [`../THREAT_MODEL_AI.md`](../THREAT_MODEL_AI.md), [`../EVAL_STRATEGY.md`](../EVAL_STRATEGY.md), [`../ROLLOUT_AND_KILL_SWITCH.md`](../ROLLOUT_AND_KILL_SWITCH.md). Code under `backend/app/AiHarness/`.
+> - **Operational Stay Domain** — [`../DOMAIN_LAYERS.md`](../DOMAIN_LAYERS.md) (stays, room_assignments, service_recovery_cases).
+> - **Cancellation & Refund** — [`./architecture/BOOKING_CANCELLATION_REFUND_ARCHITECTURE.md`](./architecture/BOOKING_CANCELLATION_REFUND_ARCHITECTURE.md).
+> - **Permissions** — [`../PERMISSION_MATRIX.md`](../PERMISSION_MATRIX.md) is the RBAC source of truth.
 
 ### Guides
 

@@ -293,19 +293,25 @@ Sau đó mở Pull Request trên GitHub.
 - Frontend architecture (React + TypeScript, mobile-first)
 - Backend architecture (Laravel + Clean Architecture)
 - Room dashboard & CRUD with optimistic locking
-- Core booking flow with pessimistic locking
+- Core booking flow with pessimistic locking + PostgreSQL `EXCLUDE` overlap constraint
 - Customer management
 - CI/CD with GitHub Actions
 - Full test suite (see [PROJECT_STATUS.md](./PROJECT_STATUS.md) for current counts)
 - Documentation consolidation & cleanup
-- Frontend documentation restructured into 12 modular files (January 2, 2026)
+- Frontend documentation restructured into 12 modular files (January 2026)
 - Backend documentation fully organized
 - Both servers verified running successfully
 - Optimistic locking for room concurrency control (January 2026)
 - RBAC hardening — defense-in-depth, 3 roles (USER / MODERATOR / ADMIN) (March 2026)
 - Four-layer operational domain — stays, room assignments, service recovery, escalation engine (March 2026)
 - Email verification OTP flow — full-stack 6-digit code (April 2026)
-- AI Harness Phases 0–4 — 7 endpoints, 7-layer safety pipeline, kill switch, canary routing, eval framework (April 2026)
+- AI Harness Phases 0–4 — 7 endpoints, 7-layer safety pipeline, kill switch, canary routing, eval framework, proposal confirmation (April 2026)
+- AI proposal lifecycle — durable proposal store, drift detection, proposer-binding (F-06), HMAC audit, PII hard-block (April 2026)
+- Stripe payment-hold on booking creation + signed-webhook idempotency via `stripe_refund_events` UNIQUE (April 2026)
+- Stay cancellation propagation (OPS-004) and immutable actor snapshots on bookings + admin_audit_logs (May 2026)
+- Deposit FSM lifecycle + null-user reconciliation (CONC-005/006) (May 2026)
+- OTP resend race hardened against concurrent requests (AUTH-004) + AI kill-switch hardening + E2E smoke gate + CI manifests (May 2026)
+- PII redaction across all log channels and Sentry; observability surface hardening (OBS-001/OBS-002) (April 2026)
 
 ---
 
@@ -448,25 +454,34 @@ Tài liệu dự án được tổ chức trong thư mục `docs/`:
 
 ```
 docs/
-├── README.md                    # Documentation index
-├── guides/                      # How-to guides
-│   ├── ENVIRONMENT_SETUP.md     # Dev environment
-│   ├── TESTING.md               # Testing guide
-│   └── DEPLOYMENT.md            # Deployment
-├── architecture/                # System design
-│   ├── README.md                # Architecture overview
-│   └── DATABASE.md              # Schema & indexes
-├── features/                    # Feature docs
-│   ├── AUTHENTICATION.md        # Auth system
-│   ├── BOOKING.md               # Booking system
-│   ├── ROOMS.md                 # Room management
-│   ├── RBAC.md                  # Access control
-│   └── CACHING.md               # Redis cache
-└── security/                    # Security docs
-    ├── README.md                # Security overview
-    ├── HEADERS.md               # Security headers
-    ├── XSS_PROTECTION.md        # HTML Purifier
-    └── RATE_LIMITING.md         # Rate limiting
+├── README.md                          # Documentation index
+├── ADR.md                             # Architecture Decision Records
+├── DATABASE.md                        # Schema & indexes
+├── DB_FACTS.md                        # DB invariants & constraints
+├── DOMAIN_LAYERS.md                   # Four-layer operational domain
+├── PERMISSION_MATRIX.md               # RBAC source of truth
+├── HARNESS_ENGINEERING.md             # AI Harness architecture
+├── THREAT_MODEL_AI.md                 # AI threat model (Phases 1–4)
+├── EVAL_STRATEGY.md                   # AI eval & regression gates
+├── ROLLOUT_AND_KILL_SWITCH.md         # AI rollout / kill switch
+├── OPERATIONAL_PLAYBOOK.md            # Incident runbooks
+├── KNOWN_LIMITATIONS.md               # Tech debt + constraints
+├── API_DEPRECATION.md                 # Versioning + sunset policy
+├── FINDINGS_BACKLOG.md                # Code issues backlog
+├── PERFORMANCE_BASELINE.md            # SLA + benchmarks
+├── HOOKS.md                           # Git hook enforcement
+├── MCP.md                             # MCP server boundary
+├── COMPACT.md                         # Volatile session state
+├── WORKLOG.md                         # Append-only change log
+├── api/                               # OpenAPI 3.1 spec + Redoc
+├── agents/                            # Agent framework (CONTRACT, ARCHITECTURE_FACTS, COMMANDS)
+├── backend/                           # Backend docs
+│   ├── README.md                      # Backend index
+│   ├── architecture/                  # System design (API, services, repos, middleware, events, policies, jobs)
+│   ├── features/                      # AUTHENTICATION, BOOKING, ROOMS, REVIEWS, RBAC, CACHING, OPTIMISTIC_LOCKING, …
+│   ├── guides/                        # ENVIRONMENT_SETUP, TESTING, DEPLOYMENT, MONITORING_LOGGING, AUTH_MIGRATION, …
+│   └── security/                      # HEADERS, XSS_PROTECTION, RATE_LIMITING
+└── frontend/                          # Frontend docs (12 modular layer files)
 ```
 
 📚 **Full Documentation:** → **[docs/README.md](./docs/README.md)**

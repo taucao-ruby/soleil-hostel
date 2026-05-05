@@ -1,22 +1,22 @@
 # 🎨 Soleil Hostel Frontend
 
-> **Last Updated:** January 4, 2026 | **React:** 19.0.0 | **TypeScript:** 5.x
+> **Last Updated:** May 5, 2026 | **React:** 19.0.0 | **TypeScript:** ~5.7 | **Vite:** 6.4.2 | **Vitest:** ^4.1 | **Package Manager:** pnpm 9.x
 
 ## 🎯 Overview
 
-The Soleil Hostel frontend is a **modern web application** built with React 19 and TypeScript, featuring a feature-sliced architecture for maximum maintainability and scalability.
+The Soleil Hostel frontend is a React 19 + TypeScript SPA on a feature-sliced architecture. Auth is dual-mode (Bearer + HttpOnly cookie); state uses `useState`/`useEffect` with `AbortController` (no React Query). Validation is plain TypeScript (no Zod). User-facing strings are Vietnamese.
 
 ### Key Features
 
-- ✅ **Modern Stack**: React 19 + TypeScript + Vite
-- ✅ **Feature-Sliced Design**: Modular architecture for scalability
-- ✅ **Authentication**: Dual-mode (Bearer Token + HttpOnly Cookie)
-- ✅ **Professional UI**: shadcn/ui-inspired component library
-- ✅ **Responsive Design**: Mobile-first approach with TailwindCSS
-- ✅ **Type Safety**: Full TypeScript coverage with strict mode
-- ✅ **Performance**: Code splitting with React.lazy + Suspense
-- ✅ **Accessibility**: WCAG 2.1 Level AA compliant
-- ✅ **Testing**: Playwright E2E tests ready
+- ✅ **Modern Stack**: React 19 + TypeScript (strict) + Vite 6
+- ✅ **Feature-Sliced Design**: `features/` modules for `auth`, `bookings`, `booking`, `rooms`, `locations`, `home`, `admin`, `assistant`
+- ✅ **Authentication**: Dual-mode (Bearer Token + HttpOnly Cookie) with CSRF (`X-XSRF-TOKEN` from `sessionStorage`)
+- ✅ **Routing**: React Router v7 with lazy loading; `ProtectedRoute` + `AdminRoute` (`minRole` prop) for RBAC
+- ✅ **Mobile-First**: TailwindCSS 3, Core Web Vitals tracked via `web-vitals`
+- ✅ **Type Safety**: TypeScript strict — `npx tsc --noEmit` is a pre-push gate
+- ✅ **Code-Splitting**: `React.lazy` + `Suspense` for routes
+- ✅ **Testing**: Vitest unit/integration (39 test files); Playwright E2E scaffolded under `tests/e2e/`
+- ✅ **Accessibility**: WCAG 2.1 AA targets
 
 ---
 
@@ -24,23 +24,21 @@ The Soleil Hostel frontend is a **modern web application** built with React 19 a
 
 ### Prerequisites
 
-- Node.js 18+ or higher
-- npm or yarn
+- Node.js 20+
+- pnpm 9.x (frontend uses `packageManager: pnpm@9.15.9` in `package.json`)
 
 ### Installation
 
 ```bash
 # 1. Install dependencies
-npm ci
+pnpm install
 
-# 2. Configure environment (optional)
-# Create .env file if needed for custom API URL
-echo "VITE_API_URL=http://127.0.0.1:8000" > .env
+# 2. Configure environment (optional — Vite proxies /api → http://127.0.0.1:8000 in dev)
+cp .env.example .env
 
 # 3. Start development server
-npm run dev
-# Or with specific port:
-npx vite --port 5173
+pnpm dev
+# Vite auto-binds to port 5173 (configured in package.json scripts)
 ```
 
 Frontend will be available at: http://localhost:5173
@@ -48,11 +46,8 @@ Frontend will be available at: http://localhost:5173
 ### Build for Production
 
 ```bash
-# Build optimized production bundle
-npm run build
-
-# Preview production build
-npm run preview
+pnpm build      # tsc -b && vite build
+pnpm preview    # serve the production bundle locally
 ```
 
 ---
@@ -61,30 +56,38 @@ npm run preview
 
 ```
 frontend/
-├── public/              # Static assets
+├── public/                    # Static assets
 ├── src/
-│   ├── app/             # Application core
-│   │   ├── App.tsx      # Root component with layout
-│   │   ├── providers.tsx # AuthProvider wrapper
-│   │   └── router.tsx   # React Router v7 with lazy loading
+│   ├── app/                   # Application shell
+│   │   ├── App.tsx            # Root component
+│   │   ├── providers.tsx      # AuthProvider + global providers
+│   │   ├── router.tsx         # React Router v7 with lazy loading
+│   │   └── Layout.tsx         # Shared layout (header / footer)
 │   │
-│   ├── features/        # Feature modules (business logic)
-│   │   ├── auth/        # Authentication feature
-│   │   ├── rooms/       # Room management feature
-│   │   └── booking/     # Booking feature
+│   ├── features/              # Feature-sliced business logic
+│   │   ├── auth/              # AuthContext, login, register, ProtectedRoute, AdminRoute
+│   │   ├── booking/           # Booking creation form (BookingForm, validation, view-model)
+│   │   ├── bookings/          # Booking lifecycle UI (Guest/Admin dashboards, detail, ReviewForm)
+│   │   ├── rooms/             # Room list + detail
+│   │   ├── locations/         # Location list + detail (boutique hero, reviews)
+│   │   ├── home/              # Homepage (SearchCard, FilterChips, HeaderMobile, TrustBar)
+│   │   ├── admin/             # Admin shell (AdminLayout, AdminSidebar, room/booking dashboards)
+│   │   └── assistant/         # AI room-discovery widget + proposal-confirmation flow
 │   │
-│   ├── shared/          # Shared resources
-│   │   ├── components/  # Reusable components
-│   │   ├── lib/         # Library configurations
-│   │   └── utils/       # Utility functions
+│   ├── shared/                # Cross-cutting code
+│   │   ├── components/        # ui/, layout/, feedback/
+│   │   ├── lib/               # API client (api.ts), navigation, booking helpers
+│   │   └── utils/             # CSRF, security utilities
 │   │
-│   ├── pages/           # Page components
-│   └── main.tsx         # Application entry point
+│   ├── pages/                 # Route-level pages (HomePage, DashboardPage, NotFoundPage)
+│   ├── types/                 # TypeScript interfaces and DTOs
+│   ├── utils/                 # Toast, web-vitals
+│   └── test/                  # Vitest setup
 │
-├── tests/               # E2E tests (Playwright)
-├── package.json         # Dependencies & scripts
-├── vite.config.ts       # Vite configuration
-└── tsconfig.json        # TypeScript configuration
+├── tests/                     # Playwright E2E (scaffolded — see tests/e2e/README.md)
+├── package.json               # pnpm + scripts
+├── vite.config.ts             # Vite config (proxy /api → backend)
+└── tsconfig.json              # TypeScript strict
 ```
 
 ---
@@ -99,6 +102,19 @@ Full documentation available in the `docs/` folder:
 - [Testing Guide](../docs/frontend/TESTING.md)
 - [Performance & Security](../docs/frontend/PERFORMANCE_SECURITY.md)
 - [Deployment Guide](../docs/frontend/DEPLOYMENT.md)
+
+---
+
+## 🧪 Testing
+
+```bash
+pnpm test               # vitest run (unit + integration)
+pnpm exec vitest        # watch mode
+pnpm exec playwright test   # E2E (requires running app — see tests/e2e/README.md)
+npx tsc --noEmit        # type-check (pre-push gate)
+```
+
+Test counts: see [PROJECT_STATUS.md](../PROJECT_STATUS.md). The pre-push hook runs `npx tsc --noEmit` + `npx vitest run` for any frontend change.
 
 ---
 

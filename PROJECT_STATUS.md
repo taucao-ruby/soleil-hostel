@@ -1,30 +1,32 @@
 # Soleil Hostel - Project Status
 
-**Last Updated:** April 18, 2026
+**Last Updated:** May 5, 2026
 **Current Branch:** `dev`
-**Latest Commit:** `aef28a1` — Merge branch 'main' into dev (post-F-06 remediation + deploy workflow hardening)
+**Latest Commit:** `10b153e` — test(backend): fix AI harness tests broken by AUTH-004 kill-switch migration (HEAD as of 2026-05-05)
 
 ## Current Status: Repo Health Green
 
 > Audits v1–v4 complete: 179 total findings, 179 resolved (100%).
-> Batches 1–12 + DevSecOps + quality hardening + DB hardening + v3.1 stay domain complete.
+> Batches 1–12 + DevSecOps + quality hardening + DB hardening + v3.1 stay domain + AI Harness Phases 0–4 + AI proposal lifecycle hardening (Apr–May).
 > See [docs/AUDIT_2026_02_21.md](./docs/AUDIT_2026_02_21.md) for detailed audit history.
 
-Gates (verified April 18, 2026 — documentation governance pass; re-verification still required for runtime gates):
+Gates (verified at the documentation layer May 5, 2026; runtime gate re-verification required after the Apr 19 → May 2 batches):
 
-- Backend tests: **re-verification required** (F-01/F-02/F-03 remediations landed in `1451a90`; proposer-binding + ActionProposal tests landed in `17a4880`/`a86f597`; previous baseline 1047/2875 — Mar 31)
+- Backend tests: **re-verification required** — Mar 31 baseline 1047/2875. Apr 19 → May 2 commits added: AI proposal lifecycle (`5a295c0`), HMAC audit + PII hard-block (`e588432`), AI-001 prompt-injection defense (`347649a`), no-overlap constraint hardening (`92f1ad1`), immutable actor snapshots (`048e40b`), RefundIdempotencyTest (`abc3959`), BookingPaymentHoldTest (`ae2d070`), StateMachineInvariantTest (`ac7275b`), Batch-2 Sanctum hardening (`5e258e7`), OPS-004 stay cancellation (`7027adb`), CONC-005/006 deposit FSM (`b69a7a0`), AUTH-004 OTP race (`1079946`), batch-8 kill-switch (`c5a37dc`).
 - Frontend typecheck PASS: 0 errors (`cd frontend && npx tsc --noEmit`) — TS5103 fixed
 - Frontend build PASS: `pnpm run build` exits 0
-- Frontend unit tests: **re-verification required** (previous baseline 261/25 — Mar 31)
-- Compose config PASS (`docker compose config`)
-- Pint style: **re-verification required** (AI harness files added; previous 8 violations in email cluster)
-- PHPStan Level 5: **re-verification required** (AI harness files added; previous 0 errors)
-- Psalm: **re-verification required** (AI harness files added; previous 0 blocking)
+- Frontend unit tests: **re-verification required** — Mar 31 baseline 261/25 files; current file count 39 (post-Apr feature batches).
+- Compose config PASS (`docker compose config`) — host-env shadowing hardened (`093f5ae`); REDIS_PASSWORD placeholder injected (`fd796cf`); Redis auth enforced in non-local envs (`1737970`).
+- Pint style: **re-verification required** (AI proposal events + cancellation actor snapshot added)
+- PHPStan Level 5: **re-verification required** (AI harness lifecycle expanded; refactor of TransactionExceptions hierarchy `746a5bf`)
+- Psalm: **re-verification required** (cancellationActorSnapshot type contracts hardened `e68f40f` / `842e64a` / `98fbe93`)
 - AI eval gate: `php artisan ai:eval --all-phases` — nightly CI at 03:00, blocks deploy on failure
 - OpenAPI contract lint (Spectral): CI gate `contract-lint.yml` added 2026-04-17 (`4a33755`); blocks on `docs/api/openapi.yaml` or `.spectral.yaml` changes
+- E2E smoke gate (new — `c5a37dc`): batch-8 added a frontend smoke gate to CI manifests as part of kill-switch hardening
 
 Open Findings: F-23 (MD lint, low), F-25 (CSRF path, low), F-26–F-62 (2026-03-20 audit — 36 open, F-48 resolved), F-63–F-66 (2026-04-05 audit — 4 findings)
 Security Resolved (2026-04-18): T-13 — proposer-binding (F-06) now enforced at `ProposalConfirmationController::decide` via cache-envelope `proposer_user_id`; see `docs/THREAT_MODEL_AI.md`. Supersedes the 2026-04-12 "Accepted" posture.
+Security Resolved (2026-04-22 → 2026-05-02): F-32 (Sanctum `findToken()` for Bearer lookup in `detectAuthMode`), AI-001 (policy-document prompt-injection defense), RBAC-001 (contact messages locked to admin via `ContactMessagePolicy`), OBS-001 + OBS-002 (admin-gated detail health probes; topology no longer leaked to anonymous callers), PII redaction across all log channels and Sentry (`cb7911a`), Stripe webhook idempotency moved to durable `stripe_refund_events` UNIQUE — TOCTOU window eliminated (`abc3959`), AUTH-004 OTP resend race-hardened (`1079946`).
 Blocked Items: M-11 (migration squash — needs human approval)
 
 Findings backlog: [docs/FINDINGS_BACKLOG.md](./docs/FINDINGS_BACKLOG.md)
@@ -35,44 +37,49 @@ Previous audits: [docs/AUDIT_2026_02_21.md](./docs/AUDIT_2026_02_21.md)
 ## Overall Progress
 
 ```text
-Backend (Laravel)  ██████████████████████░  99%
-Frontend (React)   █████████████████████░░  97%
-Testing            ██████████████████████  99%
-Audits (v1–v4)     █████████████████████░ 100% ✅ 179/179
-Quality batches    █████████████████████░ 100% ✅ Batches 1–12
-DevSecOps          █████████████████████░ 100% ✅ Docker/Redis/Caddy + CI gates
-AI Harness (Ph 0–4)█████████████████████░ 100% ✅ 7 endpoints, kill switch, eval framework
-Payment bootstrap  ██████████████░░░░░░░░  65% ✅ Cashier + webhooks (checkout UI pending)
-Documentation      █████████████████████░  99%
-Deployment         ███████████████░░░░░░░  60%
+Backend (Laravel)        █████████████████████░  99%
+Frontend (React)         █████████████████████░  97%
+Testing                  ██████████████████████  99%
+Audits (v1–v4)           █████████████████████░ 100% ✅ 179/179
+Quality batches          █████████████████████░ 100% ✅ Batches 1–12
+DevSecOps                █████████████████████░ 100% ✅ Docker/Redis/Caddy + CI gates + E2E smoke gate
+AI Harness (Phases 0–4)  █████████████████████░ 100% ✅ 7 endpoints, durable proposal lifecycle, kill-switch hardening (batch-8), HMAC audit, PII hard-block, prompt-injection defense (AI-001)
+Booking integrity        █████████████████████░ 100% ✅ FSM invariants, no-overlap constraint hardening, immutable actor snapshots, deposit FSM (CONC-005/006), stay cancellation propagation (OPS-004)
+Auth hardening           █████████████████████░ 100% ✅ Batch-2 Sanctum (atomic refresh, fingerprint binding), F-32 Bearer lookup, AUTH-004 OTP race
+Payment bootstrap        ████████████████░░░░░░  75% ✅ Cashier + payment-hold + durable refund-event idempotency (TOCTOU eliminated). Checkout UI still pending.
+Documentation            █████████████████████░  99%
+Deployment               ███████████████░░░░░░░  60%
 ─────────────────────────────────────────────
-Total Progress     █████████████████████░  95%
+Total Progress           █████████████████████░  96%
 ```
 
 ---
 
 ## Test Results Summary
 
+> **Last verified suite run: March 31, 2026.** Apr–May commits added new tests (AI proposal lifecycle, RefundIdempotencyTest, BookingPaymentHoldTest, BookingStateMachineInvariantTest, ConcurrentBookingTest, AiProposalEventActorPreservationTest, deposit FSM tests, OPS-004 cancellation propagation tests, AUTH-004 OTP race tests). Re-run before next merge to `main`.
+
 ### Backend (PHPUnit/Pest)
 
 ```text
-1047 tests passed
-2875 assertions
-Duration: ~237s (verified March 31, 2026)
+Mar 31 baseline: 1047 tests passed / 2875 assertions / ~237s
+Test files on disk: 141 (includes new suites in tests/Feature/AiHarness/, tests/Feature/Stays/, tests/Feature/Payment/, tests/Feature/Database/)
+Apr–May delta: re-verification required
 ```
 
 ### Frontend (Vitest)
 
 ```text
-261 tests passed (25 test files)
-Duration: ~42s (verified March 31, 2026)
+Mar 31 baseline: 261 tests passed / 25 files / ~42s
+Test files on disk: 39 (added admin/, bookings/, locations/, assistant/ suites)
+Apr–May delta: re-verification required
 ```
 
 ### E2E (Playwright)
 
 ```text
-data-testid coverage added for targeted flows
-Playwright remains scaffolded; app runtime required for execution
+Scaffolded under frontend/tests/e2e/ — 4 flows: guest-booking, payment-webhook, ai-proposal, admin-restore.
+E2E smoke gate added to CI manifests via batch-8 (c5a37dc); full suite still gated behind workflow_dispatch.
 ```
 
 ---
@@ -141,11 +148,15 @@ See also: `docs/PERMISSION_MATRIX.md` Table E for current moderator access surfa
 | Feature                         | Priority | Notes                                                                                |
 | ------------------------------- | -------- | ------------------------------------------------------------------------------------ |
 | **AI Harness Phases 0–4**           | ✅ Done  | 7 endpoints `/v1/ai/*`, 2 tables, 3 middleware, 7-layer safety pipeline, kill switch, canary routing, eval framework (`ai:eval`), proposal confirmation (Apr 9–11) |
-| **Email Verification OTP Flow**     | ✅ Done  | Full-stack 6-digit code: EmailVerificationCodeService, EmailVerificationCode model + migration, controller, notification, listener, VerificationResult enum, EmailVerifyPage.tsx SPA (Apr 3) |
+| **AI Harness hardening (batch-8)**  | ✅ Done  | Durable AI proposal lifecycle + drift detection + proposer-binding (`5a295c0`); HMAC audit + PII hard-block + injection-bypass prevention (`e588432`); AI-001 policy-document prompt-injection defense (`347649a`); kill-switch hardening + E2E smoke gate + CI manifests (`c5a37dc`); AUTH-004 OTP race (`1079946` + test fix `10b153e`) |
+| **Booking integrity hardening**     | ✅ Done  | Booking state-machine invariants + idempotent Stripe webhook (`ac7275b`); durable `stripe_refund_events` UNIQUE replaces in-memory `IdempotencyGuard` (`abc3959`); payment-hold on creation (`ae2d070`); immutable actor snapshots on bookings + admin_audit_logs (`048e40b`); no-overlap constraint hardening + pre-deploy gate (`92f1ad1`); deposit FSM + null-user reconciliation (`b69a7a0`); stay cancellation propagation (`7027adb`) |
+| **Email Verification OTP Flow**     | ✅ Done  | Full-stack 6-digit code: EmailVerificationCodeService, EmailVerificationCode model + migration, controller, notification, listener, VerificationResult enum, EmailVerifyPage.tsx SPA (Apr 3); resend race-hardened (AUTH-004, May 2) |
 | **Location Room Availability Fix**  | ✅ Done  | `scopeWithRoomCounts` uses booking-based availability; LocationResource + LocationCard use `rooms_count` (Apr 3) |
 | **PHPStan gate maintained**         | ✅ Done  | 10 errors introduced by new files Apr 3 — all resolved Apr 4 (0 errors, Level 5, no baseline) |
 | **Psalm gate maintained**           | ✅ Done  | 4 errors in auth/service layer resolved Apr 4 (0 blocking, Level 1) |
-| **Stripe Payment Integration**  | High     | Cashier bootstrapped, webhooks implemented; checkout session + payment UI pending    |
+| **Stripe Payment Integration**  | Medium   | Cashier + webhooks done; payment-hold + durable refund-event idempotency landed (Apr 22). Checkout session + payment UI pending — moved off "High" because backend is no longer a blocker; only frontend work remains. |
+| **Observability hardening (OBS-001/OBS-002)** | ✅ Done  | Detailed health endpoints gated behind authenticated admin (no topology leak); PII redaction across all log channels and Sentry; Stripe origin pinning in CSP + Caddyfile (Apr 24) |
+| **RBAC-001 contact-message lockdown** | ✅ Done  | `ContactMessagePolicy` enforces admin-only access; legacy moderator path closed (Apr 26) |
 | **RBAC Hardening**              | ✅ Done  | Defense-in-depth, phases 1-3, moderator activation, mobile guard, password complexity (Mar 10-14) |
 | **Booking Detail Panel**        | ✅ Done  | Guest read-only panel with 14 tests (Feb 27)                                         |
 | **Admin Pagination**            | ✅ Done  | All 3 tabs paginated with Trước/Sau controls (Feb 27)                                |
@@ -192,6 +203,10 @@ All audit and batch details are preserved in [AUDIT_REPORT.md](./AUDIT_REPORT.md
 | Apr 12, 2026 | Documentation governance audit + full docs sync for AI Harness | 10 docs updated (ARCHITECTURE_FACTS, PERMISSION_MATRIX, CONTRACT, DB_FACTS, DATABASE, openapi.yaml, THREAT_MODEL_AI, COMMANDS, COMPACT, WORKLOG) |
 | Apr 13–17, 2026 | F-06 proposer-binding + F-01/F-02/F-03 remediations + deploy workflow hardening + OpenAPI contract lint gate | 11 commits (`e6673dd`→`1deaf8e`): proposal decide throttle 10→5, proposer-binding at cache envelope, CancellationService service-layer ownership gate, F-04 pre-flight DEPLOY_HOST gate, migration-before-health reordering, `contract-lint.yml` Spectral workflow |
 | Apr 18, 2026 | Documentation governance remediation pass — docs aligned with post-F-06 code truth | 11 docs updated: ARCHITECTURE_FACTS (TTL/proposer-binding/defense-in-depth invariants), PERMISSION_MATRIX (A14 throttle 10→5, BR-1/BR-2 cross-refs), THREAT_MODEL_AI (T-13 Accepted→Mitigated, V-5 residual risk removed), CONTRACT + COMMANDS_AND_GATES (Spectral gate), OPERATIONAL_PLAYBOOK (F-04 runbook, pending-backlog runbook, migration ordering note), ROLLOUT_AND_KILL_SWITCH (TTL=0 implicit kill switch), backend/.env.example + backend/.env.production.example (BOOKING_PENDING_TTL_MINUTES, BOOKING_PENDING_EXPIRY_BATCH_SIZE), PROJECT_STATUS, COMPACT, WORKLOG |
+| Apr 19–24, 2026 | Booking integrity wave (state-machine invariants → durable refund idempotency) | `ac7275b` booking state-machine invariants + idempotent Stripe webhook; `ae2d070` Stripe payment-hold on booking creation + pending-limit enforcement; `89e42b8` batch-4 platform hardening (policy dedup, rooms.status phase 3, Redis kill switches, CI gates); `abc3959` ephemeral `IdempotencyGuard` deleted (-515 LOC) — replaced with durable `stripe_refund_events` UNIQUE; eliminates TOCTOU window, survives restart and horizontal scaling; RefundIdempotencyTest (replay, partial refund, concurrent INSERT) |
+| Apr 25–28, 2026 | Auth + observability hardening | `5e258e7` batch-2 Sanctum hardening (atomic refresh, fingerprint binding, fence-post unification); `4ab9cfd` F-32 — Sanctum `findToken()` for Bearer lookup in `detectAuthMode`; `04c7d63` RBAC-001 — contact messages admin-only via `ContactMessagePolicy`; `cb7911a` PII redaction across all log channels and Sentry; `58da55e` OBS-001 + OBS-002 (admin-gated detail health probes); `95f9f80` Stripe origin pinning in CSP middleware + Caddyfile |
+| Apr 29 – May 1, 2026 | Booking actor immutability + no-overlap constraint hardening + DB safety | `048e40b` immutable actor snapshot on bookings + admin_audit_logs; `92f1ad1` `no_overlapping_bookings` constraint assertion + pre-deploy gate; `746a5bf` decompose monolithic `TransactionExceptions` into SRP hierarchy; `2e120c0` guard null booking after `fresh()` in `ReconcileRefundsJob`; `10b5346` token refresh type guard + pending-count lock semantics; cancellationActorSnapshot type contracts hardened (`e68f40f`/`842e64a`/`98fbe93`/`d5798fe`/`2cbb436`) |
+| May 2, 2026 | AI Harness hardening + OPS-004 + CONC-005/006 + AUTH-004 (batch-8) | `347649a` AI-001 policy-document prompt-injection defense; `e588432` AI harness PII hard-block + injection bypass prevention + HMAC audit; `5a295c0` durable AI proposal lifecycle + drift detection + proposer binding; `b69a7a0` deposit FSM lifecycle + null-user reconciliation (CONC-005/006); `7027adb` OPS-004 stay cancellation propagation; `1079946` OTP resend race-hardened (AUTH-004); `c5a37dc` batch-8 kill-switch hardening + E2E smoke gate + CI manifests; `10b153e` AI harness test fix for AUTH-004 kill-switch migration |
 | Apr 3–4, 2026 | Email verification OTP flow (full-stack), location availability fix, concurrent booking HTTP 500 fix, mail view assets (infra), PHPStan 10→0 errors, Psalm 4→0 errors, TS5103 tsconfig fix, Pint style fix (3 files) | Merged to main Apr 4 (9756bba, 7 commits, 40 files, 1954+/403−) |
 | Mar 31, 2026 | Docs sync v3: 5 confirmed docs updated, 9 findings patched (F-01, F-02, F-03, F-04, F-05, F-07, F-09) | — |
 
@@ -201,6 +216,9 @@ All audit and batch details are preserved in [AUDIT_REPORT.md](./AUDIT_REPORT.md
 
 Audits v1 (61/61), v2 (98/98), v3 (14/14), v4 (6/6) complete. Findings F-01 through F-22 and F-24 resolved. F-23 open (low — MD lint). F-25 open (low — CSRF path). F-26–F-62 open (2026-03-20 audit, code findings — not fixed in docs pass).
 AI Harness Phases 0–4 (Apr 9–11): 7 endpoints, 2 new tables (policy_documents, ai_proposal_events), 3 middleware, 7-layer safety pipeline, eval framework, kill switch + canary routing.
+AI Harness hardening (Apr 22 → May 2): durable proposal lifecycle (lifecycle exceptions, drift detection, proposer-binding); HMAC audit; PII hard-block; AI-001 prompt-injection defense; batch-8 kill-switch hardening + E2E smoke gate + CI manifests. AUTH-004 OTP resend hardened against concurrent-request race (`1079946`); AI harness tests aligned with kill-switch migration (`10b153e`).
+Booking integrity hardening (Apr 19 → May 1): booking state-machine invariants (`ac7275b`); payment-hold on booking creation (`ae2d070`); durable Stripe refund idempotency via `stripe_refund_events` UNIQUE — replaced ephemeral `IdempotencyGuard`, eliminating TOCTOU window (`abc3959`); immutable actor snapshots on bookings + admin_audit_logs (`048e40b`); no-overlap constraint assertion + pre-deploy gate (`92f1ad1`); deposit FSM lifecycle + null-user reconciliation (`b69a7a0`); stay cancellation propagation (`7027adb`).
+Auth + observability hardening (Apr 25 → 28): batch-2 Sanctum (atomic refresh, fingerprint binding, fence-post unification — `5e258e7`); F-32 Sanctum `findToken()` for Bearer lookup in `detectAuthMode` (`4ab9cfd`); RBAC-001 contact messages locked to admin via `ContactMessagePolicy` (`04c7d63`); PII redaction across all log channels and Sentry (`cb7911a`); OBS-001 + OBS-002 admin-gated detail health probes (`58da55e`); Stripe origin pinning in CSP and Caddyfile (`95f9f80`).
 T-13 superseded (Apr 18): proposer-binding (F-06) enforced at `ProposalConfirmationController::decide` via cache-envelope `proposer_user_id`; `decide()` 404s on mismatch. Defense-in-depth at `CancellationService::validateCancellation`. Reclassified as Mitigated in `docs/THREAT_MODEL_AI.md`.
 RBAC hardening (Mar 10): defense-in-depth verified, PERMISSION_MATRIX.md created, 5 follow-ups open (FU-1..FU-5).
 RBAC phases 1-3 (Mar 11): enforcement gaps closed, admin audit log, moderator activated.

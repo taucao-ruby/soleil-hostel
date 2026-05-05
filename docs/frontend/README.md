@@ -261,19 +261,24 @@ pnpm dev:docker  # Docker development environment
 
 ### Unit & Integration Testing (Vitest + Testing Library)
 
-- **Component Tests**: 19 test files, 194 tests passing
-- **Auth Tests**: Login, register, context lifecycle (33 tests)
-- **Booking Tests**: Form validation, date logic, view model (52 tests)
-- **Dashboard Tests**: GuestDashboard, AdminDashboard, DashboardPage (21 tests)
-- **Home Tests**: HomePage, SearchCard, FilterChips (26 tests)
-- **UI Tests**: Button, Input component behavior (27 tests)
-- **Security Tests**: CSRF, XSS sanitization, API interceptors (34 tests)
-- **Location Tests**: Nav link rendering (3 tests)
+The frontend has 39 test files across `features/`, `shared/`, and `pages/`. Areas covered:
 
-### E2E Testing (Playwright - Scaffolded)
+- **Auth**: Login, register, AuthContext lifecycle, AdminRoute, password complexity
+- **Booking**: Form validation, date logic, view model, list, detail panel/page, ReviewForm
+- **Dashboard**: GuestDashboard, AdminDashboard, AdminLayout, AdminSidebar, DashboardPage, TodayOperations
+- **Home**: HomePage, SearchCard, FilterChips, HeaderMobile (responsive drawer)
+- **Locations**: LocationList, LocationDetail (boutique hero), LocationsNav
+- **Rooms**: RoomList, AdminRoomDashboard, RoomForm
+- **Assistant**: RoomDiscoveryWidget (AI proposal-confirmation flow)
+- **UI primitives**: Button, Input, StatusBadge
+- **Shared lib**: api client, booking utils
+- **Security utils**: CSRF token handling, XSS sanitization
 
-- **Booking Flows**: End-to-end booking spec
-- **Status**: Requires running application for execution
+> **Live counts** in [PROJECT_STATUS.md](../../PROJECT_STATUS.md). Historical Mar 31 baseline: 261 tests / 25 files; the file count has since grown to 39 — re-verification required.
+
+### E2E Testing (Playwright)
+
+Scaffolded under [`frontend/tests/e2e/`](../../frontend/tests/e2e/README.md). Four flows: guest booking, payment webhook, AI proposal, admin restore. Gated behind `workflow_dispatch` until the suite stabilises.
 
 ---
 

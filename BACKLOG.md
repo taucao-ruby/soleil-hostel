@@ -1,7 +1,9 @@
 # BACKLOG.md — Soleil Hostel
 
 > **Product backlog — prioritized by implementation order**
-> Last updated: 2026-03-31 | Source: COMPACT.md + KNOWN_LIMITATIONS.md + FINDINGS_BACKLOG.md + PERMISSION_MATRIX.md
+> Last updated: 2026-05-05 | Source: COMPACT.md + KNOWN_LIMITATIONS.md + FINDINGS_BACKLOG.md + PERMISSION_MATRIX.md
+>
+> Apr–May 2026 batches landed on `dev` (commits `347649a` → `10b153e`): AI Harness hardening (proposal lifecycle, HMAC audit, PII hard-block, AI-001 prompt-injection defense), batch-8 kill-switch + E2E smoke gate, Booking integrity wave (state-machine invariants, payment-hold, durable refund idempotency, actor snapshots, no-overlap constraint hardening, deposit FSM, stay cancellation propagation OPS-004), Auth + observability hardening (batch-2 Sanctum, F-32, RBAC-001, PII redaction, OBS-001/OBS-002), AUTH-004 OTP resend race-hardening. **Backend product surface for booking + AI is now production-quality;** frontend payment checkout remains the largest open gap.
 
 ---
 
@@ -108,9 +110,9 @@
 > Integrate real payment processing (currently mocked)
 > **Source:** LIM-002 from KNOWN_LIMITATIONS.md
 
-### PAY-001 🟡 Stripe / VNPay Integration (Phase 1) — Bootstrap Done
+### PAY-001 🟠 Stripe / VNPay Integration (Phase 2 — Frontend Checkout) — Backend Done, Frontend Pending
 
-**Description:** Replace the mock `processRefund()` with the real Stripe SDK.
+**Description:** Wire up the frontend checkout session and confirmation UX. Backend is now ready end-to-end (payment-hold on creation, durable refund-event idempotency).
 
 **Completed (March 1, 2026):**
 
@@ -118,32 +120,41 @@
 - [x] Cashier migration (stripe_id, pm_type, pm_last_four, trial_ends_at)
 - [x] `POST /api/webhooks/stripe` endpoint with signature verification
 - [x] Webhook handlers: `payment_intent.succeeded`, `charge.refunded`, `payment_intent.payment_failed`
-- [x] 14 tests (4 webhook signature + 10 handler tests)
 
-**Remaining:**
+**Completed (April 22, 2026 — `ae2d070`, `abc3959`):**
 
-- [ ] `POST /v1/bookings` → creates a Payment Intent before confirming
-- [ ] Payment confirmed → booking status = `confirmed`
-- [ ] Cancellation → automatic refund via Stripe
-- [ ] Checkout session frontend UI
-- [ ] No API keys committed (use `config('payment.stripe_secret')`)
+- [x] **Stripe payment-hold on booking creation** + pending-limit enforcement (`ae2d070`)
+- [x] **Durable refund idempotency**: `IdempotencyGuard` (in-memory, non-durable) deleted (-515 LOC); replaced with `stripe_refund_events` table + `UNIQUE(stripe_refund_id)` (`abc3959`)
+- [x] DB INSERT-before-lookup eliminates the application-layer TOCTOU window
+- [x] `amount_refunded` sourced from `charge.amount_refunded` (cumulative) — handles partial-then-full refund sequences correctly
+- [x] `RefundIdempotencyTest` covering replay delivery, partial refund, and concurrent INSERT
+- [x] `BookingPaymentHoldTest`, `StripeWebhookHandlerTest`, `BookingStateMachineInvariantTest`
+
+**Remaining (frontend only):**
+
+- [ ] Checkout session frontend UI (`POST /v1/bookings` already creates the Payment Intent — UI just needs to render Stripe Elements / Checkout)
+- [ ] Frontend payment-confirmation status display (success / failed / pending)
+- [ ] Cancellation triggers refund — backend already handles this; surface refund status in `BookingDetailPanel`
 
 ---
 
-### PAY-002 🟡 Webhook Handling for Payment Events — Partially Done
+### PAY-002 ✅ Webhook Handling for Payment Events — Done 2026-04-22
 
 **Source:** LIM-006
 
-**Description:** Receive webhooks from Stripe (payment.succeeded, refund.created, charge.failed).
+**Description:** Receive webhooks from Stripe with durable idempotency.
 
-**Completed (March 1, 2026):**
+**Completed:**
 
-- [x] Endpoint `POST /api/webhooks/stripe` with signature verification
-- [x] 3 event handlers implemented with idempotency checks
+- [x] Endpoint `POST /api/webhooks/stripe` with Cashier-signed verification
+- [x] Event handlers: `payment_intent.succeeded`, `charge.refunded`, `payment_intent.payment_failed`
+- [x] **Durable replay fence**: `stripe_refund_events.stripe_refund_id` UNIQUE — survives process restart and horizontal pod scaling (`abc3959`)
+- [x] Validates `stripe_event_id` + `payment_intent_id` presence before processing; structured log fields on all early-exit paths
+- [x] `booking_id` FK is nullable + `nullOnDelete` to decouple refund audit trail from booking lifecycle
 
-**Remaining:**
+**Remaining (deferred to OPS-004 successor — non-blocking):**
 
-- [ ] Exponential backoff retry on webhook failure
+- [ ] Exponential backoff retry on webhook failure (Stripe handles retries on its side; we currently don't requeue on app-side error)
 - [ ] Dead letter queue for failed webhooks
 
 ---
@@ -402,17 +413,21 @@ FEAT-002 (Group Booking) → requires a new ADR before coding
 
 ## Current Sprint (Q2-2026)
 
-| Item                            | Assignee | Status                                    |
-| ------------------------------- | -------- | ----------------------------------------- |
-| PAY-001 Stripe Checkout + UI    | —        | 🟠 Phase 2 pending (bootstrap done)       |
-| OPS-001 Deploy Pipeline         | —        | 🟠 60% (infra done, deploy step pending)  |
-| TD-005 RBAC Follow-ups (FU-1..5)| —        | 🟡 Next (test migration + config verify)  |
-| FE-004 Booking History          | —        | 🟡 Next                                   |
-| I18N-002 Frontend i18n          | —        | 🟢 When time permits                      |
-| TD-004 Audit Log Retention      | —        | 🟡 Next                                   |
-| F-25 api.ts CSRF path fix       | —        | 🟢 Non-critical (CSRF architecture clarified Mar 29; path discrepancy remains low-risk) |
-| rooms.status normalization + RoomStatus enum | —  | 🟡 Prerequisite for rooms.status DB CHECK  |
-| Legacy migration gating cleanup (2026_02_09_000000) | — | 🟢 Standardize config→DB::getDriverName() |
+| Item                                            | Assignee | Status                                    |
+| ----------------------------------------------- | -------- | ----------------------------------------- |
+| PAY-001 Frontend Stripe checkout UI             | —        | 🟠 **Backend ready** — frontend pending (payment-hold + durable refund idempotency landed Apr 22) |
+| OPS-001 Deploy Pipeline                         | —        | 🟠 60% — F-04 pre-flight DEPLOY_HOST gate landed Apr 17; SSH deploy step + automated rollback still pending |
+| TD-005 RBAC Follow-ups (FU-1..5)                | —        | 🟡 Next (test migration + config verify) — partly addressed by RBAC-001 lockdown Apr 26 |
+| FE-004 Booking History                          | —        | 🟡 Next                                   |
+| I18N-002 Frontend i18n                          | —        | 🟢 When time permits                      |
+| TD-004 Audit Log Retention                      | —        | 🟡 Next                                   |
+| F-25 api.ts CSRF path fix                       | —        | 🟢 Non-critical (CSRF architecture clarified Mar 29; path discrepancy remains low-risk) |
+| rooms.status normalization + RoomStatus enum    | —        | 🟡 Phase 3 landed (`89e42b8`); DB CHECK still TBD |
+| Legacy migration gating cleanup (2026_02_09)    | —        | 🟢 Standardize config→DB::getDriverName() |
+| Frontend AI proposal-confirmation UX hardening  | —        | 🟡 Backend lifecycle is durable + drift-detected; verify FE handles `ProposalNotShownException`, `ProposalExpiredException`, `ProposalPriceChangedException`, `ProposedRoomNoLongerAvailableException` cleanly |
+| Admin reviews + messages routes                 | —        | 🟡 Sidebar links exist; routes intentionally not implemented (TL-04) — implement or remove |
+| Booking form `number_of_guests` + `special_requests` persistence | — | 🟡 TL-03 — backend doesn't validate/persist; either wire it through or remove from UI |
+| TL-01 Admin booking screens parse `data.bookings` (not `data.data`) | — | 🟠 High — fix admin pagination response parsing |
 
 ---
 
@@ -471,6 +486,45 @@ FEAT-002 (Group Booking) → requires a new ADR before coding
 | ✅ ReviewForm.tsx: star-rating review form, Vietnamese UI, 403/422 handling                    | Mar 29, 2026      | 10 tests  |
 | ✅ picomatch ReDoS CVE fix (GHSA-c2c7-rcm5-vvqj) via pnpm overrides                           | Mar 30, 2026      | —         |
 | ✅ Docs sync v3: 9 findings patched, F-02 resolved via live test run (1047 tests confirmed)    | Mar 31, 2026      | —         |
+| ✅ Concurrent booking HTTP 500 fix + IP-rate-limit collapse fix (`bd91e90`)                    | Apr 3–4, 2026     | —         |
+| ✅ Email verification OTP flow (full-stack 6-digit code; race-hardened May 2)                  | Apr 3, 2026       | EmailVerificationCodeService + Test |
+| ✅ Location availability fix (`scopeWithRoomCounts`; LocationResource + LocationCard use rooms_count) | Apr 3, 2026 | — |
+| ✅ PHPStan 10→0 errors + Psalm 4→0 errors after Apr 3 file additions                           | Apr 4, 2026       | Level 5, no baseline |
+| ✅ TS5103 tsconfig fix + axios CVE upgrade (GHSA-3p68-rc4w-qgx5)                               | Apr 4, 2026       | —         |
+| ✅ AI Harness Phases 0–4: 7 endpoints, 7-layer safety pipeline, kill switch, canary, eval framework, proposal-confirmation flow | Apr 9–11, 2026 | 50+ backend files, 2 migrations, 7 endpoints, 3 middleware |
+| ✅ Documentation governance audit + AI Harness docs sync                                       | Apr 12, 2026      | 10 docs updated |
+| ✅ F-06 proposer-binding (cache-envelope `proposer_user_id`) + CancellationService ownership gate | Apr 13–17, 2026 | T-13 superseded |
+| ✅ F-04 pre-flight DEPLOY_HOST gate + migration-before-health reordering                       | Apr 13–17, 2026   | —         |
+| ✅ OpenAPI Spectral contract-lint CI gate (`contract-lint.yml`)                                | Apr 17, 2026      | —         |
+| ✅ Documentation governance remediation pass — docs aligned with post-F-06 code truth          | Apr 18, 2026      | 11 docs updated |
+| ✅ Booking state-machine invariants + idempotent Stripe webhook handling (`ac7275b`)           | Apr 22, 2026      | —         |
+| ✅ Stripe payment-hold on booking creation + pending-limit enforcement (`ae2d070`)             | Apr 22, 2026      | BookingPaymentHoldTest |
+| ✅ Batch-4 platform hardening: policy dedup, rooms.status phase 3, Redis kill switches, CI gates (`89e42b8`) | Apr 22, 2026 | — |
+| ✅ Durable Stripe refund idempotency: `IdempotencyGuard` deleted, `stripe_refund_events` UNIQUE — TOCTOU eliminated (`abc3959`) | Apr 22, 2026 | RefundIdempotencyTest |
+| ✅ SESSION_SECURE_COOKIE explicit env + fail-fast boot guard (`ef1`)                           | Apr 22, 2026      | —         |
+| ✅ Batch-2 Sanctum hardening: atomic refresh, fingerprint binding, fence-post unification      | Apr 25, 2026      | —         |
+| ✅ Operations API hardening (frontend `4323e90`)                                               | Apr 25, 2026      | —         |
+| ✅ Stripe origin pinning in CSP middleware + Caddyfile (`95f9f80`)                             | Apr 26, 2026      | —         |
+| ✅ Redis auth enforced in non-local environments via dual-layer guard (`1737970` + `fd796cf`)  | Apr 26, 2026      | —         |
+| ✅ Docker compose config gate hardened against host-env shadowing (`093f5ae`)                  | Apr 26, 2026      | —         |
+| ✅ TransactionExceptions decomposed into SRP hierarchy (`746a5bf`)                             | Apr 26, 2026      | —         |
+| ✅ Token refresh type guard + pending-count lock semantics (`10b5346`)                         | Apr 26, 2026      | —         |
+| ✅ Null-booking guard after `fresh()` in ReconcileRefundsJob (`2e120c0`)                       | Apr 26, 2026      | —         |
+| ✅ F-32 Sanctum `findToken()` for Bearer lookup in `detectAuthMode` (`4ab9cfd`)                | Apr 27, 2026      | —         |
+| ✅ Durable AI proposal lifecycle + drift detection + proposer binding (`5a295c0`)              | Apr 27, 2026      | —         |
+| ✅ AI harness PII hard-block + injection bypass prevention + HMAC audit (`e588432`)            | Apr 27, 2026      | —         |
+| ✅ AI-001 policy-document prompt-injection defense (`347649a`)                                 | Apr 27, 2026      | —         |
+| ✅ OBS-001 + OBS-002: admin-gated detail health probes (no topology leak to anonymous callers) | Apr 28, 2026      | —         |
+| ✅ PII redaction across all log channels and Sentry (`cb7911a`)                                | Apr 28, 2026      | —         |
+| ✅ RBAC-001: contact messages locked to admin via `ContactMessagePolicy` (`04c7d63`)           | Apr 28, 2026      | —         |
+| ✅ Immutable actor snapshot on bookings + admin_audit_logs (`048e40b`)                         | Apr 30, 2026      | AiProposalEventActorPreservationTest |
+| ✅ `no_overlapping_bookings` constraint assertion + pre-deploy gate (`92f1ad1`)                | May 1, 2026       | —         |
+| ✅ CancellationService actor snapshot type contracts hardened (Psalm/PHPStan zero-error)       | May 1, 2026       | —         |
+| ✅ Deposit FSM lifecycle + null-user reconciliation (CONC-005/006) (`b69a7a0`)                 | May 2, 2026       | —         |
+| ✅ OPS-004: stay cancellation propagation (`7027adb`)                                          | May 2, 2026       | —         |
+| ✅ AUTH-004: OTP resend race-hardened against concurrent requests (`1079946`)                  | May 2, 2026       | —         |
+| ✅ Batch-8 kill-switch hardening + E2E smoke gate + CI manifests (`c5a37dc`)                   | May 2, 2026       | —         |
+| ✅ AI harness test alignment with AUTH-004 kill-switch migration (`10b153e`)                   | May 2, 2026       | HEAD      |
 
 ---
 

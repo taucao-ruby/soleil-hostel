@@ -1,6 +1,6 @@
 # Soleil Hostel Documentation
 
-> **Last Updated:** March 31, 2026 | **Tests:** 1047 backend tests (2875 assertions) + 261 frontend unit tests | **Status:** Phases 0-5 Complete + DevSecOps + Quality Hardening + RBAC Hardening + DB Hardening + Stay Domain + Operational Completion
+> **Last Updated:** May 5, 2026 | **Tests:** see [PROJECT_STATUS.md](../PROJECT_STATUS.md) (single source of truth — Mar 31 baseline 1047 backend / 261 frontend; re-verification required after Apr–May AI proposal lifecycle, OPS-004 stay cancellation, CONC-005/006 deposit FSM, AUTH-004 OTP race, and Stripe webhook idempotency work) | **Status:** AI Harness Phases 0–4 + Stay Domain + Operational Completion + Payment Hold + Kill-Switch Hardening
 
 ## Quick Navigation
 
@@ -126,7 +126,7 @@ docs/
 
 See [PROJECT_STATUS.md](../PROJECT_STATUS.md) for full status snapshot with gate results and roadmap.
 
-**Current baselines** (verified March 31, 2026): 1047 backend tests, 261 frontend tests, 283 Pint files, PHPStan Level 5 0 errors, 0 open critical/high findings.
+**Current baselines** (Mar 31, 2026 — last verified before Apr–May feature batches): 1047 backend tests, 261 frontend tests (39 test files now), 283 Pint files, PHPStan Level 5 0 errors. Re-verification required for May 2026; see [PROJECT_STATUS.md](../PROJECT_STATUS.md) for live counts.
 
 ## Tech Stack
 
@@ -142,14 +142,16 @@ See [PROJECT_STATUS.md](../PROJECT_STATUS.md) for full status snapshot with gate
 
 ## Key Features
 
-- **Authentication**: Bearer Token + HttpOnly Cookie dual mode, token rotation, unified endpoints
-- **Booking System**: Pessimistic locking, soft deletes with audit trail, half-open intervals
-- **Operational Domain**: Four-layer model — bookings, stays, room_assignments, service_recovery_cases
+- **Authentication**: Bearer Token + HttpOnly Cookie dual mode, token rotation, unified endpoints, OTP email verification (race-hardened — AUTH-004)
+- **Booking System**: Pessimistic locking, soft deletes with audit trail, half-open intervals, immutable actor snapshots, payment-hold lifecycle, deposit FSM (CONC-005/006)
+- **Operational Domain**: Four-layer model — bookings, stays, room_assignments, service_recovery_cases; cancellation propagation (OPS-004)
 - **Room Management**: Optimistic locking, real-time availability cache
 - **RBAC**: 3 roles (USER, MODERATOR, ADMIN), type-safe enum, 7 authorization gates
-- **Security**: A+ security headers, HTML Purifier XSS, multi-tier rate limiting, CSRF
+- **AI Harness**: Phases 0–4 — 7 endpoints under `/api/v1/ai/*`, 7-layer safety pipeline, kill switch, canary routing, proposal-confirmation flow, eval gate (`php artisan ai:eval --all-phases`)
+- **Payments**: Stripe Cashier integration, signed-webhook idempotency via `stripe_refund_events` UNIQUE constraint, payment-hold on booking creation
+- **Security**: A+ security headers, HTML Purifier XSS, multi-tier rate limiting, CSRF, PII redaction across log channels + Sentry
 - **Performance**: Redis caching with event-driven invalidation, N+1 prevention, parallel testing
-- **Monitoring**: Correlation ID tracing, health probes, Sentry, structured JSON logging
+- **Monitoring**: Correlation ID tracing, health probes (admin-gated detail per OBS-002), Sentry, structured JSON logging
 
 ---
 

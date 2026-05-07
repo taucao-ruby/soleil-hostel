@@ -1,6 +1,8 @@
 # Health Check Endpoints
 
-> **Last Updated:** January 3, 2026 | **Status:** Production Ready ✅
+> **Last Updated:** May 8, 2026 | **Status:** Production Ready ✅
+>
+> **OBS-002 (Apr 28, 2026, commit `58da55e`):** All detail/component endpoints (`/api/health`, `/api/health/ready`, `/api/health/full`, `/api/health/detailed`, `/api/health/db`, `/api/health/cache`, `/api/health/queue`) are now **gated behind authenticated admin** — they leak topology (driver names, queue stats, exception messages) and must not be reachable by anonymous callers. Only `/api/ping` and `/api/health/live` remain public.
 
 ## Table of Contents
 
@@ -49,21 +51,24 @@ Health checks implement **differentiated failure semantics** based on component 
 
 ### Summary Table
 
-| Endpoint                | Purpose          | Auth | Status Codes |
-| ----------------------- | ---------------- | ---- | ------------ |
-| `GET /api/health/live`  | Liveness probe   | None | `200`        |
-| `GET /api/health/ready` | Readiness probe  | None | `200`, `503` |
-| `GET /api/health/full`  | Detailed metrics | None | `200`, `503` |
-| `GET /api/health/db`    | Database only    | None | `200`, `503` |
-| `GET /api/health/cache` | Cache only       | None | `200`        |
-| `GET /api/health/queue` | Queue only       | None | `200`        |
+| Endpoint                | Purpose                                            | Auth   | Status Codes |
+| ----------------------- | -------------------------------------------------- | ------ | ------------ |
+| `GET /api/ping`         | Public liveness sentinel (`{"status":"ok"}` only)  | Public | `200`        |
+| `GET /api/health/live`  | Liveness probe (returns only `{"status":"ok"}`)    | Public | `200`        |
+| `GET /api/health/ready` | Readiness probe — returns full check breakdown     | Admin  | `200`, `503` |
+| `GET /api/health/full`  | Detailed metrics                                   | Admin  | `200`, `503` |
+| `GET /api/health/db`    | Database only                                      | Admin  | `200`, `503` |
+| `GET /api/health/cache` | Cache only                                         | Admin  | `200`        |
+| `GET /api/health/queue` | Queue only                                         | Admin  | `200`        |
 
-### Legacy Endpoints (backward compatible)
+### Detail Endpoints (admin-only since OBS-002)
 
-| Endpoint                   | Purpose                        |
-| -------------------------- | ------------------------------ |
-| `GET /api/health`          | Basic health check             |
-| `GET /api/health/detailed` | Extended info with Redis stats |
+| Endpoint                   | Purpose                        | Auth  |
+| -------------------------- | ------------------------------ | ----- |
+| `GET /api/health`          | Service breakdown              | Admin |
+| `GET /api/health/detailed` | Extended info with Redis stats | Admin |
+
+> **Why admin-gated:** detailed payloads include connection driver names, queue stats, exception messages, and component-level latency — fingerprintable infrastructure data that must not be exposed to anonymous callers. The public `/api/ping` and `/api/health/live` endpoints return a fixed shape (`{"status":"ok"}`) that carries no topology.
 
 ---
 
@@ -102,7 +107,7 @@ GET /api/health/ready
     "database": {
       "healthy": true,
       "latency_ms": 1.23,
-      "connection": "mysql"
+      "connection": "pgsql"
     },
     "cache": {
       "healthy": true,
@@ -175,7 +180,7 @@ GET /api/health/full
     "debug": false
   },
   "checks": {
-    "database": { "healthy": true, "latency_ms": 1.23, "connection": "mysql" },
+    "database": { "healthy": true, "latency_ms": 1.23, "connection": "pgsql" },
     "cache": { "healthy": true, "latency_ms": 0.45, "driver": "redis" },
     "redis": { "healthy": true, "latency_ms": 0.32 },
     "storage": { "healthy": true, "writable": true },
@@ -197,7 +202,7 @@ GET /api/health/full
     "memory_usage_mb": 32.5,
     "peak_memory_mb": 48.2,
     "php_version": "8.3.0",
-    "laravel_version": "11.x"
+    "laravel_version": "12.x"
   }
 }
 ```
@@ -219,7 +224,7 @@ GET /api/health/db
   "timestamp": "2026-01-03T10:30:00+00:00",
   "healthy": true,
   "latency_ms": 1.23,
-  "connection": "mysql"
+  "connection": "pgsql"
 }
 ```
 
@@ -272,7 +277,8 @@ GET /api/health/queue
 services:
   backend:
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/ready"]
+      # Public liveness (admin-gated detail since OBS-002).
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/live"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -295,8 +301,11 @@ spec:
         periodSeconds: 10
         failureThreshold: 3
       readinessProbe:
+        # Use /api/health/live as the public readiness signal.
+        # /api/health/ready is admin-gated since OBS-002 and would 401 from kubelet.
+        # If you need component-level readiness, terminate at the infra layer.
         httpGet:
-          path: /api/health/ready
+          path: /api/health/live
           port: 8000
         initialDelaySeconds: 5
         periodSeconds: 5
@@ -313,10 +322,11 @@ upstream backend {
     server backend:8000 max_fails=3 fail_timeout=30s;
 }
 
-# Or active health check (nginx plus)
+# Or active health check (nginx plus) — use the public liveness path.
+# /api/health/ready is admin-gated since OBS-002.
 location /health-check {
     internal;
-    proxy_pass http://backend/api/health/ready;
+    proxy_pass http://backend/api/health/live;
 }
 ```
 
@@ -324,7 +334,7 @@ location /health-check {
 
 ```json
 {
-  "HealthCheckPath": "/api/health/ready",
+  "HealthCheckPath": "/api/health/live",
   "HealthCheckIntervalSeconds": 30,
   "HealthCheckTimeoutSeconds": 5,
   "HealthyThresholdCount": 2,
@@ -338,16 +348,17 @@ location /health-check {
 ### Monitoring with cURL
 
 ```bash
-# Quick health check
-curl -s http://localhost:8000/api/health/ready | jq '.status'
+# Public liveness (no auth required)
+curl -s http://localhost:8000/api/health/live | jq '.status'
 
-# Detailed check with timing
-time curl -s http://localhost:8000/api/health/full | jq
+# Admin-only — detail endpoints require an admin session/token (OBS-002)
+curl -s -H "Authorization: Bearer ${ADMIN_TOKEN}" http://localhost:8000/api/health/ready | jq '.status'
+curl -s -H "Authorization: Bearer ${ADMIN_TOKEN}" http://localhost:8000/api/health/full  | jq
 
-# Individual components
-curl -s http://localhost:8000/api/health/db | jq
-curl -s http://localhost:8000/api/health/cache | jq
-curl -s http://localhost:8000/api/health/queue | jq
+# Individual components — also admin-only
+curl -s -H "Authorization: Bearer ${ADMIN_TOKEN}" http://localhost:8000/api/health/db    | jq
+curl -s -H "Authorization: Bearer ${ADMIN_TOKEN}" http://localhost:8000/api/health/cache | jq
+curl -s -H "Authorization: Bearer ${ADMIN_TOKEN}" http://localhost:8000/api/health/queue | jq
 ```
 
 ---
@@ -386,10 +397,10 @@ php artisan test --filter=HealthControllerTest --coverage
 No additional environment variables required. Health checks use existing configuration:
 
 ```env
-# Database
-DB_CONNECTION=mysql
+# Database (production: PostgreSQL 16)
+DB_CONNECTION=pgsql
 DB_HOST=db
-DB_PORT=3306
+DB_PORT=5432
 
 # Cache
 CACHE_DRIVER=redis
@@ -409,13 +420,13 @@ Health check endpoints are intentionally **not rate-limited** to allow frequent 
 
 If needed, apply IP-based rate limiting at the infrastructure level (Nginx, Cloudflare, AWS WAF).
 
-### Security Consideration
+### Security Consideration (post OBS-002)
 
-Health endpoints are **public by design** for load balancer integration. If sensitive metrics exposure is a concern:
+Only `/api/ping` and `/api/health/live` are public. Their payload is the fixed shape `{"status":"ok"}` — no topology, no version, no driver names, no exception messages. Use these for load balancer / Kubernetes liveness probes.
 
-1. Use `/api/health/ready` for load balancers (minimal info)
-2. Protect `/api/health/full` behind auth middleware for dashboards
-3. Use IP allowlisting at infrastructure level
+All detail endpoints (`/api/health/ready`, `/api/health/full`, `/api/health/detailed`, `/api/health`, `/api/health/db|cache|queue`) require an authenticated **admin** session. Use them for internal dashboards and on-call investigation only.
+
+If a load balancer needs more than liveness, terminate the readiness check at the **infrastructure layer** (nginx, ALB, Caddy) using a privileged side-channel rather than exposing detail to the public path. Do **not** revert OBS-002.
 
 ---
 

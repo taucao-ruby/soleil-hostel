@@ -1,7 +1,7 @@
 # PRODUCT_GOAL.md — Soleil Hostel
 
 > **Product goals and strategic direction**
-> Last updated: 2026-05-05
+> Last updated: 2026-05-08
 >
 > **UI DESIGN CONTEXT (Google Stitch):**
 > This is the primary product brief for UI generation. Send this file first.

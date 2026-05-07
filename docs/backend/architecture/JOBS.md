@@ -1,14 +1,19 @@
 # ⚙️ Queue Jobs
 
 > Background job processing for high-load scenarios
+>
+> **Last Updated:** May 8, 2026
 
 ## Overview
 
 Soleil Hostel uses Laravel Queues for:
 
-1. **High-load booking creation** - Defer to queue when deadlock retries exceed threshold
-2. **Event-driven cache invalidation** - Non-blocking cache updates
-3. **Email notifications** - Async notification delivery (planned)
+1. **High-load booking creation** — defer to queue when deadlock retries exceed threshold
+2. **Event-driven cache invalidation** — non-blocking cache updates
+3. **Email notifications** — async notification delivery (queued listeners with `afterCommit()`)
+4. **Refund reconciliation** — `ReconcileRefundsJob` reconciles `refund_status` against Stripe for any booking stuck in `refund_pending`
+5. **Pending booking expiry** — TTL sweep against the `BOOKING_PENDING_TTL_MINUTES` invariant; cache TTL=0 is the implicit kill switch (per `docs/ROLLOUT_AND_KILL_SWITCH.md`)
+6. **Operational stay backfill** — `BackfillOperationalStays` artisan command (Mar 20)
 
 ---
 
@@ -206,6 +211,39 @@ Failed jobs are stored in `failed_jobs` table:
 
 ```sql
 SELECT * FROM failed_jobs ORDER BY failed_at DESC;
+```
+
+---
+
+## ReconcileRefundsJob
+
+Background reconciliation for any booking stuck in `refund_pending` whose Stripe-side state may have advanced. The job has been hardened across May 2026:
+
+- `2e120c0` (Apr 26) — guard `null` booking after `fresh()` (concurrent force-delete window).
+- `1441edb` (May 6) — Stripe charge type guard: payload from the API may be `null`, `Stripe\Charge`, or `Stripe\StripeObject` depending on expansion; the type narrow runs before any property read so a missing-charge payload no longer throws `Error: Cannot read property 'amount_refunded' of null`.
+- Refund mutation is mediated through the durable `stripe_refund_events` UNIQUE replay fence (`abc3959`); `INSERT` precedes booking lookup so concurrent webhook + reconciliation deliveries are serialised at the storage layer.
+
+```php
+// App\Jobs\ReconcileRefundsJob (excerpt)
+public function handle(StripeClient $stripe): void
+{
+    $booking = Booking::query()->whereKey($this->bookingId)->lockForUpdate()->first();
+    if ($booking === null || $booking->refund_id === null) {
+        return; // booking force-deleted between dispatch and handle; nothing to reconcile
+    }
+
+    $charge = $stripe->charges->retrieve($booking->charge_id, ['expand' => ['refunds']]);
+
+    if (! $charge instanceof Charge) {
+        // Stripe returned an unexpected payload shape; bail loudly.
+        Log::warning('ReconcileRefundsJob: non-Charge payload', ['booking_id' => $booking->id]);
+        return;
+    }
+
+    // INSERT into stripe_refund_events (UNIQUE on stripe_refund_id) BEFORE applying mutation.
+    $this->refundEventLedger->record($charge);
+    $this->bookingRefundService->reconcile($booking, $charge);
+}
 ```
 
 ---

@@ -18,16 +18,25 @@ Source of truth for migrations: `backend/database/migrations/*`.
 - `personal_access_tokens`: Sanctum tokens plus hardened cookie-auth/security columns.
 - `email_verification_codes`: OTP email-verification codes (added 2026-04-03, migration `2026_04_03_084257`). Stores SHA-256 `code_hash` (never raw code), `attempts`/`max_attempts` (brute-force guard), `expires_at`, `consumed_at` (NULL = unused), `last_sent_at`. FK `user_id → users.id` CASCADE. Indexes: `idx_evc_user_id`, `idx_evc_expires_consumed`.
 
+Audit & integrity tables:
+- `admin_audit_logs`: Append-only audit trail for sensitive admin operations (added 2026-03-12, migration `2026_03_12_000001`; actor snapshot columns added 2026-05-01 via `2026_05_01_000003`). Columns: `actor_id` FK→`users` SET NULL, `actor_email`/`actor_role`/`actor_display_name` (denormalized snapshot to survive user deletion), `action`, `resource_type`/`resource_id`, `metadata` JSON, `ip_address`, `created_at`. Indexes: `(action)`, `(resource_type, resource_id)`, `(actor_id, created_at)`. **DB user must NOT be granted UPDATE/DELETE on this table in production.**
+- `deposit_events`: Append-only audit trail for deposit lifecycle transitions (CONC-005, added 2026-05-02, migration `2026_05_02_000002`). Columns: `booking_id` FK→`bookings` CASCADE, `from_status`/`to_status`, `refund_percent` (0..100), `refund_amount` (cents, nullable), `reason`, `actor_id` FK→`users` SET NULL, `actor_email`/`actor_role`, `metadata` JSON, `created_at`. **No `updated_at`, no UPDATE/DELETE path** — every `Deposit::transitionTo()` is a new row. CHECKs (pgsql): `chk_deposit_events_from_status`, `chk_deposit_events_to_status`, `chk_deposit_events_refund_percent BETWEEN 0 AND 100`.
+
+Stripe integration tables:
+- `stripe_webhook_events`: Stripe webhook ingestion ledger (added 2026-04-28, migration `2026_04_28_000001`). Columns: `stripe_event_id` UNIQUE, `type`, `status` (enum `processing`/`processed`/`failed`), `payload` JSONB, `processed_at`. Used to dedupe webhook deliveries at the event level.
+- `stripe_refund_events`: Durable refund-event replay fence (added 2026-04-29, migration `2026_04_29_000003`; replaced ephemeral `IdempotencyGuard`). Columns: `stripe_refund_id` UNIQUE, `stripe_event_id`, `booking_id` FK→`bookings` SET NULL (decouples audit trail from booking lifecycle), `amount_refunded` (cents, cumulative — sourced from `charge.amount_refunded`, not `refunds[0].amount`), `currency`, `processed_at`. **The UNIQUE on `stripe_refund_id` is the canonical idempotency authority** — `INSERT` happens before booking lookup; eliminates the TOCTOU window present in the prior application-layer state check.
+
 Operational domain tables (added 2026-03-20, see `docs/DOMAIN_LAYERS.md`):
-- `stays`: Operational occupancy lifecycle per booking (`stay_status`). One per booking (UNIQUE `booking_id`).
+- `stays`: Operational occupancy lifecycle per booking (`stay_status`). One per booking (UNIQUE `booking_id`). `cancelled` is a terminal state since 2026-05-03 (`2026_05_03_000001`, OPS-004).
 - `room_assignments`: Physical room allocation history per stay. Partial unique index prevents two active assignments for same stay (PostgreSQL only).
 - `service_recovery_cases`: Incident, compensation, and settlement-tracking audit trail. `stay_id` nullable.
 
-AI harness tables (added 2026-04-09 / 2026-04-11, see `docs/HARNESS_ENGINEERING.md`):
-- `policy_documents`: Hostel policy content for AI FAQ grounding. UUID PK, `slug` (unique), `title`, `content` (text), `category`, `language` (default `vi`), `is_active`, `version`. Indexes: `(slug, is_active, language)`, `(category, is_active)`.
-- `ai_proposal_events`: Audit trail for AI booking proposal confirm/decline decisions. `user_id` FK→`users` CASCADE, `proposal_hash` (64-char, indexed), `action_type`, `user_decision` (`confirmed`/`declined`/`shown`), `downstream_result` (nullable text). Indexes: `(proposal_hash)`, `(proposal_hash, user_decision)`.
+AI harness tables (see `docs/HARNESS_ENGINEERING.md`):
+- `policy_documents` (added 2026-04-09, migration `2026_04_09_000001`): Hostel policy content for AI FAQ grounding. UUID PK, `slug` (unique), `title`, `content` (text), `category`, `language` (default `vi`), `is_active`, `version`. Indexes: `(slug, is_active, language)`, `(category, is_active)`.
+- `ai_proposal_events` (added 2026-04-11, migration `2026_04_11_000001`; FK relaxed + actor snapshot added 2026-04-29 via `2026_04_29_000001`): Audit trail for AI booking proposal confirm/decline/shown decisions. `user_id` is now **nullable** with FK `users(id) ON DELETE SET NULL` (was CASCADE — relaxation preserves audit trail past user deletion). Denormalized actor snapshot: `actor_email` (255), `actor_role` (32), `actor_display_name` (255). Other columns: `proposal_hash` (64-char, indexed), `action_type`, `user_decision` (`confirmed`/`declined`/`shown`), `downstream_result` (nullable text). Indexes: `(proposal_hash)`, `(proposal_hash, user_decision)`.
+- `ai_proposals` (added 2026-05-01, migration `2026_05_01_000001`, AI-005/AI-006): Durable proposal contract — the cache envelope is fast but cannot revalidate at confirm time. Columns: `proposal_hash` UNIQUE (64), `user_id` FK→`users` SET NULL (nullable), `action_type`, booking-shape fields (`room_id` FK SET NULL, `check_in`, `check_out`, `quoted_price_cents` — all nullable because cancellation proposals carry no triplet), `context_version` (64-char hash of room price + availability state at proposal generation, recomputed at confirm time for drift detection), `proposed_params` JSON (mirror of cached envelope; survives TTL eviction), `risk_assessment` JSON, `expires_at`, `shown_at`, `decision` (`confirmed`/`declined`), `decided_at`. Indexes: `(user_id, created_at)`, `(expires_at)`, `(proposal_hash, decision)`.
 
-Other framework tables exist (`sessions`, `cache`, `jobs`, etc.) but are out of scope for booking/auth invariants.
+Other framework tables exist (`sessions`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `password_reset_tokens`) but are out of scope for booking/auth invariants.
 
 ## 2) Invariants (must always hold)
 
@@ -61,11 +70,25 @@ Other framework tables exist (`sessions`, `cache`, `jobs`, etc.) but are out of 
 - Payment/refund/cancellation audit:
   - [DB] `amount`, `payment_intent_id`, `refund_id`, `refund_status`, `refund_amount`, `refund_error`.
   - [DB] `deposit_amount`, `deposit_collected_at`, `deposit_status`.
-  - [DB] cancellation fields: `cancelled_at`, `cancelled_by`, `cancellation_reason`.
+  - [DB] cancellation fields: `cancelled_at`, `cancelled_by` (FK `users.id` SET NULL).
+  - [DB] **immutable cancellation actor snapshot** (added 2026-05-01, `2026_05_01_000002`): `cancelled_by_email` (255), `cancelled_by_role` (50), `cancelled_by_display` (255). Populated synchronously by `CancellationService` so the cancellation row attribution survives user deletion.
+  - [DB] `cancellation_reason` (TEXT).
   - [DB] soft-delete audit: `deleted_at`, `deleted_by`.
+- Stripe webhook idempotency (durable, replaces in-memory `IdempotencyGuard`):
+  - [DB] `stripe_webhook_events.stripe_event_id` UNIQUE — event-level dedupe (added 2026-04-28).
+  - [DB] `stripe_refund_events.stripe_refund_id` UNIQUE — refund-level replay fence; `INSERT` happens before booking lookup, eliminating the TOCTOU window (added 2026-04-29).
+  - [APP] `StripeWebhookController::handleChargeRefunded` sources `amount_refunded` from `charge.amount_refunded` (cumulative), not `refunds[0].amount` — correctly handles partial-then-full refund sequences.
+- AI proposal durability:
+  - [DB] `ai_proposals.proposal_hash` UNIQUE (added 2026-05-01) — durable contract that survives Cache TTL; `context_version` enables drift detection at confirm time.
+  - [DB] `ai_proposal_events.user_id` FK→`users` is **SET NULL** (was CASCADE before 2026-04-29) so the audit trail is preserved across user deletion. Denormalized actor snapshot: `actor_email`, `actor_role`, `actor_display_name`.
+- Admin audit log integrity:
+  - [DB] `admin_audit_logs.actor_id` FK→`users` SET NULL.
+  - [DB] **immutable actor snapshot** (added 2026-05-01, `2026_05_01_000003`): `actor_email`, `actor_role`, `actor_display_name`.
+  - [DB user] **MUST NOT** have UPDATE/DELETE on `admin_audit_logs` in production. Append-only by convention; integrity depends on this DB-grant constraint.
 - Deposit / settlement semantics:
   - [APP] `deposit_amount` is unearned revenue / liability until stay fulfillment; not recognized revenue at collection time.
   - [DB/APP] `settlement_status` is operational financial tracking only; not authoritative accounting / GL.
+  - [DB] `deposit_events` (added 2026-05-02) is the append-only ledger for every deposit-status transition (CONC-005). One row per `Deposit::transitionTo()` call. **No `updated_at`.**
 
 ## 3) PostgreSQL Guarantees (defense in depth)
 
@@ -103,12 +126,17 @@ WHERE (status IN ('pending', 'confirmed') AND deleted_at IS NULL);
 - Additional CHECK constraints (added in migrations `2026_03_17_000002` and `2026_03_17_000003`, pgsql-only):
   - DB `CHECK (max_guests > 0)` on `rooms` (`chk_rooms_max_guests`).
   - DB `CHECK (status IN ('pending','confirmed','refund_pending','cancelled','refund_failed'))` on `bookings` (`chk_bookings_status`).
-  - Note: `rooms.status` DB CHECK is **deferred** — that field remains legacy availability/admin state. Physical readiness is enforced separately via `rooms.readiness_status`.
+  - Note: `rooms.status` DB CHECK was deferred at this point in time; **finalized 2026-04-29** as `rooms_status_deprecated CHECK (status IN ('available','unavailable'))` — see §"Deprecation: rooms.status".
 - Additional CHECK constraints (added in `2026_03_23_*`, pgsql-only):
   - DB `CHECK (readiness_status IN ('ready','occupied','dirty','cleaning','inspected','out_of_service'))` on `rooms` (`chk_rooms_readiness_status`).
   - DB `CHECK (room_tier IS NULL OR room_tier > 0)` on `rooms` (`chk_rooms_room_tier_positive`).
-  - DB `CHECK (deposit_status IN ('none','collected','applied','refunded'))` on `bookings` (`chk_bookings_deposit_status`).
+  - DB `CHECK (deposit_status IN ('none','collected','applied','refunded'))` on `bookings` (`chk_bookings_deposit_status`) — **extended 2026-05-02** (`2026_05_02_000001`) to also accept `'partial_refund'` and `'forfeited'` (CancellationService terminal states; deposit must never linger in `collected` after cancel).
   - DB `CHECK (settlement_status IN ('unsettled','partially_settled','settled','written_off'))` on `service_recovery_cases` (`chk_src_settlement_status`).
+- CHECK constraint changes after Apr 2026 (pgsql-only):
+  - DB `CHECK (status IN ('available','unavailable'))` on `rooms` (`rooms_status_deprecated`, added `2026_04_29_000002`). The legacy `rooms.status` is now narrowly-enforced to two values during the deprecation window — see §"Deprecation: rooms.status" below.
+  - DB `CHECK (stay_status IN ('expected','in_house','late_checkout','checked_out','no_show','relocated_internal','relocated_external','cancelled'))` on `stays` (`chk_stays_stay_status`, refreshed `2026_05_03_000001` to add `'cancelled'`). Required by OPS-004 stay cancellation propagation.
+  - DB `CHECK (from_status IN ('none','collected','applied','refunded','partial_refund','forfeited'))` and same for `to_status` on `deposit_events` (`chk_deposit_events_from_status`, `chk_deposit_events_to_status`, added `2026_05_02_000002`).
+  - DB `CHECK (refund_percent BETWEEN 0 AND 100)` on `deposit_events` (`chk_deposit_events_refund_percent`).
 - FK delete policies hardened (migration `2026_03_17_000001`, pgsql-only):
   - `bookings.user_id → users.id`: CASCADE → SET NULL (booking history survives user deletion)
   - `bookings.room_id → rooms.id`: CASCADE → RESTRICT (room deletion blocked if bookings exist)
@@ -175,6 +203,28 @@ AI harness
 - `policy_documents(category, is_active)` composite index.
 - `ai_proposal_events(proposal_hash)` index.
 - `ai_proposal_events(proposal_hash, user_decision)` composite index.
+- `ai_proposals(proposal_hash)` UNIQUE constraint (idempotency surface).
+- `ai_proposals(user_id, created_at)` composite index.
+- `ai_proposals(expires_at)` index (TTL sweeps).
+- `ai_proposals(proposal_hash, decision)` composite index.
+
+Admin audit & deposit lifecycle
+
+- `admin_audit_logs(action)` index.
+- `admin_audit_logs(resource_type, resource_id)` composite index.
+- `admin_audit_logs(actor_id, created_at)` composite index.
+- `deposit_events(booking_id)` index (`idx_deposit_events_booking_id`).
+- `deposit_events(created_at)` index (`idx_deposit_events_created_at`).
+
+Stripe ingestion
+
+- `stripe_webhook_events(stripe_event_id)` UNIQUE — event-level dedupe.
+- `stripe_refund_events(stripe_refund_id)` UNIQUE (`idx_stripe_refund_events_refund_id`) — durable replay fence.
+
+Email verification
+
+- `email_verification_codes(user_id)` index (`idx_evc_user_id`).
+- `email_verification_codes(expires_at, consumed_at)` composite index (`idx_evc_expires_consumed`).
 
 Reviews and tokens
 
@@ -263,23 +313,25 @@ Dont:
 
 ## Deprecation: rooms.status
 
-`rooms.status` is a **DEPRECATED** legacy field. The canonical physical room state is `rooms.readiness_status` (added in migration `2026_03_23_000001`).
+`rooms.status` is a **DEPRECATED** legacy field. The canonical physical room state is `rooms.readiness_status` (added in migration `2026_03_23_000001`). Bookability is `Room::scopeBookable()`.
 
-**Current state:**
-- `rooms.status` remains in schema (migration `2025_05_09_000000`) and in `Room.php` `$fillable`
-- `Room::scopeAvailable()` still queries `rooms.status = 'available'`
-- `rooms.readiness_status` is the canonical field with CHECK constraint and enum backing
+**Current state (post Phase 3 finalization, 2026-04-29 — `2026_04_29_000002`):**
+- `rooms.status` remains in schema and in `Room.php` `$fillable`
+- DB CHECK constraint `rooms_status_deprecated CHECK (status IN ('available', 'unavailable'))` is now **ENFORCED** in PostgreSQL — the column can no longer carry ad-hoc strings during the transition window
+- `2026_04_29_000002` also backfills `readiness_status` from any rows where the legacy column was `available` (→ `ready`) or anything else (→ `out_of_service`)
+- `Room::scopeBookable()` is the canonical bookability predicate (Batch 1); it consults `rooms.status='available'` but the constraint above guarantees the column carries one of the two valid values
+- `rooms.readiness_status` is the canonical physical-state field with its own CHECK constraint and enum backing
 - Both fields appear in `Room::$fillable` and are selected in queries
 
 **Deprecation timeline:**
-- **Phase 1 (current):** Document deprecation. New code must use `readiness_status` for physical room state. `rooms.status` reads are allowed only for legacy admin/sellable semantics with a `# DEPRECATED` comment.
-- **Phase 2 (next feature wave):** Migrate all `rooms.status` reads to `readiness_status` or a dedicated sellable-status field. Remove `rooms.status` from `Room::scopeAvailable()`.
-- **Phase 3 (post-migration):** Drop `rooms.status` column via migration. Remove from `$fillable`, `@property`, and all scopes.
+- **~~Phase 1 (deferred CHECK)~~** — superseded 2026-04-29.
+- **Phase 2 (current):** `rooms.status` reads still allowed for legacy admin/sellable semantics with a `# DEPRECATED` comment. New code must use `readiness_status` for physical room state. Migrate remaining `rooms.status` reads to a dedicated sellable-status field.
+- **Phase 3 (post-migration):** Drop `rooms.status` column via migration. Remove from `$fillable`, `@property`, and all scopes. Drop `rooms_status_deprecated` constraint.
 
 **Enforcement:**
+- DB CHECK `rooms_status_deprecated` blocks any value outside `{available, unavailable}` (pgsql)
 - `scripts/verify-control-plane.sh` warns if backend files reference `rooms.status`
 - New code referencing `rooms.status` without `# DEPRECATED` comment should be flagged in PR review
-- DB CHECK constraint on `rooms.status` remains **deferred** — legacy values are inconsistent across codebase
 
 ## AI Rules for DB-Related Changes
 

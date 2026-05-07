@@ -1,6 +1,6 @@
 # 🖥️ Soleil Hostel Backend (Laravel 12)
 
-> **Last Updated:** May 5, 2026 | **Laravel:** 12.x | **PHP:** 8.2+ (platform pinned to 8.3 in `composer.json`)
+> **Last Updated:** May 8, 2026 | **Laravel:** 12.x | **PHP:** 8.2+ (platform pinned to 8.3 in `composer.json`)
 
 ## 🎯 Overview
 
@@ -146,7 +146,7 @@ php artisan test --coverage --min=80
 
 ## 📋 API Endpoints
 
-> Versioned under `/api/v1/*` (current stable). `/api/v2/*` reserved for development. Unprefixed legacy paths (`/api/auth/login`, `/api/auth/register`) are deprecated with `Sunset: 2026-07-01` headers. Authoritative source: [`backend/routes/api/v1.php`](./routes/api/v1.php), [`backend/routes/api/v1_ai.php`](./routes/api/v1_ai.php), [`backend/routes/api.php`](./routes/api.php). Full surface: [`docs/api/openapi.yaml`](../docs/api/openapi.yaml).
+> Versioned under `/api/v1/*` (current stable). `/api/v2/*` reserved for development. Unprefixed legacy paths (`/api/auth/login`, `/api/auth/register`) are deprecated with `Sunset: 2026-07-01` headers. Authoritative sources: [`backend/routes/api.php`](./routes/api.php) (loader), [`backend/routes/api/v1.php`](./routes/api/v1.php) (v1 stable), [`backend/routes/api/v1_ai.php`](./routes/api/v1_ai.php) (AI Harness, kill-switch gated), [`backend/routes/api/v2.php`](./routes/api/v2.php) (v2 in development), [`backend/routes/api/legacy.php`](./routes/api/legacy.php) (deprecated, sunset-tagged). Full surface: [`docs/api/openapi.yaml`](../docs/api/openapi.yaml).
 
 ### Authentication (unprefixed — Sunset 2026-07-01)
 

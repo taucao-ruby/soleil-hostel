@@ -66,7 +66,7 @@ class BookingUpdated
 
 ### BookingCancelled
 
-Fired when a booking is cancelled (via CancellationService).
+Fired when a booking is cancelled (via `CancellationService`). Carries the immutable cancellation actor snapshot so downstream listeners do not need to re-resolve the actor (which may already be deleted).
 
 ```php
 // App\Events\BookingCancelled
@@ -75,16 +75,71 @@ class BookingCancelled
     use Dispatchable, SerializesModels;
 
     public function __construct(
-        public Booking $booking
+        public Booking $booking,
+        public CancellationActorSnapshot $actor, // email/role/display + actor_id
     ) {}
 }
 ```
 
-**Dispatched by:** `CancellationService::cancel()`
+**Dispatched by:** `CancellationService::cancel()` (synchronous, inside the cancellation transaction).
+
+**Listeners (synchronous, must succeed before the transaction commits):**
+
+- `PropagateCancellationToStay` — **OPS-004** (`7027adb`, 2026-05-02): cancels the non-terminal `stays` row tied to this booking; sets `stays.stay_status = 'cancelled'` (terminal state added in `2026_05_03_000001`).
+- `TransitionDepositOnCancel` — CONC-005/006: routes `bookings.deposit_status` through `Deposit::transitionTo()` to `partial_refund` or `forfeited` per refund-policy decision; appends to `deposit_events`.
+
+**Listeners (queued, post-commit):**
+
+- `SendBookingCancellation` — sends cancellation notification to guest (`afterCommit()`).
+- `WriteAdminAuditLog` — appends to `admin_audit_logs` with the actor snapshot.
+
+---
+
+### AiProposalDecided
+
+Fired when a guest confirms or declines an AI proposal at `ProposalConfirmationController::decide`.
+
+```php
+// App\AiHarness\Events\AiProposalDecided
+class AiProposalDecided
+{
+    public function __construct(
+        public AiProposal $proposal,
+        public string $decision, // 'confirmed' | 'declined'
+        public User $actor,
+    ) {}
+}
+```
 
 **Listeners:**
 
-- `SendBookingCancellation` - Sends cancellation notification to guest
+- `WriteAiProposalEvent` — appends to `ai_proposal_events` with denormalised actor snapshot (`actor_email`, `actor_role`, `actor_display_name`, added 2026-04-29 via `2026_04_29_000001`). FK `user_id` was relaxed CASCADE → SET NULL so the audit row survives user deletion.
+
+---
+
+### DepositTransitioned
+
+Fired by `Deposit::transitionTo()` (CONC-005). Append-only — every transition is captured in `deposit_events`.
+
+```php
+// App\Events\DepositTransitioned
+class DepositTransitioned
+{
+    public function __construct(
+        public Booking $booking,
+        public DepositStatus $from,
+        public DepositStatus $to,
+        public int $refundPercent,
+        public ?int $refundAmountCents,
+        public ?string $reason,
+        public ActorSnapshot $actor, // null actor permitted for system-job transitions
+    ) {}
+}
+```
+
+**Listeners:**
+
+- `WriteDepositEventLedger` — synchronous, inside the same transaction as the booking mutation.
 
 ---
 

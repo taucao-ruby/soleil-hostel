@@ -577,36 +577,45 @@ Route::middleware(['check_token_valid', 'verified'])->group(function () {
 });
 ```
 
-#### Verification Routes
+#### Verification Routes (OTP, since 2026-04-03)
 
-| Method | Endpoint                               | Description                   |
-| ------ | -------------------------------------- | ----------------------------- |
-| GET    | `/api/email/verify`                    | Verification notice (403/200) |
-| GET    | `/api/email/verify/{id}/{hash}`        | Verify email (signed URL)     |
-| POST   | `/api/email/verification-notification` | Resend verification email     |
-| GET    | `/api/email/verification-status`       | Check verification status     |
+| Method | Endpoint                          | Description                                       |
+| ------ | --------------------------------- | ------------------------------------------------- |
+| POST   | `/api/email/send-code`            | Send 6-digit OTP code (race-hardened — AUTH-004)  |
+| POST   | `/api/email/verify-code`          | Verify OTP code; sets `email_verified_at`         |
+| GET    | `/api/email/verification-status`  | Check verification status + cooldown              |
 
-### Flow
+> **The legacy `MustVerifyEmail` signed-URL flow has been replaced by the OTP flow.** Migration `2026_04_03_084257_create_email_verification_codes_table` introduced `email_verification_codes` (SHA-256 `code_hash`, `expires_at`, `attempts`/`max_attempts`, `consumed_at`). See [`features/AUTHENTICATION.md`](../features/AUTHENTICATION.md#email-verification-otp).
+
+### Flow (OTP)
 
 ```
-1. User registers
-   └─→ Registered event fires
-       └─→ SendEmailVerificationNotification listener
-           └─→ VerifyEmail notification sent
+1. User registers (or requests verification)
+   └─→ POST /api/email/send-code
+       └─→ EmailVerificationCodeService::sendCode()
+           ├─→ Cache::lock("evc:send:{user_id}", 5)  ← AUTH-004 race guard
+           ├─→ Generate 6-digit code; hash with SHA-256
+           ├─→ Persist code_hash + expires_at + last_sent_at
+           └─→ Dispatch EmailVerificationCodeNotification (queued)
 
-2. User clicks verification link
-   └─→ GET /api/email/verify/{id}/{hash}
-       └─→ EmailVerificationController::verify()
-           └─→ Mark email as verified
-               └─→ Verified event fires
+2. User receives email with the 6-digit code
 
-3. User accesses protected route
+3. User submits code
+   └─→ POST /api/email/verify-code { code: "123456" }
+       └─→ EmailVerificationCodeService::verifyCode()
+           ├─→ DB::transaction (SELECT FOR UPDATE on outstanding row)
+           ├─→ attempts++; if > max_attempts → fail
+           ├─→ Compare hash_equals(code_hash, sha256(submitted))
+           └─→ On match: consumed_at=now, users.email_verified_at=now, fire Verified event
+
+4. User accesses protected route
    └─→ 'verified' middleware checks email_verified_at
        ├─→ Verified: Continue to route
        └─→ Unverified: 403 Forbidden
 
-4. Unverified user logs in
-   └─→ Auto-resend verification email
+5. Unverified user logs in
+   └─→ Frontend redirects to OTP entry page
+       └─→ POST /api/email/send-code (with cooldown enforcement)
        └─→ User receives fresh verification link
 ```
 

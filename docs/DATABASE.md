@@ -1,6 +1,6 @@
 # 🗄️ Database Schema & Indexes
 
-> Complete database design for Soleil Hostel (49 migrations, 20 tables)
+> Complete database design for Soleil Hostel — 61 migrations on disk as of HEAD `6372d7f` (2026-05-08). 25 application+framework tables: `users`, `locations`, `rooms`, `bookings`, `reviews`, `personal_access_tokens`, `email_verification_codes`, `contact_messages`, `admin_audit_logs`, `stays`, `room_assignments`, `service_recovery_cases`, `policy_documents`, `ai_proposal_events`, `ai_proposals`, `stripe_webhook_events`, `stripe_refund_events`, `deposit_events`, plus framework tables (`sessions`, `password_reset_tokens`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`).
 
 ## ER Diagram
 
@@ -194,9 +194,10 @@ CREATE TYPE user_role AS ENUM ('user', 'moderator', 'admin');
 | name         | VARCHAR(255)    | NOT NULL                 |
 | room_number  | VARCHAR(50)     | NULLABLE                 |
 | description  | TEXT            | NULLABLE                 |
+| image_url    | VARCHAR(255)    | NULLABLE (added 2026-04-24, `2026_04_24_124546`) |
 | price        | DECIMAL(10,2)   | NOT NULL                 |
 | max_guests   | INTEGER         | NOT NULL                 |
-| status       | VARCHAR         | DEFAULT 'available'      |
+| status       | VARCHAR         | DEFAULT 'available', CHECK `status IN ('available','unavailable')` (pgsql, `rooms_status_deprecated`, added 2026-04-29) |
 | readiness_status | VARCHAR     | NOT NULL, DEFAULT 'ready' |
 | readiness_updated_at | TIMESTAMP | NULLABLE               |
 | readiness_updated_by | BIGINT  | NULLABLE, FK → users(id) |
@@ -208,8 +209,9 @@ CREATE TYPE user_role AS ENUM ('user', 'moderator', 'admin');
 
 **room_status: VARCHAR** (intentional — not a PostgreSQL ENUM).
 `rooms.status` is the legacy availability/admin field and remains intentionally separate from
-physical readiness. Values in application code are still inconsistent (`available`, `occupied`,
-`maintenance`, `booked`, `active`), so DB enforcement for `rooms.status` remains deferred.
+physical readiness. **DB CHECK now narrows the column to `{available, unavailable}`** (constraint
+`rooms_status_deprecated`, migration `2026_04_29_000002` — finalized the previously deferred
+deprecation). Bookability is `Room::scopeBookable()`. See `docs/DB_FACTS.md` §"Deprecation: rooms.status".
 
 Canonical physical room state lives on `rooms.readiness_status`:
 `ready`, `occupied`, `dirty`, `cleaning`, `inspected`, `out_of_service`.
@@ -243,12 +245,17 @@ Room comparability lives on:
 | deposit_collected_at | TIMESTAMP    | NULLABLE                            |
 | deposit_status       | VARCHAR      | NOT NULL, DEFAULT 'none'            |
 | cancelled_at         | TIMESTAMP    | NULLABLE                            |
-| cancelled_by         | BIGINT       | NULLABLE, FK → users(id)            |
+| cancelled_by         | BIGINT       | NULLABLE, FK → users(id) SET NULL   |
+| cancelled_by_email   | VARCHAR(255) | NULLABLE (immutable actor snapshot, added 2026-05-01 `2026_05_01_000002`) |
+| cancelled_by_role    | VARCHAR(50)  | NULLABLE (immutable actor snapshot) |
+| cancelled_by_display | VARCHAR(255) | NULLABLE (immutable actor snapshot) |
 | cancellation_reason  | TEXT         | NULLABLE                            |
 | deleted_at           | TIMESTAMP    | NULLABLE (soft delete)              |
 | deleted_by           | BIGINT       | NULLABLE, FK → users(id)            |
 | created_at           | TIMESTAMP    |                                     |
 | updated_at           | TIMESTAMP    |                                     |
+
+The three `cancelled_by_*` fields are populated synchronously by `CancellationService` so that cancellation attribution survives deletion of the cancelling user. They are append-only by convention: once written, only the cancellation transaction itself may rewrite them.
 
 **booking_status: VARCHAR** (intentional — not a PostgreSQL ENUM).
 VARCHAR chosen over DB ENUM for migration flexibility (adding new statuses requires no schema change).
@@ -279,6 +286,10 @@ Deposit lifecycle values (`App\Enums\DepositStatus`):
 - `collected`
 - `applied`
 - `refunded`
+- `partial_refund` (added 2026-05-02 — CONC-005)
+- `forfeited` (added 2026-05-02 — CONC-005)
+
+DB CHECK `chk_bookings_deposit_status` was extended in `2026_05_02_000001` to accept the two CONC-005 terminal states. `partial_refund` and `forfeited` are required by `CancellationService` so that a cancelled booking's deposit can never linger in `collected` (held) state. Every transition is captured in the append-only `deposit_events` ledger.
 
 `deposit_amount` is operational liability tracking only. It is **unearned revenue / liability**
 until the stay is fulfilled. This schema does **not** represent authoritative accounting or GL.
@@ -303,7 +314,7 @@ until the stay is fulfilled. This schema does **not** represent authoritative ac
 | updated_at               | TIMESTAMP    |                                  |
 
 **stay_status: VARCHAR** (intentional — not a PostgreSQL ENUM).
-Allowed values are enforced via `App\Enums\StayStatus` and PostgreSQL CHECK constraint `chk_stays_stay_status`.
+Allowed values are enforced via `App\Enums\StayStatus` and PostgreSQL CHECK constraint `chk_stays_stay_status`. Valid values: `expected`, `in_house`, `late_checkout`, `checked_out`, `no_show`, `relocated_internal`, `relocated_external`, `cancelled`. The `cancelled` terminal state was added 2026-05-03 (`2026_05_03_000001`) when OPS-004 wired `BookingCancelled` to synchronously cancel non-terminal stays.
 
 Active in-house guest is derived from `stays.stay_status IN ('in_house', 'late_checkout')`.
 A static `users.active` flag is **not** the source of truth.
@@ -471,20 +482,151 @@ Hostel policy content used for AI FAQ grounding. Added `2026_04_09_000001`.
 
 ### ai_proposal_events (AI Harness)
 
-Audit trail for AI booking proposal confirm/decline decisions. Added `2026_04_11_000001`.
+Audit trail for AI booking proposal confirm/decline decisions. Added `2026_04_11_000001`. **FK relaxed + actor snapshot added 2026-04-29** (`2026_04_29_000001`, AI Batch 4 / 3F) to preserve the audit trail across user deletion.
 
-| Column            | Type         | Constraints                          |
-| ----------------- | ------------ | ------------------------------------ |
-| id                | BIGSERIAL    | PRIMARY KEY                          |
-| user_id           | BIGINT       | FK → users(id) CASCADE ON DELETE     |
-| proposal_hash     | VARCHAR(64)  | NOT NULL, indexed                    |
-| action_type       | VARCHAR(30)  | NOT NULL                             |
-| user_decision     | VARCHAR(20)  | NOT NULL (confirmed/declined/shown)  |
-| downstream_result | TEXT         | NULLABLE                             |
-| created_at        | TIMESTAMP    |                                      |
-| updated_at        | TIMESTAMP    |                                      |
+| Column              | Type         | Constraints                                                               |
+| ------------------- | ------------ | ------------------------------------------------------------------------- |
+| id                  | BIGSERIAL    | PRIMARY KEY                                                               |
+| user_id             | BIGINT       | NULLABLE, FK → users(id) **ON DELETE SET NULL** (was CASCADE pre 2026-04-29) |
+| actor_email         | VARCHAR(255) | NULLABLE — denormalized actor snapshot                                    |
+| actor_role          | VARCHAR(32)  | NULLABLE — denormalized actor snapshot                                    |
+| actor_display_name  | VARCHAR(255) | NULLABLE — denormalized actor snapshot                                    |
+| proposal_hash       | VARCHAR(64)  | NOT NULL, indexed                                                         |
+| action_type         | VARCHAR(30)  | NOT NULL                                                                  |
+| user_decision       | VARCHAR(20)  | NOT NULL (confirmed/declined/shown)                                       |
+| downstream_result   | TEXT         | NULLABLE                                                                  |
+| created_at          | TIMESTAMP    |                                                                           |
+| updated_at          | TIMESTAMP    |                                                                           |
 
 **Indexes:** `(proposal_hash)`, `(proposal_hash, user_decision)`
+
+The migration is one-way: rolling back only restores the cascade — it cannot resurrect rows already cascaded away. Actor identity is captured at write time so investigators can answer "who did what" after the user record is gone.
+
+### ai_proposals (AI Harness)
+
+Durable proposal contract — the cache envelope is fast but offers no revalidation surface at confirm time. AI-005 / AI-006. Added `2026_05_01_000001`.
+
+| Column             | Type         | Constraints                                            |
+| ------------------ | ------------ | ------------------------------------------------------ |
+| id                 | BIGSERIAL    | PRIMARY KEY                                            |
+| proposal_hash      | VARCHAR(64)  | NOT NULL, **UNIQUE**                                   |
+| user_id            | BIGINT       | NULLABLE, FK → users(id) ON DELETE SET NULL            |
+| action_type        | VARCHAR(30)  | NOT NULL                                               |
+| room_id            | BIGINT       | NULLABLE, FK → rooms(id) ON DELETE SET NULL            |
+| check_in           | DATE         | NULLABLE (cancellation proposals carry no triplet)     |
+| check_out          | DATE         | NULLABLE                                               |
+| quoted_price_cents | BIGINT UNSIGNED | NULLABLE                                            |
+| context_version    | VARCHAR(64)  | NOT NULL — hash of room price + availability state at proposal generation; recomputed at confirm time for drift detection |
+| proposed_params    | JSON         | NOT NULL — mirror of cached envelope; survives TTL eviction |
+| risk_assessment    | JSON         | NOT NULL                                               |
+| expires_at         | TIMESTAMP    | NOT NULL                                               |
+| shown_at           | TIMESTAMP    | NULLABLE                                               |
+| decision           | VARCHAR(20)  | NULLABLE — `confirmed` \| `declined`                   |
+| decided_at         | TIMESTAMP    | NULLABLE                                               |
+| created_at         | TIMESTAMP    |                                                        |
+| updated_at         | TIMESTAMP    |                                                        |
+
+**Indexes:** `(user_id, created_at)`, `(expires_at)`, `(proposal_hash, decision)`
+
+`ProposalConfirmationController::decide()` re-checks room availability, price drift (via `context_version`), expiry, and shown-before-confirm against this row before executing the underlying booking action.
+
+### admin_audit_logs (Audit)
+
+Append-only audit trail for sensitive admin operations. Covers G-06, G-07, G-11. Added `2026_03_12_000001`. **Actor snapshot columns added 2026-05-01** (`2026_05_01_000003`).
+
+| Column              | Type         | Constraints                                       |
+| ------------------- | ------------ | ------------------------------------------------- |
+| id                  | BIGSERIAL    | PRIMARY KEY                                       |
+| actor_id            | BIGINT       | NULLABLE, FK → users(id) ON DELETE SET NULL       |
+| actor_email         | VARCHAR(255) | NULLABLE — denormalized actor snapshot            |
+| actor_role          | VARCHAR(50)  | NULLABLE — denormalized actor snapshot            |
+| actor_display_name  | VARCHAR(255) | NULLABLE — denormalized actor snapshot            |
+| action              | VARCHAR(100) | NOT NULL, indexed                                 |
+| resource_type       | VARCHAR(50)  | NOT NULL                                          |
+| resource_id         | BIGINT UNSIGNED | NULLABLE                                       |
+| metadata            | JSON         | NULLABLE                                          |
+| ip_address          | VARCHAR(45)  | NULLABLE                                          |
+| created_at          | TIMESTAMP    | NOT NULL, DEFAULT now()                           |
+
+**Indexes:** `(action)`, `(resource_type, resource_id)`, `(actor_id, created_at)`
+
+> **Append-only by convention.** The application DB user MUST NOT be granted `UPDATE` or `DELETE` on this table in production. Integrity depends on this DB-grant constraint.
+
+### deposit_events (CONC-005)
+
+Append-only audit trail for deposit lifecycle transitions. Every `Deposit::transitionTo()` write is captured here. Added `2026_05_02_000002`.
+
+| Column         | Type            | Constraints                                       |
+| -------------- | --------------- | ------------------------------------------------- |
+| id             | BIGSERIAL       | PRIMARY KEY                                       |
+| booking_id     | BIGINT UNSIGNED | NOT NULL, FK → bookings(id) ON DELETE CASCADE     |
+| from_status    | VARCHAR(32)     | NOT NULL                                          |
+| to_status      | VARCHAR(32)     | NOT NULL                                          |
+| refund_percent | SMALLINT UNSIGNED | NOT NULL — policy-derived percentage 0..100     |
+| refund_amount  | BIGINT UNSIGNED | NULLABLE — cents (NULL when transition does not imply refund movement) |
+| reason         | VARCHAR(255)    | NULLABLE                                          |
+| actor_id       | BIGINT UNSIGNED | NULLABLE, FK → users(id) ON DELETE SET NULL       |
+| actor_email    | VARCHAR(255)    | NULLABLE — denormalized actor snapshot            |
+| actor_role     | VARCHAR(32)     | NULLABLE — denormalized actor snapshot            |
+| metadata       | JSON            | NULLABLE                                          |
+| created_at     | TIMESTAMP       | NOT NULL, DEFAULT now()                           |
+
+**Indexes:** `idx_deposit_events_booking_id`, `idx_deposit_events_created_at`
+
+**CHECK constraints (pgsql):** `chk_deposit_events_from_status`, `chk_deposit_events_to_status` (both: `none`, `collected`, `applied`, `refunded`, `partial_refund`, `forfeited`); `chk_deposit_events_refund_percent BETWEEN 0 AND 100`.
+
+> **No `updated_at`. No UPDATE/DELETE path.** Each row is the durable record that the deposit was moved from `from_status` to `to_status` by `actor_id` for `reason` at `created_at`. System jobs may also transition (in which case `actor_id` is NULL but `actor_email`/`actor_role` may carry a `system:`-prefixed value).
+
+### stripe_webhook_events (Stripe)
+
+Stripe webhook ingestion ledger — event-level dedupe. Added `2026_04_28_000001`.
+
+| Column           | Type         | Constraints                              |
+| ---------------- | ------------ | ---------------------------------------- |
+| id               | BIGSERIAL    | PRIMARY KEY                              |
+| stripe_event_id  | VARCHAR(255) | NOT NULL, **UNIQUE**                     |
+| type             | VARCHAR(100) | NOT NULL                                 |
+| status           | ENUM         | `processing` \| `processed` \| `failed`  |
+| payload          | JSONB        | NOT NULL                                 |
+| processed_at     | TIMESTAMP    | NULLABLE                                 |
+| created_at       | TIMESTAMP    |                                          |
+| updated_at       | TIMESTAMP    |                                          |
+
+### stripe_refund_events (Stripe)
+
+Durable refund-event replay fence — replaces ephemeral `IdempotencyGuard` (which was in-memory and non-durable). Added `2026_04_29_000003`. **The UNIQUE on `stripe_refund_id` is the canonical idempotency authority.**
+
+| Column           | Type            | Constraints                                            |
+| ---------------- | --------------- | ------------------------------------------------------ |
+| id               | BIGSERIAL       | PRIMARY KEY                                            |
+| stripe_refund_id | VARCHAR(255)    | NOT NULL, **UNIQUE** (`idx_stripe_refund_events_refund_id`) |
+| stripe_event_id  | VARCHAR(255)    | NOT NULL                                               |
+| booking_id       | BIGINT UNSIGNED | NULLABLE, FK → bookings(id) ON DELETE SET NULL — decouples audit trail from booking lifecycle |
+| amount_refunded  | INTEGER         | NOT NULL — cents, **cumulative** (sourced from `charge.amount_refunded`, not `refunds[0].amount`) |
+| currency         | VARCHAR(3)      | NOT NULL                                               |
+| processed_at     | TIMESTAMP TZ    | NOT NULL, DEFAULT now()                                |
+| created_at       | TIMESTAMP TZ    | NOT NULL, DEFAULT now()                                |
+
+`StripeWebhookController::handleChargeRefunded` performs the `INSERT` **before** booking lookup. The DB UNIQUE constraint catches replays at the storage layer — the application-level state check (which had a TOCTOU window) is gone. Cumulative `amount_refunded` correctly handles partial-then-full refund event sequences.
+
+### email_verification_codes (OTP)
+
+OTP email-verification codes. Added `2026_04_03_084257`. SHA-256 `code_hash` only — raw codes never stored.
+
+| Column        | Type            | Constraints                                |
+| ------------- | --------------- | ------------------------------------------ |
+| id            | BIGSERIAL       | PRIMARY KEY                                |
+| user_id       | BIGINT UNSIGNED | NOT NULL, FK → users(id) ON DELETE CASCADE |
+| code_hash     | CHAR(64)        | NOT NULL — SHA-256 hex digest              |
+| expires_at    | TIMESTAMP TZ    | NOT NULL                                   |
+| attempts      | SMALLINT        | DEFAULT 0 — brute-force guard              |
+| max_attempts  | SMALLINT        | DEFAULT 5                                  |
+| last_sent_at  | TIMESTAMP TZ    | NOT NULL                                   |
+| consumed_at   | TIMESTAMP TZ    | NULLABLE — NULL = unused                   |
+| created_at    | TIMESTAMP TZ    |                                            |
+| updated_at    | TIMESTAMP TZ    |                                            |
+
+**Indexes:** `idx_evc_user_id`, `idx_evc_expires_consumed (expires_at, consumed_at)`
 
 ---
 
@@ -746,18 +888,40 @@ CHECK (status IN ('pending', 'confirmed', 'refund_pending', 'cancelled', 'refund
 -- Added in migration 2026_03_17_000003. PostgreSQL only.
 -- Values match App\Enums\BookingStatus. Adding a new status requires a migration.
 
--- Deposit lifecycle must use known operational states (added 2026-03-23)
+-- Deposit lifecycle must use known operational states (added 2026-03-23, EXTENDED 2026-05-02)
 ALTER TABLE bookings
 ADD CONSTRAINT chk_bookings_deposit_status
-CHECK (deposit_status IN ('none', 'collected', 'applied', 'refunded'));
+CHECK (deposit_status IN (
+    'none', 'collected', 'applied', 'refunded',
+    'partial_refund', 'forfeited'  -- added 2026_05_02_000001 (CONC-005 terminal states)
+));
 
--- Stay lifecycle must use known operational states (added 2026-03-20)
+-- Stay lifecycle must use known operational states (added 2026-03-20, EXTENDED 2026-05-03)
 ALTER TABLE stays
 ADD CONSTRAINT chk_stays_stay_status
 CHECK (stay_status IN (
     'expected', 'in_house', 'late_checkout', 'checked_out',
-    'no_show', 'relocated_internal', 'relocated_external'
+    'no_show', 'relocated_internal', 'relocated_external',
+    'cancelled'  -- added 2026_05_03_000001 (OPS-004 stay cancellation propagation)
 ));
+
+-- rooms.status deprecation finalized (added 2026-04-29 - 2026_04_29_000002)
+ALTER TABLE rooms
+ADD CONSTRAINT rooms_status_deprecated
+CHECK (status IN ('available', 'unavailable'));
+
+-- Deposit lifecycle event ledger (added 2026-05-02 - 2026_05_02_000002)
+ALTER TABLE deposit_events
+ADD CONSTRAINT chk_deposit_events_from_status
+CHECK (from_status IN ('none', 'collected', 'applied', 'refunded', 'partial_refund', 'forfeited'));
+
+ALTER TABLE deposit_events
+ADD CONSTRAINT chk_deposit_events_to_status
+CHECK (to_status IN ('none', 'collected', 'applied', 'refunded', 'partial_refund', 'forfeited'));
+
+ALTER TABLE deposit_events
+ADD CONSTRAINT chk_deposit_events_refund_percent
+CHECK (refund_percent BETWEEN 0 AND 100);
 
 -- Room assignment classification (added 2026-03-20)
 ALTER TABLE room_assignments
@@ -805,7 +969,7 @@ CHECK (settlement_status IN (
 ));
 ```
 
-> **Note:** `rooms.status` DB-level CHECK is still **not present**. That field remains a legacy availability/admin signal. Physical readiness is now enforced separately through `rooms.readiness_status`.
+> **Update (2026-04-29):** `rooms.status` DB CHECK is **now present** as `rooms_status_deprecated CHECK (status IN ('available','unavailable'))` (migration `2026_04_29_000002`, pgsql-only). The legacy field is now narrowly enforced during the deprecation window — the previously-deferred check has been finalized. Physical readiness remains separately enforced via `rooms.readiness_status`. See `docs/DB_FACTS.md` §"Deprecation: rooms.status".
 
 ---
 
@@ -853,7 +1017,7 @@ EXCLUDE USING gist (
 
 ## Migrations
 
-### Migration History (47 files)
+### Migration History (61 files as of HEAD `6372d7f`, 2026-05-08)
 
 | Migration                                                 | Description                                       |
 | --------------------------------------------------------- | ------------------------------------------------- |
@@ -903,9 +1067,21 @@ EXCLUDE USING gist (
 | `2026_03_23_000003_add_deposit_lifecycle_to_bookings_table` | deposit / advance lifecycle tracking            |
 | `2026_03_23_000004_add_settlement_lifecycle_to_service_recovery_cases_table` | settlement tracking on recovery cases |
 | `2026_03_23_000005_fix_reviews_room_fk_delete_policy`     | correct `reviews.room_id` FK to RESTRICT          |
+| `2026_03_12_000001_create_admin_audit_logs_table`         | admin audit log (G-06/G-07/G-11) — append-only    |
 | `2026_04_03_084257_create_email_verification_codes_table` | email OTP verification (SHA-256 code_hash)        |
 | `2026_04_09_000001_create_policy_documents_table`         | AI harness policy content for FAQ grounding       |
 | `2026_04_11_000001_create_ai_proposal_events_table`       | AI proposal confirm/decline audit trail           |
+| `2026_04_24_124546_add_image_url_to_rooms_table`          | rooms.image_url column                            |
+| `2026_04_28_000001_create_stripe_webhook_events_table`    | stripe webhook ingestion ledger (event-level dedupe) |
+| `2026_04_29_000001_relax_ai_proposal_events_user_fk_and_add_actor_columns` | ai_proposal_events FK CASCADE→SET NULL + actor snapshot |
+| `2026_04_29_000002_finalize_rooms_status_deprecation`     | rooms.status CHECK ('available','unavailable') + readiness backfill |
+| `2026_04_29_000003_create_stripe_refund_events_table`     | durable refund replay fence (UNIQUE stripe_refund_id) — replaces `IdempotencyGuard` |
+| `2026_05_01_000001_create_ai_proposals_table`             | durable AI proposal contract (AI-005/006) — drift detection at confirm |
+| `2026_05_01_000002_add_cancelled_actor_snapshot_to_bookings_table` | bookings cancelled_by_email/role/display (immutable actor snapshot) |
+| `2026_05_01_000003_add_actor_snapshot_to_admin_audit_logs_table` | admin_audit_logs actor_email/role/display_name |
+| `2026_05_02_000001_extend_deposit_status_check_constraint` | chk_bookings_deposit_status += partial_refund, forfeited |
+| `2026_05_02_000002_create_deposit_events_table`           | deposit lifecycle event ledger (CONC-005, append-only) |
+| `2026_05_03_000001_allow_cancelled_stay_status`           | stays.stay_status += 'cancelled' (OPS-004 propagation) |
 
 ### Commands
 
@@ -1104,7 +1280,26 @@ ContactMessage (standalone, no FK relationships)
 PolicyDocument (standalone, no FK relationships)
 │
 AiProposalEvent
-├── belongsTo → User (user_id)
+├── belongsTo → User (user_id, SET NULL)        // FK relaxed 2026-04-29; actor snapshot survives user deletion
+│
+AiProposal
+├── belongsTo → User (user_id, SET NULL)
+├── belongsTo → Room (room_id, SET NULL)        // nullable for cancellation proposals
+│
+AdminAuditLog
+├── belongsTo → User (actor_id, SET NULL)        // append-only; DB user must NOT have UPDATE/DELETE
+│
+DepositEvent
+├── belongsTo → Booking (booking_id, CASCADE)
+├── belongsTo → User (actor_id, SET NULL)
+│
+StripeWebhookEvent (standalone)
+│
+StripeRefundEvent
+├── belongsTo → Booking (booking_id, SET NULL)   // refund audit decoupled from booking lifecycle
+│
+EmailVerificationCode
+├── belongsTo → User (user_id, CASCADE)
 ```
 
 ---

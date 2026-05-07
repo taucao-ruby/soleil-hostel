@@ -167,15 +167,16 @@ soleil-hostel/
 │
 ├── frontend/                         # React + TypeScript Frontend
 │   ├── src/                          # Source Code
-│   │   ├── app/                      # App Configuration
-│   │   ├── features/                 # Feature Modules
-│   │   ├── pages/                    # Page Components
-│   │   ├── services/                 # API Services
-│   │   ├── shared/                   # Shared Components
-│   │   ├── types/                    # TypeScript Types
-│   │   └── utils/                    # Utility Functions
+│   │   ├── app/                      # App shell (router, providers, layout)
+│   │   ├── assets/                   # Static assets imported by source
+│   │   ├── features/                 # Feature-sliced modules (auth, booking, bookings, rooms, locations, home, admin, assistant)
+│   │   ├── pages/                    # Route-level page components
+│   │   ├── shared/                   # Shared components, lib, utils (api client, CSRF, navigation)
+│   │   ├── test/                     # Vitest setup
+│   │   ├── main.tsx                  # Entry point
+│   │   └── vite-env.d.ts             # Vite ambient types
 │   ├── public/                       # Static Assets
-│   ├── tests/                        # Playwright E2E Tests
+│   ├── tests/e2e/                    # Playwright E2E (scaffolded, workflow_dispatch-gated)
 │   ├── package.json                  # Node Dependencies
 │   ├── vite.config.ts                # Vite Configuration
 │   └── tailwind.config.js            # Tailwind CSS Config

@@ -2,7 +2,7 @@
 
 > Architecture references for backend design, runtime behavior, and code organization.
 >
-> Last Updated: May 5, 2026
+> Last Updated: May 8, 2026
 
 ## Architecture Index
 
@@ -22,28 +22,32 @@
 
 ## Backend Folder Coverage
 
-The folder reference includes all requested folders:
+The folder reference covers every directory currently present under `backend/app/`, `backend/config/`, and `backend/database/`. As of HEAD (`6372d7f`, May 8, 2026), `backend/app/` contains:
 
-- `app/AiHarness` — AI harness (DTOs, Services, Middleware, Providers, Enums, Exceptions, ToolRegistry, PromptRegistry)
-- `app/Console/Commands`
-- `app/Enums`
-- `app/Events`
-- `app/Exceptions`
-- `app/Helpers`
-- `app/Http`
-- `app/Jobs`
-- `app/Listeners`
-- `app/Logging`
-- `app/Models`
-- `app/Policies`
-- `app/Providers`
-- `app/Repositories`
-- `app/Services`
-- `app/Traits`
-- `config`
-- `database`
-- `database/factories`
-- `database/migrations`
-- `database/seeders`
+- `AiHarness` — AI harness (DTOs, Services, Middleware, Providers, Enums, Exceptions, ToolRegistry, PromptRegistry)
+- `Booking` — booking value objects and domain primitives
+- `Console/Commands` — artisan commands (incl. `ai:eval`, `cache:warmup`)
+- `Database` — custom DB-layer extensions
+- `Directives` — Blade directives
+- `Enums` — type-safe enums (UserRole, BookingStatus, ProposalActionType, …)
+- `Events` — domain events
+- `Exceptions` — typed exceptions (OptimisticLockException, ProposalLifecycle, …)
+- `Helpers` — `SecurityHelpers.php` and friends
+- `Http` — Controllers, Middleware, Requests, Resources
+- `Jobs` — queue jobs (incl. `ReconcileRefundsJob`)
+- `Listeners` — event listeners
+- `Logging` — custom log processors (PII redaction)
+- `Macros` — Eloquent / collection macros
+- `Models` — Eloquent models
+- `Notifications` — notification classes
+- `Observers` — model observers
+- `Octane` — Octane-specific bindings
+- `Policies` — authorization policies
+- `Providers` — service providers
+- `Repositories` — data-access layer (paired unit tests under `tests/Unit/Repositories`)
+- `Services` — business-logic layer
+- `Traits` — reusable traits
 
-> If a folder appears in this list but is missing from `backend/app/` on disk, treat the on-disk tree as authoritative — `app/Macros`, `app/Directives`, `app/Notifications`, `app/Observers`, `app/Octane` are listed in legacy reference docs but are not currently present. Verify with `ls backend/app/` or check `[FOLDER_REFERENCE.md](./FOLDER_REFERENCE.md)`.
+`backend/database/` contains `factories/`, `migrations/`, and `seeders/`.
+
+> Treat the on-disk tree as authoritative. If anything in [`FOLDER_REFERENCE.md`](./FOLDER_REFERENCE.md) drifts from `ls backend/app/`, update the doc — do not work from the doc.

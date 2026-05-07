@@ -45,27 +45,32 @@
 ```
 frontend/
 ├── src/
-│   ├── app/                # Application core & configuration
-│   │   ├── App.tsx         # Root component with error boundaries
-│   │   ├── router.tsx      # React Router v7 with lazy loading + AuthLayout
-│   │   └── Layout.tsx      # Main layout with header/footer
+│   ├── app/                # Application shell (App, providers, router, Layout)
+│   ├── assets/             # Bundled static assets
 │   ├── features/           # Feature-sliced business logic
-│   │   ├── auth/           # Authentication (login, register, context)
-│   │   ├── booking/        # Booking management (form, validation)
+│   │   ├── admin/          # Admin shell + room/booking dashboards
+│   │   ├── assistant/      # AI room-discovery widget + proposal-confirmation flow
+│   │   ├── auth/           # AuthContext, login, register, ProtectedRoute, AdminRoute
+│   │   ├── booking/        # Booking creation form + validation + view-model
+│   │   ├── bookings/       # Booking lifecycle UI (Guest/Admin dashboards, ReviewForm)
+│   │   ├── home/           # Homepage (SearchCard, FilterChips, HeaderMobile, TrustBar)
 │   │   ├── locations/      # Location listing and details
 │   │   └── rooms/          # Room listing and details
-│   ├── pages/              # Page components (HomePage, NotFoundPage)
-│   ├── shared/             # Shared utilities and components
+│   ├── pages/              # Route-level pages (HomePage, DashboardPage, NotFoundPage)
+│   ├── shared/             # Cross-cutting code
 │   │   ├── components/     # Reusable UI components (ui/, layout/, feedback/)
-│   │   ├── lib/            # API client and navigation helper
-│   │   └── utils/          # CSRF and security utilities
-│   ├── types/              # TypeScript type definitions
-│   ├── utils/              # Core utilities (toast, web vitals)
-│   └── test/               # Test setup configuration
-├── tests/                  # E2E tests (Playwright, scaffolded)
+│   │   ├── lib/            # API client + helpers (api, room.api, location.api, navigation)
+│   │   ├── types/          # Shared DTOs (api, booking.types, location.types)
+│   │   └── utils/          # CSRF, security, toast, web-vitals
+│   ├── test/               # Vitest test setup
+│   ├── main.tsx            # Entry point
+│   └── vite-env.d.ts       # Vite ambient types
+├── tests/e2e/              # Playwright E2E (scaffolded — workflow_dispatch-gated)
 ├── public/                 # Public assets served by Vite
 └── package.json
 ```
+
+> No top-level `src/services/`, `src/types/`, or `src/utils/` directories — shared concerns live in `src/shared/`; feature-specific concerns stay co-located with their feature.
 
 ---
 

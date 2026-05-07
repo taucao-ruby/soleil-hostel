@@ -1,6 +1,6 @@
 # 🎨 Soleil Hostel Frontend
 
-> **Last Updated:** May 5, 2026 | **React:** 19.0.0 | **TypeScript:** ~5.7 | **Vite:** 6.4.2 | **Vitest:** ^4.1 | **Package Manager:** pnpm 9.x
+> **Last Updated:** May 8, 2026 | **React:** 19.0.0 | **TypeScript:** ~5.7 | **Vite:** 6.4.2 | **Vitest:** ^4.1 | **Axios:** ^1.16 | **Package Manager:** pnpm 9.x
 
 ## 🎯 Overview
 
@@ -56,13 +56,15 @@ pnpm preview    # serve the production bundle locally
 
 ```
 frontend/
-├── public/                    # Static assets
+├── public/                    # Static assets served as-is by Vite
 ├── src/
 │   ├── app/                   # Application shell
 │   │   ├── App.tsx            # Root component
 │   │   ├── providers.tsx      # AuthProvider + global providers
 │   │   ├── router.tsx         # React Router v7 with lazy loading
 │   │   └── Layout.tsx         # Shared layout (header / footer)
+│   │
+│   ├── assets/                # Bundled static assets imported from source
 │   │
 │   ├── features/              # Feature-sliced business logic
 │   │   ├── auth/              # AuthContext, login, register, ProtectedRoute, AdminRoute
@@ -74,21 +76,26 @@ frontend/
 │   │   ├── admin/             # Admin shell (AdminLayout, AdminSidebar, room/booking dashboards)
 │   │   └── assistant/         # AI room-discovery widget + proposal-confirmation flow
 │   │
+│   ├── pages/                 # Route-level pages (HomePage, DashboardPage, NotFoundPage)
+│   │
 │   ├── shared/                # Cross-cutting code
 │   │   ├── components/        # ui/, layout/, feedback/
-│   │   ├── lib/               # API client (api.ts), navigation, booking helpers
-│   │   └── utils/             # CSRF, security utilities
+│   │   ├── lib/               # API client (api.ts, room.api.ts, location.api.ts),
+│   │   │                      # navigation, booking helpers, formatCurrency
+│   │   ├── types/             # Shared DTOs (api, booking.types, location.types)
+│   │   └── utils/             # CSRF, security, toast, web-vitals
 │   │
-│   ├── pages/                 # Route-level pages (HomePage, DashboardPage, NotFoundPage)
-│   ├── types/                 # TypeScript interfaces and DTOs
-│   ├── utils/                 # Toast, web-vitals
-│   └── test/                  # Vitest setup
+│   ├── test/                  # Vitest setup (test environment)
+│   ├── main.tsx               # Entry point — mounts App into #root
+│   └── vite-env.d.ts          # Vite ambient types
 │
-├── tests/                     # Playwright E2E (scaffolded — see tests/e2e/README.md)
+├── tests/e2e/                 # Playwright E2E (scaffolded — see tests/e2e/README.md)
 ├── package.json               # pnpm + scripts
 ├── vite.config.ts             # Vite config (proxy /api → backend)
 └── tsconfig.json              # TypeScript strict
 ```
+
+> Note: there are no top-level `src/types/`, `src/services/`, or `src/utils/` directories. Shared types live in `src/shared/types/`; shared utilities live in `src/shared/utils/` and `src/shared/lib/`. Feature-specific types and helpers stay co-located with their feature module.
 
 ---
 

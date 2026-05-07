@@ -39,13 +39,7 @@ final class Deposit
 
     public function status(): DepositStatus
     {
-        $status = $this->booking->deposit_status;
-        if ($status instanceof DepositStatus) {
-            return $status;
-        }
-
-        // Defensive: factory paths or raw arrays may yield a string.
-        return DepositStatus::from((string) $status);
+        return $this->booking->deposit_status;
     }
 
     public function amount(): int
@@ -134,9 +128,7 @@ final class Deposit
                 ->firstOrFail();
 
             // Re-check status under the lock to defeat lost-update races.
-            $lockedStatus = $locked->deposit_status instanceof DepositStatus
-                ? $locked->deposit_status
-                : DepositStatus::from((string) $locked->deposit_status);
+            $lockedStatus = $locked->deposit_status;
 
             if ($lockedStatus === $target) {
                 return $this->lastEventForCurrentStatus();

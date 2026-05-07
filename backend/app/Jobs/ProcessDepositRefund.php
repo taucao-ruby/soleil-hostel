@@ -127,7 +127,7 @@ final class ProcessDepositRefund implements ShouldQueue
         ?string $refundId,
         ?string $errorMessage,
     ): void {
-        $current = $booking->fresh()?->deposit_status ?? $booking->deposit_status;
+        $current = $booking->fresh()->deposit_status ?? $booking->deposit_status;
 
         DepositEvent::create([
             'booking_id' => $booking->id,

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\AiHarness;
 
 use App\Models\User;
-use App\Services\FeatureFlag;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 /**
@@ -22,10 +22,18 @@ class AiHarnessDisabledTest extends TestCase
     {
         parent::setUp();
         $this->user = User::factory()->create();
-        // Ensure the Redis kill-switch is OFF for these tests.
-        // config()->set() is no longer load-bearing — the middleware reads
-        // exclusively from Redis via FeatureFlag::killSwitch().
-        FeatureFlag::forget('ai_harness.enabled');
+
+        // Drive FeatureFlag::killSwitch('ai_harness.enabled') to false without
+        // touching Redis. killSwitch() checks Cache first using the key
+        // 'feature_flag:local:{key}' (FeatureFlag::LOCAL_CACHE_PREFIX). Seeding
+        // the array-driver cache with 'off' short-circuits the Redis read path
+        // entirely, making this test Redis-free while still exercising the real
+        // middleware and routing stack.
+        Cache::put(
+            'feature_flag:local:ai_harness.enabled',
+            'off',
+            60
+        );
     }
 
     public function test_ai_endpoint_returns_404_when_flag_is_false(): void

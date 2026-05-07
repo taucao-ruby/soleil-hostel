@@ -154,6 +154,11 @@ class FeatureFlag
 
     /**
      * Delete a flag — readers fall back to the default.
+     *
+     * Redis failures are logged and swallowed: a failed remote delete does not
+     * corrupt state because readers already degrade safely (killSwitch returns
+     * false; get() returns the caller-supplied default). The local cache is
+     * always purged so this process does not serve a stale in-memory value.
      */
     public static function forget(string $key): void
     {
@@ -164,8 +169,12 @@ class FeatureFlag
                 'key' => $key,
                 'error' => $e->getMessage(),
             ]);
-            throw $e;
+            // Degrade gracefully — do not propagate. Readers fall back to
+            // their conservative defaults on the next cache miss.
         }
+
+        // Always evict the local cache, even when Redis is unreachable, so
+        // this process does not continue serving a stale in-memory value.
         Cache::forget(self::LOCAL_CACHE_PREFIX.$key);
     }
 

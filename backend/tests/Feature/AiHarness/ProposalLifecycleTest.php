@@ -33,7 +33,7 @@ use Tests\TestCase;
  */
 class ProposalLifecycleTest extends TestCase
 {
-    use RefreshDatabase, EnablesAiHarness;
+    use EnablesAiHarness, RefreshDatabase;
 
     private User $user;
 

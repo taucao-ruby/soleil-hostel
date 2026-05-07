@@ -16,7 +16,7 @@ use Tests\TestCase;
  */
 class TraceTest extends TestCase
 {
-    use RefreshDatabase, EnablesAiHarness;
+    use EnablesAiHarness, RefreshDatabase;
 
     private User $user;
 

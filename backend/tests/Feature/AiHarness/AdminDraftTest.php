@@ -26,7 +26,7 @@ use Tests\TestCase;
  */
 class AdminDraftTest extends TestCase
 {
-    use RefreshDatabase, EnablesAiHarness;
+    use EnablesAiHarness, RefreshDatabase;
 
     private User $user;
 

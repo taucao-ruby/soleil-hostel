@@ -23,7 +23,7 @@ use Tests\TestCase;
  */
 class CircuitBreakerTest extends TestCase
 {
-    use RefreshDatabase, EnablesAiHarness;
+    use EnablesAiHarness, RefreshDatabase;
 
     public function test_circuit_breaker_opens_after_failure_threshold(): void
     {

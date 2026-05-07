@@ -18,7 +18,7 @@ use Tests\TestCase;
  */
 class RoomDiscoveryPipelineTest extends TestCase
 {
-    use RefreshDatabase, EnablesAiHarness;
+    use EnablesAiHarness, RefreshDatabase;
 
     private User $user;
 

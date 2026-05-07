@@ -13,7 +13,7 @@ use Tests\TestCase;
 
 class CanaryRouterTest extends TestCase
 {
-    use RefreshDatabase, EnablesAiHarness;
+    use EnablesAiHarness, RefreshDatabase;
 
     protected function setUp(): void
     {

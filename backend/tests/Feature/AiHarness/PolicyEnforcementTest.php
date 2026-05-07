@@ -20,7 +20,7 @@ use Tests\TestCase;
  */
 class PolicyEnforcementTest extends TestCase
 {
-    use RefreshDatabase, EnablesAiHarness;
+    use EnablesAiHarness, RefreshDatabase;
 
     private User $user;
 

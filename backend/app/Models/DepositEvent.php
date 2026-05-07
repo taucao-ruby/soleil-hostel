@@ -70,11 +70,11 @@ final class DepositEvent extends Model
      */
     protected static function booted(): void
     {
-        static::updating(function (self $event): bool {
+        self::updating(function (self $event): bool {
             throw new \LogicException('deposit_events is append-only; rows cannot be updated.');
         });
 
-        static::deleting(function (self $event): bool {
+        self::deleting(function (self $event): bool {
             throw new \LogicException('deposit_events is append-only; rows cannot be deleted.');
         });
     }

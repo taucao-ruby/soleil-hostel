@@ -34,7 +34,7 @@ use Tests\TestCase;
  */
 class ActionProposalTest extends TestCase
 {
-    use RefreshDatabase, EnablesAiHarness;
+    use EnablesAiHarness, RefreshDatabase;
 
     private User $user;
 

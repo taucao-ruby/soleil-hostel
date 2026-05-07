@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\VerificationResult;
+use App\Exceptions\OtpCooldownException;
 use App\Models\EmailVerificationCode;
 use App\Models\User;
 use App\Notifications\EmailVerificationCodeNotification;
@@ -21,51 +22,64 @@ class EmailVerificationCodeService
     private const MAX_ATTEMPTS = 5;
 
     /**
-     * Generate a new verification code for the user.
-     * Invalidates all existing active codes first.
-     * Enforces resend cooldown.
+     * Issue a new verification code for the user.
      *
-     * @return array{code: EmailVerificationCode, cooldown: int}|array{cooldown: int}
+     * AUTH-004: the cooldown check and the new-code insert run inside a single
+     * DB transaction with a pessimistic lock on the user's latest verification
+     * record. Two concurrent resend requests therefore serialize on the same
+     * row — one wins, the other re-reads the freshly inserted code, finds the
+     * cooldown still active, and throws OtpCooldownException. This prevents
+     * burning two codes in parallel and the OTP-farming abuse it enables.
+     *
+     * @throws OtpCooldownException When the per-user resend cooldown is still active.
      */
-    public function issue(User $user): array
+    public function issue(User $user): void
     {
-        // Check cooldown
-        $cooldown = $this->cooldownRemaining($user);
-        if ($cooldown > 0) {
-            return ['cooldown' => $cooldown];
-        }
+        $cooldownSeconds = (int) config('auth.otp_cooldown_seconds', self::COOLDOWN_SECONDS);
+        $ttlMinutes = (int) config('auth.otp_ttl_minutes', self::EXPIRY_MINUTES);
 
-        // Generate raw code
-        $rawCode = $this->generateCode();
-        $codeHash = hash('sha256', $rawCode);
+        $rawCode = null;
 
-        /** @var EmailVerificationCode $record */
-        $record = DB::transaction(function () use ($user, $codeHash) {
-            // Invalidate all existing active codes for this user
+        DB::transaction(function () use ($user, $cooldownSeconds, $ttlMinutes, &$rawCode) {
+            $latest = EmailVerificationCode::where('user_id', $user->id)
+                ->lockForUpdate()
+                ->latest('id')
+                ->first();
+
+            if ($latest !== null && $latest->last_sent_at !== null) {
+                $cooldownExpiresAt = $latest->last_sent_at->copy()->addSeconds($cooldownSeconds);
+
+                if ($cooldownExpiresAt->isFuture()) {
+                    throw new OtpCooldownException($cooldownExpiresAt);
+                }
+            }
+
+            // Invalidate every still-active code for this user before issuing the new one,
+            // so a previously delivered code cannot be redeemed once a fresher one exists.
             EmailVerificationCode::where('user_id', $user->id)
-                ->active()
+                ->whereNull('consumed_at')
                 ->update(['consumed_at' => now()]);
 
-            // Create new code
-            return EmailVerificationCode::create([
+            $rawCode = $this->generateCode();
+
+            EmailVerificationCode::create([
                 'user_id' => $user->id,
-                'code_hash' => $codeHash,
-                'expires_at' => now()->addMinutes(self::EXPIRY_MINUTES),
+                'code_hash' => hash('sha256', $rawCode),
+                'expires_at' => now()->addMinutes($ttlMinutes),
                 'attempts' => 0,
                 'max_attempts' => self::MAX_ATTEMPTS,
                 'last_sent_at' => now(),
             ]);
         });
 
-        // Send notification with the raw code (not the hash)
-        $user->notify(new EmailVerificationCodeNotification($rawCode, self::EXPIRY_MINUTES));
+        // Notification dispatch lives outside the transaction so an SMTP/queue failure
+        // cannot roll back the persisted code (the user can simply resend after cooldown).
+        $user->notify(new EmailVerificationCodeNotification($rawCode, $ttlMinutes));
 
         Log::info('Verification code sent', [
             'user_id' => $user->id,
             'email' => $user->email,
         ]);
-
-        return ['code' => $record, 'cooldown' => 0];
     }
 
     /**
@@ -151,8 +165,9 @@ class EmailVerificationCodeService
             return 0;
         }
 
+        $cooldownSeconds = (int) config('auth.otp_cooldown_seconds', self::COOLDOWN_SECONDS);
         $elapsed = now()->diffInSeconds($lastCode->last_sent_at, false);
-        $remaining = self::COOLDOWN_SECONDS - abs($elapsed);
+        $remaining = $cooldownSeconds - abs($elapsed);
 
         return max(0, (int) $remaining);
     }

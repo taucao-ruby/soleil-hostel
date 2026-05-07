@@ -3,6 +3,7 @@
 namespace Tests\Feature\Stays;
 
 use App\Enums\StayStatus;
+use App\Exceptions\StayTransitionException;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\Stay;
@@ -128,7 +129,7 @@ class StayInvariantTest extends TestCase
     {
         $stay = Stay::factory()->expected()->create();
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(StayTransitionException::class);
 
         $stay->transitionTo(StayStatus::CHECKED_OUT);
     }

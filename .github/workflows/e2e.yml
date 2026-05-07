@@ -1,0 +1,266 @@
+name: "CI: E2E Smoke (Playwright)"
+
+# Two execution modes:
+#   - PR/merge gate: every pull_request targeting main or dev runs ONLY the
+#     `@smoke` flows (guest-booking + payment-webhook). Failure blocks merge.
+#     Target wall-clock under 3 minutes including bootstrap.
+#   - Nightly + manual: workflow_dispatch and the scheduled job exercise the
+#     full Playwright suite. Flaky non-smoke flows live there until their
+#     14-day flake rate falls under 2%, at which point they earn a @smoke tag.
+
+on:
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+    inputs:
+      grep:
+        description: 'Playwright --grep filter (default: full suite)'
+        required: false
+        default: ''
+  schedule:
+    # 02:00 UTC daily — full suite, gives engineers a morning signal on
+    # non-smoke flow flakiness without blocking PRs in the meantime.
+    - cron: '0 2 * * *'
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
+  PNPM_VERSION: "9"
+  PHP_VERSION: "8.3"
+
+jobs:
+  smoke:
+    name: E2E @smoke (PR-required)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8 # Smoke target is < 3 min; the cap absorbs occasional bootstrap drag.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: testing
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: testing
+        options: >-
+          --health-cmd="pg_isready -U testing"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v4
+
+      # ---- Backend bootstrap ----
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: redis,pdo_pgsql,gd,bcmath,mbstring,openssl,tokenizer,xml
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
+      - name: Bootstrap testing environment
+        working-directory: ./backend
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: testing
+          DB_USERNAME: testing
+          DB_PASSWORD: password
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          php artisan migrate --force
+      - name: Start backend (background)
+        working-directory: ./backend
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: testing
+          DB_USERNAME: testing
+          DB_PASSWORD: password
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
+        run: |
+          php artisan serve --host=127.0.0.1 --port=8000 &
+          # Wait until /up returns 200 instead of a fixed sleep — saves wall-clock
+          # on warm runners and avoids race on cold ones.
+          for i in {1..30}; do
+            if curl -sf http://127.0.0.1:8000/up >/dev/null 2>&1; then
+              echo "Backend ready after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+
+      # ---- Frontend bootstrap ----
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: pnpm install --frozen-lockfile
+      - name: Build frontend (preview-mode artifact)
+        working-directory: ./frontend
+        env:
+          VITE_API_URL: "http://127.0.0.1:8000/api"
+          NODE_ENV: production
+        run: pnpm run build
+
+      # ---- Playwright bootstrap ----
+      # Only install the chromium browser binary; smoke flows do not need
+      # firefox / webkit / mobile-Pixel and they double the install time.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}
+          restore-keys: |
+            playwright-chromium-${{ runner.os }}-
+      - name: Install Playwright (chromium only)
+        working-directory: ./frontend
+        run: npx playwright install --with-deps chromium
+
+      # ---- Run smoke flows ----
+      - name: Playwright @smoke
+        working-directory: ./frontend
+        env:
+          CI: 'true'
+          E2E_API_BASE: "http://127.0.0.1:8000/api"
+          STRIPE_WEBHOOK_SECRET: "whsec_e2e_test_secret"
+        run: npx playwright test --grep @smoke --project=chromium --reporter=line,github
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-smoke
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+          retention-days: 7
+
+  full:
+    name: E2E full suite (nightly / dispatch)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: testing
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: testing
+        options: >-
+          --health-cmd="pg_isready -U testing"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: redis,pdo_pgsql,gd,bcmath,mbstring,openssl,tokenizer,xml
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
+      - name: Bootstrap testing environment
+        working-directory: ./backend
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: testing
+          DB_USERNAME: testing
+          DB_PASSWORD: password
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          php artisan migrate --force
+          php artisan serve --host=127.0.0.1 --port=8000 &
+          for i in {1..30}; do
+            if curl -sf http://127.0.0.1:8000/up >/dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: pnpm install --frozen-lockfile
+      - name: Build frontend
+        working-directory: ./frontend
+        env:
+          VITE_API_URL: "http://127.0.0.1:8000/api"
+          NODE_ENV: production
+        run: pnpm run build
+      - name: Install Playwright (all browsers)
+        working-directory: ./frontend
+        run: npx playwright install --with-deps
+      - name: Playwright full suite
+        working-directory: ./frontend
+        env:
+          CI: 'true'
+          E2E_API_BASE: "http://127.0.0.1:8000/api"
+          STRIPE_WEBHOOK_SECRET: "whsec_e2e_test_secret"
+        run: |
+          GREP="${{ github.event.inputs.grep }}"
+          if [ -n "$GREP" ]; then
+            npx playwright test --grep "$GREP" --reporter=line,html,github
+          else
+            npx playwright test --reporter=line,html,github
+          fi
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-full
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+          retention-days: 14

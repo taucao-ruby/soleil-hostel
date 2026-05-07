@@ -14,8 +14,10 @@ import { BookingFormPage } from '../pages/BookingFormPage'
  *   - Booking form accepts guest details.
  *   - Confirmation surface appears within 10s of submit.
  */
-test.describe('Guest booking', () => {
-  test('lands → selects room → completes form → sees confirmation', async ({ page }) => {
+// @smoke — gates every PR via .github/workflows/e2e.yml. Owns the booking
+// happy-path: any regression here is a hard merge blocker.
+test.describe('Guest booking @smoke', () => {
+  test('lands → selects room → completes form → sees confirmation @smoke', async ({ page }) => {
     const availability = new AvailabilityPage(page)
     const form = new BookingFormPage(page)
 

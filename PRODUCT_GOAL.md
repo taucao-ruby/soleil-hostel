@@ -1,7 +1,7 @@
 # PRODUCT_GOAL.md — Soleil Hostel
 
 > **Product goals and strategic direction**
-> Last updated: 2026-03-31
+> Last updated: 2026-05-05
 >
 > **UI DESIGN CONTEXT (Google Stitch):**
 > This is the primary product brief for UI generation. Send this file first.
@@ -11,7 +11,8 @@
 > Color signals: `pending` → yellow/amber | `confirmed` → green | `cancelled` → red/muted | `refund_failed` → orange + escalation alert.
 > **Do NOT design**: `/admin/reviews`, `/admin/messages` (routes not implemented).
 > **Do NOT design**: `number_of_guests` or `special_requests` form persistence (backend not wired to read these).
-> **Do NOT design**: Online payment checkout or Stripe UI (in progress, not ready).
+> **Do NOT design**: Online payment checkout or Stripe UI (backend ready — payment-hold + durable refund idempotency landed Apr 22; frontend checkout still pending).
+> **Do NOT design**: AI proposal-confirmation widget visuals beyond the existing `RoomDiscoveryWidget` (AI proposal lifecycle is durable + proposer-bound; Stitch should not redesign without checking `docs/HARNESS_ENGINEERING.md`).
 
 ---
 
@@ -88,34 +89,46 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 
 ### Backend (Laravel 12) — 99% complete
 
-| Module                                               | Status            | Tests         |
-| ---------------------------------------------------- | ----------------- | ------------- |
-| Authentication (Bearer + HttpOnly cookie, 2FA-ready) | ✅ Complete       | 44 tests      |
-| Booking system (create, cancel, soft delete, audit)  | ✅ Complete       | 60 tests      |
-| Booking email notifications                          | ✅ Complete       | 23 tests      |
-| Branded email templates                              | ✅ Complete       | 13 tests      |
-| Stripe/Cashier integration                           | ✅ Bootstrap      | 14 tests      |
-| Backend i18n (en + vi)                               | ✅ Complete       | 9 tests       |
-| Room management (optimistic locking, status)         | ✅ Complete       | 151 tests     |
-| RBAC (3 roles: user / moderator / admin)             | ✅ Complete       | 63 tests      |
-| Security headers (CSP, HSTS, XSS)                    | ✅ Complete       | 14 tests      |
-| XSS Protection (HTML Purifier)                       | ✅ Complete       | 48 tests      |
-| Rate Limiting (multi-tier)                           | ✅ Complete       | 29 tests      |
-| Redis Caching (event-driven invalidation)            | ✅ Complete       | 6 tests       |
-| Monitoring & Health probes                           | ✅ Complete       | 30 tests      |
-| Optimistic Locking (rooms + locations)               | ✅ Complete       | 24 tests      |
-| Repository Layer                                     | ✅ Complete       | 53 tests      |
-| Email Verification                                   | ✅ Complete       | 26 tests      |
-| PHPStan/Larastan (Level 5)                           | ✅ 0 errors       | No baseline   |
-| Admin Audit Log (append-only; actor, IP, metadata)  | ✅ Complete       | —             |
-| Customer management (admin guest view)               | ✅ Complete       | —             |
-| Password complexity enforcement (registration)       | ✅ Complete       | —             |
-| Operational domain (stays, room_assignments, service_recovery_cases, readiness, deposit, settlement, escalation) | ✅ Complete | 58+ tests |
-| Admin booking filters (7 params: check_in, check_out, status, location_id, search) | ✅ Complete | 24 tests |
-| Restore path integrity (transaction + FOR UPDATE + cache invalidation) | ✅ Complete | 16 tests |
-| **Backend total**                                    | **✅ 23 systems** | **1047 tests** |
+> Per-module test counts moved to [PROJECT_STATUS.md](./PROJECT_STATUS.md) (single source of truth — Mar 31 baseline 1047/2875; re-verification required after Apr–May AI proposal lifecycle, OPS-004, CONC-005/006, AUTH-004, and Stripe webhook idempotency batches).
 
-### Frontend (React 19 + TypeScript) — 96% complete
+| Module                                                | Status               |
+| ----------------------------------------------------- | -------------------- |
+| Authentication (Bearer + HttpOnly cookie, 2FA-ready)  | ✅ Complete          |
+| Sanctum hardening (atomic refresh, fingerprint binding, fence-post unification, `findToken` Bearer lookup F-32) | ✅ Complete (Apr 25–28) |
+| Email Verification (OTP — race-hardened AUTH-004)     | ✅ Complete          |
+| Booking system (create, cancel, soft delete, audit)   | ✅ Complete          |
+| Booking state-machine invariants                      | ✅ Complete (Apr 22) |
+| Booking payment-hold on creation + pending-limit      | ✅ Complete (Apr 22) |
+| Booking immutable actor snapshots (booking + audit log) | ✅ Complete (May 1) |
+| `no_overlapping_bookings` exclusion constraint + pre-deploy assertion | ✅ Complete (May 1) |
+| Stay-domain cancellation propagation (OPS-004)        | ✅ Complete (May 2)  |
+| Deposit FSM lifecycle + null-user reconciliation (CONC-005/006) | ✅ Complete (May 2) |
+| Restore path integrity (transaction + FOR UPDATE + cache invalidation) | ✅ Complete |
+| Booking email notifications + branded templates       | ✅ Complete          |
+| Stripe/Cashier integration + payment-hold + durable refund-event idempotency (TOCTOU eliminated) | ✅ Backend complete; checkout UI pending |
+| AI Harness Phases 0–4 (7 endpoints, 7-layer safety pipeline, kill switch, canary routing, eval framework, proposal confirmation) | ✅ Complete |
+| AI Harness hardening (durable proposal lifecycle, drift detection, proposer binding, HMAC audit, PII hard-block, AI-001 prompt-injection defense, batch-8 kill-switch hardening + E2E smoke gate) | ✅ Complete (May 2) |
+| Backend i18n (en + vi)                                | ✅ Complete          |
+| Room management (optimistic locking, status, image_url, 45 seeded rooms across 5 branches) | ✅ Complete |
+| RBAC (3 roles: user / moderator / admin) + RBAC-001 contact-message admin lockdown | ✅ Complete (Apr 26) |
+| Security headers (CSP with pinned Stripe origins, HSTS, XSS)  | ✅ Complete          |
+| XSS Protection (HTML Purifier)                        | ✅ Complete          |
+| Rate Limiting (multi-tier) + AI proposal `decide` 5/m throttle | ✅ Complete         |
+| Redis Caching (event-driven invalidation) + kill switches  | ✅ Complete          |
+| Monitoring & Health probes (admin-gated detail per OBS-002) | ✅ Complete (Apr 28) |
+| PII redaction across all log channels and Sentry      | ✅ Complete (Apr 27) |
+| Optimistic Locking (rooms + locations)                | ✅ Complete          |
+| Repository Layer                                      | ✅ Complete          |
+| PHPStan/Larastan (Level 5)                            | ✅ 0 errors (no baseline) |
+| Admin Audit Log (append-only; actor, IP, metadata, immutable actor snapshot) | ✅ Complete |
+| Customer management (admin guest view)                | ✅ Complete          |
+| Password complexity enforcement (registration)        | ✅ Complete          |
+| Operational domain (stays, room_assignments, service_recovery_cases, readiness, deposit, settlement, escalation) | ✅ Complete |
+| Admin booking filters (7 params: check_in, check_out, status, location_id, search) | ✅ Complete |
+| Transaction exceptions (SRP hierarchy)                | ✅ Refactored (May 1) |
+| **Backend total**                                     | **✅ Production-quality booking core; integrated product not yet production-ready** |
+
+### Frontend (React 19 + TypeScript) — 97% complete
 
 | Phase    | Feature                                                                      | Status      |
 | -------- | ---------------------------------------------------------------------------- | ----------- |
@@ -129,9 +142,17 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 | Phase 5+ | Admin panel expansion (AdminLayout, sidebar, room/booking/customer mgmt), RBAC mobile route guard | ✅ Complete |
 | Phase 5+ | Moderator SPA access (`AdminRoute.tsx` `minRole` prop), admin booking filters | ✅ Complete |
 | Phase 5+ | `ReviewForm.tsx` — star-rating review submission for confirmed past bookings  | ✅ Complete |
-| Phase 5+ | Payment UI, i18n, PWA                                                        | 🔄 Next     |
+| Phase 5+ | Email verification SPA (`EmailVerifyPage.tsx` — 6-digit OTP)                  | ✅ Complete |
+| Phase 5+ | LocationDetail boutique redesign (hero gallery + reviews — `e6673dd`)         | ✅ Complete |
+| Phase 5+ | LoginPage / RoomList / Footer / TrustBar redesign                             | ✅ Complete |
+| Phase 5+ | HeaderMobile hamburger drawer + stronger password validation                  | ✅ Complete |
+| Phase 5+ | RoomDiscoveryWidget (AI proposal-confirmation flow)                           | ✅ Complete |
+| Phase 5+ | TodayOperations admin view                                                    | ✅ Complete |
+| Phase 5+ | Operations API hardening (`4323e90`)                                          | ✅ Complete |
+| Phase 5+ | Vite 6.4.2 pin (CVE GHSA-p9ff-h696-f583), axios 1.15+ (CVE GHSA-3p68-rc4w-qgx5), picomatch overrides | ✅ Complete |
+| Phase 6  | Stripe checkout UI, frontend i18n, PWA, admin reviews/messages routes        | 🔄 Next     |
 
-**Frontend tests:** 261 tests across 25 suites (verified March 31, 2026)
+**Frontend tests:** see [PROJECT_STATUS.md](./PROJECT_STATUS.md). Mar 31 baseline: 261 tests / 25 files. As of May 5: 39 test files on disk — re-verification required.
 
 ### Multi-Location Architecture
 
@@ -182,16 +203,19 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 
 ### Out of current scope
 
-- **Online payment checkout UI** — Stripe Cashier bootstrapped + webhooks implemented; checkout session + frontend payment form pending
-- **Frontend i18n** — Backend i18n complete (47 keys, en + vi); frontend strings still hardcoded Vietnamese
-- **Multi-tenancy** — One installation = one hostel chain; no shared DB across brands
-- **PWA / Offline** — No service worker yet
+- **Online payment checkout UI** — Backend ready as of Apr 22 (payment-hold on creation, durable refund-event idempotency). Frontend checkout session + payment form still pending.
+- **Frontend i18n** — Backend i18n complete (47 keys, en + vi); frontend strings still hardcoded Vietnamese.
+- **Multi-tenancy** — One installation = one hostel chain; no shared DB across brands.
+- **PWA / Offline** — No service worker yet.
+- **Admin reviews + messages routes** — Sidebar links exist; routes intentionally not implemented (see "Do NOT design" notes above).
 
 ### Confirmed external dependencies
 
-- Redis 7 (caching + distributed rate limiting)
-- PostgreSQL 16 (exclusion constraint required for production)
-- SMTP/Mailer (booking notification emails)
+- Redis 7 (caching, distributed rate limiting, AI proposal cache, kill-switch envelope) — Redis auth enforced in non-local environments via dual-layer guard (`1737970`).
+- PostgreSQL 16 (`EXCLUDE` exclusion constraint required for production booking overlap protection — assertion gated by pre-deploy hook `92f1ad1`).
+- SMTP / Mailer (booking notification + OTP verification emails).
+- Stripe (Cashier — payment-hold on creation, signed webhooks, durable refund event idempotency via UNIQUE(`stripe_refund_id`)).
+- Anthropic / OpenAI (AI Harness providers — gated by `AI_HARNESS_ENABLED` feature flag with cache-TTL=0 implicit kill switch).
 
 ---
 
@@ -201,7 +225,7 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 [DONE] Q4-2025  — Core backend: auth, booking, rooms, RBAC, security
 [DONE] Q1-2026  — Email templates, caching, locking, monitoring, repo layer
 [DONE] Q1-2026  — Frontend Phases 0-4: dashboard, search, admin, booking form
-[DONE] Q1-2026  — Audit v1-v4 (20/20 findings resolved), CLAUDE.md governance
+[DONE] Q1-2026  — Audit v1-v4 (179/179 findings resolved), CLAUDE.md governance
 [DONE] Q1-2026  — Frontend Phase 5: detail panel, admin actions, pagination
 [DONE] Q1-2026  — Phase 5 clean-up: TD-002 (comments EN), ship script, rollup CVE fix
 [DONE] Q1-2026  — DevSecOps: Docker/Redis/Caddy hardening, CI gates, Cashier bootstrap
@@ -212,9 +236,15 @@ Soleil Hostel is an in-house booking platform for the **Soleil** hostel chain in
 [DONE] Q1-2026  — Operational completion: readiness, classification, deposit, settlement, escalation engine + OperationalDashboardService
 [DONE] Q1-2026  — PHPStan Level 5 clean (0 errors, no baseline), Psalm Level 1 (0 blocking)
 [DONE] Q1-2026  — Restore path integrity (TOCTOU-safe), admin booking filters, moderator SPA access, ReviewForm
-[NEXT] Q2-2026  — Payment checkout UI (Stripe/VNPay), frontend i18n, PWA
-[NEXT] Q2-2026  — Deployment pipeline complete (currently 60%)
-[PLAN] Q3-2026  — Webhook system, email delivery tracking, audit log retention
+[DONE] Q2-2026  — AI Harness Phases 0–4: 7 endpoints, 7-layer safety pipeline, kill switch, canary routing, eval framework, proposal-confirmation flow (Apr 9–11)
+[DONE] Q2-2026  — F-06 proposer-binding (cache-envelope), F-04 deploy-host gate, OpenAPI Spectral contract-lint gate (Apr 13–18)
+[DONE] Q2-2026  — Email verification OTP flow (full-stack 6-digit code) + concurrent-booking HTTP 500 fix + tsconfig TS5103 fix (Apr 3–4)
+[DONE] Q2-2026  — Booking integrity wave: state-machine invariants, payment-hold, durable Stripe refund-event idempotency (TOCTOU eliminated), immutable actor snapshots, no-overlap constraint hardening, deposit FSM, stay cancellation propagation (Apr 19 → May 1)
+[DONE] Q2-2026  — Auth + observability hardening: batch-2 Sanctum, F-32 detectAuthMode, RBAC-001 contact-message lockdown, PII redaction, OBS-001/OBS-002, CSP Stripe origin pinning (Apr 25–28)
+[DONE] Q2-2026  — AI Harness hardening (batch-8): durable proposal lifecycle + drift detection + proposer binding, HMAC audit, PII hard-block, AI-001 prompt-injection defense, kill-switch hardening, E2E smoke gate, AUTH-004 OTP race (May 2)
+[NEXT] Q2-2026  — Stripe checkout UI (frontend), frontend i18n, PWA, admin reviews + messages routes
+[NEXT] Q2-2026  — Deployment pipeline complete (currently 60%) — SSH deploy step, automated health-check rollback
+[PLAN] Q3-2026  — Webhook delivery tracking, email delivery tracking, audit log retention, 2FA TOTP issuance, OTA integration
 ```
 
 ---

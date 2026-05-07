@@ -10,6 +10,7 @@ use App\Models\Location;
 use App\Models\Room;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\EnablesAiHarness;
 use Tests\TestCase;
 
 /**
@@ -17,7 +18,7 @@ use Tests\TestCase;
  */
 class RoomDiscoveryPipelineTest extends TestCase
 {
-    use RefreshDatabase;
+    use EnablesAiHarness, RefreshDatabase;
 
     private User $user;
 
@@ -25,7 +26,7 @@ class RoomDiscoveryPipelineTest extends TestCase
     {
         parent::setUp();
         $this->user = User::factory()->create();
-        config()->set('ai_harness.enabled', true);
+        $this->enableAiHarness();
         config()->set('ai_harness.canary.room_discovery_percentage', 100);
     }
 

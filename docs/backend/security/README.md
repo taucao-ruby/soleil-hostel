@@ -90,17 +90,16 @@ php artisan test tests/Feature/Security/
 # Specific suites
 php artisan test tests/Feature/Security/SecurityHeadersTest.php
 php artisan test tests/Feature/Security/HtmlPurifierXssTest.php
+php artisan test tests/Feature/Security/CsrfProtectionTest.php
+php artisan test tests/Feature/Security/CorsHeadersTest.php
+php artisan test tests/Feature/Security/CspViolationReportControllerTest.php
+php artisan test tests/Feature/Security/DebugRouteTest.php
 ```
 
-| Test Suite       | Count  |
-| ---------------- | ------ |
-| Security Headers | 14     |
-| XSS Protection   | 48     |
-| Rate Limiting    | 15     |
-| **Total**        | **77** |
+> Per-suite test counts moved to [PROJECT_STATUS.md](../../../PROJECT_STATUS.md) (single source of truth). Historical headline (Mar 2026): 14 security headers + 48 XSS + 15 rate-limit; AI harness, PII redaction (cb7911a), and admin-only health probes (OBS-002) added afterward.
 
 ---
 
 ## Reporting Vulnerabilities
 
-If you discover a security vulnerability, please email security@example.com rather than using the public issue tracker.
+Please report security issues privately to the repository maintainer (see [`README.md`](../../../README.md) for contact). Do not open public GitHub issues for security vulnerabilities.

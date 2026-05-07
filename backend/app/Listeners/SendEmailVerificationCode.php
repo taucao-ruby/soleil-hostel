@@ -2,11 +2,11 @@
 
 namespace App\Listeners;
 
+use App\Exceptions\OtpCooldownException;
 use App\Models\User;
 use App\Services\EmailVerificationCodeService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Support\Facades\Log;
 
 class SendEmailVerificationCode
 {
@@ -34,12 +34,10 @@ class SendEmailVerificationCode
 
         try {
             $this->service->issue($event->user);
-        } catch (\Exception $e) {
-            Log::warning('Failed to send verification code on registration', [
-                'user_id' => $event->user->id,
-                'email' => $event->user->email,
-                'error' => $e->getMessage(),
-            ]);
+        } catch (OtpCooldownException) {
+            // Cooldown active — registration is a one-shot path, but if the same user
+            // somehow triggers a second Registered event inside the cooldown window we
+            // skip silently rather than logging spurious warnings.
         }
     }
 }

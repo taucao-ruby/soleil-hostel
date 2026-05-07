@@ -10,15 +10,15 @@ class RoomSeeder extends Seeder
     /**
      * Run the database seeds.
      *
-     * Seeds 45 rooms across all 5 Soleil locations. Requires LocationSeeder to run first.
-     * Uses firstOrCreate so re-running is safe (no duplicates).
+     * Seeds 44 rooms across all 5 Soleil locations. Requires LocationSeeder to run first.
+     * Uses updateOrCreate so re-running is safe (no duplicates).
      *
      * Location breakdown:
      *   Location 1 — Soleil Hostel            :  9 rooms (101–109)
-     *   Location 2 — Soleil House             : 12 rooms (201–212)
+     *   Location 2 — Soleil House             : 10 rooms (201–210)
      *   Location 3 — Soleil Urban Villa       :  7 rooms (301–307)
      *   Location 4 — Soleil Boutique Homestay : 11 rooms (401–411)
-     *   Location 5 — Soleil Riverside Villa   :  6 rooms (501–506)
+     *   Location 5 — Soleil Riverside Villa   :  7 rooms (501–507)
      */
     public function run(): void
     {
@@ -252,30 +252,6 @@ class RoomSeeder extends Seeder
                 'location_id' => 2,
                 'room_number' => '210',
                 'room_type_code' => 'private',
-                'room_tier' => 2,
-            ],
-            [
-                'name' => 'Villa Gia Đình',
-                'description' => 'Villa rộng với 2 phòng ngủ, phòng khách riêng, bếp nhỏ và sân vườn.',
-                'image_url' => 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&q=80&fit=crop',
-                'price' => 800000,
-                'max_guests' => 5,
-                'status' => 'available',
-                'location_id' => 2,
-                'room_number' => '211',
-                'room_type_code' => 'villa',
-                'room_tier' => 3,
-            ],
-            [
-                'name' => 'Phòng Deluxe Hướng Phố',
-                'description' => 'Phòng deluxe tầng cao nhìn ra phố Lý Thường Kiệt, cửa sổ floor-to-ceiling.',
-                'image_url' => 'https://images.unsplash.com/photo-1583845112203-29329902332e?w=800&q=80&fit=crop',
-                'price' => 580000,
-                'max_guests' => 2,
-                'status' => 'available',
-                'location_id' => 2,
-                'room_number' => '212',
-                'room_type_code' => 'deluxe',
                 'room_tier' => 2,
             ],
 
@@ -571,6 +547,18 @@ class RoomSeeder extends Seeder
                 'room_number' => '506',
                 'room_type_code' => 'villa',
                 'room_tier' => 4,
+            ],
+            [
+                'name' => 'Phòng Deluxe River Garden',
+                'description' => 'Phòng deluxe nhìn ra vườn ven sông, cửa kính lớn, ghế đọc sách bên bệ cửa sổ.',
+                'image_url' => 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=800&q=80&fit=crop',
+                'price' => 620000,
+                'max_guests' => 2,
+                'status' => 'available',
+                'location_id' => 5,
+                'room_number' => '507',
+                'room_type_code' => 'deluxe',
+                'room_tier' => 2,
             ],
         ];
 

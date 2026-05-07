@@ -8,17 +8,20 @@ use App\AiHarness\Providers\ModelProviderInterface;
 use App\AiHarness\Providers\RawModelResponse;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
+use Tests\Support\EnablesAiHarness;
 use Tests\TestCase;
 
 class PiiBlockTest extends TestCase
 {
+    use EnablesAiHarness;
+
     private const AUDIT_KEY = 'pii-block-test-secret-key-123456';
 
     public function test_pii_model_output_returns_safe_response_and_hash_only_audit_log(): void
     {
         $this->configureAiLog();
+        $this->enableAiHarness();
         config()->set('app.key', self::AUDIT_KEY);
-        config()->set('ai_harness.enabled', true);
         config()->set('ai_harness.canary.faq_lookup_percentage', 100);
 
         $rawOutput = 'Guest fixture PII: alice.secret@example.com, +84912345678, passport A1234567.';

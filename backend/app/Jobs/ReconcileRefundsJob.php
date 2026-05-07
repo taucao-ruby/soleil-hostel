@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Enums\BookingStatus;
 use App\Events\BookingCancelled;
 use App\Models\Booking;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -14,6 +15,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Laravel\Cashier\Cashier;
 
 /**
  * Reconcile orphaned refund states.
@@ -63,10 +65,15 @@ final class ReconcileRefundsJob implements ShouldQueue
 
     /**
      * Reconcile bookings stuck in refund_pending state.
+     *
+     * Eager-loads user; user_id can be NULL because the FK uses ON DELETE
+     * SET NULL (bookings survive guest account deletion). Null-user bookings
+     * still need reconciliation — see resolveStripeClientFor (CONC-006).
      */
     private function reconcilePendingRefunds(int $staleMinutes, int $batchSize): void
     {
         Booking::query()
+            ->with('user')
             ->where('status', BookingStatus::REFUND_PENDING)
             ->where('updated_at', '<', now()->subMinutes($staleMinutes))
             ->whereNotNull('payment_intent_id')
@@ -85,6 +92,7 @@ final class ReconcileRefundsJob implements ShouldQueue
         $maxAttempts = config('booking.reconciliation.max_attempts', 5);
 
         Booking::query()
+            ->with('user')
             ->where('status', BookingStatus::REFUND_FAILED)
             ->where('updated_at', '<', now()->subMinutes(15)) // Wait before retry
             ->whereNotNull('payment_intent_id')
@@ -109,21 +117,76 @@ final class ReconcileRefundsJob implements ShouldQueue
     }
 
     /**
+     * Resolve a Stripe client for a booking even when the booking has no user.
+     *
+     * The FK bookings.user_id is ON DELETE SET NULL, so a deleted guest
+     * leaves user_id = NULL. We:
+     *  1. Use Booking::user (already eager-loaded) when present.
+     *  2. Otherwise fall back to the application-level Stripe client.
+     *
+     * Returns null if no client can be resolved (skips reconciliation).
+     */
+    private function resolveStripeClientFor(Booking $booking): ?\Stripe\StripeClient
+    {
+        $user = $booking->user;
+        if ($user instanceof User) {
+            return $user->stripe();
+        }
+
+        if (blank(config('cashier.secret'))) {
+            return null;
+        }
+
+        return Cashier::stripe();
+    }
+
+    /**
+     * Resolve the recipient email for reconciliation notifications.
+     *
+     * Order: user.email -> booking.guest_email. Returns null if neither is
+     * available — caller logs a warning and continues (CONC-006).
+     */
+    private function resolveRecipientEmail(Booking $booking): ?string
+    {
+        $userEmail = $booking->user?->email;
+        if (filled($userEmail)) {
+            return $userEmail;
+        }
+
+        $guestEmail = $booking->guest_email;
+        if (filled($guestEmail)) {
+            return $guestEmail;
+        }
+
+        return null;
+    }
+
+    /**
      * Reconcile a single booking with Stripe.
      */
     private function reconcileBooking(Booking $booking): void
     {
         try {
+            $stripe = $this->resolveStripeClientFor($booking);
+            if ($stripe === null) {
+                Log::warning('Reconciliation skipped: no stripe client available', [
+                    'booking_id' => $booking->id,
+                    'user_id' => $booking->user_id,
+                ]);
+
+                return;
+            }
+
             // Check if refund_id exists (refund was initiated)
             if ($booking->refund_id) {
-                $this->verifyExistingRefund($booking);
+                $this->verifyExistingRefund($booking, $stripe);
 
                 return;
             }
 
             // No refund_id means refund was never initiated
             // Check payment intent status
-            $this->checkPaymentIntentRefunds($booking);
+            $this->checkPaymentIntentRefunds($booking, $stripe);
 
         } catch (\Throwable $e) {
             Log::warning('Reconciliation failed', [
@@ -136,9 +199,8 @@ final class ReconcileRefundsJob implements ShouldQueue
     /**
      * Verify status of an existing refund.
      */
-    private function verifyExistingRefund(Booking $booking): void
+    private function verifyExistingRefund(Booking $booking, \Stripe\StripeClient $stripe): void
     {
-        $stripe = $booking->user->stripe();
         $refund = $stripe->refunds->retrieve($booking->refund_id);
 
         if ($refund->status === 'succeeded') {
@@ -176,16 +238,25 @@ final class ReconcileRefundsJob implements ShouldQueue
     /**
      * Check payment intent for any refunds.
      */
-    private function checkPaymentIntentRefunds(Booking $booking): void
+    private function checkPaymentIntentRefunds(Booking $booking, \Stripe\StripeClient $stripe): void
     {
-        $stripe = $booking->user->stripe();
         $paymentIntent = $stripe->paymentIntents->retrieve(
             $booking->payment_intent_id,
             ['expand' => ['latest_charge.refunds']]
         );
 
         $charge = $paymentIntent->latest_charge;
-        if (! $charge || ! $charge->refunds->data) {
+        if (! $charge instanceof \Stripe\Charge) {
+            // No charge found or charge not expanded - may need manual intervention
+            Log::info('No charge found for stale pending booking', [
+                'booking_id' => $booking->id,
+            ]);
+
+            return;
+        }
+
+        $refunds = $charge->refunds;
+        if (! $refunds instanceof \Stripe\Collection || empty($refunds->data)) {
             // No refunds found - may need manual intervention
             Log::info('No refunds found for stale pending booking', [
                 'booking_id' => $booking->id,
@@ -195,7 +266,7 @@ final class ReconcileRefundsJob implements ShouldQueue
         }
 
         // Check the latest refund
-        $latestRefund = $charge->refunds->data[0];
+        $latestRefund = $refunds->data[0];
 
         if ($latestRefund->status === 'succeeded') {
             DB::transaction(function () use ($booking, $latestRefund) {
@@ -219,6 +290,11 @@ final class ReconcileRefundsJob implements ShouldQueue
 
     /**
      * Retry a failed refund.
+     *
+     * Null-safe (CONC-006): when the guest user has been deleted (user_id
+     * NULL), we still try to issue the refund through the application-level
+     * Stripe client and skip the notification path. The booking-level
+     * guest_email is logged so an operator can manually follow up.
      */
     private function retryRefund(Booking $booking, int $attemptNumber): void
     {
@@ -242,10 +318,23 @@ final class ReconcileRefundsJob implements ShouldQueue
                 return;
             }
 
-            $refund = $booking->user->refund(
-                $booking->payment_intent_id,
-                ['amount' => $refundAmount]
-            );
+            $recipientEmail = $this->resolveRecipientEmail($booking);
+            if ($recipientEmail === null) {
+                Log::warning('ReconcileRefunds: no email for booking; refund will be issued without notification', [
+                    'booking_id' => $booking->id,
+                    'user_id' => $booking->user_id,
+                ]);
+            }
+
+            $refund = $this->issueStripeRefund($booking, $refundAmount);
+            if ($refund === null) {
+                // No Stripe client available — skip; do NOT throw.
+                Log::warning('ReconcileRefunds: no stripe client for booking, skipping retry', [
+                    'booking_id' => $booking->id,
+                ]);
+
+                return;
+            }
 
             DB::transaction(function () use ($booking, $refund, $refundAmount) {
                 $booking = $booking->transitionTo(BookingStatus::CANCELLED);
@@ -305,5 +394,35 @@ final class ReconcileRefundsJob implements ShouldQueue
         }
 
         return 0;
+    }
+
+    /**
+     * Issue a Stripe refund, falling back to the application-level Cashier
+     * client when the booking has no associated user (CONC-006).
+     */
+    private function issueStripeRefund(Booking $booking, int $refundAmount): ?\Stripe\Refund
+    {
+        $user = $booking->user;
+        if ($user instanceof User) {
+            return $user->refund(
+                $booking->payment_intent_id,
+                ['amount' => $refundAmount],
+            );
+        }
+
+        $stripe = $this->resolveStripeClientFor($booking);
+        if ($stripe === null) {
+            return null;
+        }
+
+        return $stripe->refunds->create([
+            'payment_intent' => $booking->payment_intent_id,
+            'amount' => $refundAmount,
+            'metadata' => [
+                'booking_id' => (string) $booking->id,
+                'reason' => 'reconcile_orphan_user',
+                'kind' => 'reconcile_refund',
+            ],
+        ]);
     }
 }

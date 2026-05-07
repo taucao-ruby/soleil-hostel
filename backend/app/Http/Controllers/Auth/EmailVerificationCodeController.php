@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Enums\VerificationResult;
+use App\Exceptions\OtpCooldownException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\VerifyCodeRequest;
 use App\Services\EmailVerificationCodeService;
@@ -30,21 +31,26 @@ class EmailVerificationCodeController extends Controller
             ]);
         }
 
-        $result = $this->service->issue($user);
+        try {
+            $this->service->issue($user);
+        } catch (OtpCooldownException $e) {
+            $retryAfter = $e->retryAfterSeconds();
 
-        if ($result['cooldown'] > 0) {
             return response()->json([
                 'success' => false,
                 'message' => 'Please wait before requesting a new code.',
-                'cooldown_remaining_seconds' => $result['cooldown'],
-            ], 429);
+                'cooldown_remaining_seconds' => $retryAfter,
+            ], 429)->header('Retry-After', (string) $retryAfter);
         }
 
         return response()->json([
             'success' => true,
             'message' => 'Verification code sent to your email.',
             'data' => [
-                'cooldown' => EmailVerificationCodeService::COOLDOWN_SECONDS,
+                'cooldown' => (int) config(
+                    'auth.otp_cooldown_seconds',
+                    EmailVerificationCodeService::COOLDOWN_SECONDS,
+                ),
             ],
         ]);
     }

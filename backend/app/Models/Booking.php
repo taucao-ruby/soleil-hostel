@@ -102,7 +102,7 @@ class Booking extends Model
     /**
      * Get the user that made the booking.
      *
-     * @return BelongsTo<User, $this>
+     * @return BelongsTo<User, static>
      */
     public function user(): BelongsTo
     {

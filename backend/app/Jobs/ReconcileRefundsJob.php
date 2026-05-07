@@ -246,7 +246,17 @@ final class ReconcileRefundsJob implements ShouldQueue
         );
 
         $charge = $paymentIntent->latest_charge;
-        if (! $charge || ! $charge->refunds->data) {
+        if (! $charge instanceof \Stripe\Charge) {
+            // No charge found or charge not expanded - may need manual intervention
+            Log::info('No charge found for stale pending booking', [
+                'booking_id' => $booking->id,
+            ]);
+
+            return;
+        }
+
+        $refunds = $charge->refunds;
+        if (! $refunds instanceof \Stripe\Collection || empty($refunds->data)) {
             // No refunds found - may need manual intervention
             Log::info('No refunds found for stale pending booking', [
                 'booking_id' => $booking->id,
@@ -256,7 +266,7 @@ final class ReconcileRefundsJob implements ShouldQueue
         }
 
         // Check the latest refund
-        $latestRefund = $charge->refunds->data[0];
+        $latestRefund = $refunds->data[0];
 
         if ($latestRefund->status === 'succeeded') {
             DB::transaction(function () use ($booking, $latestRefund) {

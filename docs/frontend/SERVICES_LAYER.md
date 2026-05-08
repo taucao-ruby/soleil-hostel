@@ -22,10 +22,12 @@ src/features/auth/
 Each feature also has its own API module:
 
 ```text
-src/features/booking/booking.api.ts    # createBooking, fetchMyBookings, cancelBooking
+src/features/booking/booking.api.ts    # createBooking, fetchMyBookings, cancelBooking, submitReview
 src/features/rooms/room.api.ts         # getRooms
 src/features/locations/location.api.ts # getLocations, getLocationBySlug
 src/features/admin/admin.api.ts        # fetchAdminBookings, fetchTrashedBookings, fetchContactMessages
+src/features/auth/email.api.ts         # sendVerificationCode, verifyCode, getVerificationStatus (OTP flow, since 2026-04-03)
+src/features/assistant/assistant.api.ts # discoverRooms, markProposalShown, decideProposal (AI Harness, since 2026-04-09)
 ```
 
 ---
@@ -195,14 +197,19 @@ Each feature has its own API module that uses the shared `api` client:
 ```typescript
 import api from '@/shared/lib/api'
 
-// POST /v1/bookings — creates a new booking
+// POST /v1/bookings — creates a new booking (10/min throttle); backend creates a Stripe payment-hold (Apr 22)
 export async function createBooking(data: BookingFormData): Promise<Booking>
 
 // GET /v1/bookings — returns the authenticated user's bookings
 export async function fetchMyBookings(signal?: AbortSignal): Promise<BookingApiRaw[]>
 
-// POST /v1/bookings/:id/cancel — cancels a booking (CSRF auto-attached)
+// POST /v1/bookings/:id/cancel — cancels a booking (CSRF auto-attached);
+// backend captures immutable cancellation actor snapshot + propagates to stays (OPS-004)
 export async function cancelBooking(id: number): Promise<CancelBookingResponse>
+
+// POST /v1/reviews — submits a star-rating review for a confirmed past booking
+// Errors: 403 (already reviewed) — UI shows "Bạn đã đánh giá rồi"; 422 (validation) — inline errors
+export async function submitReview(data: ReviewSubmitData): Promise<ReviewSubmitResponse>
 ```
 
 ### Room API (`features/rooms/room.api.ts`)
@@ -235,15 +242,74 @@ export async function getLocationBySlug(
 ```typescript
 import api from '@/shared/lib/api'
 
-// GET /v1/admin/bookings — paginated admin booking list (p.1 only in V1)
+// GET /v1/admin/bookings — paginated admin booking list with 7 filters (moderator+)
+//   filters: check_in_start, check_in_end, check_out_start, check_out_end, status, location_id, search (ILIKE)
 export async function fetchAdminBookings(signal?: AbortSignal): Promise<AdminBookingRaw[]>
 
-// GET /v1/admin/bookings/trashed — soft-deleted bookings
+// GET /v1/admin/bookings/trashed — soft-deleted bookings (moderator+)
 export async function fetchTrashedBookings(signal?: AbortSignal): Promise<AdminBookingRaw[]>
 
-// GET /v1/admin/contact-messages — contact form messages
+// GET /v1/admin/contact-messages — contact form messages (ADMIN ONLY since RBAC-001, 2026-04-26)
 export async function fetchContactMessages(signal?: AbortSignal): Promise<ContactMessageRaw[]>
+
+// POST /v1/admin/bookings/:id/restore — admin-only; transactional + FOR UPDATE (TOCTOU-safe)
+export async function restoreBooking(id: number): Promise<AdminBookingRaw>
+
+// DELETE /v1/admin/bookings/:id/force — admin-only; permanent delete + admin_audit_logs row
+export async function forceDeleteBooking(id: number): Promise<void>
 ```
+
+### Email Verification API (`features/auth/email.api.ts`) — OTP flow since 2026-04-03
+
+```typescript
+import api from '@/shared/lib/api'
+
+// POST /api/email/send-code — send 6-digit OTP (race-hardened AUTH-004; cooldown enforced server-side)
+export async function sendVerificationCode(): Promise<{ cooldown_remaining_seconds: number }>
+
+// POST /api/email/verify-code — verify the 6-digit code; sets users.email_verified_at on success
+//   max_attempts (default 5) enforced; row consumed (consumed_at = now) on success
+export async function verifyCode(code: string): Promise<{ verified: true }>
+
+// GET /api/email/verification-status — verification status + remaining cooldown
+export async function getVerificationStatus(): Promise<{
+  verified: boolean
+  email: string
+  email_verified_at: string | null
+  cooldown_remaining_seconds: number
+}>
+```
+
+> The legacy `MustVerifyEmail` signed-URL flow (`/api/email/verify/{id}/{hash}`) has been removed. The frontend OTP page (`features/auth/EmailVerifyPage.tsx`) is the only verification surface.
+
+### Assistant API (`features/assistant/assistant.api.ts`) — AI Harness since 2026-04-09
+
+```typescript
+import api from '@/shared/lib/api'
+
+// POST /v1/ai/room_discovery — natural-language room discovery (10/min throttle)
+//   Returns { content, proposals, citations }; proposals are persisted in ai_proposals
+export async function discoverRooms(query: string): Promise<DiscoverResponse>
+
+// POST /v1/ai/proposals/:hash/shown — mark proposal as displayed (idempotent)
+//   Required before /decide; missing call → ProposalNotShownException
+export async function markProposalShown(hash: string): Promise<void>
+
+// POST /v1/ai/proposals/:hash/decide — confirm/decline proposal (5/min throttle)
+//   Server-side: re-validates room availability, price drift (context_version), expiry, shown-before-confirm.
+//   Proposer-binding (F-67): cache envelope proposer_user_id MUST equal current user; mismatch → 404
+//   Lifecycle errors mapped on the client side:
+//     - ProposalNotShownException        → "Đề xuất chưa được hiển thị, vui lòng thử lại"
+//     - ProposalExpiredException         → "Đề xuất đã hết hạn"
+//     - ProposalPriceChangedException    → "Giá phòng đã thay đổi" (context_version mismatch)
+//     - ProposedRoomNoLongerAvailableException → "Phòng vừa được khách khác đặt"
+export async function decideProposal(
+  hash: string,
+  decision: 'confirmed' | 'declined'
+): Promise<DecideResponse>
+```
+
+> Only `RoomDiscoveryWidget` should call these endpoints. Proposer-binding requires the same authenticated user across discovery → shown → decide.
 
 ---
 

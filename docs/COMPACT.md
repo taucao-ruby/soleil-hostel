@@ -9,23 +9,21 @@
 >
 > **Lifetime metadata** (per master contract)
 > - generated_from: ARCHITECTURE_FACTS.md, CONTRACT.md, COMMANDS_AND_GATES.md, FINDINGS_BACKLOG.md
-> - last_verified_at: 2026-04-19
+> - last_verified_at: 2026-05-08
 > - scope: AI session handoff state (current snapshot, active work, known warnings, pointers)
 > - expiry_trigger: any code task, gate run, or milestone change
 
 ## 1) Current Snapshot (keep under 12 lines)
 
-- Date updated: 2026-05-03
-- Current branch: `dev` (HEAD=`b69a7a0`)
-- Latest commit: `b69a7a0` — feat(backend): implement deposit FSM lifecycle + null-user reconciliation (CONC-005/CONC-006)
-- Backend test baseline: `php artisan test` PASS (2026-05-03, 1414 passed / 7 skipped / 4110 assertions) after OPS-004 stay-cancellation propagation.
-- Frontend: Ops batch updated TodayOperations/BookingList abort+error handling, internal toast renderer, RoomDiscovery AI DTO alignment; `npx tsc --noEmit` and `npx vitest run` pass (418 tests).
-- AI Harness: Phases 0–4 ✅ Done. F-67 proposer-binding landed (`17a4880`, `39cba7a`; formerly cited as "F-06 2026-04-18", promoted 2026-04-19): cache envelope carries `proposer_user_id`; `decide()` 404s on mismatch; service-layer cancellation ownership gate at `CancellationService::validateCancellation`
-- Deploy hardening: F-04 pre-flight `DEPLOY_HOST` gate + migration-before-health reordering (`ec025ca`, `75bb790`). OpenAPI Spectral contract-lint CI gate added (`4a33755`)
-- Open findings: F-23, F-25, F-26–F-62, F-63–F-66, F-68. F-67 is **Mitigated** (landed). See FINDINGS_BACKLOG.md §F-ID namespace note for the F-06→F-67 promotion.
-- **F-68 (2026-04-19, Open, Medium)**: `backend/database/migrations/2026_02_09_000005_assign_rooms_to_locations.php:50` — doctrine-routed `->change()` races primary connection for `rooms` locks, producing intermittent `SQLSTATE[40P01]` during `RefreshDatabase`. Test-infra only, no production impact.
-- **H-06**: `phpunit.xml` defaults to PostgreSQL; run `docker compose up -d db` before `php artisan test`.
-- **T-13 MITIGATED (2026-04-18)**: proposer-binding enforced via F-67; supersedes prior "Accepted" posture.
+- Date updated: 2026-05-08
+- Current branch: `dev` (HEAD=`6372d7f`)
+- Latest commit: `6372d7f` — fix(backend): graceful degradation in `FeatureFlag::forget()` + Redis-free `AiHarnessDisabledTest`; explicit `REDIS_HOST`/`REDIS_PORT`/`REDIS_PASSWORD` in `phpunit.xml` and CI.
+- Backend test baseline: re-verification required since `b69a7a0` (2026-05-03 PASS 1414/4110). May 5–8 added Redis-free harness setup (`6372d7f`/`2ab45ae`) + Stripe charge type guard (`1441edb`) + Booking PHPDoc generic alignment (`176051d`); no test count regression expected, no new green run yet.
+- Frontend: 39 Vitest test files; May 3 intermediate run 418 tests PASS; axios bumped `^1.15.0`→`^1.16.0` (`97c684c`); typecheck PASS.
+- AI Harness: kill-switch contract finalized — `FeatureFlag::killSwitch()` is the sole gate (the `config('ai_harness.enabled', …)` path was non-functional and silently passing tests for the wrong reason — `2ab45ae`); `FeatureFlag::forget()` no longer re-throws Redis exceptions (`6372d7f`).
+- Open findings: F-23, F-25, F-26–F-62 (35 open after F-48 close), F-63–F-66, F-68. F-67 **Mitigated**. T-13 **Mitigated**. See `FINDINGS_BACKLOG.md` §F-ID namespace note for the F-06→F-67 promotion.
+- **F-68 (2026-04-19, Open, Medium)**: `backend/database/migrations/2026_02_09_000005_assign_rooms_to_locations.php:50` — doctrine-routed `->change()` races primary connection for `rooms` locks during `RefreshDatabase`. Test-infra only, no production impact.
+- **H-06**: `phpunit.xml` defaults to PostgreSQL; run `docker compose up -d db` before `php artisan test`. Test env vars now declared explicitly (`6372d7f`).
 
 ## 2) Invariants
 

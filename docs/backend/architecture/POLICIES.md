@@ -1,16 +1,19 @@
 # 🛡️ Authorization Policies
 
 > Laravel Policies for resource-based authorization
+>
+> **Last Updated:** May 8, 2026
 
 ## Overview
 
 Soleil Hostel uses Laravel Policies to authorize actions on resources:
 
-| Policy        | Model   | Purpose                    |
-| ------------- | ------- | -------------------------- |
-| BookingPolicy | Booking | Booking CRUD authorization |
-| ReviewPolicy  | Review  | Review CRUD authorization  |
-| RoomPolicy    | Room    | Room CRUD authorization    |
+| Policy                | Model            | Purpose                                                    |
+| --------------------- | ---------------- | ---------------------------------------------------------- |
+| BookingPolicy         | Booking          | Booking CRUD authorization                                 |
+| ReviewPolicy          | Review           | Review CRUD authorization                                  |
+| RoomPolicy            | Room             | Room CRUD authorization                                    |
+| ContactMessagePolicy  | ContactMessage   | **Admin-only** — added 2026-04-26 (RBAC-001, `04c7d63`)    |
 
 ---
 
@@ -138,6 +141,32 @@ class BookingPolicy
 
 ---
 
+## ContactMessagePolicy (RBAC-001)
+
+Added 2026-04-26 (`04c7d63`) — locks `/api/v1/admin/contact-messages*` to **admin-only**. Closes the moderator path that previously read contact submissions.
+
+```php
+// App\Policies\ContactMessagePolicy
+class ContactMessagePolicy
+{
+    public function viewAny(User $user): bool { return $user->isAdmin(); }
+    public function view(User $user, ContactMessage $msg): bool { return $user->isAdmin(); }
+    public function update(User $user, ContactMessage $msg): bool { return $user->isAdmin(); }
+    public function delete(User $user, ContactMessage $msg): bool { return $user->isAdmin(); }
+}
+```
+
+| Action  | User | Moderator | Admin |
+| ------- | ---- | --------- | ----- |
+| viewAny | ❌   | ❌        | ✅    |
+| view    | ❌   | ❌        | ✅    |
+| update  | ❌   | ❌        | ✅    |
+| delete  | ❌   | ❌        | ✅    |
+
+`ContactController::markAsRead` is gated by `Gate::authorize('update', $message)` and the v1 admin route group is gated by `role:admin` middleware — defense-in-depth.
+
+---
+
 ## RoomPolicy
 
 Authorizes room management operations.
@@ -254,6 +283,7 @@ protected $policies = [
     Booking::class => BookingPolicy::class,
     Review::class => ReviewPolicy::class,
     Room::class => RoomPolicy::class,
+    ContactMessage::class => ContactMessagePolicy::class,
 ];
 ```
 

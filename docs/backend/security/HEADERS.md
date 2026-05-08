@@ -1,10 +1,18 @@
 # 🔒 Security Headers
 
 > A+ grade security headers implementation (9/9 critical headers)
+>
+> **Last Updated:** May 8, 2026
 
 ## Overview
 
 9 critical security headers implemented via `SecurityHeaders` middleware, achieving **A+ security grade** on SecurityHeaders.com.
+
+### Recent hardening
+
+- **Stripe origin pinning** (`95f9f80`, 2026-04-26) — production CSP now narrows `connect-src` and `frame-src` to the explicit Stripe origins (`https://api.stripe.com`, `https://js.stripe.com`, `https://hooks.stripe.com`, `https://m.stripe.network`) instead of allowing any HTTPS source. The same pinning is also enforced at the edge in `Caddyfile` so an internal CSP bypass cannot exfiltrate to a non-Stripe origin.
+- **PII redaction across log channels and Sentry** (`cb7911a`, 2026-04-28) — Monolog `SensitiveDataProcessor` is registered on all channels, including the Sentry breadcrumb stream. The CSP `report-uri` (`/api/csp-violation-report`) is gated through the same processor so violation payloads cannot leak guest names / emails.
+- **Detailed health endpoints admin-gated** (OBS-002, `58da55e`, 2026-04-28) — see [`features/HEALTH_CHECK.md`](../features/HEALTH_CHECK.md). Affects what an unauthenticated CSP-violation reporter can fingerprint.
 
 **⚠️ KHÔNG CÓ SECURITY HEADERS = MỜI HACKER VÀO NHÀ UỐNG TRÀ**
 
@@ -101,17 +109,23 @@ style-src 'self' 'unsafe-inline';
 connect-src 'self' http://localhost:* ws://localhost:*;
 ```
 
-**Production (strict):**
+**Production (strict, with Stripe origin pinning since 2026-04-26):**
 
 ```
 default-src 'self';
-script-src 'nonce-{random}' 'strict-dynamic';
+script-src 'nonce-{random}' 'strict-dynamic' https://js.stripe.com;
 style-src 'self' 'nonce-{random}';
+connect-src 'self' https://api.stripe.com https://m.stripe.network;
+frame-src https://js.stripe.com https://hooks.stripe.com;
+img-src 'self' data: https:;
 object-src 'none';
 base-uri 'self';
 frame-ancestors 'none';
 upgrade-insecure-requests;
+report-uri /api/csp-violation-report;
 ```
+
+> Stripe origins are also pinned in `Caddyfile` so the edge enforces the same allowlist independently of the application response. A regression in either layer cannot relax the other.
 
 ---
 

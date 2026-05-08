@@ -20,22 +20,26 @@ This document describes the database transaction isolation strategy implemented 
 ├─────────────────────────────────────────────────────────────────┤
 │                   Transaction Layer                              │
 ├───────────────────┬─────────────────────┬───────────────────────┤
-│ TransactionIsolation │ IdempotencyGuard │ TransactionMetrics    │
+│ TransactionIsolation │ Refund event ledger │ TransactionMetrics │
 ├───────────────────┴─────────────────────┴───────────────────────┤
 │                     Database Layer                               │
 ├─────────────────────────────────────────────────────────────────┤
-│  PostgreSQL (Primary)  │  MySQL (Supported)  │  SQLite (Tests)  │
+│  PostgreSQL 16 (Primary, only supported prod DB)  │  SQLite (Tests opt-in) │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+> **MySQL is not supported.** Production runs on PostgreSQL 16 only. Booking integrity depends on PG-only features: the `EXCLUDE USING gist` exclusion constraint, partial unique indexes (`udx_room_assignments_one_active_per_stay`), and `daterange` overlap detection. Test runs default to PostgreSQL via `phpunit.xml`; SQLite remains an opt-in test config (`phpunit.pgsql.xml` for explicit PG, SQLite for fast local feedback).
+
 ### Key Classes
 
-| Class                   | Purpose                                             | Location                                   |
-| ----------------------- | --------------------------------------------------- | ------------------------------------------ |
-| `TransactionIsolation`  | Configurable isolation levels with retry logic      | `app/Database/TransactionIsolation.php`    |
-| `IdempotencyGuard`      | Prevents duplicate execution of critical operations | `app/Database/IdempotencyGuard.php`        |
-| `TransactionMetrics`    | Monitoring and logging for transaction health       | `app/Database/TransactionMetrics.php`      |
-| `TransactionExceptions` | Typed exceptions for transaction errors             | `app/Exceptions/TransactionExceptions.php` |
+| Class                       | Purpose                                                                 | Location                                              |
+| --------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------- |
+| `TransactionIsolation`      | Configurable isolation levels with retry logic                          | `app/Database/TransactionIsolation.php`               |
+| `StripeRefundEventLedger`   | DB-level idempotency for Stripe webhook deliveries (UNIQUE `stripe_refund_id`) | `app/Models/StripeRefundEvent.php` (table `stripe_refund_events`) |
+| `TransactionMetrics`        | Monitoring and logging for transaction health                            | `app/Database/TransactionMetrics.php`                 |
+| `TransactionExceptions/*`   | Typed exception hierarchy (decomposed from monolith — `746a5bf`, May 1)  | `app/Exceptions/Transaction/*.php`                    |
+
+> **`IdempotencyGuard` was deleted** in commit `abc3959` (2026-04-29). It was an in-memory, non-durable replay fence — it could not survive process restart or horizontal pod scaling, and an application-layer state check left a TOCTOU window. Replaced by the durable `stripe_refund_events.stripe_refund_id` UNIQUE constraint; `INSERT` happens before booking lookup, eliminating the race.
 
 ---
 
@@ -47,7 +51,7 @@ This document describes the database transaction isolation strategy implemented 
 | **Update Booking**  | MEDIUM     | Concurrent date changes overlap | Pessimistic locking (FOR UPDATE)     | READ COMMITTED  |
 | **Cancel Booking**  | MEDIUM     | Double cancellation             | Pessimistic locking + status check   | READ COMMITTED  |
 | **Confirm Booking** | LOW        | Double confirmation emails      | Status check in transaction          | READ COMMITTED  |
-| **Process Refund**  | CRITICAL   | Double refund                   | Idempotency guard + two-phase commit | READ COMMITTED  |
+| **Process Refund**  | CRITICAL   | Double refund                   | `stripe_refund_events.stripe_refund_id` UNIQUE (DB-level fence) + booking lock | READ COMMITTED  |
 | **Room Update**     | MEDIUM     | Stale update overwrites         | Optimistic locking (lock_version)    | READ COMMITTED  |
 
 ---

@@ -143,6 +143,7 @@ Room CUD routes nest a second `AdminRoute` with `minRole="admin"` inside the `Ad
 | `/` | HomePage | PublicLayout | No | None | Eager |
 | `/login` | LoginPage | Layout | No | None | Lazy |
 | `/register` | RegisterPage | Layout | No | None | Lazy |
+| `/verify-email` | EmailVerifyPage (6-digit OTP) | Layout | Yes | None | Lazy |
 | `/rooms` | RoomList | Layout | No | None | Lazy |
 | `/locations` | LocationList | Layout | No | None | Lazy |
 | `/locations/:slug` | LocationDetail | Layout | No | None | Lazy |

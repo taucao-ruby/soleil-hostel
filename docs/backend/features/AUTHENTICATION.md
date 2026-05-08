@@ -1,15 +1,26 @@
 # 🔐 Authentication
 
 > Dual-mode authentication system with Bearer Token and HttpOnly Cookie support
+>
+> **Last Updated:** May 8, 2026
 
 ## Overview
 
-Soleil Hostel supports two authentication modes:
+Soleil Hostel supports two authentication modes (dual Sanctum):
 
 | Mode            | Use Case          | Security             | Storage         |
 | --------------- | ----------------- | -------------------- | --------------- |
 | Bearer Token    | Mobile apps, SPAs | Good                 | localStorage    |
 | HttpOnly Cookie | Web apps          | Excellent (XSS-safe) | HttpOnly cookie |
+
+Both modes share `routes/api/v1.php`. Mode is detected at request time by `UnifiedAuthController::detectAuthMode()`, which uses Sanctum's `PersonalAccessToken::findToken()` for Bearer lookup (F-32, commit `4ab9cfd`, 2026-04-27) — the prior bespoke decoder did not handle Sanctum-format tokens correctly, causing valid tokens to fall through to cookie path.
+
+### Recent hardening (Apr–May 2026)
+
+- **Batch-2 Sanctum hardening** (`5e258e7`, 2026-04-25): atomic refresh (`tokenable_id, type` lock window), device-fingerprint binding, fence-post unification across `expires_at`/`revoked_at`/`refresh_count`.
+- **F-32 unified Bearer detection** (`4ab9cfd`, 2026-04-27): `detectAuthMode()` uses `PersonalAccessToken::findToken()`.
+- **AUTH-004 OTP race hardening** (`1079946`, 2026-05-02): `EmailVerificationCodeService::sendCode()` now serializes resend attempts via `Cache::lock("evc:send:{user_id}", 5)`, eliminating the concurrent-double-send race.
+- **AI harness kill-switch contract finalized** (`6372d7f`, 2026-05-08): `FeatureFlag::forget()` no longer re-throws Redis exceptions; the local in-process cache is always evicted on Redis outage so the auth-adjacent feature-flag layer cannot serve stale `enabled` values during partial outages.
 
 ---
 
@@ -152,77 +163,110 @@ await fetch("/api/auth/refresh-httponly", {
 | POST   | `/api/auth/refresh-httponly` | Rotate cookie + refresh_count |
 | POST   | `/api/auth/logout-httponly`  | Clear HttpOnly cookie         |
 
-### Email Verification Endpoints
+### Email Verification Endpoints (OTP, since 2026-04-03)
 
-| Method | Endpoint                               | Description                         |
-| ------ | -------------------------------------- | ----------------------------------- |
-| GET    | `/api/email/verify`                    | Verification notice (403 if needed) |
-| GET    | `/api/email/verify/{id}/{hash}`        | Verify email (signed URL)           |
-| POST   | `/api/email/verification-notification` | Resend verification email           |
-| GET    | `/api/email/verification-status`       | Check verification status           |
+| Method | Endpoint                          | Description                                               |
+| ------ | --------------------------------- | --------------------------------------------------------- |
+| POST   | `/api/email/send-code`            | Send 6-digit OTP code (race-hardened — AUTH-004)          |
+| POST   | `/api/email/verify-code`          | Verify OTP code; sets `email_verified_at`                 |
+| GET    | `/api/email/verification-status`  | Check verification status + cooldown                      |
+
+> **The legacy signed-URL `/api/email/verify/{id}/{hash}` flow has been removed.** Verification is now a 6-digit OTP. Migration: 2026-04-03 (`2026_04_03_084257_create_email_verification_codes_table`); race-hardened: 2026-05-02 (`1079946`).
+
+### Unified mode-agnostic endpoints
+
+For frontends that need to remain agnostic about Bearer vs Cookie mode (e.g. the React SPA after login-mode flip):
+
+| Method | Endpoint                          | Description                                          |
+| ------ | --------------------------------- | ---------------------------------------------------- |
+| GET    | `/api/auth/unified/me`            | Identity (works with either Bearer header or cookie) |
+| POST   | `/api/auth/unified/logout`        | Logout current device (mode-agnostic)                |
+| POST   | `/api/auth/unified/logout-all`    | Logout all devices (mode-agnostic)                   |
+
+These are served by `UnifiedAuthController` which dispatches via `detectAuthMode()`.
 
 ---
 
-## Email Verification
+## Email Verification (OTP)
 
-### Overview1
-
-Email verification is **required** before users can access protected routes (bookings, etc.).
+Email verification is **required** before users can access protected routes (bookings, AI proposal confirmation, reviews, etc.).
 
 ```bash
-Registration → Verification Email → User Clicks Link → Email Verified → Access Granted
+Registration → POST /api/email/send-code → User receives 6-digit code → POST /api/email/verify-code → Verified → Access Granted
 ```
 
-### Implementation
+### Schema
+
+`email_verification_codes` table (migration `2026_04_03_084257`):
+
+| Column          | Type           | Notes                                          |
+| --------------- | -------------- | ---------------------------------------------- |
+| `user_id`       | FK→users CASCADE | One row per outstanding code per user        |
+| `code_hash`     | CHAR(64)       | SHA-256 hex digest — **raw code never stored** |
+| `expires_at`    | TIMESTAMPTZ    | Default TTL 10 min                             |
+| `attempts`      | SMALLINT       | Increments on each verify attempt              |
+| `max_attempts`  | SMALLINT       | Default 5 — hard brute-force ceiling           |
+| `last_sent_at`  | TIMESTAMPTZ    | Cooldown source                                |
+| `consumed_at`   | TIMESTAMPTZ    | NULL = unused; non-NULL = already redeemed     |
+
+### Service: `EmailVerificationCodeService`
 
 ```php
-// User model implements MustVerifyEmail
-use Illuminate\Contracts\Auth\MustVerifyEmail;
+// AUTH-004 race-hardened: serialize concurrent send attempts per user.
+public function sendCode(User $user): VerificationResult
+{
+    return Cache::lock("evc:send:{$user->id}", 5)->block(0, function () use ($user) {
+        // Cooldown check (last_sent_at + RESEND_COOLDOWN_SECONDS)
+        // Generate code; store SHA-256 hash; dispatch notification
+    });
+}
 
-class User extends Authenticatable implements MustVerifyEmail
+public function verifyCode(User $user, string $rawCode): VerificationResult
+{
+    return DB::transaction(function () use ($user, $rawCode) {
+        // SELECT FOR UPDATE on outstanding row
+        // Increment attempts; check expiry, max_attempts, hash match
+        // On success: set consumed_at, set users.email_verified_at, dispatch Verified event
+    });
+}
 ```
 
 ### Route Protection
 
 ```php
 // Routes requiring verified email
-Route::middleware(['check_token_valid', 'verified'])->group(function () {
-    Route::get('/bookings', [BookingController::class, 'index']);
-    // ... booking routes require verified email
+Route::middleware(['auth:sanctum', 'verified'])->group(function () {
+    Route::get('/v1/bookings', [BookingController::class, 'index']);
+    // ... booking, AI, and review routes require verified email
 });
 ```
 
 ### Frontend Flow
 
 ```typescript
-// 1. Check verification status after login
-const { verified } = await api.get("/email/verification-status");
+// 1. Send the 6-digit code
+await api.post("/email/send-code");
+// → "Verification code sent. Check your email."
 
-if (!verified) {
-  // Show "Please verify your email" page
-  router.push("/verify-email");
-}
+// 2. User enters the code in the OTP form
+const { verified } = await api.post("/email/verify-code", { code: "123456" });
 
-// 2. Request resend if needed
-await api.post("/email/verification-notification");
-// → "Verification link sent to your email"
-
-// 3. User clicks link in email
-// → GET /api/email/verify/{id}/{hash}
-// → email_verified_at is set
-// → User can now access protected routes
+// 3. Check status
+const status = await api.get("/email/verification-status");
+// → { verified, email, email_verified_at, cooldown_remaining_seconds }
 ```
 
 ### Response Examples
 
-#### Verification Status (Unverified)
+**Verification Status (Unverified)**
 
 ```json
 {
   "success": true,
   "verified": false,
   "email": "user@example.com",
-  "email_verified_at": null
+  "email_verified_at": null,
+  "cooldown_remaining_seconds": 0
 }
 ```
 
@@ -233,7 +277,7 @@ await api.post("/email/verification-notification");
   "success": true,
   "verified": true,
   "email": "user@example.com",
-  "email_verified_at": "2025-12-19T10:00:00.000000Z"
+  "email_verified_at": "2026-05-08T10:00:00.000000Z"
 }
 ```
 
@@ -386,11 +430,4 @@ php artisan test --filter=test_expired_token_returns_401
 php artisan test --filter=test_suspicious_activity_revokes_token
 ```
 
-| Test Category       | Count  |
-| ------------------- | ------ |
-| Login/Register      | 6      |
-| Token Expiration    | 10     |
-| Token Refresh       | 4      |
-| Multi-device Logout | 3      |
-| HttpOnly Cookie     | 3      |
-| **Total**           | **26** |
+> Per-suite test counts moved to [PROJECT_STATUS.md](../../../PROJECT_STATUS.md). Historical Mar-baseline categories (Login/Register, Token Expiration, Token Refresh, Multi-device Logout, HttpOnly Cookie) have since been joined by `tests/Feature/Auth/EmailVerificationTest`, `tests/Feature/Auth/OtpResendRaceTest` (AUTH-004), `tests/Feature/Auth/UnifiedAuthDetectModeTest` (F-32), and Sanctum-hardening tests (`5e258e7` batch-2 atomic refresh + fingerprint binding).

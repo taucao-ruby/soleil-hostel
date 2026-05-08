@@ -1,23 +1,31 @@
 # 📅 Booking System
 
-> Double-booking prevention with pessimistic locking, soft deletes, and audit trail
+> Double-booking prevention with pessimistic locking, PostgreSQL exclusion constraint, deposit FSM, immutable cancellation actor snapshot, and stay-cancellation propagation
+>
+> **Last Updated:** May 8, 2026
 
 ## Overview
 
-The booking system uses **pessimistic locking** (SELECT FOR UPDATE) to prevent double-booking and **soft deletes** for data preservation with complete audit trail.
+The booking system uses **pessimistic locking** (`SELECT FOR UPDATE`) inside a DB transaction to serialise overlapping writes, plus a PostgreSQL `EXCLUDE USING gist` constraint as the irrevocable defense-in-depth guard. Cancellation captures an **immutable actor snapshot** so attribution survives user deletion, and propagates synchronously to the operational stay layer (OPS-004).
 
 ---
 
 ## Key Features
 
-| Feature             | Implementation                                     |
-| ------------------- | -------------------------------------------------- |
-| Pessimistic Locking | `SELECT FOR UPDATE` trong transaction              |
-| Half-Open Intervals | `[check_in, check_out)` cho phép same-day turnover |
-| Deadlock Retry      | 3 lần retry với exponential backoff                |
-| Soft Deletes        | `deleted_at` + `deleted_by` audit trail            |
-| XSS Protection      | HTML Purifier auto-sanitize `guest_name`           |
-| Admin Restore       | Admins có thể restore booking đã xóa               |
+| Feature                    | Implementation                                                              |
+| -------------------------- | --------------------------------------------------------------------------- |
+| Pessimistic Locking        | `SELECT FOR UPDATE` in transaction                                          |
+| PG exclusion constraint    | `no_overlapping_bookings` — `EXCLUDE USING gist (room_id =, daterange &&)` filtered to active + not soft-deleted; pre-deploy gate `php artisan db:assert-schema-constraints` (`92f1ad1`) |
+| Half-Open Intervals        | `[check_in, check_out)` allows same-day turnover                            |
+| Deadlock Retry             | 3 retries with exponential backoff                                          |
+| Soft Deletes               | `deleted_at` + `deleted_by` audit trail                                     |
+| Cancellation actor snapshot | `cancelled_by_email` / `cancelled_by_role` / `cancelled_by_display` (immutable, populated synchronously by `CancellationService` — `048e40b`, May 1) |
+| Stay propagation (OPS-004) | `BookingCancelled` synchronously cancels the non-terminal `stays` row (`7027adb`, May 2) |
+| Payment-hold (Apr 22)      | `POST /v1/bookings` creates a Stripe PaymentIntent in `requires_capture` mode; pending-limit enforcement prevents resource exhaustion (`ae2d070`)  |
+| Deposit FSM (CONC-005/006) | `Deposit::transitionTo()` is the only legal mutation; every transition appends to `deposit_events`; `chk_bookings_deposit_status` extended with `partial_refund` and `forfeited` (`b69a7a0`/`2026_05_02_000001`) |
+| Refund idempotency         | Durable `stripe_refund_events.stripe_refund_id` UNIQUE — DB INSERT before booking lookup eliminates the application-layer TOCTOU window (`abc3959`); supersedes the in-memory `IdempotencyGuard` |
+| XSS Protection             | HTML Purifier auto-sanitises `guest_name`                                   |
+| Admin Restore              | Admins can restore soft-deleted bookings (transaction + `FOR UPDATE`, TOCTOU-safe — Mar 29)  |
 
 ---
 
@@ -164,13 +172,18 @@ class Booking extends Model
     ];
 
     protected $fillable = [
-        'room_id', 'check_in', 'check_out',
+        'room_id', 'location_id', 'check_in', 'check_out',
         'guest_name', 'guest_email', 'status',
         'user_id', 'deleted_by',
-        // Refund fields
+        // Payment + refund fields
         'payment_intent_id', 'amount', 'refund_id',
         'refund_status', 'refund_amount', 'refund_error',
+        // Deposit lifecycle (CONC-005/006)
+        'deposit_amount', 'deposit_collected_at', 'deposit_status',
+        // Cancellation + immutable actor snapshot (May 1, 048e40b)
         'cancelled_at', 'cancelled_by',
+        'cancelled_by_email', 'cancelled_by_role', 'cancelled_by_display',
+        'cancellation_reason',
     ];
 
     // Legacy constants (deprecated - use BookingStatus enum)
@@ -334,11 +347,39 @@ Authorization: Bearer <token>
 
 ---
 
+## Deposit Lifecycle (CONC-005/006)
+
+`bookings.deposit_status` is governed by an FSM with **only one legal mutation surface**: `Deposit::transitionTo()`. Every transition is captured as an append-only row in `deposit_events` (no `updated_at`, no UPDATE/DELETE path). The DB CHECK `chk_bookings_deposit_status` (`2026_05_02_000001`) accepts:
+
+```
+none → collected → applied | refunded | partial_refund | forfeited
+```
+
+`partial_refund` and `forfeited` are required by `CancellationService` so a cancelled booking's deposit can never linger in `collected` (held) state. **Null-user reconciliation** (CONC-006): when the cancelling user has been deleted, the FSM transition still completes via system-actor snapshot (`actor_id = NULL`, `actor_email = "system:reconciliation"`).
+
+## Stay Cancellation Propagation (OPS-004)
+
+When a `BookingCancelled` event fires, `CancellationService` synchronously cancels the non-terminal `stays` row tied to that booking. `StayStatus::CANCELLED` is a terminal FSM state (added 2026-05-03 via `2026_05_03_000001` extending `chk_stays_stay_status`). The actor context is propagated end-to-end so both the booking row, the stay row, and the `admin_audit_logs` entry carry the same `actor_id` + denormalised actor snapshot.
+
+## Refund Idempotency (durable, replaces `IdempotencyGuard`)
+
+Stripe webhook replay protection is delegated to the database. `StripeWebhookController::handleChargeRefunded`:
+
+1. `INSERT` into `stripe_refund_events (stripe_refund_id, …)` — UNIQUE constraint catches replays at the storage layer
+2. Only after successful insert: lookup booking and apply refund mutation
+3. `amount_refunded` is sourced from `charge.amount_refunded` (cumulative), not `refunds[0].amount` — correctly handles partial-then-full refund event sequences
+4. `booking_id` FK is nullable + `nullOnDelete` — refund audit decouples from booking lifecycle
+
+This eliminates the TOCTOU window in the prior application-layer state check. `IdempotencyGuard` was deleted in commit `abc3959` (-515 LOC).
+
+---
+
 ## Rate Limiting
 
 | Action         | Limit                 |
 | -------------- | --------------------- |
-| Create booking | 3 per minute per user |
+| Create booking | 10 per minute per user (throttle:10,1)             |
+| Cancel/Update  | 10 per minute per user                             |
 
 ---
 
@@ -354,10 +395,4 @@ php artisan test tests/Feature/Booking/ConcurrentBookingTest.php
 php artisan test tests/Feature/Booking/BookingSoftDeleteTest.php
 ```
 
-| Test Category        | Count  |
-| -------------------- | ------ |
-| Overlap Prevention   | 14     |
-| Soft Deletes         | 19     |
-| Policy/Authorization | 15     |
-| Service Unit Tests   | 12     |
-| **Total**            | **60** |
+> Per-suite test counts moved to [PROJECT_STATUS.md](../../../PROJECT_STATUS.md). Apr–May added `BookingPaymentHoldTest` (`ae2d070`), `RefundIdempotencyTest` (`abc3959`), `BookingStateMachineInvariantTest` (`ac7275b`), `AiProposalEventActorPreservationTest` (`048e40b`), no-overlap pre-deploy assertion test (`92f1ad1`), deposit FSM tests (`b69a7a0`), and stay cancellation propagation tests (`7027adb`).

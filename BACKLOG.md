@@ -1,9 +1,9 @@
 # BACKLOG.md — Soleil Hostel
 
 > **Product backlog — prioritized by implementation order**
-> Last updated: 2026-05-05 | Source: COMPACT.md + KNOWN_LIMITATIONS.md + FINDINGS_BACKLOG.md + PERMISSION_MATRIX.md
+> Last updated: 2026-05-08 | Source: COMPACT.md + KNOWN_LIMITATIONS.md + FINDINGS_BACKLOG.md + PERMISSION_MATRIX.md
 >
-> Apr–May 2026 batches landed on `dev` (commits `347649a` → `10b153e`): AI Harness hardening (proposal lifecycle, HMAC audit, PII hard-block, AI-001 prompt-injection defense), batch-8 kill-switch + E2E smoke gate, Booking integrity wave (state-machine invariants, payment-hold, durable refund idempotency, actor snapshots, no-overlap constraint hardening, deposit FSM, stay cancellation propagation OPS-004), Auth + observability hardening (batch-2 Sanctum, F-32, RBAC-001, PII redaction, OBS-001/OBS-002), AUTH-004 OTP resend race-hardening. **Backend product surface for booking + AI is now production-quality;** frontend payment checkout remains the largest open gap.
+> Apr–May 2026 batches landed on `dev` (commits `347649a` → `6372d7f`): AI Harness hardening (proposal lifecycle, HMAC audit, PII hard-block, AI-001 prompt-injection defense), batch-8 kill-switch + E2E smoke gate, Booking integrity wave (state-machine invariants, payment-hold, durable refund idempotency, actor snapshots, no-overlap constraint hardening, deposit FSM, stay cancellation propagation OPS-004), Auth + observability hardening (batch-2 Sanctum, F-32, RBAC-001, PII redaction, OBS-001/OBS-002), AUTH-004 OTP resend race-hardening. May 5–8 finalized the AI harness kill-switch contract (`FeatureFlag::killSwitch()` is the sole gate; `FeatureFlag::forget()` degrades gracefully on Redis outage) and tightened type contracts in `ReconcileRefundsJob` + `Booking` PHPDoc. **Backend product surface for booking + AI is now production-quality;** frontend payment checkout remains the largest open gap.
 
 ---
 
@@ -524,7 +524,15 @@ FEAT-002 (Group Booking) → requires a new ADR before coding
 | ✅ OPS-004: stay cancellation propagation (`7027adb`)                                          | May 2, 2026       | —         |
 | ✅ AUTH-004: OTP resend race-hardened against concurrent requests (`1079946`)                  | May 2, 2026       | —         |
 | ✅ Batch-8 kill-switch hardening + E2E smoke gate + CI manifests (`c5a37dc`)                   | May 2, 2026       | —         |
-| ✅ AI harness test alignment with AUTH-004 kill-switch migration (`10b153e`)                   | May 2, 2026       | HEAD      |
+| ✅ AI harness test alignment with AUTH-004 kill-switch migration (`10b153e`)                   | May 2, 2026       | —         |
+| ✅ README pass + RoomSeeder rebalance (44 rooms, `updateOrCreate` for idempotent re-seed) (`aa205a4`) | May 5, 2026 | docs+seed |
+| ✅ axios `^1.15.0`→`^1.16.0` + pnpm lockfile reconcile (`97c684c`)                              | May 5, 2026       | —         |
+| ✅ AI harness trait order + `DepositEvent` `self::` guard (`77f93b4`)                           | May 5, 2026       | —         |
+| ✅ Trust Eloquent enum casts; narrow exception handling (`d488923`)                             | May 6, 2026       | refactor  |
+| ✅ `ReconcileRefundsJob` Stripe charge type guard (`1441edb`)                                   | May 6, 2026       | —         |
+| ✅ Booking `@template` PHPDoc generic alignment (`176051d`)                                     | May 7, 2026       | docs-only |
+| ✅ `AiHarnessDisabledTest` aligned with `FeatureFlag::killSwitch()` Redis path (config gate was non-functional) (`2ab45ae`) | May 8, 2026 | test      |
+| ✅ `FeatureFlag::forget()` graceful degradation on Redis outage + Redis-free harness setup + explicit `REDIS_*` env in phpunit.xml/CI (`6372d7f`) | May 8, 2026 | HEAD      |
 
 ---
 

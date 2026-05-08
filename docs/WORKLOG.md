@@ -1,5 +1,19 @@
 # WORKLOG — Soleil Hostel (Append-only)
 
+## 2026-05-08
+
+- Change: Governance docs sync — `PROJECT_STATUS.md` (HEAD `10b153e`→`6372d7f`, May 5–8 maintenance row added, kill-switch contract paragraph appended), `PRODUCT_GOAL.md` (date refresh), `BACKLOG.md` (8 new Done rows for `aa205a4`/`97c684c`/`77f93b4`/`d488923`/`1441edb`/`176051d`/`2ab45ae`/`6372d7f`), `AUDIT_REPORT.md` (rewritten as rolling current-state index — v1–v9 cycle table, gates with owners, open findings post-F-48-close = 35 from v6 + 4 from v7 + F-23/F-25/F-68; old Feb-23-v4 detail rolled up and preserved at commit `61f430a` per repo history), `docs/COMPACT.md` §1 snapshot refresh.
+- Scope: docs-only — no `backend/`, `frontend/`, `.github/`, `docker-compose*` touched.
+- Verification: docs-only pass; runtime gates not re-run. PROJECT_STATUS records re-verification-required state for backend/frontend tests since `b69a7a0`.
+- Cross-reference: this entry is the WORKLOG counterpart to PROJECT_STATUS line "May 5–8, 2026 | Maintenance batch …" and BACKLOG Done rows for `aa205a4`→`6372d7f`.
+
+## 2026-05-05 — 2026-05-08
+
+- Change: Maintenance batch — type-safety, test stability, dep hygiene. 8 commits on `dev`: `aa205a4` README pass + RoomSeeder rebalance (44 rooms; `firstOrCreate`→`updateOrCreate` for idempotent re-seed; Location 2 12→10 rooms, Location 5 6→7 rooms); `97c684c` axios `^1.15.0`→`^1.16.0` + pnpm lockfile reconcile; `77f93b4` AI harness trait order + `DepositEvent` `self::` guard; `d488923` trust Eloquent enum casts (narrow exception handling — caught exceptions previously assumed mismatch which the cast already prevents); `1441edb` `ReconcileRefundsJob` Stripe charge type guard against `null`/non-charge payloads; `176051d` Booking `@template` PHPDoc generic aligned to project convention; `2ab45ae` `AiHarnessDisabledTest` aligned with `FeatureFlag::killSwitch()` Redis path — replaced `config()->set('ai_harness.enabled', false)` (which the middleware never read) with `FeatureFlag::forget('ai_harness.enabled')`; `6372d7f` `FeatureFlag::forget()` graceful degradation on Redis outage (logs + swallows + always evicts local in-process cache so this process cannot serve stale value), Redis-free `AiHarnessDisabledTest` setUp seeds the array driver directly, explicit `REDIS_HOST`/`REDIS_PORT`/`REDIS_PASSWORD` declared in `phpunit.xml` and `.github/workflows/tests.yml`.
+- Defect class addressed: silent test pass-throughs caused by middleware-vs-config drift (`2ab45ae`); cascading failure on Redis outage in feature-flag eviction (`6372d7f`); type contract drift in money/charge handlers (`1441edb`).
+- Verification: targeted PHPUnit on `tests/Feature/AiHarness/AiHarnessDisabledTest.php` PASS (post-`6372d7f`); broader gate re-run pending. `npx tsc --noEmit` PASS. `pnpm-lock.yaml` reconciliation PASS.
+- Scope: backend src + tests + CI workflow + frontend lockfile. README pass touched only docs (per `aa205a4` review).
+
 ## 2026-04-19
 
 - Change: F-ID namespace disambiguation — the 2026-04-18 AI-harness proposer-binding finding, informally cited as "F-06 (2026-04-18)" throughout the prior day's remediation pass, was promoted to canonical **F-67** in `docs/FINDINGS_BACKLOG.md` to eliminate collision with the existing 2026-02-21 F-06 (CHECK `check_out > check_in` constraint, Fixed PR-2).

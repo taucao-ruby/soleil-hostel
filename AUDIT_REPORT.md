@@ -1,349 +1,101 @@
-# Audit Report
+# Audit Report — Soleil Hostel
 
-_Date: 2026-02-23 | Branch: dev | Commit: 61f430a_
-
-## Snapshot
-
-| Item | Verified Value |
-|------|---------------|
-| Audit date | 2026-02-23 |
-| Prior audit | [AUDIT_2026_02_21.md](./docs/AUDIT_2026_02_21.md) |
-| Prior open issues | F-02, F-03 |
-| PHP version | ^8.2 (composer.json) |
-| Laravel version | ^12.0 (composer.json) |
-| Sanctum version | ^4.1 (composer.json) |
-| Node version | 20 (CI), React ^19.0.0 |
-| TypeScript | ~5.7.2 |
-| Package manager | pnpm (lockfile confirmed) |
-| Migrations | 34 files |
-| CI workflows | tests.yml, deploy.yml |
-| DB engine | PostgreSQL 16 + Redis 7 |
-
-## Verification Gates
-
-| Gate | Status | Output summary |
-|------|--------|----------------|
-| G1 Backend tests | [REQUIRES LOCAL VERIFICATION] | `cd backend && php artisan test` — baseline: 737 tests, 2071 assertions |
-| G2 Pint style | [REQUIRES LOCAL VERIFICATION] | `cd backend && vendor/bin/pint --test` — baseline: 250 files, 0 violations |
-| G3 Frontend typecheck | [REQUIRES LOCAL VERIFICATION] | `cd frontend && npx tsc --noEmit` |
-| G4 Frontend tests | [REQUIRES LOCAL VERIFICATION] | `cd frontend && npx vitest run` — baseline: 145 tests, 13 suites |
-| G5 Docker compose config | [REQUIRES LOCAL VERIFICATION] | `docker compose config` |
-| G6 Migrate pretend | [REQUIRES LOCAL VERIFICATION] | `cd backend && php artisan migrate --pretend` |
-
-## Findings Matrix
-
-| Severity | Backend | Frontend | CI | Infra | Docs | Security | Total |
-|----------|---------|----------|----|-------|------|----------|-------|
-| Critical | 0 | 0 | 0 | 0 | 0 | 0 | **0** |
-| High | 0 | 0 | 0 | 0 | 0 | 0 | **0** |
-| Medium | 1 | 0 | 1 | 0 | 0 | 0 | **2** |
-| Low | 1 | 1 | 1 | 0 | 1 | 0 | **4** |
-| **Total** | **2** | **1** | **2** | **0** | **1** | **0** | **6** |
-
-### Delta vs prior audit
-- New issues this cycle: 6
-- Resolved since last audit: 2 (F-02, F-03)
-- Regressed: 0
-
-## Issues — Critical
-
-_None._
-
-## Issues — High
-
-_None._
-
-## Issues — Medium
+> **Rolling audit-state summary**
+> Last updated: 2026-05-08 | HEAD: `6372d7f` | Branch: `dev`
+>
+> This is the current-state audit index. Each historical audit pass is preserved in its dated file under `docs/`, and every code-level finding lives canonically in [`docs/FINDINGS_BACKLOG.md`](./docs/FINDINGS_BACKLOG.md). When a finding is resolved, FINDINGS_BACKLOG is the source of truth — this file is the rolled-up view.
 
 ---
 
-#### AUDIT-001 — backend/.env.test tracked in git with MySQL config
+## 1. Audit Cycle Index
 
-| Field | Value |
-|-------|-------|
-| Severity | Medium |
-| Area | Backend |
-| Type | DX / Drift |
-| Status | New |
-| Backlog ref | — |
-| Confidence | HIGH |
+| Cycle | Date | Scope | Findings | Resolved | Open | Detail |
+|-------|------|-------|----------|----------|------|--------|
+| v1    | 2026-02-09 | Full repo (P0/P1) | 61 | 61 | 0 | superseded by v2 |
+| v2    | 2026-02-11 | Full repo (P2 + drift) | 98 | 98 | 0 | superseded by v3 |
+| v3    | 2026-02-21 | Docs governance | 14 | 14 | 0 | [`docs/AUDIT_2026_02_21.md`](./docs/AUDIT_2026_02_21.md) |
+| v4    | 2026-02-23 | Code/CI/security drift (F-01..F-22) | 6 (new) + 14 (cross-ref) | 22 | 0 | preserved in git history at commit `61f430a`; F-01..F-22 status mirror in FINDINGS_BACKLOG |
+| v5    | 2026-03-12 | Repository structure | — | — | — | [`docs/AUDIT_2026_03_12_STRUCTURE.md`](./docs/AUDIT_2026_03_12_STRUCTURE.md) (snapshot — historical) |
+| v6    | 2026-03-20 | Full repo (post v3.4 stay-domain) | 37 (F-26..F-62) | 2 (F-32, F-48) | 35 | tracked inline in [`docs/FINDINGS_BACKLOG.md`](./docs/FINDINGS_BACKLOG.md) |
+| v7    | 2026-04-05 | Targeted (post AI-Harness Phases 0–4) | 4 (F-63..F-66) | 0 | 4 | tracked inline in [`docs/FINDINGS_BACKLOG.md`](./docs/FINDINGS_BACKLOG.md) |
+| v8    | 2026-04-18 | AI-Harness security (post-F-67 promotion) | 1 (F-67 proposer-binding) | 1 (Mitigated) | 0 | tracked inline in [`docs/FINDINGS_BACKLOG.md`](./docs/FINDINGS_BACKLOG.md); see also [`docs/THREAT_MODEL_AI.md`](./docs/THREAT_MODEL_AI.md) (T-13 Accepted→Mitigated) |
+| v9    | 2026-04-19 | Test-infra deadlock | 1 (F-68) | 0 | 1 | tracked inline in [`docs/FINDINGS_BACKLOG.md`](./docs/FINDINGS_BACKLOG.md) |
 
-**Evidence**
-`backend/.env.test` (lines 23-26, tracked via `git ls-files`)
-```
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=soleil_hostel
-```
-
-Also contains placeholder credentials:
-```
-MAIL_USERNAME=your_email@example.com
-MAIL_PASSWORD=your_email_password
-```
-
-**Impact**
-Contradicts project's PostgreSQL requirement. Developers copying this file would get MySQL errors. Placeholder credentials in tracked file are a minor hygiene issue.
-
-**Suggested fix**
-Either remove `backend/.env.test` from git tracking (add to `.gitignore`), or update it to match PostgreSQL config with placeholder-only values. CI already uses `cp .env.example .env.testing`.
+**Aggregate:** v1–v8 closed 179 findings. Net open after v9: F-23, F-25, 35 from v6 (F-26..F-62 excluding F-32 and F-48), F-63..F-66, F-68 — total 41 open. See §3 below.
 
 ---
 
-#### AUDIT-002 — CI quality gates are non-blocking (continue-on-error: true)
+## 2. Current Verification Gates
 
-| Field | Value |
-|-------|-------|
-| Severity | Medium |
-| Area | CI |
-| Type | DX |
-| Status | New |
-| Backlog ref | — |
-| Confidence | HIGH |
+Verified at the documentation layer 2026-05-08; runtime gate re-verification required after the Apr 19 → May 8 batches. Single source of truth: [`PROJECT_STATUS.md`](./PROJECT_STATUS.md).
 
-**Evidence**
-`.github/workflows/tests.yml`
-```
-Line 397: continue-on-error: true   # Psalm
-Line 421: continue-on-error: true   # Pint
-Line 467: continue-on-error: true   # Composer Audit
-Line 490: continue-on-error: true   # NPM Audit
-```
-
-Note: PHPStan (line 373) correctly has `continue-on-error: false`.
-
-**Impact**
-Style violations, Psalm-detected type issues, and known dependency CVEs will not block PR merges. Quality regressions can ship undetected.
-
-**Suggested fix**
-Set `continue-on-error: false` for at minimum `pint` (code style) and `composer-audit` (security). Consider keeping `psalm` as `true` only if false-positive rate is too high.
+| Gate | Cmd | Last verified status | Owner |
+|------|-----|----------------------|-------|
+| G1 Backend tests | `cd backend && php artisan test` | Re-verification required (Mar 31 baseline 1047/2875; May 3 intermediate 1414/4110 at `b69a7a0`) | Backend |
+| G2 Pint style | `cd backend && vendor/bin/pint --test` | Re-verification required | Backend |
+| G3 Frontend typecheck | `cd frontend && npx tsc --noEmit` | PASS (TS5103 fixed Apr 4) | Frontend |
+| G4 Frontend tests | `cd frontend && npx vitest run` | Re-verification required (Mar 31 baseline 261/25 files; May 3 intermediate 418 tests; current 39 test files) | Frontend |
+| G5 Frontend build | `cd frontend && pnpm run build` | PASS | Frontend |
+| G6 Compose config | `docker compose config` | PASS — host-env shadowing hardened (`093f5ae`); REDIS_PASSWORD placeholder injected (`fd796cf`); Redis auth enforced in non-local (`1737970`) | DevSecOps |
+| G7 PHPStan Level 5 | `cd backend && vendor/bin/phpstan` | Re-verification required (TransactionExceptions hierarchy refactored `746a5bf`) | Backend |
+| G8 Psalm | `cd backend && vendor/bin/psalm` | Re-verification required (cancellationActorSnapshot type contracts hardened `e68f40f`/`842e64a`/`98fbe93`) | Backend |
+| G9 AI eval gate | `cd backend && php artisan ai:eval --all-phases` | Nightly CI at 03:00 — blocks deploy on failure | AI Harness |
+| G10 OpenAPI contract lint | `.github/workflows/contract-lint.yml` (Spectral) | PASS — gate added 2026-04-17 (`4a33755`); blocks on `docs/api/openapi.yaml` or `.spectral.yaml` changes | API |
+| G11 E2E smoke gate | `.github/workflows/e2e.yml` | Added by batch-8 (`c5a37dc`); workflow_dispatch-gated until full suite stabilises | Frontend |
 
 ---
 
-## Issues — Low
+## 3. Open Findings (post v9)
+
+Authoritative detail: [`docs/FINDINGS_BACKLOG.md`](./docs/FINDINGS_BACKLOG.md). Summary:
+
+| ID | Severity | Area | Summary | Cycle |
+|----|----------|------|---------|-------|
+| F-23 | Low | Docs | MD lint (MD022/MD031/MD032) in `docs/COMPACT.md` static sections | v3 |
+| F-25 | Low | Frontend | `frontend/src/shared/lib/api.ts` 401 refresh interceptor reads `refreshResponse.data.csrf_token` (wrong level) — non-critical because `check_httponly_token` routes do not validate CSRF | v3 |
+| F-26..F-62 (excl. F-32, F-48) | mixed | Code | 35 open code findings from 2026-03-20 audit (post v3.4 stay-domain). F-32 resolved Apr 27 (Sanctum `findToken()` Bearer lookup, `4ab9cfd`); F-48 resolved earlier | v6 |
+| F-63..F-66 | mixed | Code | 4 open findings from 2026-04-05 audit (post AI-Harness Phases 0–4) | v7 |
+| F-68 | Medium | Test infra | `2026_02_09_000005_assign_rooms_to_locations.php:50` — `->change()` doctrine-routed connection races primary connection for `rooms` locks → intermittent `SQLSTATE[40P01]` during `RefreshDatabase`. Not a production-code defect | v9 |
+
+**Resolved this cycle (Apr 22 → May 8):** F-32 (Sanctum `findToken()` Bearer lookup, `4ab9cfd`), F-67 (proposer-binding via cache envelope `proposer_user_id`, `5a295c0`), AI-001 (policy-document prompt-injection defense, `347649a`), AI-002/AI-003 (Unicode normalization + output PII block + HMAC audit), RBAC-001 (contact messages admin-only via `ContactMessagePolicy`, `04c7d63`), OBS-001 + OBS-002 (admin-gated detail health probes, `58da55e`), PII redaction across log channels and Sentry (`cb7911a`), Stripe webhook idempotency moved to durable `stripe_refund_events` UNIQUE — TOCTOU window eliminated (`abc3959`), AUTH-004 OTP resend race-hardened (`1079946`), OPS-004 stay cancellation propagation (`7027adb`), CONC-005/006 deposit FSM (`b69a7a0`), no-overlap constraint pre-deploy assertion (`92f1ad1`), immutable actor snapshots on bookings + admin_audit_logs (`048e40b`), AI Harness kill-switch contract finalized (`2ab45ae`/`6372d7f`).
 
 ---
 
-#### AUDIT-003 — backend/.env.testing has committed APP_KEY
+## 4. Threat Model Status
 
-| Field | Value |
-|-------|-------|
-| Severity | Low |
-| Area | Backend |
-| Type | Security |
-| Status | New |
-| Backlog ref | — |
-| Confidence | HIGH |
+Authoritative detail: [`docs/THREAT_MODEL_AI.md`](./docs/THREAT_MODEL_AI.md).
 
-**Evidence**
-`backend/.env.testing` (line 3, tracked via `git ls-files`)
-```
-APP_KEY=base64:Ht3gPLkSP7/Bb+U+Wr+fFkPoSq6H5BkJ4qL9n+1N8bQ=
-```
-
-**Impact**
-Test-only encryption key committed to repo. CI regenerates it (`php artisan key:generate --env=testing`), so not used in CI. Low practical risk, but committed keys are a hygiene issue.
-
-**Suggested fix**
-Set `APP_KEY=` (empty) in the committed file and ensure CI always generates it. Or add `backend/.env.testing` to `.gitignore` since CI creates it from `.env.example`.
+| ID | Title | Prior status | Current status | Mitigation |
+|----|-------|--------------|----------------|-----------|
+| T-13 | AI proposal hijacking via 256-bit hash + rate limit only | Accepted (2026-04-12) | **Mitigated** (2026-04-18) | Cache-envelope `proposer_user_id`; `ProposalConfirmationController::decide` 404s on mismatch (`5a295c0`); defense-in-depth at `CancellationService::validateCancellation` |
+| T-14 | Cancellation ownership bypass | Accepted | **Mitigated** | Service-layer ownership gate at `CancellationService::validateCancellation` |
+| V-5 | Residual proposal hijacking risk | Open | **None after F-67** | superseded by T-13 mitigation |
 
 ---
 
-#### AUDIT-004 — Frontend TODO markers in production code paths
+## 5. Blocked / Won't-Do
 
-| Field | Value |
-|-------|-------|
-| Severity | Low |
-| Area | Frontend |
-| Type | Drift |
-| Status | New |
-| Backlog ref | — |
-| Confidence | HIGH |
-
-**Evidence**
-```
-frontend/src/features/home/components/SearchCard.tsx:20  // TODO: wire to availability API
-frontend/src/features/home/components/SearchCard.tsx:21  console.log('TODO: wire to availability API', ...)
-frontend/src/features/home/home.mock.ts:3               // TODO: replace with local hostel photo asset
-frontend/src/features/home/home.mock.ts:21,35,49        // TODO: local asset  (3 occurrences)
-frontend/src/shared/components/ErrorBoundary.tsx:57      // TODO: Send to error tracking service
-frontend/src/utils/webVitals.ts:25                       // TODO: Send to analytics service
-```
-
-**Impact**
-8 TODO markers indicate incomplete feature wiring. `console.log` in SearchCard.tsx will emit debug output in production builds.
-
-**Suggested fix**
-Remove `console.log` from SearchCard.tsx. Track remaining TODOs in project backlog. Consider eslint rule `no-console` to catch future occurrences.
+| ID | Item | Reason | Owner |
+|----|------|--------|-------|
+| M-11 | Migration squash | Needs human-approved `php artisan schema:dump --prune` process | Infra |
+| FU-3 | Verify `config('booking.cancellation.allow_after_checkin')` source + production value | RBAC follow-up — config-only verification, not a code change | Backend |
 
 ---
 
-#### AUDIT-005 — Stale test count in DEVELOPMENT_HOOKS.md
+## 6. Cross-References
 
-| Field | Value |
-|-------|-------|
-| Severity | Low |
-| Area | Docs |
-| Type | Drift |
-| Status | New (residual of F-03) |
-| Backlog ref | F-03 |
-| Confidence | HIGH |
-
-**Evidence**
-`docs/DEVELOPMENT_HOOKS.md` (line 23)
-```
-cd frontend && npx vitest run (142 tests)
-```
-
-Actual count per COMPACT.md: 145 tests (13 suites).
-
-**Impact**
-Minor docs drift. Could cause confusion if someone uses this doc to validate test count.
-
-**Suggested fix**
-Update "142 tests" to "145 tests" in DEVELOPMENT_HOOKS.md.
+- Detailed v3 findings (Feb 21): [`docs/AUDIT_2026_02_21.md`](./docs/AUDIT_2026_02_21.md)
+- Detailed v5 structure snapshot (Mar 12): [`docs/AUDIT_2026_03_12_STRUCTURE.md`](./docs/AUDIT_2026_03_12_STRUCTURE.md)
+- All open code findings: [`docs/FINDINGS_BACKLOG.md`](./docs/FINDINGS_BACKLOG.md)
+- Live project status (test counts, gate state): [`PROJECT_STATUS.md`](./PROJECT_STATUS.md)
+- Backlog (Done, In-Progress, Next): [`BACKLOG.md`](./BACKLOG.md)
+- Append-only change log: [`docs/WORKLOG.md`](./docs/WORKLOG.md)
+- Volatile session state: [`docs/COMPACT.md`](./docs/COMPACT.md)
+- AI threat model: [`docs/THREAT_MODEL_AI.md`](./docs/THREAT_MODEL_AI.md)
+- RBAC source of truth: [`docs/PERMISSION_MATRIX.md`](./docs/PERMISSION_MATRIX.md)
 
 ---
 
-#### AUDIT-006 — No docker compose config gate in CI
+## 7. History
 
-| Field | Value |
-|-------|-------|
-| Severity | Low |
-| Area | CI |
-| Type | DX |
-| Status | New |
-| Backlog ref | — |
-| Confidence | HIGH |
-
-**Evidence**
-`docs/agents/CONTRACT.md` (line 11) lists `docker compose config` as a DoD gate.
-Neither `.github/workflows/tests.yml` nor `.github/workflows/deploy.yml` runs this command.
-
-**Impact**
-Docker Compose config errors (invalid YAML, missing env refs) caught only locally, not in CI.
-
-**Suggested fix**
-Add a lightweight CI job that runs `docker compose config > /dev/null` to validate compose file syntax.
-
----
-
-## Prior Issue Cross-Reference
-
-| ID | Summary | Prior Status | Current Status | Evidence |
-|----|---------|-------------|----------------|----------|
-| F-01 | DATABASE.md room_status ENUM claim | Fixed (PR-4) | Confirmed fixed | — |
-| F-02 | docs/README.md "Laravel 11 + PHP 8.3" | Open | **Now fixed** | No "Laravel 11" or "PHP 8.3" found in docs/README.md; line 182 reads "Laravel 12 + PHP 8.2+" |
-| F-03 | docs/README.md "142 frontend unit tests" | Open | **Partially fixed** | Removed from docs/README.md, but residual in DEVELOPMENT_HOOKS.md:23 (see AUDIT-005) |
-| F-04 | CI triggers `develop` not `dev` | Fixed (PR-1) | Confirmed fixed | tests.yml:7-9 now uses `[main, dev]` |
-| F-05 | CI pnpm vs docs npm mismatch | Fixed (PR-4) | Confirmed fixed | — |
-| F-06 | Missing CHECK (check_out > check_in) | Fixed (PR-2) | Confirmed fixed | — |
-| F-07 | Missing CHECK (rating BETWEEN 1 AND 5) | Fixed (PR-2) | Confirmed fixed | — |
-| F-08 | Missing CHECK (price >= 0) | Fixed (PR-2) | Confirmed fixed | — |
-| F-09 | Missing FK reviews.booking_id | Fixed (PR-3) | Confirmed fixed | — |
-| F-10–F-14 | Various docs/low items | Fixed (PR-4) | Confirmed fixed | — |
-
-## Known Backlog Cross-Reference
-
-Top 5 highest-risk items still open in FINDINGS_BACKLOG.md:
-1. F-02 — **Now resolved** (confirmed in this audit)
-2. F-03 — **Partially resolved** (residual in DEVELOPMENT_HOOKS.md)
-3. All other items (F-01, F-04–F-14) previously marked Fixed — confirmed fixed
-
-No backlog file discovered: **False** — `docs/FINDINGS_BACKLOG.md` exists and was read.
-
-## Quick Wins (each under 30 min)
-
-1. **AUDIT-005**: Update "142 tests" to "145 tests" in `docs/DEVELOPMENT_HOOKS.md:23` (~1 min)
-2. **AUDIT-004**: Remove `console.log` from `SearchCard.tsx:21` (~2 min)
-3. **AUDIT-003**: Set `APP_KEY=` (empty) in `backend/.env.testing` (~1 min)
-4. **AUDIT-001**: Remove `backend/.env.test` from git tracking or update to PostgreSQL config (~5 min)
-5. **AUDIT-006**: Add `docker compose config` job to CI (~10 min)
-
-## Recommended Fix Batches
-
-**Batch 1 (CI hardening — AUDIT-002, AUDIT-006):**
-- Set `continue-on-error: false` for Pint and Composer Audit in tests.yml
-- Add `docker compose config` validation job
-- Estimated: 1 PR, ~15 min
-
-**Batch 2 (Env file cleanup — AUDIT-001, AUDIT-003):**
-- Remove `backend/.env.test` from git or update to PostgreSQL config
-- Clear committed APP_KEY from `backend/.env.testing`
-- Estimated: 1 PR, ~10 min
-
-**Batch 3 (Frontend cleanup — AUDIT-004):**
-- Remove `console.log` from SearchCard.tsx
-- Track TODO items in project backlog
-- Estimated: 1 PR, ~10 min
-
-**Batch 4 (Docs sync — AUDIT-005, backlog F-02/F-03):**
-- Update DEVELOPMENT_HOOKS.md test count
-- Update FINDINGS_BACKLOG.md status for F-02 and F-03
-- Estimated: 1 PR, ~5 min
-
-## Appendix A — Searches Executed
-
-| Call # | Query | Hits | Action taken |
-|--------|-------|------|--------------|
-| 1 | EXCLUDE USING gist / no_overlapping_bookings / daterange( | 13 (2 files) | Read in Phase 3 — constraint verified |
-| 2 | lockForUpdate / SELECT FOR UPDATE | 6 (5 files) | Read CreateBookingService — lock coverage confirmed |
-| 3 | deleted_by | 23 (9 files) | Skip — well-covered |
-| 4 | payment_intent_id / refund_status / refund_amount | 88 (13 files) | Skip — comprehensive |
-| 5 | lock_version | 228 (22 files) | Skip — very thorough |
-| 6 | ->foreign( / ->references( | 10 (4 files) | Read — FK constraints verified |
-| 7 | ->get() / ->all() / foreach in Services | 25 (7 files) | Noted — CacheWarmer has most hits |
-| 8 | env( in app/ and routes/ | 0 | Skip — clean |
-| 9 | Request::all() / request()->all() / $guarded = [] | 0 | Skip — clean |
-| 10 | Log:: / logger( | 105 (39 files) | Spot-checked — SensitiveDataProcessor exists |
-| 11 | Sanctum / auth:sanctum / Bearer / httpOnly | 203 (34 files) | Read auth controllers — dual mode verified |
-| 12 | APP_KEY=base64: / DB_PASSWORD= / STRIPE_SECRET / REDIS_PASSWORD= | 20 (12 files) | Read .env files — no real secrets committed |
-| 13 | php artisan test / pnpm test / vitest / tsc --noEmit | 4 (2 files) | Read CI files — gates present |
-| 14 | branches: in workflows | 3 (2 files) | Read — dev/main branches configured |
-| 15 | requirepass / REDIS_PASSWORD | 10 (5 files) | Read — conditional requirepass confirmed |
-| 16 | ports: in docker-compose | 4 (1 file) | Read — all ports bound to 127.0.0.1 |
-| 17 | Hex colors in frontend/src | 55 (13 files) | Noted — many in tokens file (acceptable) |
-| 18 | http://localhost / 127.0.0.1 in frontend/src | 1 (1 file) | Read api.ts — env-guarded fallback (acceptable) |
-| 19 | localStorage.setItem / sessionStorage.setItem / document.cookie | 4 (3 files) | Read csrf.ts — CSRF token in sessionStorage (acceptable) |
-| 20 | @ts-ignore / : any / eslint-disable / TODO: / FIXME: | 10 (6 files) | Read — 8 TODOs flagged, no @ts-ignore or : any |
-
-## Appendix B — Files Read
-
-### Phase 0
-- `AGENTS.md`
-- `docs/agents/CONTRACT.md`
-- `docs/agents/ARCHITECTURE_FACTS.md`
-- `docs/COMPACT.md`
-- `docs/FINDINGS_BACKLOG.md`
-- `docs/AUDIT_2026_02_21.md`
-
-### Phase 1
-- `backend/composer.json`
-- `frontend/package.json`
-
-### Phase 3
-- `.github/workflows/tests.yml`
-- `.github/workflows/deploy.yml`
-- `docker-compose.yml`
-- `backend/.env.test`
-- `backend/.env.testing`
-- `.env` (root — not tracked in git)
-- `.env.example` (root)
-- `.gitignore`
-- `redis.conf` (first 30 lines)
-- `frontend/src/shared/lib/api.ts`
-- `frontend/src/shared/utils/csrf.ts`
-- `docs/README.md` (lines 140-190)
-- `backend/app/Services/CreateBookingService.php`
-
-## Appendix C — Audit Gaps
-
-| Item | Reason |
-|------|--------|
-| Full N+1 query audit (CacheWarmer, BookingService) | Budget — search flagged 25 hits but detailed read skipped; dedicated N+1 CI job exists |
-| Log scrubbing audit (SensitiveDataProcessor) | Budget — 105 Log:: hits across 39 files; spot-check only |
-| Hardcoded color audit (55 hex values in 13 files) | Budget — many in tokens file (acceptable); per-component audit skipped |
-| E2E / Playwright coverage gap analysis | Out of scope — Playwright config exists but test coverage not assessed |
-| Production deployment config audit | Out of scope — deploy.yml references Forge/Render/Coolify but no access to verify |
-| Full migration rollback safety audit | Budget — 34 migrations, only latest booking constraint migration read |
+The previous version of this file (frozen at audit v4 with detail on AUDIT-001..AUDIT-006, prior-issue cross-reference for F-01..F-14, 20 search-trace appendix entries) is preserved in git history at commit `61f430a`. All v4 findings have since been resolved — see FINDINGS_BACKLOG status column. The historical content was rolled up here on 2026-05-08 because the `AUDIT_REPORT.md` file is the rolling current-state index, not a per-cycle artifact.

@@ -1,10 +1,31 @@
 # 👥 Role-Based Access Control (RBAC)
 
-> Type-safe role system with backed enum, gates, and middleware
+> Type-safe role system with backed enum, gates, middleware, and **defense-in-depth** (route + gate + policy)
+>
+> **Last Updated:** May 8, 2026
 
 ## Overview
 
 Soleil Hostel uses a **backed string enum** for user roles with Laravel Gates for authorization. This provides **compile-time type safety**, IDE autocomplete, and eliminates string literals across the codebase.
+
+> **Source of truth for the actor-to-permission mapping:** [`docs/PERMISSION_MATRIX.md`](../../PERMISSION_MATRIX.md). This file describes the implementation; the matrix describes the enforced surface.
+
+### Defense-in-depth (Mar 10 hardening, ongoing)
+
+Sensitive endpoints are protected at **three** layers — route middleware, controller-level Gate, and resource Policy — so that a regression at any one layer cannot silently expose the resource. All three must agree.
+
+```
+Request → role:moderator middleware → Gate::authorize('view-all-bookings') → BookingPolicy::viewAny → Controller
+```
+
+If any layer denies, the request 403s. Tests assert each layer independently (moderator-denial tests for admin-only writes; admin-allow tests for moderator-readable resources).
+
+### Apr–May 2026 changes
+
+- **RBAC-001 contact-message admin lockdown** (`04c7d63`, 2026-04-26): `App\Policies\ContactMessagePolicy` registered; routes `/api/v1/admin/contact-messages*` are now admin-only. Closed the moderator path that previously read contact submissions.
+- **Immutable actor snapshot** on `bookings` and `admin_audit_logs` (May 1, `048e40b` / `2026_05_01_000002` / `2026_05_01_000003`): every cancellation and audit-log row carries `actor_email` / `actor_role` / `actor_display_name` so attribution survives user deletion.
+- **`admin_audit_logs` append-only enforcement** (`2026_03_12_000001`): the application DB user must NOT be granted `UPDATE`/`DELETE` on this table in production.
+- **Pre-flight DEPLOY_HOST gate** (F-04, Apr 17): role-aware deploy step refuses to run without an explicit deploy host.
 
 ---
 
@@ -234,10 +255,14 @@ php artisan test tests/Unit/Enums/UserRoleTest.php
 php artisan test tests/Unit/Models/UserRoleHelpersTest.php
 ```
 
-| Test Category      | Count  |
-| ------------------ | ------ |
-| Gate Tests         | 14     |
-| Middleware Tests   | 9      |
-| Enum Tests         | 8      |
-| Model Helper Tests | 16     |
-| **Total**          | **47** |
+> Per-suite test counts moved to [PROJECT_STATUS.md](../../../PROJECT_STATUS.md). Apr–May added moderator-denial tests for AI proposal `decide`, `ContactMessagePolicy` admin-only tests (RBAC-001), and `AdminAuditService` actor-snapshot integration tests.
+
+## AdminAuditService
+
+`AdminAuditService` writes append-only rows to `admin_audit_logs` for every sensitive admin action (force-delete, restore-bulk, contact moderation, AI proposal decide). It is the single chokepoint — controllers do not write to the table directly. Each row carries:
+
+- `actor_id` (FK→`users` SET NULL)
+- **immutable actor snapshot**: `actor_email`, `actor_role`, `actor_display_name` (added 2026-05-01 — survives user deletion)
+- `action`, `resource_type`, `resource_id`, `metadata` JSON, `ip_address`, `created_at`
+
+> **DB-grant invariant:** the application DB user MUST NOT have `UPDATE` or `DELETE` on `admin_audit_logs` in production. Append-only by convention; integrity depends on this constraint.

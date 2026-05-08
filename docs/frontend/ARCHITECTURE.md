@@ -16,15 +16,17 @@ The frontend uses **Feature-Sliced Design (FSD)** architecture:
 
 ```text
 src/
-├── app/             # App shell - routing, layout, error boundary
-├── features/        # Business features - auth, booking, rooms, locations
-├── pages/           # Page components - HomePage, NotFoundPage
-├── shared/          # Reusable code - UI components, API client, utilities
-├── types/           # Shared TypeScript interfaces
-├── utils/           # App utilities - toast, web vitals
-├── test/            # Test setup (setup.ts)
-└── main.tsx         # Entry point
+├── app/             # App shell - router, providers, Layout
+├── assets/          # Bundled static assets imported from source
+├── features/        # Feature-sliced modules (auth, booking, bookings, rooms, locations, home, admin, assistant)
+├── pages/           # Route-level pages (HomePage, DashboardPage, NotFoundPage)
+├── shared/          # Cross-cutting code (components, lib, types, utils)
+├── test/            # Vitest test setup
+├── main.tsx         # Entry point — mounts App into #root
+└── vite-env.d.ts    # Vite ambient types
 ```
+
+> **There is no top-level `src/types/`, `src/services/`, or `src/utils/` directory.** Shared types live in `src/shared/types/`; shared utilities live in `src/shared/utils/` and `src/shared/lib/`. Feature-specific types stay co-located with their feature module (e.g. `features/booking/booking.types.ts`).
 
 ### Principles
 
@@ -37,28 +39,29 @@ src/
 
 ## Tech Stack
 
-### Production Dependencies
+### Production Dependencies (verified against `package.json` at HEAD `6372d7f`, 2026-05-08)
 
 | Package            | Version | Purpose                |
 | ------------------ | ------- | ---------------------- |
 | `react`            | ^19.0.0 | UI framework           |
 | `react-dom`        | ^19.0.0 | React DOM renderer     |
-| `react-router-dom` | ^7.9.6  | Client-side routing    |
-| `axios`            | ^1.11.0 | HTTP client            |
-| `react-toastify`   | ^11.0.5 | Toast notifications    |
-| `web-vitals`       | ^5.1.0  | Performance monitoring |
+| `react-router-dom` | ^7.x    | Client-side routing    |
+| `axios`            | ^1.16.0 | HTTP client (bumped from 1.15.0 on 2026-05-05 via `97c684c`)            |
+| `react-toastify`   | ^11.x   | Toast notifications    |
+| `web-vitals`       | ^5.x    | Performance monitoring |
 
 ### Dev Dependencies
 
 | Package                       | Purpose                  |
 | ----------------------------- | ------------------------ |
-| `vite` ^6.3.1                 | Build tool + dev server  |
-| `vitest` ^2.1.2               | Unit test runner         |
+| `vite` 6.4.2                  | Build tool + dev server (pinned for CVE GHSA-p9ff-h696-f583) |
+| `vitest` ^4.1.2               | Unit test runner         |
 | `@testing-library/react` ^16  | Component testing        |
-| `@playwright/test` ^1.45      | E2E testing (scaffolded) |
-| `tailwindcss` ^3.4.1          | Utility-first CSS        |
+| `@playwright/test`            | E2E testing (scaffolded — see [`tests/e2e/README.md`](../../frontend/tests/e2e/README.md)) |
+| `tailwindcss` ^3              | Utility-first CSS        |
 | `typescript` ~5.7.2           | Type checking            |
-| `eslint` ^9.26 + prettier     | Linting + formatting     |
+| `eslint` ^9.x + prettier      | Linting + formatting     |
+| `pnpm`                        | Package manager (`packageManager: pnpm@9.15.9`) |
 
 ### Not Installed (Previously Documented)
 
@@ -124,7 +127,7 @@ Business logic organized by domain. See [FEATURES_LAYER.md](FEATURES_LAYER.md).
 
 | Feature | Components |
 |---|---|
-| `auth/` | AuthContext, LoginPage, RegisterPage, ProtectedRoute, AdminRoute |
+| `auth/` | AuthContext, LoginPage, RegisterPage, EmailVerifyPage (OTP, since Apr 3), ProtectedRoute, AdminRoute |
 | `booking/` | BookingForm, BookingList, booking.api, booking.validation, booking.types |
 | `bookings/` | GuestDashboard, BookingDetailPanel, BookingDetailPage, ReviewForm, useMyBookings, bookingViewModel |
 | `admin/` | AdminDashboard, AdminLayout, AdminSidebar, admin.api, admin.types |
@@ -134,29 +137,20 @@ Business logic organized by domain. See [FEATURES_LAYER.md](FEATURES_LAYER.md).
 | `rooms/` | RoomList, room.api, room.types |
 | `locations/` | LocationList, LocationDetail, LocationCard, location.api, location.types |
 | `home/` | SearchCard, Hero, FilterChips, RoomCard, BottomNav, HeaderMobile, PromoBanner, ReviewsCarousel |
+| `assistant/` | RoomDiscoveryWidget — AI proposal-confirmation flow widget; calls `/v1/ai/room_discovery` and posts decision via `/v1/ai/proposals/{hash}/decide`. Backed by the durable `ai_proposals` table (server-side drift detection, proposer-binding, F-67) |
 
 ### Shared Layer (`src/shared/`)
 
 Reusable components and libraries. See [SHARED_LAYER.md](SHARED_LAYER.md).
 
-- **UI**: Button, Card, Input, Label, Skeleton, SkeletonCard
-- **Layout**: Header, Footer
-- **Feedback**: LoadingSpinner, ErrorBoundary
-- **Lib**: api.ts (Axios + interceptors), navigation.ts
-- **Utils**: csrf.ts, security.ts
+- **components/ui**: Button, Card, Input, Label, Skeleton, SkeletonCard
+- **components/layout**: Header, Footer
+- **components/feedback**: LoadingSpinner, ErrorBoundary
+- **lib**: `api.ts` (Axios + CSRF + 401-refresh interceptors), `room.api.ts`, `location.api.ts`, `navigation.ts`, `booking.utils.ts`, `formatCurrency.ts`
+- **types**: `api.ts`, `booking.types.ts`, `location.types.ts` — shared DTOs
+- **utils**: `csrf.ts`, `security.ts`, `toast.ts` (react-toastify wrapper), `webVitals.ts` (Core Web Vitals: CLS / INP / FCP / LCP / TTFB)
 
-### Types Layer (`src/types/`)
-
-Plain TypeScript interfaces. See [TYPES_LAYER.md](TYPES_LAYER.md).
-
-- `api.ts` - User, Room, Booking, Review, ApiResponse, ApiError
-
-### Utils Layer (`src/utils/`)
-
-App-level utilities. See [UTILS_LAYER.md](UTILS_LAYER.md).
-
-- `toast.ts` - react-toastify wrapper with showToast helpers
-- `webVitals.ts` - Core Web Vitals monitoring (CLS, INP, FCP, LCP, TTFB)
+> See [TYPES_LAYER.md](TYPES_LAYER.md) and [UTILS_LAYER.md](UTILS_LAYER.md) for the canonical layout. There are no top-level `src/types/` or `src/utils/` folders — everything shared lives under `src/shared/`.
 
 ---
 
@@ -201,8 +195,8 @@ See [CONFIGURATION.md](CONFIGURATION.md).
 
 See [TESTING.md](TESTING.md).
 
-- **Unit**: Vitest + @testing-library/react (261 tests across 25 suites — verified 2026-03-31)
-- **E2E**: Playwright (scaffolded, 1 spec)
+- **Unit**: Vitest + @testing-library/react — file count 39 as of HEAD `6372d7f` (2026-05-08); test count deferred to [PROJECT_STATUS.md](../../PROJECT_STATUS.md) (Mar 31 baseline 261; May 3 intermediate 418)
+- **E2E**: Playwright — 4 scaffolded flows under [`frontend/tests/e2e/`](../../frontend/tests/e2e/README.md) (`guest-booking`, `payment-webhook`, `ai-proposal`, `admin-restore`); workflow_dispatch-gated until stable
 
 ---
 

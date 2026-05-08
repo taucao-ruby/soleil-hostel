@@ -48,7 +48,7 @@ Only one manual chunk is configured. React core is separated for better caching.
 
 ### Web Vitals Monitoring
 
-Tracked via `web-vitals` v5+ in `src/utils/webVitals.ts`:
+Tracked via `web-vitals` v5+ in `src/shared/utils/webVitals.ts`:
 
 | Metric | Good     | Poor     |
 | ------ | -------- | -------- |

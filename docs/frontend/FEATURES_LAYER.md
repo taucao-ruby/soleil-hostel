@@ -34,8 +34,11 @@
 | `/admin/rooms` | `AdminRoomDashboard` in `AdminLayout` | `admin/rooms/` | Moderator (view-only), Admin |
 | `/admin/rooms/new` | `RoomForm` in `AdminLayout` | `admin/rooms/` | **Admin only** |
 | `/admin/rooms/:id/edit` | `RoomForm` in `AdminLayout` | `admin/rooms/` | **Admin only** |
+| `/verify-email` | `EmailVerifyPage` (OTP, 6-digit) | `auth/` | Authenticated, unverified |
 
 > **NOT implemented — do not design**: `/admin/reviews`, `/admin/messages`
+
+> **AI assistant** is not a route — it's the `RoomDiscoveryWidget` component embedded in homepage / search flow. See section 9 below.
 
 ---
 
@@ -46,9 +49,10 @@ src/features/
 ├── auth/
 │   ├── AuthContext.tsx         # Auth provider + useAuth hook (+test)
 │   ├── LoginPage.tsx           # Login form (+test)
-│   ├── RegisterPage.tsx        # Registration form (+test)
+│   ├── RegisterPage.tsx        # Registration form (+test) — strong password rule (uppercase + lowercase + digit + special char)
+│   ├── EmailVerifyPage.tsx     # 6-digit OTP entry page (Apr 3, 2026); calls /api/email/send-code + /api/email/verify-code
 │   ├── ProtectedRoute.tsx      # Auth guard component
-│   └── AdminRoute.tsx          # Admin-only auth guard (+test)
+│   └── AdminRoute.tsx          # Admin-only auth guard (+test) — minRole prop ('moderator' default; 'admin' for room CUD)
 ├── booking/
 │   ├── BookingForm.tsx         # Booking creation form (+test) — URL params pre-fill, Vietnamese UI
 │   ├── BookingList.tsx         # Paginated booking list page (at /my-bookings)
@@ -95,16 +99,21 @@ src/features/
 │   ├── RoomList.tsx            # Rooms grid page (+test)
 │   ├── room.api.ts             # getRooms
 │   └── room.types.ts           # Room, RoomsResponse
-└── home/
-    └── components/
-        ├── SearchCard.tsx      # Location search form — fetches locations, navigates to /locations/:slug (+test)
-        ├── Hero.tsx            # Homepage hero section
-        ├── FilterChips.tsx     # Filter chip row (+test)
-        ├── RoomCard.tsx        # Room preview card
-        ├── BottomNav.tsx       # Mobile bottom nav tabs (homepage only)
-        ├── HeaderMobile.tsx    # Mobile sticky header (homepage only) (+test)
-        ├── PromoBanner.tsx     # Promotional banner
-        └── ReviewsCarousel.tsx # Reviews display
+├── home/
+│   └── components/
+│       ├── SearchCard.tsx      # Location search form — fetches locations, navigates to /locations/:slug (+test)
+│       ├── Hero.tsx            # Homepage hero section
+│       ├── FilterChips.tsx     # Filter chip row (+test)
+│       ├── RoomCard.tsx        # Room preview card
+│       ├── BottomNav.tsx       # Mobile bottom nav tabs (homepage only)
+│       ├── HeaderMobile.tsx    # Mobile sticky header (homepage only) (+test)
+│       ├── PromoBanner.tsx     # Promotional banner
+│       ├── TrustBar.tsx        # Trust signals row
+│       └── ReviewsCarousel.tsx # Reviews display
+└── assistant/
+    ├── RoomDiscoveryWidget.tsx # AI proposal-confirmation flow widget (Apr 9–11, 2026; +test)
+    ├── assistant.api.ts        # POST /v1/ai/room_discovery, /v1/ai/proposals/:hash/shown, /v1/ai/proposals/:hash/decide
+    └── assistant.types.ts      # Proposal, DecideRequest, DecideResponse, lifecycle exception mappings
 ```
 
 ### Key Patterns
@@ -142,11 +151,13 @@ src/features/
 ### Room
 ```typescript
 {
-  id, name, slug, status: 'available'|'occupied'|'maintenance',
-  price: number,          // per night, VND
+  id, name, slug,
+  status: 'available' | 'unavailable',                                  // narrowed 2026-04-29 (rooms_status_deprecated CHECK)
+  price: number,                                                        // per night, VND
   capacity: number,
   location_id,
-  readiness_status: 'ready'|'occupied'|'dirty'|'cleaning'|'inspected'|'out_of_service'
+  readiness_status: 'ready'|'occupied'|'dirty'|'cleaning'|'inspected'|'out_of_service',  // canonical physical state
+  image_url: string | null                                              // added 2026-04-24
 }
 ```
 
@@ -313,7 +324,7 @@ export interface Booking {
   check_out: string
   number_of_guests: number
   special_requests: string | null
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
+  status: 'pending' | 'confirmed' | 'refund_pending' | 'cancelled' | 'refund_failed'  // matches backend BookingStatus enum
   total_price: number
   created_at: string
   updated_at: string
@@ -423,8 +434,9 @@ export interface Room {
   name: string
   description: string
   price: number
-  status: 'available' | 'booked' | 'maintenance'
-  image_url: string | null
+  status: 'available' | 'unavailable'                    // narrowed 2026-04-29 (rooms_status_deprecated CHECK)
+  readiness_status: 'ready' | 'occupied' | 'dirty' | 'cleaning' | 'inspected' | 'out_of_service'
+  image_url: string | null                                // added 2026-04-24 (2026_04_24_124546)
   created_at: string
   updated_at: string
 }
@@ -714,7 +726,49 @@ export async function fetchContactMessages(signal?: AbortSignal): Promise<Contac
 
 ---
 
-## 7. Cross-Feature Dependencies (formerly Section 5)
+## 7. Assistant Feature (`features/assistant/`)
+
+AI proposal-confirmation flow. Calls the backend AI Harness (Phases 0–4) at `/api/v1/ai/*`. Backed by the durable `ai_proposals` table — server-side drift detection (`context_version` recomputed at confirm time), proposer-binding (cache envelope `proposer_user_id`, F-67), and 5/min rate limit on `decide`.
+
+### RoomDiscoveryWidget.tsx
+
+Embedded in the homepage flow. Lifecycle:
+
+1. User submits a natural-language query → `POST /v1/ai/room_discovery` → server returns `{ content, proposals, citations }`.
+2. Widget renders proposal cards. When the user views a card, the widget POSTs `/v1/ai/proposals/:hash/shown` (idempotent).
+3. User confirms or declines a proposal → `POST /v1/ai/proposals/:hash/decide` (5/min throttle).
+4. The server re-validates against `ai_proposals` (room availability, price drift via `context_version`, expiry, shown-before-confirm); on success it dispatches the underlying booking action; on drift it returns one of:
+   - `ProposalNotShownException` — must call `/shown` first
+   - `ProposalExpiredException` — proposal `expires_at` has elapsed
+   - `ProposalPriceChangedException` — `context_version` mismatch (price drift)
+   - `ProposedRoomNoLongerAvailableException` — room booked by another guest
+5. The widget maps each lifecycle exception to a Vietnamese message and offers a re-discover affordance.
+
+### Imports
+
+```typescript
+import api from '@/shared/lib/api'
+import type { Proposal, DecideRequest, DecideResponse } from './assistant.types'
+```
+
+### assistant.api.ts
+
+```typescript
+// POST /v1/ai/room_discovery
+export async function discoverRooms(query: string): Promise<{ content: string; proposals: Proposal[]; citations: Citation[] }>
+
+// POST /v1/ai/proposals/:hash/shown — idempotent
+export async function markProposalShown(hash: string): Promise<void>
+
+// POST /v1/ai/proposals/:hash/decide — 5/min throttle
+export async function decideProposal(hash: string, decision: 'confirmed' | 'declined'): Promise<DecideResponse>
+```
+
+> The widget is the only component allowed to call `/v1/ai/*`. Other features must NOT call AI endpoints directly — proposer-binding requires the same authenticated user that generated the proposal to be the one confirming it.
+
+---
+
+## 8. Cross-Feature Dependencies (formerly Section 5)
 
 ```text
 booking/  → rooms/         (imports getRooms, Room type for room selection in BookingForm)
@@ -732,7 +786,7 @@ locations/ → shared/lib    (imports api client)
 
 ---
 
-## 8. What Does NOT Exist
+## 9. What Does NOT Exist
 
 Previously documented but not present in the actual codebase:
 

@@ -912,8 +912,10 @@ Cache::tags(['permissions'])->remember("user.{$userId}.permissions", 3600, funct
 
 ### CDN Configuration
 
+> **Not currently implemented.** No `cdn.ts` helper exists in the codebase. The pattern below is a future-state reference if a CDN strategy is adopted; place it under `frontend/src/shared/lib/cdn.ts` (the project has no top-level `src/utils/` directory).
+
 ```javascript
-// frontend/src/utils/cdn.ts
+// future: frontend/src/shared/lib/cdn.ts
 export const CDN_URL =
   process.env.VITE_CDN_URL || "https://cdn.your-domain.com";
 

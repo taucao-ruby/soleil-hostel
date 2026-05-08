@@ -1,13 +1,17 @@
 # Testing
 
-> Unit testing with Vitest + Testing Library, E2E scaffolded with Playwright
+> Unit testing with Vitest + Testing Library, E2E scaffolded with Playwright (4 flows, workflow_dispatch-gated)
+>
+> **Last Updated:** May 8, 2026
 
 ## Overview
 
 | Layer       | Framework                       | Status     | Files | Tests |
 | ----------- | ------------------------------- | ---------- | ----- | ----- |
-| Unit/Integ. | Vitest + @testing-library/react | Active     | 24    | 236   |
-| E2E         | Playwright                      | Scaffolded | 1     | -     |
+| Unit/Integ. | Vitest ^4.1 + @testing-library/react | Active     | 39    | see [PROJECT_STATUS.md](../../PROJECT_STATUS.md) |
+| E2E         | Playwright                      | Scaffolded | 4 flows | gated |
+
+> Per-suite test counts moved to [PROJECT_STATUS.md](../../PROJECT_STATUS.md) as the single source of truth. Mar 31 baseline 261 / 25 files; May 3 intermediate 418; current file count 39 — re-verification required.
 
 ## 1. Vitest Configuration
 
@@ -41,71 +45,62 @@ pnpm test:watch       # Watch mode for development
 
 ---
 
-## 2. Test Files
+## 2. Test Areas (39 files as of HEAD `6372d7f`)
 
-### Authentication Tests
+> Per-file test counts moved to [PROJECT_STATUS.md](../../PROJECT_STATUS.md). The areas below describe **what** is covered, not how many tests each file holds.
 
-| File                     | Tests | Coverage                                    |
-| ------------------------ | ----- | ------------------------------------------- |
-| `AdminRoute.test.tsx`    | 5     | Admin-only auth guard, role checks, redirect |
-| `AuthContext.test.tsx`   | 8     | Login, logout, register, error states       |
-| `LoginPage.test.tsx`     | 9     | Form rendering, validation, submission      |
-| `RegisterPage.test.tsx`  | 16    | Form validation, password rules, submission |
+### Authentication
+- `AdminRoute.test.tsx` — admin-only guard, `minRole` prop, redirect targets
+- `AuthContext.test.tsx` — login/logout/register, CSRF flow, error states
+- `LoginPage.test.tsx`, `RegisterPage.test.tsx` — form validation, password complexity, submission
 
-### Booking Tests
+### Booking
+- `BookingDetailPanel.test.tsx` — detail panel states, retry, keyboard/backdrop close, ReviewForm integration for confirmed past bookings
+- `BookingDetailPage.test.tsx` — page-level guest detail
+- `BookingForm.test.tsx` — form rendering, room dropdown, URL params pre-fill
+- `booking.validation.test.ts` — date validation, night calculation
+- `bookingViewModel.test.ts` — `toBookingViewModel`, `isUpcoming`, `isPast`, `canCancel`
+- `BookingList.test.tsx` — `/my-bookings` paginated list
 
-| File                          | Tests | Coverage                                                  |
-| ----------------------------- | ----- | --------------------------------------------------------- |
-| `BookingDetailPanel.test.tsx` | 13    | Detail panel states, loading, retry, keyboard/backdrop close |
-| `BookingForm.test.tsx`        | 12    | Form rendering, room dropdown, URL params pre-fill        |
-| `booking.validation.test.ts`  | 20    | Date validation, night calculation                        |
-| `bookingViewModel.test.ts`    | 12    | toBookingViewModel, isUpcoming, isPast, canCancel         |
+### Bookings (guest dashboard)
+- `GuestDashboard.test.tsx` — loading skeleton, empty state, filter tabs (Tất cả / Sắp tới / Đã qua)
+- `ReviewForm.test.tsx` — star-rating submission, 403 (already-reviewed) and 422 (validation) handling
 
-### Dashboard Tests
+### Admin
+- `AdminLayout.test.tsx` — shell + sidebar + outlet
+- `AdminSidebar.test.tsx` — desktop sidebar, hamburger trigger, slide-over drawer
+- `AdminDashboard.test.tsx` — legacy 3-tab view (Bookings / Trashed / Contacts)
+- `DashboardPage.test.tsx` — role-based routing (admin → AdminDashboard, else GuestDashboard)
+- `bookings/AdminBookingDashboard.test.tsx` — 7 server-side filters
+- `bookings/TodayOperations.test.tsx` — today's arrivals/departures view
 
-| File                        | Tests | Coverage                                              |
-| --------------------------- | ----- | ----------------------------------------------------- |
-| `AdminSidebar.test.tsx`     | 8     | Desktop sidebar, hamburger trigger, slide-over drawer |
-| `GuestDashboard.test.tsx`   | 8     | Loading skeleton, empty state, booking cards, tabs    |
-| `AdminDashboard.test.tsx`   | 8     | Tab rendering, loading, data display, error states    |
-| `DashboardPage.test.tsx`    | 5     | Role-based routing (admin vs guest), loading state    |
+### Home
+- `HomePage.test.tsx` — hero + search + tabs + room cards
+- `HeaderMobile.test.tsx` — auth states, hamburger drawer
+- `SearchCard.test.tsx` — location dropdown, navigation on submit
+- `FilterChips.test.tsx` — chip rendering, active state
 
-### Home Tests
+### Locations
+- `LocationList.test.tsx` — grid + city filter
+- `LocationDetail.test.tsx` — boutique hero + reviews + availability search
+- `LocationsNav.test.tsx` — nav link rendering
 
-| File                      | Tests | Coverage                                          |
-| ------------------------- | ----- | ------------------------------------------------- |
-| `HeaderMobile.test.tsx`   | 8     | Logo, auth states (guest/user), hamburger toggle  |
-| `HomePage.test.tsx`       | 14    | Hero, search form, tabs, room cards, CTA links    |
-| `FilterChips.test.tsx`    | 4     | Chip rendering, active state, click handler       |
-| `SearchCard.test.tsx`     | 8     | Loading, location dropdown, navigation on submit  |
+### Rooms
+- `RoomList.test.tsx` — loading skeleton, status badges, empty state
+- `admin/AdminRoomDashboard.test.tsx` — location filter, table interactions
+- `admin/RoomForm.test.tsx` — create/edit form
 
-### Location Tests
+### Assistant (AI proposal-confirmation)
+- `RoomDiscoveryWidget.test.tsx` — natural-language query, proposal-shown POST, decide POST, error mapping for `ProposalNotShownException` / `ProposalExpiredException` / `ProposalPriceChangedException` / `ProposedRoomNoLongerAvailableException`
 
-| File                      | Tests | Coverage                          |
-| ------------------------- | ----- | --------------------------------- |
-| `LocationsNav.test.tsx`   | 3     | Nav link rendering, active styles |
+### Shared / UI primitives
+- `Button.test.tsx`, `Input.test.tsx`, `StatusBadge.test.tsx`
 
-### Room Tests
-
-| File                  | Tests | Coverage                                                      |
-| --------------------- | ----- | ------------------------------------------------------------- |
-| `RoomList.test.tsx`   | 8     | Loading skeleton, room cards, empty state, error, status badges |
-
-### Shared Component Tests
-
-| File              | Tests | Coverage                            |
-| ----------------- | ----- | ----------------------------------- |
-| `Button.test.tsx` | 12    | Variants, loading, disabled states  |
-| `Input.test.tsx`  | 15    | Types, error display, accessibility |
-
-### Utility Tests
-
-| File                    | Tests | Coverage                                         |
-| ----------------------- | ----- | ------------------------------------------------ |
-| `booking.utils.test.ts` | 6     | getStatusConfig, formatDateVN, formatDateRangeVN |
-| `csrf.test.ts`          | 6     | Token get/set/clear, header injection            |
-| `security.test.ts`      | 22    | XSS sanitization, URL validation                 |
-| `api.test.ts`           | 6     | Interceptors, error handling, refresh            |
+### Shared lib + utils
+- `lib/api.test.ts` — interceptors, 401 refresh + retry queue, CSRF header injection
+- `lib/booking.utils.test.ts` — `getStatusConfig`, `formatDateVN`, `formatDateRangeVN`
+- `utils/csrf.test.ts` — token get/set/clear, null safety
+- `utils/security.test.ts` — XSS sanitisation, URL validation
 
 ---
 
@@ -135,14 +130,48 @@ describe('LoginPage', () => {
 })
 ```
 
-### API Mocking with vi.mock
+### API Mocking with `vi.mock` + `vi.hoisted` (Vitest 2.x+ pattern, mandatory in 4.x)
+
+In Vitest 2.x and later, module-level `let` variables captured by `vi.mock` factories cause a jsdom env failure (the factory is hoisted above your `let`, so it sees `undefined`). Use `vi.hoisted` for any **mutable mock state** that needs to be shared between the factory and the test body.
+
+```typescript
+// ✅ Correct — vi.hoisted gives the factory and the test body the same reference
+const { mockGet, mockPost, csrfRef } = vi.hoisted(() => ({
+  mockGet: vi.fn(),
+  mockPost: vi.fn(),
+  csrfRef: { current: 'initial-csrf' as string | null },
+}))
+
+vi.mock('@/shared/lib/api', () => ({
+  default: { get: mockGet, post: mockPost },
+}))
+
+vi.mock('@/shared/utils/csrf', () => ({
+  getCsrfToken: () => csrfRef.current,
+  setCsrfToken: (t: string) => { csrfRef.current = t },
+  clearCsrfToken: () => { csrfRef.current = null },
+}))
+
+beforeEach(() => {
+  mockGet.mockReset()
+  mockPost.mockReset()
+  csrfRef.current = 'initial-csrf'
+})
+```
+
+```typescript
+// ❌ Anti-pattern — module-level `let` is NOT hoisted; the factory captures undefined
+let csrf: string | null = 'initial'
+vi.mock('@/shared/utils/csrf', () => ({
+  getCsrfToken: () => csrf,   // jsdom env failure under Vitest 2.x+
+}))
+```
+
+For pure mocks that don't need to mutate, the simple form is still fine:
 
 ```typescript
 vi.mock('@/shared/lib/api', () => ({
-  default: {
-    post: vi.fn(),
-    get: vi.fn(),
-  },
+  default: { post: vi.fn(), get: vi.fn() },
 }))
 ```
 
@@ -160,13 +189,31 @@ describe('booking validation', () => {
 
 ---
 
-## 4. E2E Testing (Playwright - Scaffolded)
+## 4. E2E Testing (Playwright — 4 scaffolded flows)
 
-A basic booking E2E spec exists at `tests/e2e/booking.spec.ts`. Playwright requires a running application instance for execution.
+Four user-visible flows live under [`frontend/tests/e2e/`](../../frontend/tests/e2e/README.md), each using the page object model so locators and step semantics are reused across tests:
+
+| Spec | Flow |
+|---|---|
+| `flows/guest-booking.spec.ts` | Land on availability → select room → complete booking form → confirmation |
+| `flows/payment-webhook.spec.ts` | Trigger Stripe `payment_intent.succeeded` → admin dashboard shows `confirmed` |
+| `flows/ai-proposal.spec.ts` | Open RoomDiscoveryWidget → submit NL query → confirm proposal → booking created |
+| `flows/admin-restore.spec.ts` | Admin soft-deletes booking → trashed list → restore → reappears in active list |
+
+Stability discipline:
+- Each `*.spec.ts` is self-contained — no shared state. Playwright runs files in parallel by default.
+- No external network: Stripe webhooks are simulated by hitting our own `/api/webhooks/stripe` endpoint with a signed test payload.
+- Selectors prefer `getByRole` / `getByTestId` over CSS.
+
+CI: flows are gated behind `workflow_dispatch` until the suite stabilises (per [`tests/e2e/README.md`](../../frontend/tests/e2e/README.md)). Promote to `pull_request` trigger after two consecutive green merges.
 
 ```bash
-# Requires backend + frontend running
-npx playwright test
+# Local run
+cd frontend
+pnpm exec playwright install --with-deps  # first time only
+pnpm exec playwright test                  # all flows
+pnpm exec playwright test flows/guest-booking
+pnpm exec playwright test --ui             # interactive
 ```
 
 ---
@@ -187,13 +234,9 @@ cd frontend && npx vitest run src/features/auth/LoginPage.test.tsx
 cd frontend && npx vitest run --coverage
 ```
 
-### Latest Results (March 14, 2026 — source-calculated)
+### Latest Results
 
-```text
-Test Files  24 passed (24)
-     Tests  236 passed (236)
-  Duration  ~16s
-```
+See [PROJECT_STATUS.md](../../PROJECT_STATUS.md) for the canonical baseline. May 3 intermediate run reported 418 tests PASS at HEAD `b69a7a0`. Re-verification required after the May 5–8 maintenance batch (no test count regression expected — `axios` bump and Redis-free `AiHarnessDisabledTest` are backend-side).
 
 ---
 

@@ -21,7 +21,6 @@ Soleil Hostel uses custom middleware for:
 | CheckHttpOnlyTokenValid           | Validate HttpOnly cookies    | `check_httponly_token` |
 | EnsureUserHasRole                 | RBAC role checking           | `role`                 |
 | SecurityHeaders                   | Security response headers    | (global)               |
-| AdvancedRateLimitMiddleware       | Dual-algorithm rate limiting | (configurable)         |
 | ThrottleApiRequests               | Simple API throttling        | `throttle`             |
 | Cors                              | CORS handling                | (global)               |
 | VerifyBookingOwnership            | Booking owner check          | (route-specific)       |

@@ -128,8 +128,6 @@ tests/
 |   |-- Queue/
 |   |   `-- QueueMonitoringAuthorizationTest.php
 |   |-- RateLimiting/
-|   |   |-- AdvancedRateLimitMiddlewareTest.php
-|   |   |-- AdvancedRateLimitServiceTest.php
 |   |   |-- BookingRateLimitTest.php
 |   |   `-- LoginRateLimitTest.php
 |   |-- Room/
@@ -175,8 +173,6 @@ tests/
 |   |   `-- BookingNotificationTest.php
 |   |-- Policies/
 |   |   `-- ReviewPolicyTest.php
-|   |-- RateLimiting/
-|   |   `-- AdvancedRateLimitServiceTest.php
 |   |-- Repositories/
 |   |   |-- EloquentBookingRepositoryTest.php
 |   |   `-- EloquentRoomRepositoryTest.php

@@ -75,39 +75,6 @@ None currently. Multi-region is expensive and premature for current scale.
 
 ---
 
-### LIM-005: Redis Required for Advanced Rate Limiting
-
-**Impact**: Medium  
-**Status**: Mitigated  
-**Affected**: `RateLimitService`
-
-#### Description
-
-Advanced rate limiting (sliding window, token bucket) requires Redis for atomic operations.
-
-#### Consequences
-
-- Without Redis, falls back to in-memory store
-- In-memory store doesn't work across multiple servers
-- Rate limits may be less accurate without Redis
-
-#### Workarounds
-
-```php
-// RateLimitService automatically falls back
-if (!$this->redisAvailable()) {
-    return $this->checkWithMemory($key, $limits);
-}
-```
-
-#### Mitigation
-
-- Laravel's built-in rate limiter works with any cache driver
-- Critical limits use database for persistence
-- CI/CD tests use database cache successfully
-
----
-
 ## Payment & Billing
 
 ### LIM-002: Payment Integration (In Progress)

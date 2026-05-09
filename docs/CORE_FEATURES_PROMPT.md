@@ -114,7 +114,6 @@ GET    /api/health/detailed            # Full system health (Admin)
 - `RoomService` — CRUD with optimistic locking, cache tags
 - `RoomAvailabilityService` — Availability queries with caching
 - `RoomAvailabilityCache` — Tag-based cache invalidation
-- `RateLimitService` — Sliding window + token bucket, Redis-backed
 - `HtmlPurifierService` — XSS sanitization
 
 ### Backend Models with Relationships

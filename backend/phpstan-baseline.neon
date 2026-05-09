@@ -91,12 +91,6 @@ parameters:
 			path: app/Http/Controllers/LocationController.php
 
 		-
-			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Middleware/AdvancedRateLimitMiddleware.php
-
-		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:withAccessToken\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -665,24 +659,6 @@ parameters:
 			identifier: property.unusedType
 			count: 1
 			path: app/Services/HtmlPurifierService.php
-
-		-
-			message: '#^Parameter \#2 \$args of static method Redis\:\:eval\(\) expects array, int given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Services/RateLimitService.php
-
-		-
-			message: '#^Parameter \#3 \$num_keys of static method Redis\:\:eval\(\) expects int, string given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Services/RateLimitService.php
-
-		-
-			message: '#^Static method Redis\:\:eval\(\) invoked with 8 parameters, 1\-3 required\.$#'
-			identifier: arguments.count
-			count: 2
-			path: app/Services/RateLimitService.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:overlappingBookings\(\)\.$#'

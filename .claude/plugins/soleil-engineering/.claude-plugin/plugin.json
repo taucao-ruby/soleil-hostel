@@ -1,0 +1,8 @@
+{
+  "name": "soleil-engineering",
+  "description": "Reusable Claude Code engineering workflows for the Soleil Hostel monorepo: release gates, static analysis triage, security review, and MCP-assisted repo verification. Wraps existing scripts and the soleil-mcp server; never bypasses repo policy.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Soleil Engineering"
+  }
+}

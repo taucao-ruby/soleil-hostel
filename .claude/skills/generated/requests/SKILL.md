@@ -1,6 +1,7 @@
 ---
 name: requests
 description: "Skill for the Requests area of soleil-hostel. 26 symbols across 9 files."
+disable-model-invocation: true
 ---
 
 # Requests

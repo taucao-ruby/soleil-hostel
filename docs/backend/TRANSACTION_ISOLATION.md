@@ -4,6 +4,12 @@
 > **Last Updated**: 2026-01-24  
 > **Status**: Implemented
 
+> **Canonical sources** for the underlying invariants referenced below (`lock_version` ownership, `lockForUpdate()` requirement, half-open intervals, exclusion constraint):
+> - `docs/agents/ARCHITECTURE_FACTS.md` (domain invariants and concurrency contract)
+> - `docs/DB_FACTS.md` (which tables carry `lock_version`, PostgreSQL guarantees)
+>
+> This document describes isolation-level *strategy*, not the invariants themselves. Code samples here are illustrative implementation, not contract definitions.
+
 ## Overview
 
 This document describes the database transaction isolation strategy implemented in the Soleil Hostel booking system. The design ensures zero race conditions, prevents double-booking scenarios, and maintains optimal performance under concurrent load.

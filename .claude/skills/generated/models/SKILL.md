@@ -1,6 +1,7 @@
 ---
 name: models
 description: "Skill for the Models area of soleil-hostel. 63 symbols across 26 files."
+disable-model-invocation: true
 ---
 
 # Models

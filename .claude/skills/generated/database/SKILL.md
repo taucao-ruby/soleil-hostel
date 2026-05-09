@@ -1,6 +1,7 @@
 ---
 name: database
 description: "Skill for the Database area of soleil-hostel. 43 symbols across 13 files."
+disable-model-invocation: true
 ---
 
 # Database

@@ -1,0 +1,52 @@
+name: "CI: Harness Lints"
+
+# Soft governance gate for the Claude Code instruction surface.
+# Runs the same Node lints that scripts/ship.sh invokes locally:
+#   - scripts/lint-memory.mjs        budget + secret scan for ~/.claude memory dir (skipped in CI; fail-soft)
+#   - scripts/audit-skills.mjs       enforces disable-model-invocation on .claude/skills/generated/*
+#   - scripts/lint-doc-pointers.mjs  every cited path in CLAUDE.md / AGENTS.md / docs/README.md / CONTROL_PLANE_OWNERSHIP.md must resolve
+
+on:
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - "CLAUDE.md"
+      - "AGENTS.md"
+      - "docs/**"
+      - ".claude/**"
+      - ".agent/**"
+      - "scripts/lint-memory.mjs"
+      - "scripts/audit-skills.mjs"
+      - "scripts/lint-doc-pointers.mjs"
+      - ".github/workflows/harness-lints.yml"
+  push:
+    branches: [main, dev]
+
+concurrency:
+  group: harness-lints-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  harness-lints:
+    name: Harness lints (memory / skills / doc pointers)
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: lint-memory.mjs
+        run: node scripts/lint-memory.mjs
+
+      - name: audit-skills.mjs
+        run: node scripts/audit-skills.mjs
+
+      - name: lint-doc-pointers.mjs
+        run: node scripts/lint-doc-pointers.mjs

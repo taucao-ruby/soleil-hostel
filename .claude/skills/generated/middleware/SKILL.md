@@ -1,6 +1,7 @@
 ---
 name: middleware
 description: "Skill for the Middleware area of soleil-hostel. 22 symbols across 6 files."
+disable-model-invocation: true
 ---
 
 # Middleware

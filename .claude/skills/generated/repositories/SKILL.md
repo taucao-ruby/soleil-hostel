@@ -1,6 +1,7 @@
 ---
 name: repositories
 description: "Skill for the Repositories area of soleil-hostel. 90 symbols across 10 files."
+disable-model-invocation: true
 ---
 
 # Repositories

@@ -1,6 +1,7 @@
 ---
 name: authorization
 description: "Skill for the Authorization area of soleil-hostel. 24 symbols across 5 files."
+disable-model-invocation: true
 ---
 
 # Authorization

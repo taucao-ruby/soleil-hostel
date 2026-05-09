@@ -1,6 +1,7 @@
 ---
 name: cache
 description: "Skill for the Cache area of soleil-hostel. 65 symbols across 19 files."
+disable-model-invocation: true
 ---
 
 # Cache

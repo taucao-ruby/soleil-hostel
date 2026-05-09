@@ -215,4 +215,4 @@ See [WORKLOG.md](./WORKLOG.md) for chronological change log.
 ## Support
 
 - **Issues**: GitHub Issues
-- **API Docs**: [Interactive API Reference (Redoc)](./api/index.html) | [OpenAPI Spec](./api/openapi.yaml) | Postman collection in `/backend/postman/`
+- **API Docs**: [Interactive API Reference (Redoc)](./api/index.html) | [OpenAPI Spec](./api/openapi.yaml) | Postman collection in `backend/postman/`

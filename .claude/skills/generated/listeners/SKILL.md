@@ -1,6 +1,7 @@
 ---
 name: listeners
 description: "Skill for the Listeners area of soleil-hostel. 35 symbols across 17 files."
+disable-model-invocation: true
 ---
 
 # Listeners

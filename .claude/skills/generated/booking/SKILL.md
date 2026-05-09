@@ -1,6 +1,7 @@
 ---
 name: booking
 description: "Skill for the Booking area of soleil-hostel. 205 symbols across 38 files."
+disable-model-invocation: true
 ---
 
 # Booking

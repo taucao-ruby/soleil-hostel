@@ -1,5 +1,10 @@
 # 🗄️ Database Schema & Indexes
 
+> **Role**: extended schema reference (ER diagrams, per-column documentation, full index catalog).
+> **Canonical operational facts**: `docs/DB_FACTS.md` (table catalog, index strategy, query patterns, migration rules).
+> **Canonical domain invariants**: `docs/agents/ARCHITECTURE_FACTS.md` (booking overlap, auth, concurrency).
+> When this file appears to conflict with either canonical source, the canonical source wins.
+
 > Complete database design for Soleil Hostel — 61 migrations on disk as of HEAD `6372d7f` (2026-05-08). 25 application+framework tables: `users`, `locations`, `rooms`, `bookings`, `reviews`, `personal_access_tokens`, `email_verification_codes`, `contact_messages`, `admin_audit_logs`, `stays`, `room_assignments`, `service_recovery_cases`, `policy_documents`, `ai_proposal_events`, `ai_proposals`, `stripe_webhook_events`, `stripe_refund_events`, `deposit_events`, plus framework tables (`sessions`, `password_reset_tokens`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`).
 
 ## ER Diagram
@@ -973,45 +978,14 @@ CHECK (settlement_status IN (
 
 ---
 
-## Half-Open Interval Logic
+## Booking overlap rules (canonical pointer)
 
-For booking overlap detection, we use **half-open intervals** `[check_in, check_out)`:
+The half-open interval contract `[check_in, check_out)`, the exact overlap query shape, the PostgreSQL exclusion constraint definition (`btree_gist`, `daterange(... , '[)')`, `WHERE status IN ('pending','confirmed') AND deleted_at IS NULL`), and the same-day checkout/checkin allowance all live in canonical sources:
 
-```sql
--- Two bookings overlap if:
--- booking1.check_in < booking2.check_out AND booking1.check_out > booking2.check_in
+- Domain invariant: `docs/agents/ARCHITECTURE_FACTS.md`
+- DB constraint contract: `docs/DB_FACTS.md` §3 (PostgreSQL Guarantees)
 
--- This query finds overlapping bookings:
-SELECT * FROM bookings
-WHERE room_id = :room_id
-  AND status IN ('pending', 'confirmed')
-  AND check_in < :new_check_out
-  AND check_out > :new_check_in;
-```
-
-**Benefit:** Same-day check-out and check-in are allowed:
-
-- Guest A: Jan 1-5 (checks out Jan 5)
-- Guest B: Jan 5-10 (checks in Jan 5) ✅ No conflict
-
----
-
-## PostgreSQL Exclusion Constraint
-
-Database-level overlap prevention (active in production):
-
-```sql
-CREATE EXTENSION IF NOT EXISTS btree_gist;
-
-ALTER TABLE bookings
-ADD CONSTRAINT no_overlapping_bookings
-EXCLUDE USING gist (
-    room_id WITH =,
-    daterange(check_in, check_out, '[)') WITH &&
-) WHERE (status IN ('pending', 'confirmed') AND deleted_at IS NULL);
-```
-
-**Note:** The `deleted_at IS NULL` clause was added in migration `2026_02_12` to prevent false conflicts from soft-deleted bookings.
+Do not paraphrase those rules here. Cite the canonical line.
 
 ---
 
@@ -1304,37 +1278,11 @@ EmailVerificationCode
 
 ---
 
-## Locking Strategies
+## Locking strategies (canonical pointer)
 
-### Optimistic Locking (Rooms)
+The optimistic-locking contract (`lock_version` on `rooms` and `locations`, `HasLockVersion` trait, `StaleModelLockException`) and the pessimistic-locking contract (`lockForUpdate()` inside `DB::transaction` for booking creation/cancellation) live in canonical sources:
 
-Sử dụng `lock_version` để detect concurrent updates:
+- Domain invariant: `docs/agents/ARCHITECTURE_FACTS.md` (booking concurrency, room/location optimistic locking)
+- DB column ownership: `docs/DB_FACTS.md` (which tables carry `lock_version`)
 
-```php
-// Room model has HasLockVersion trait
-$room = Room::find(1);
-$room->price = 200;
-$room->save(); // Auto increments lock_version
-
-// If another process updated, throws StaleModelLockException
-```
-
-### Pessimistic Locking (Bookings)
-
-Sử dụng `SELECT FOR UPDATE` để lock rows:
-
-```php
-DB::transaction(function () {
-    // Lock overlapping bookings
-    $conflicts = Booking::where('room_id', $roomId)
-        ->whereIn('status', ['pending', 'confirmed'])
-        ->where('check_in', '<', $checkOut)
-        ->where('check_out', '>', $checkIn)
-        ->lockForUpdate()  // SELECT FOR UPDATE
-        ->exists();
-
-    if (!$conflicts) {
-        Booking::create([...]);
-    }
-});
-```
+Do not paraphrase those rules here. Cite the canonical line.

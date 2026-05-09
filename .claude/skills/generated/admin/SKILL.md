@@ -1,6 +1,7 @@
 ---
 name: admin
 description: "Skill for the Admin area of soleil-hostel. 29 symbols across 12 files."
+disable-model-invocation: true
 ---
 
 # Admin

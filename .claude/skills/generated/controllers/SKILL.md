@@ -1,6 +1,7 @@
 ---
 name: controllers
 description: "Skill for the Controllers area of soleil-hostel. 31 symbols across 22 files."
+disable-model-invocation: true
 ---
 
 # Controllers

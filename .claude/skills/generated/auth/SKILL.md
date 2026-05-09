@@ -1,6 +1,7 @@
 ---
 name: auth
 description: "Skill for the Auth area of soleil-hostel. 61 symbols across 19 files."
+disable-model-invocation: true
 ---
 
 # Auth

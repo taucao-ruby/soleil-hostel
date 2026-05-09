@@ -30,7 +30,8 @@
       "Bash(*DB_PASSWORD*)",
       "Bash(*SECRET*)",
       "Bash(*private_key*)",
-      "Bash(*tinker*)"
+      "Bash(*tinker*)",
+      "Read(./.claude/worktrees/**)"
     ]
   },
   "hooks": {

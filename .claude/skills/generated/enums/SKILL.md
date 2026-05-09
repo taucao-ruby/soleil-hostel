@@ -1,6 +1,7 @@
 ---
 name: enums
 description: "Skill for the Enums area of soleil-hostel. 20 symbols across 9 files."
+disable-model-invocation: true
 ---
 
 # Enums

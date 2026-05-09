@@ -80,6 +80,7 @@ All agents must read `.claude/memory/global-invariants.md` and `.claude/memory/r
 - Session and ledger surfaces: `docs/COMPACT.md`, `docs/WORKLOG.md`, `PROJECT_STATUS.md`, `BACKLOG.md`
 - Governance and onboarding: `docs/AI_GOVERNANCE.md`, `AGENTS.md`
 - Findings: `docs/FINDINGS_BACKLOG.md`
+- Archived process history (do NOT cite as current truth): `docs/archive/README.md` — index for `docs/cleanup/`, `docs/gates/`, `docs/decisions/`, `docs/governance/`, `docs/audit/`, `docs/validation/` (each carries an `ARCHIVED.md` marker)
 - Agent self-learning: `docs/agents/AGENT_LEARNINGS_OPERATING_RULES.md` — read/write rules for booking, migration, RBAC, and API contract tasks.
 - Active failure patterns: `docs/agents/AGENT_LEARNINGS.md` — tag-scoped reads only (see R-01–R-04 in operating rules).
 - Schema examples: `docs/agents/AGENT_LEARNINGS_EXAMPLES.md` — illustrative entries only; do not cite as historical facts (G-06).
@@ -92,10 +93,16 @@ All agents must read `.claude/memory/global-invariants.md` and `.claude/memory/r
 - Mark unresolved conflicts as `UNRESOLVED` instead of inventing a rule.
 - If needed guidance lives in a lower layer, follow the document map rather than expanding this file.
 
+## Retrieval hygiene
+
+- `.claude/worktrees/` is operational state (registered git worktrees + transient mirrors), not source-of-truth input. It is gitignored, Grep (ripgrep) honors that, and `.claude/settings.json` `permissions.deny` now contains `Read(./.claude/worktrees/**)` to suppress it from Glob/Read as well.
+- Prefer Grep over Glob for content discovery. Use Glob only when you specifically need filesystem listings.
+- Treat any hit under `.claude/worktrees/**` as a duplicate of the main tree; never cite it as a primary source.
+
 <!-- soleil-ai-review-engine:start -->
 # soleil-ai-review-engine — Code Intelligence
 
-This project is indexed by soleil-ai-review-engine as **soleil-hostel** (6180 symbols, 16841 relationships, 272 execution flows). Use the soleil-ai-review-engine MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by soleil-ai-review-engine as **soleil-hostel** (6106 symbols, 16541 relationships, 273 execution flows). Use the soleil-ai-review-engine MCP tools to understand code, assess impact, and navigate safely.
 
 > If any soleil-ai-review-engine tool warns the index is stale, run `npx soleil-engine-cli analyze` in terminal first.
 

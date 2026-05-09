@@ -4,6 +4,12 @@ Authoritative reference for booking update and restore response contracts as shi
 Derived from `BookingController`, `AdminBookingController`, `UpdateBookingRequest`, and
 `BookingService`. Last verified: 2026-03-31.
 
+> **Canonical sources** for the underlying invariants this API exposes (half-open intervals, blocking statuses, `lockForUpdate()`, exclusion constraint, `lock_version`):
+> - `docs/agents/ARCHITECTURE_FACTS.md` (domain invariants)
+> - `docs/DB_FACTS.md` (column + constraint contracts)
+>
+> This document describes the API surface only. Do not paraphrase those invariants here.
+
 > **UI DESIGN CONTEXT (Google Stitch):**
 > Use this document to design booking status badges, timeline steps, and alert variants.
 > The booking state machine governs which actions are available in the UI at any point.

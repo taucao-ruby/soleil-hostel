@@ -17,6 +17,23 @@ fail() { echo "[FAIL] $1"; exit 1; }
 echo "=== Soleil Hostel — Ship Gate ==="
 echo ""
 
+# Pre-gate: harness governance lints (no-op if scripts or node are absent)
+if command -v node >/dev/null 2>&1; then
+    for lint in lint-memory.mjs audit-skills.mjs lint-doc-pointers.mjs; do
+        f="$REPO_ROOT/scripts/$lint"
+        if [ -f "$f" ]; then
+            echo "--- Pre-gate: $lint ---"
+            (cd "$REPO_ROOT" && node "$f") \
+                && pass "Pre-gate $lint" \
+                || fail "Pre-gate $lint"
+            echo ""
+        fi
+    done
+else
+    echo "[SKIP] node not on PATH; skipping harness pre-gate lints"
+    echo ""
+fi
+
 # Gate 1: Backend tests
 echo "--- Gate 1: php artisan test ---"
 (cd "$REPO_ROOT/backend" && php artisan test --stop-on-failure) \

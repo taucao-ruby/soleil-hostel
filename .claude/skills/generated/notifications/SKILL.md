@@ -1,6 +1,7 @@
 ---
 name: notifications
 description: "Skill for the Notifications area of soleil-hostel. 30 symbols across 8 files."
+disable-model-invocation: true
 ---
 
 # Notifications

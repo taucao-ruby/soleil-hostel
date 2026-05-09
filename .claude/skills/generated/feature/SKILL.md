@@ -1,6 +1,7 @@
 ---
 name: feature
 description: "Skill for the Feature area of soleil-hostel. 233 symbols across 115 files."
+disable-model-invocation: true
 ---
 
 # Feature

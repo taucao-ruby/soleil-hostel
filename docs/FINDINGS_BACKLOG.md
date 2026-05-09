@@ -132,3 +132,11 @@ The Phase 1 audit checked whether moderator role has explicit 403/deny tests aga
 - `GET /api/v1/admin/bookings/trashed` and `GET /api/v1/admin/bookings/trashed/{id}` — intentionally moderator-allowed per the RBAC matrix in `docs/PERMISSION_MATRIX.md`; the `v1.php` route group puts `role:moderator` on the read-only admin booking index/trashed routes. A "deny" test would contradict the matrix.
 
 No new tests written. Adding redundant coverage was rejected per the "do not duplicate" rule in CONTRACT.md.
+
+## 2026-05-09 Audit Findings — Harness/Security Layer
+
+External harness audit (third-party report). Most claims were stale or unverifiable (see verification notes in WORKLOG). One genuine, in-scope item below.
+
+| ID   | File:Line | Issue | Severity | Suggested Fix | Status |
+| ---- | --------- | ----- | -------- | ------------- | ------ |
+| F-69 | `backend/app/Services/RateLimitService.php`, `backend/app/Http/Middleware/AdvancedRateLimitMiddleware.php`, `backend/app/Events/RateLimiterDegraded.php`, `backend/app/Events/RequestThrottled.php`, `backend/tests/Unit/RateLimiting/AdvancedRateLimitServiceTest.php`, `backend/tests/Feature/RateLimiting/AdvancedRateLimitServiceTest.php`, `backend/tests/Feature/RateLimiting/AdvancedRateLimitMiddlewareTest.php` | Self-deprecated `RateLimitService` and its `AdvancedRateLimitMiddleware`, plus the two events they alone dispatch (`RateLimiterDegraded`, `RequestThrottled`) and three test files. The service docblock at `RateLimitService.php:25-27` already declared "Not registered in middleware stack ... Both are dead code retained for reference. Remove both files when ready to clean up." Production rate limiting is unaffected — `App\Providers\RateLimiterServiceProvider` (Laravel `RateLimiter` facade, configured for `login`, `booking`, `api-public`, `refresh-token`, `global-api`, `password-reset`, `email-verification`) remains the live path. Test suite for the dead middleware was running against `/api/health` and providing false coverage. | Medium | Delete the seven listed files; remove four stale entries from `phpstan-baseline.neon` (`AdvancedRateLimitMiddleware.php` line 97 area, three `RateLimitService.php` Redis::eval entries). | **Fixed** (2026-05-09) |

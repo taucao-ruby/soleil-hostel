@@ -24,7 +24,6 @@ The Soleil Hostel backend uses a **Service Layer** to encapsulate business logic
 | [RoomService](#roomservice)                         | Room CRUD operations              | Optimistic locking, cache tags       |
 | [RoomAvailabilityService](#roomavailabilityservice) | Room availability queries         | Cached availability checks           |
 | [RoomAvailabilityCache](#roomavailabilitycache)     | Cache management for availability | Tag-based invalidation               |
-| [RateLimitService](#ratelimitservice)               | Advanced rate limiting            | Sliding window, token bucket, Redis  |
 | [HtmlPurifierService](#htmlpurifierservice)         | XSS protection                    | HTML sanitization                    |
 
 ---
@@ -246,50 +245,6 @@ public function invalidateRoom(int $roomId): void
 
 // Invalidate by date range
 public function invalidateDateRange(Carbon $start, Carbon $end): void
-```
-
----
-
-## RateLimitService
-
-**Location**: `app/Services/RateLimitService.php`
-
-Advanced rate limiting with dual-layer protection and Redis backend.
-
-### Key Methods
-
-```php
-// Check if request is allowed
-public function check(string $key, array $limits): array
-
-// Get current limit status
-public function getStatus(string $key): array
-
-// Reset rate limit for key
-public function reset(string $key): void
-```
-
-### Algorithms
-
-| Algorithm          | Use Case           | Behavior                        |
-| ------------------ | ------------------ | ------------------------------- |
-| **Sliding Window** | Strict time limits | Smooth distribution over time   |
-| **Token Bucket**   | Burst-friendly     | Allows bursts up to bucket size |
-
-### Fallback Strategy
-
-1. **Primary**: Redis (atomic operations, zero race conditions)
-2. **Fallback**: In-memory store (circuit breaker pattern)
-
-### Metrics
-
-```php
-[
-    'checks_total' => int,      // Total rate limit checks
-    'allowed_total' => int,     // Requests allowed
-    'throttled_total' => int,   // Requests throttled
-    'fallback_count' => int,    // Times fell back to memory
-]
 ```
 
 ---

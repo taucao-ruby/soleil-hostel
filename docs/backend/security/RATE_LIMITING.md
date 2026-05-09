@@ -79,38 +79,39 @@ After 60s: [0→1] → Allowed
 
 ---
 
-## RateLimitService Implementation
+## Production Implementation
+
+Rate limiting in production is provided by Laravel's `RateLimiter` facade,
+configured in [`app/Providers/RateLimiterServiceProvider.php`](../../../backend/app/Providers/RateLimiterServiceProvider.php).
+That provider is the single source of truth for the limits below; the
+table in this document is descriptive, not authoritative.
+
+Each named limiter (`login`, `booking`, `api-public`, `refresh-token`,
+`global-api`, `password-reset`, `email-verification`) is applied via
+`->middleware('throttle:<name>')` on the corresponding routes in
+`routes/api/v1.php`.
 
 ```php
-class RateLimitService
-{
-    private const REDIS_PREFIX = 'rate:';
-    private const MEMORY_STORE_LIMIT = 10000;
-
-    private array $memoryStore = [];
-    private bool $redisHealthy = true;
-
-    public function check(string $key, array $limits): array
-    {
-        try {
-            if ($this->redisHealthy && $this->redisAvailable()) {
-                return $this->checkWithRedis($key, $limits);
-            }
-        } catch (\Throwable $e) {
-            Log::warning('Redis rate limiter failed, using fallback', [
-                'error' => $e->getMessage()
-            ]);
-            $this->redisHealthy = false;
-            event(new RateLimiterDegraded(['service' => 'redis']));
-        }
-
-        // Automatic fallback to in-memory
-        return $this->checkWithMemory($key, $limits);
-    }
-
-    // Returns: [allowed, remaining, reset_after, retry_after]
-}
+// app/Providers/RateLimiterServiceProvider.php
+RateLimiter::for('login', function (Request $request) {
+    return [
+        Limit::perMinute(5)->by($request->ip()),
+        Limit::perHour(20)->by('login:' . $request->input('email')),
+    ];
+});
 ```
+
+Storage uses the Laravel cache driver (Redis in production, array in tests).
+There is no project-defined fallback or degradation event — Laravel handles
+cache-driver failures via the configured cache store.
+
+> **Historical note**: A more elaborate `App\Services\RateLimitService` with
+> dual algorithms, atomic Lua scripts, and `RateLimiterDegraded` /
+> `RequestThrottled` events was prototyped but never registered in the
+> middleware stack. It was removed on 2026-05-09 (FINDINGS_BACKLOG F-69).
+> If a future need for token-bucket semantics or in-process fallback
+> arises, prefer extending the Laravel facade configuration over
+> reintroducing a parallel limiter.
 
 ---
 
@@ -123,46 +124,19 @@ X-RateLimit-Reset: 1702900800
 Retry-After: 45
 ```
 
+These are emitted by Laravel's built-in `ThrottleRequests` middleware.
+
 ---
 
 ## 429 Response
 
+The custom messages per limiter are defined inline in
+`RateLimiterServiceProvider`. For example:
+
 ```json
 {
-  "message": "Too many requests. Please try again later.",
-  "retry_after": 45
-}
-```
-
----
-
-## Configuration
-
-```php
-// config/rate-limiting.php
-return [
-    'login' => [
-        ['max' => 5, 'window' => 60, 'key' => 'ip'],
-        ['max' => 20, 'window' => 3600, 'key' => 'email'],
-    ],
-    'booking' => [
-        ['max' => 3, 'window' => 60, 'key' => 'user', 'algorithm' => 'token_bucket'],
-    ],
-    'api' => [
-        ['max' => 60, 'window' => 60, 'key' => 'user'],
-    ],
-];
-```
-
----
-
-## Fallback
-
-When Redis is unavailable, the system falls back to in-memory limiting:
-
-```php
-if (!$this->redis->isConnected()) {
-    return $this->memoryFallback($key, $limits);
+  "message": "Too many login attempts. Please try again in 60 seconds.",
+  "retry_after": 60
 }
 ```
 
@@ -174,38 +148,20 @@ if (!$this->redis->isConnected()) {
 php artisan test tests/Feature/RateLimiting/
 ```
 
-| Test Suite         | Count  |
-| ------------------ | ------ |
-| Login Rate Limit   | 4      |
-| Booking Rate Limit | 3      |
-| Middleware Tests   | 8      |
-| **Total**          | **15** |
-
----
-
-## Benchmarks
-
-| Scenario          | Overhead |
-| ----------------- | -------- |
-| Rate limit check  | <1ms     |
-| With Redis        | ~0.5ms   |
-| Fallback (memory) | ~0.1ms   |
+Two suites cover the live limiters end-to-end:
+`LoginRateLimitTest` and `BookingRateLimitTest`.
 
 ---
 
 ## Debugging
 
-### Check Current Limits
+The Laravel rate limiter stores counters in the configured cache. With the
+Redis cache driver, throttle keys are namespaced under the cache prefix
+(e.g. `laravel_cache:...`). Use the Laravel cache facade rather than
+`redis-cli` for portable inspection:
 
 ```bash
-redis-cli
-> ZCOUNT ratelimit:login:192.168.1.1 -inf +inf
-> TTL ratelimit:login:192.168.1.1
-```
-
-### Reset Limits
-
-```bash
-redis-cli
-> DEL ratelimit:login:192.168.1.1
+php artisan tinker
+> Cache::get('login:192.168.1.1');
+> RateLimiter::clear('login:192.168.1.1');
 ```

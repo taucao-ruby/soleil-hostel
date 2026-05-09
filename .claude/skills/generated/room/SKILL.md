@@ -1,6 +1,7 @@
 ---
 name: room
 description: "Skill for the Room area of soleil-hostel. 107 symbols across 24 files."
+disable-model-invocation: true
 ---
 
 # Room

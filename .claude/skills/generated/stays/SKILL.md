@@ -1,6 +1,7 @@
 ---
 name: stays
 description: "Skill for the Stays area of soleil-hostel. 37 symbols across 11 files."
+disable-model-invocation: true
 ---
 
 # Stays

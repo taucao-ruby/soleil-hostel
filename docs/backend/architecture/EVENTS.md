@@ -167,50 +167,6 @@ class BookingDeleted
 
 ---
 
-### RateLimiterDegraded
-
-Fired when rate limiter falls back to in-memory storage (Redis down).
-
-```php
-// App\Events\RateLimiterDegraded
-class RateLimiterDegraded
-{
-    use Dispatchable, SerializesModels;
-
-    public function __construct(
-        public array $data  // Contains error details
-    ) {}
-}
-```
-
-**Dispatched by:** `RateLimitService` when Redis connection fails
-
-**Use case:** Alerting + monitoring for production health
-
----
-
-### RequestThrottled
-
-Fired when a request exceeds rate limits.
-
-```php
-// App\Events\RequestThrottled
-class RequestThrottled
-{
-    use Dispatchable, SerializesModels;
-
-    public function __construct(
-        public array $data  // Contains IP, user_id, endpoint
-    ) {}
-}
-```
-
-**Dispatched by:** `AdvancedRateLimitMiddleware`
-
-**Use case:** Security monitoring, abuse detection
-
----
-
 ## Listeners
 
 ### InvalidateCacheOnBookingChange
@@ -368,17 +324,8 @@ Next request → Cache miss → Fresh data
 
 ## Monitoring Integration
 
-### Production Setup
-
-```php
-// Slack notification for rate limiter degradation
-Event::listen(RateLimiterDegraded::class, function ($event) {
-    Notification::route('slack', config('services.slack.webhook'))
-        ->notify(new SystemDegradedNotification($event->data));
-});
-
-// Log throttled requests for security audit
-Event::listen(RequestThrottled::class, function ($event) {
-    Log::channel('security')->warning('Request throttled', $event->data);
-});
-```
+Production rate limiting is provided by Laravel's `RateLimiter` facade as
+configured in `app/Providers/RateLimiterServiceProvider.php`. It does not
+emit project-defined events; throttled requests surface as HTTP 429
+responses and standard Laravel `RateLimitExceeded` exceptions, which can
+be observed via the application log channel.

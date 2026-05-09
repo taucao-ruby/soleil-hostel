@@ -76,8 +76,6 @@
 - `BookingCreated.php`
 - `BookingDeleted.php`
 - `BookingUpdated.php`
-- `RateLimiterDegraded.php`
-- `RequestThrottled.php`
 
 ### `Exceptions`
 
@@ -114,7 +112,6 @@ Controllers:
 Middleware:
 
 - `Middleware/AddCorrelationId.php`
-- `Middleware/AdvancedRateLimitMiddleware.php`
 - `Middleware/CheckHttpOnlyTokenValid.php`
 - `Middleware/CheckTokenNotRevokedAndNotExpired.php`
 - `Middleware/Cors.php`
@@ -234,7 +231,6 @@ Resources and responses:
 - `CustomerService.php`
 - `HealthService.php`
 - `HtmlPurifierService.php`
-- `RateLimitService.php`
 - `RoomAvailabilityService.php`
 - `RoomService.php`
 - `Cache/CacheWarmer.php`

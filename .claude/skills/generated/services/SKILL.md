@@ -1,6 +1,7 @@
 ---
 name: services
 description: "Skill for the Services area of soleil-hostel. 160 symbols across 49 files."
+disable-model-invocation: true
 ---
 
 # Services

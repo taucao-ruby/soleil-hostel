@@ -256,7 +256,7 @@ curl -s https://your-domain.com/api/health/ready | jq '.checks.redis'
 #### Notes
 
 - Application should continue working with degraded performance
-- `RateLimitService` falls back to in-memory automatically
+- Laravel's `RateLimiter` facade (configured in `RateLimiterServiceProvider`) uses the cache driver and falls back per the configured cache store
 - `HasCacheTagSupport` trait handles graceful degradation
 
 ---

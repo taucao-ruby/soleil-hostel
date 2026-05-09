@@ -1,6 +1,7 @@
 ---
 name: policies
 description: "Skill for the Policies area of soleil-hostel. 65 symbols across 13 files."
+disable-model-invocation: true
 ---
 
 # Policies

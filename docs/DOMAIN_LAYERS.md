@@ -55,11 +55,7 @@ until the stay is fulfilled. This layer does **not** implement a ledger or GL po
 
 Source: `App\Enums\BookingStatus`, migration `2026_03_17_000003`.
 
-**Invariants preserved:**
-- Half-open interval `[check_in, check_out)` for overlap detection.
-- Overlap statuses: `pending`, `confirmed` only.
-- PostgreSQL EXCLUDE USING gist filters `deleted_at IS NULL`.
-- `lockForUpdate()` required for booking creation/cancellation.
+**Invariants preserved:** the booking overlap and concurrency invariants (half-open intervals, blocking statuses, PostgreSQL exclusion constraint with `deleted_at IS NULL`, `lockForUpdate()` requirement) remain canonical in `docs/agents/ARCHITECTURE_FACTS.md` + `docs/DB_FACTS.md`. This layer does not modify them.
 
 ## Layer 2: stays — Operational Occupancy Lifecycle
 

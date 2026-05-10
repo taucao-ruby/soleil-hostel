@@ -2330,12 +2330,29 @@ paths:
   /auth/csrf-token:
     get:
       tags: [Authentication]
-      summary: Get CSRF token
+      summary: Get supplementary CSRF token
       operationId: getCsrfToken
-      description: Returns a CSRF token for use with HttpOnly cookie authentication.
+      description: |
+        Returns the supplementary CSRF token for authenticated clients.
+        Pre-auth SPA bootstrap uses `/sanctum/csrf-cookie`; this endpoint
+        requires valid Bearer or HttpOnly cookie authentication and remains
+        rate-limited as secondary abuse control.
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
       responses:
         "200":
           description: CSRF token
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: Non-cacheable response policy.
+              example: no-store, no-cache, must-revalidate, private
+            Pragma:
+              schema:
+                type: string
+              example: no-cache
           content:
             application/json:
               schema:
@@ -2343,6 +2360,10 @@ paths:
                 properties:
                   csrf_token:
                     type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimitExceeded"
 
   # ═══════════════════════════════════════
   # AI HARNESS

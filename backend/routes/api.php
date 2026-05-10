@@ -90,9 +90,18 @@ Route::post('/auth/login-v2', [TokenAuthController::class, 'login'])->middleware
 Route::post('/auth/login-httponly', [HttpOnlyTokenController::class, 'login'])
     ->middleware(['web', 'throttle:5,1']);
 Route::get('/auth/csrf-token', function (Request $request) {
+    abort_unless($request->user(), 401);
+
     // Return Laravel session CSRF token for form submissions
-    return response()->json(['csrf_token' => \Illuminate\Support\Facades\Session::token()]);
-})->middleware('throttle:5,1');
+    return response()
+        ->json(['csrf_token' => \Illuminate\Support\Facades\Session::token()])
+        ->withHeaders([
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, private',
+            'Pragma' => 'no-cache',
+        ]);
+})
+    ->middleware(['check_token_valid', 'throttle:csrf-token'])
+    ->name('auth.csrf-token');
 
 // Security: CSP violation reporting
 Route::post('/csp-violation-report', [CspViolationReportController::class, 'report'])

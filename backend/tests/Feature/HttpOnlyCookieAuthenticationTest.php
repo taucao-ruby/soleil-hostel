@@ -295,17 +295,16 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
     }
 
     /**
-     * Test 9: GET /api/auth/csrf-token returns token without authentication
+     * Test 9: GET /api/auth/csrf-token requires authentication.
      *
-     * Public endpoint để frontend lấy CSRF token trước login
+     * Pre-login SPA bootstrap must use Laravel Sanctum's /sanctum/csrf-cookie
+     * route, not this supplementary authenticated endpoint.
      */
-    public function test_csrf_token_endpoint_accessible_publicly(): void
+    public function test_csrf_token_endpoint_requires_authentication(): void
     {
-        $response = $this->withSession([])->getJson('/api/auth/csrf-token');
+        $response = $this->getJson('/api/auth/csrf-token');
 
-        $response->assertStatus(200);
-        $response->assertJsonStructure(['csrf_token']);
-        $this->assertNotEmpty($response->json('csrf_token'));
+        $response->assertStatus(401);
     }
 
     /**

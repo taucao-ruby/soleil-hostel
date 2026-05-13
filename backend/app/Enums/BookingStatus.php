@@ -22,6 +22,11 @@ enum BookingStatus: string
     case CANCELLED = 'cancelled';
     case REFUND_FAILED = 'refund_failed';
 
+    public const ACTIVE_STATUSES = [
+        self::PENDING->value,
+        self::CONFIRMED->value,
+    ];
+
     /**
      * Check if this status allows cancellation.
      */

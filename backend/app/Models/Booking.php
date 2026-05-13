@@ -81,7 +81,7 @@ class Booking extends Model
     }
 
     /** Active booking statuses for query scopes. */
-    public const ACTIVE_STATUSES = [BookingStatus::PENDING, BookingStatus::CONFIRMED];
+    public const ACTIVE_STATUSES = BookingStatus::ACTIVE_STATUSES;
 
     /**
      * Get the room that owns the booking.

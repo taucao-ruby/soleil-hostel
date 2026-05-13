@@ -1,4 +1,4 @@
-import type { BookingDetailRaw } from '@/features/booking/booking.types'
+import type { BookingDetailRaw, BookingStatus } from '@/shared/types/booking.types'
 import { formatVND } from '@/shared/lib/formatCurrency'
 
 export interface AdminBookingStatusConfig {
@@ -6,7 +6,7 @@ export interface AdminBookingStatusConfig {
   className: string
 }
 
-const ADMIN_BOOKING_STATUS_MAP: Record<string, AdminBookingStatusConfig> = {
+const ADMIN_BOOKING_STATUS_MAP: Record<BookingStatus, AdminBookingStatusConfig> = {
   pending: {
     label: 'Chờ xác nhận',
     className: 'border border-amber-200 bg-amber-50 text-amber-800',
@@ -27,11 +27,6 @@ const ADMIN_BOOKING_STATUS_MAP: Record<string, AdminBookingStatusConfig> = {
     label: 'Hoàn tiền thất bại',
     className: 'border border-rose-200 bg-rose-50 text-rose-700',
   },
-}
-
-const FALLBACK_STATUS_CONFIG: AdminBookingStatusConfig = {
-  label: 'Không xác định',
-  className: 'border border-gray-200 bg-gray-100 text-gray-600',
 }
 
 const shortDateFormatter = new Intl.DateTimeFormat('vi-VN', {
@@ -72,8 +67,8 @@ export function formatAdminBookingAmount(
   return '—'
 }
 
-export function getAdminBookingStatusConfig(status: string): AdminBookingStatusConfig {
-  return ADMIN_BOOKING_STATUS_MAP[status] ?? FALLBACK_STATUS_CONFIG
+export function getAdminBookingStatusConfig(status: BookingStatus): AdminBookingStatusConfig {
+  return ADMIN_BOOKING_STATUS_MAP[status]
 }
 
 export function getAdminBookingRoomLabel(booking: BookingDetailRaw): string {

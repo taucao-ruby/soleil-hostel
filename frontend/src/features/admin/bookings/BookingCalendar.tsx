@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import api from '@/shared/lib/api'
-import type { BookingDetailRaw } from '@/features/booking/booking.types'
+import {
+  assertNever,
+  type BookingDetailRaw,
+  type BookingStatus,
+} from '@/shared/types/booking.types'
 
 // Note: In a real implementation we would fetch rooms and bookings, then map them together.
 const BookingCalendar: React.FC = () => {
@@ -62,7 +66,7 @@ const BookingCalendar: React.FC = () => {
     })
   }
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: BookingStatus) => {
     switch (status) {
       case 'confirmed':
         return 'bg-green-400 border-green-500 text-white'
@@ -71,8 +75,10 @@ const BookingCalendar: React.FC = () => {
       case 'cancelled':
       case 'refund_pending':
         return 'bg-gray-400 border-gray-500 text-white opacity-50'
+      case 'refund_failed':
+        return 'bg-red-400 border-red-500 text-white'
       default:
-        return 'bg-blue-400 border-blue-500 text-white'
+        return assertNever(status)
     }
   }
 

@@ -9,22 +9,16 @@ import {
   ROOM_STATUS_CONFIG,
   ROOM_READINESS_CONFIG,
   STAY_STATUS_CONFIG,
-  type BookingStatus,
   type RoomStatus,
   type RoomReadinessStatus,
   type StayStatus,
 } from './StatusBadge'
+import { BOOKING_STATUSES, type BookingStatus } from '@/shared/types/booking.types'
 
 // ─── BookingStatusBadge ───────────────────────────────────────────────────────
 
 describe('BookingStatusBadge', () => {
-  const statuses: BookingStatus[] = [
-    'pending',
-    'confirmed',
-    'cancelled',
-    'refund_pending',
-    'refund_failed',
-  ]
+  const statuses: BookingStatus[] = [...BOOKING_STATUSES]
 
   it.each(statuses)('renders correct Vietnamese label for "%s"', status => {
     render(<BookingStatusBadge status={status} />)
@@ -57,13 +51,6 @@ describe('BookingStatusBadge', () => {
   it('applies gray classes for cancelled status', () => {
     const { container } = render(<BookingStatusBadge status="cancelled" />)
     const el = container.firstChild as HTMLElement
-    expect(el.className).toContain('gray')
-  })
-
-  it('renders unknown status key as label with gray fallback', () => {
-    render(<BookingStatusBadge status="totally_unknown" />)
-    expect(screen.getByText('totally_unknown')).toBeTruthy()
-    const el = screen.getByText('totally_unknown')
     expect(el.className).toContain('gray')
   })
 
@@ -241,11 +228,7 @@ describe('StayStatusDot', () => {
 describe('config map completeness', () => {
   it('BOOKING_STATUS_CONFIG has all 5 booking statuses', () => {
     const keys = Object.keys(BOOKING_STATUS_CONFIG)
-    expect(keys).toContain('pending')
-    expect(keys).toContain('confirmed')
-    expect(keys).toContain('cancelled')
-    expect(keys).toContain('refund_pending')
-    expect(keys).toContain('refund_failed')
+    expect(keys).toEqual(expect.arrayContaining([...BOOKING_STATUSES]))
     expect(keys).toHaveLength(5)
   })
 

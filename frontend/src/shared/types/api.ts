@@ -44,30 +44,6 @@ export interface AuthResponse {
   csrf_token: string
 }
 
-// Booking Type
-export interface Booking {
-  id: number
-  room_id: number
-  user_id?: number
-  guest_name: string
-  guest_email: string
-  check_in: string
-  check_out: string
-  number_of_guests?: number
-  status?: 'pending' | 'confirmed' | 'cancelled' | 'completed'
-  total_price?: number
-  created_at?: string
-  updated_at?: string
-}
-
-export interface BookingResponse extends ApiResponse {
-  data: Booking
-}
-
-export interface BookingsResponse extends ApiResponse {
-  data: Booking[]
-}
-
 // Review Type
 export interface Review {
   id: number

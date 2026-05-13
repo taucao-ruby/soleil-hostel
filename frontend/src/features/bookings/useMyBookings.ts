@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { fetchMyBookings, cancelBooking } from '@/features/booking/booking.api'
-import type { BookingApiRaw } from '@/features/booking/booking.types'
+import type { BookingApiRaw } from '@/shared/types/booking.types'
 import { toBookingViewModel, type BookingViewModel } from './bookingViewModel'
 
 /**

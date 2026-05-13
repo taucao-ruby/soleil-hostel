@@ -4,27 +4,23 @@
  * Single source of truth for status badge rendering and date formatting.
  */
 
+import type { BookingStatus } from '@/shared/types/booking.types'
+
 export interface StatusConfig {
   label: string
   colorClass: string
 }
 
-const STATUS_MAP: Record<string, StatusConfig> = {
+const STATUS_MAP: Record<BookingStatus, StatusConfig> = {
   pending: { label: 'Chờ xác nhận', colorClass: 'bg-yellow-100 text-yellow-800' },
   confirmed: { label: 'Đã xác nhận', colorClass: 'bg-green-100 text-green-800' },
   cancelled: { label: 'Đã hủy', colorClass: 'bg-gray-100 text-gray-500' },
-  completed: { label: 'Hoàn thành', colorClass: 'bg-blue-100 text-blue-800' },
   refund_pending: { label: 'Đang hoàn tiền', colorClass: 'bg-blue-100 text-blue-800' },
   refund_failed: { label: 'Hoàn tiền thất bại', colorClass: 'bg-red-100 text-red-800' },
 }
 
-const UNKNOWN_STATUS: StatusConfig = {
-  label: 'Không xác định',
-  colorClass: 'bg-gray-100 text-gray-700',
-}
-
-export function getStatusConfig(status: string): StatusConfig {
-  return STATUS_MAP[status] ?? UNKNOWN_STATUS
+export function getStatusConfig(status: BookingStatus): StatusConfig {
+  return STATUS_MAP[status]
 }
 
 /**

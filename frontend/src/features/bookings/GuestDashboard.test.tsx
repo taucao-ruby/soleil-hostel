@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import GuestDashboard from './GuestDashboard'
 import { toBookingViewModel } from './bookingViewModel'
-import type { BookingApiRaw } from '@/features/booking/booking.types'
+import type { BookingApiRaw } from '@/shared/types/booking.types'
 
 const mockRefetch = vi.fn()
 const mockCancel = vi.fn<(id: number) => Promise<boolean>>()
@@ -195,6 +195,8 @@ describe('GuestDashboard', () => {
       toViewModel(
         makeRaw({ id: 2, status: 'cancelled', check_in: '2020-01-01', check_out: '2020-01-03' })
       ),
+      toViewModel(makeRaw({ id: 3, status: 'refund_pending' })),
+      toViewModel(makeRaw({ id: 4, status: 'refund_failed' })),
     ]
 
     mockedQuery.mockReturnValue({
@@ -205,7 +207,7 @@ describe('GuestDashboard', () => {
     })
 
     renderDashboard()
-    expect(screen.getAllByRole('button', { name: /Hủy đặt phòng/ })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: /Hủy đặt phòng/ })).toHaveLength(2)
   })
 
   it('opens confirm dialog and triggers cancel + toast on success', async () => {

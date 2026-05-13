@@ -3,7 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { createBooking } from './booking.api'
 import { getRooms } from '../rooms/room.api'
 import type { Room } from '../rooms/room.types'
-import type { Booking, BookingFormData } from './booking.types'
+import type { Booking } from '@/shared/types/booking.types'
+import type { BookingFormData } from './booking.types'
 import {
   MAX_STAY_DAYS,
   type ValidationErrors,

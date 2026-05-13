@@ -6,7 +6,7 @@ import {
   getAdminBookingStatusConfig,
   normalizeAdminBookingSearch,
 } from '../adminBooking.helpers'
-import type { BookingDetailRaw } from '@/features/booking/booking.types'
+import { BOOKING_STATUSES, type BookingDetailRaw } from '@/shared/types/booking.types'
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -155,6 +155,12 @@ describe('formatAdminBookingAmount', () => {
 // ─── getAdminBookingStatusConfig ──────────────────────────────────────────────
 
 describe('getAdminBookingStatusConfig', () => {
+  it('covers every canonical booking status', () => {
+    for (const status of BOOKING_STATUSES) {
+      expect(getAdminBookingStatusConfig(status)).toBeDefined()
+    }
+  })
+
   it('returns config for pending status', () => {
     const cfg = getAdminBookingStatusConfig('pending')
     expect(cfg.label).toBe('Chờ xác nhận')
@@ -183,12 +189,6 @@ describe('getAdminBookingStatusConfig', () => {
     const cfg = getAdminBookingStatusConfig('refund_failed')
     expect(cfg.label).toBe('Hoàn tiền thất bại')
     expect(cfg.className).toContain('rose')
-  })
-
-  it('returns fallback config for unknown status', () => {
-    const cfg = getAdminBookingStatusConfig('unknown_status')
-    expect(cfg.label).toBe('Không xác định')
-    expect(cfg.className).toContain('gray')
   })
 
   it('config className includes border class', () => {

@@ -1,6 +1,9 @@
 import React from 'react'
-import type { BookingDetailRaw } from '@/features/booking/booking.types'
-import type { BookingApiRaw } from '@/shared/types/booking.types'
+import {
+  assertNever,
+  type BookingApiRaw,
+  type BookingDetailRaw,
+} from '@/shared/types/booking.types'
 import { STAY_STATUS_CONFIG, type StayStatus } from '@/shared/components/ui/StatusBadge'
 
 interface StayJournalProps {
@@ -12,21 +15,20 @@ function deriveStayStatus(booking: BookingApiRaw): StayStatus {
   const checkIn = new Date(booking.check_in)
   const checkOut = new Date(booking.check_out)
 
-  if (booking.status === 'cancelled') {
-    // Cancelled after check-in date passed ≈ no-show
-    return checkIn <= now ? 'no_show' : 'checked_out'
+  switch (booking.status) {
+    case 'cancelled':
+    case 'refund_pending':
+    case 'refund_failed':
+      return checkIn <= now ? 'no_show' : 'checked_out'
+    case 'pending':
+      return now >= checkIn && now < checkOut ? 'in_house' : 'checked_out'
+    case 'confirmed':
+      if (now >= checkIn && now < checkOut) return 'in_house'
+      if (now < checkIn) return 'expected'
+      return 'checked_out'
+    default:
+      return assertNever(booking.status)
   }
-  if (
-    (booking.status === 'confirmed' || booking.status === 'pending') &&
-    now >= checkIn &&
-    now < checkOut
-  ) {
-    return 'in_house'
-  }
-  if (booking.status === 'confirmed' && now < checkIn) {
-    return 'expected'
-  }
-  return 'checked_out'
 }
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────

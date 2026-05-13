@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import type { BookingDetailRaw } from '@/features/booking/booking.types'
+import type { BookingDetailRaw, BookingStatus } from '@/shared/types/booking.types'
 import api from '@/shared/lib/api'
 import AdminBookingTable from './AdminBookingTable'
 import type { AdminBookingFilters } from './adminBooking.api'
@@ -13,7 +13,7 @@ interface LocationOption {
 
 interface BookingFilterDraft {
   search: string
-  status: string
+  status: BookingStatus | ''
   locationId: string
   checkInStart: string
   checkInEnd: string
@@ -192,7 +192,7 @@ const AdminBookingDashboard: React.FC = () => {
               <select
                 id="booking-status"
                 value={draftFilters.status}
-                onChange={event => updateFilter('status', event.target.value)}
+                onChange={event => updateFilter('status', event.target.value as BookingStatus | '')}
                 className="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
               >
                 <option value="">Tất cả</option>

@@ -1,4 +1,8 @@
-import type { BookingApiRaw } from '@/features/booking/booking.types'
+import {
+  isCancellableBookingStatus,
+  type BookingApiRaw,
+  type BookingStatus,
+} from '@/shared/types/booking.types'
 import { formatVND } from '@/shared/lib/formatCurrency'
 
 /**
@@ -8,11 +12,9 @@ import { formatVND } from '@/shared/lib/formatCurrency'
  * All display logic lives here — components stay dumb.
  */
 
-const CANCELLABLE_STATUSES: readonly string[] = ['pending', 'confirmed'] as const
-
 export interface BookingViewModel {
   id: number
-  status: string
+  status: BookingStatus
   statusLabel: string
   roomName: string
   checkIn: Date
@@ -52,7 +54,7 @@ export function toBookingViewModel(raw: BookingApiRaw): BookingViewModel {
     guestName: raw.guest_name,
     nights: raw.nights,
     amountFormatted: getAmountFormatted(raw),
-    canCancel: CANCELLABLE_STATUSES.includes(raw.status),
+    canCancel: isCancellableBookingStatus(raw.status),
     createdAt: new Date(raw.created_at),
   }
 }

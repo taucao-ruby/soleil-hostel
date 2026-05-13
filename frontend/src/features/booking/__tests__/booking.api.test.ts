@@ -8,14 +8,17 @@ import {
   submitReview,
 } from '../booking.api'
 import type {
-  Booking,
-  BookingApiRaw,
-  BookingDetailRaw,
   BookingFormData,
   CancelBookingResponse,
   ReviewSubmitData,
   ReviewSubmitResponse,
 } from '../booking.types'
+import type {
+  Booking,
+  BookingApiRaw,
+  BookingDetailRaw,
+  UnvalidatedBooking,
+} from '@/shared/types/booking.types'
 
 // ─── Mock the shared api module ───────────────────────────────────────────────
 
@@ -68,9 +71,17 @@ const makeDetailRaw = (overrides: Partial<BookingDetailRaw> = {}): BookingDetail
   ...overrides,
 })
 
+const makeUnvalidatedBookingRaw = (
+  overrides: Partial<UnvalidatedBooking<BookingApiRaw>> = {}
+): UnvalidatedBooking<BookingApiRaw> => ({
+  ...makeBookingRaw(),
+  ...overrides,
+})
+
 const makeBooking = (overrides: Partial<Booking> = {}): Booking => ({
   id: 1,
   room_id: 10,
+  user_id: 42,
   guest_name: 'Nguyễn Văn A',
   guest_email: 'nguyen.van.a@example.com',
   check_in: '2026-06-01',
@@ -78,6 +89,8 @@ const makeBooking = (overrides: Partial<Booking> = {}): Booking => ({
   number_of_guests: 2,
   special_requests: null,
   status: 'pending',
+  status_label: 'Chờ xác nhận',
+  nights: 2,
   total_price: 700000,
   created_at: '2026-05-01T10:00:00+07:00',
   updated_at: '2026-05-01T10:00:00+07:00',
@@ -174,6 +187,25 @@ describe('fetchMyBookings', () => {
     expect(result).toHaveLength(2)
     expect(result[0].id).toBe(1)
     expect(result[1].id).toBe(2)
+  })
+
+  it('accepts refund lifecycle statuses from the API boundary', async () => {
+    const bookings = [
+      makeUnvalidatedBookingRaw({ id: 1, status: 'refund_pending' }),
+      makeUnvalidatedBookingRaw({ id: 2, status: 'refund_failed' }),
+    ]
+    mockApiInstance.get.mockResolvedValueOnce(axiosResponse({ success: true, data: bookings }))
+
+    const result = await fetchMyBookings()
+
+    expect(result.map(booking => booking.status)).toEqual(['refund_pending', 'refund_failed'])
+  })
+
+  it('rejects unknown booking statuses from the API boundary', async () => {
+    const bookings = [makeUnvalidatedBookingRaw({ status: 'completed' })]
+    mockApiInstance.get.mockResolvedValueOnce(axiosResponse({ success: true, data: bookings }))
+
+    await expect(fetchMyBookings()).rejects.toThrow('Unknown booking status: completed')
   })
 
   it('passes an AbortSignal when provided', async () => {

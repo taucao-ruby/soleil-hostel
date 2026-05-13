@@ -1,5 +1,6 @@
 import api from '@/shared/lib/api'
-import {
+import { parseBookingStatusPayload, type UnvalidatedBooking } from '@/shared/types/booking.types'
+import type {
   Booking,
   BookingApiRaw,
   BookingDetailRaw,
@@ -11,6 +12,22 @@ import {
   ReviewSubmitData,
   ReviewSubmitResponse,
 } from './booking.types'
+
+type BookingResponsePayload = Omit<BookingResponse, 'data'> & {
+  data: UnvalidatedBooking<Booking>
+}
+
+type BookingsListResponsePayload = Omit<BookingsListResponse, 'data'> & {
+  data: Array<UnvalidatedBooking<BookingApiRaw>>
+}
+
+type CancelBookingResponsePayload = Omit<CancelBookingResponse, 'data'> & {
+  data: UnvalidatedBooking<BookingApiRaw>
+}
+
+type BookingDetailResponsePayload = Omit<BookingDetailResponse, 'data'> & {
+  data: UnvalidatedBooking<BookingDetailRaw>
+}
 
 /**
  * Booking API Service
@@ -25,8 +42,8 @@ import {
  * Creates a new room booking
  */
 export async function createBooking(data: BookingFormData): Promise<Booking> {
-  const response = await api.post<BookingResponse>('/v1/bookings', data)
-  return response.data.data
+  const response = await api.post<BookingResponsePayload>('/v1/bookings', data)
+  return parseBookingStatusPayload(response.data.data)
 }
 
 /**
@@ -37,8 +54,8 @@ export async function createBooking(data: BookingFormData): Promise<Booking> {
  * Response shape: { success: boolean, data: BookingApiRaw[] }
  */
 export async function fetchMyBookings(signal?: AbortSignal): Promise<BookingApiRaw[]> {
-  const response = await api.get<BookingsListResponse>('/v1/bookings', { signal })
-  return response.data.data
+  const response = await api.get<BookingsListResponsePayload>('/v1/bookings', { signal })
+  return response.data.data.map(parseBookingStatusPayload)
 }
 
 /**
@@ -48,8 +65,11 @@ export async function fetchMyBookings(signal?: AbortSignal): Promise<BookingApiR
  * CSRF token auto-attached by request interceptor.
  */
 export async function cancelBooking(id: number): Promise<CancelBookingResponse> {
-  const response = await api.post<CancelBookingResponse>(`/v1/bookings/${id}/cancel`)
-  return response.data
+  const response = await api.post<CancelBookingResponsePayload>(`/v1/bookings/${id}/cancel`)
+  return {
+    ...response.data,
+    data: parseBookingStatusPayload(response.data.data),
+  }
 }
 
 /**
@@ -59,8 +79,8 @@ export async function cancelBooking(id: number): Promise<CancelBookingResponse> 
  * Requires authentication. Returns booking with eager-loaded room relationship.
  */
 export async function getBookingById(id: number, signal?: AbortSignal): Promise<BookingDetailRaw> {
-  const response = await api.get<BookingDetailResponse>(`/v1/bookings/${id}`, { signal })
-  return response.data.data
+  const response = await api.get<BookingDetailResponsePayload>(`/v1/bookings/${id}`, { signal })
+  return parseBookingStatusPayload(response.data.data)
 }
 
 /**

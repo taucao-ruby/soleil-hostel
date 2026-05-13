@@ -6,13 +6,31 @@
  */
 
 import api from '@/shared/lib/api'
+import { parseBookingStatusPayload, type UnvalidatedBooking } from '@/shared/types/booking.types'
 import type {
+  AdminBookingRaw,
   ContactMessageRaw,
   AdminBookingsResponse,
   AdminBookingsPaginatedResult,
   TrashedBookingsResponse,
   ContactMessagesResponse,
 } from './admin.types'
+
+type AdminBookingRawPayload = UnvalidatedBooking<AdminBookingRaw>
+
+type AdminBookingsResponsePayload = Omit<AdminBookingsResponse, 'data'> & {
+  data: {
+    bookings: AdminBookingRawPayload[]
+    meta: AdminBookingsResponse['data']['meta']
+  }
+}
+
+type TrashedBookingsResponsePayload = Omit<TrashedBookingsResponse, 'data'> & {
+  data: {
+    bookings: AdminBookingRawPayload[]
+    meta: TrashedBookingsResponse['data']['meta']
+  }
+}
 
 /**
  * Fetch all bookings (admin view, includes soft-deleted).
@@ -24,12 +42,12 @@ export async function fetchAdminBookings(
   page: number = 1,
   signal?: AbortSignal
 ): Promise<AdminBookingsPaginatedResult> {
-  const response = await api.get<AdminBookingsResponse>('/v1/admin/bookings', {
+  const response = await api.get<AdminBookingsResponsePayload>('/v1/admin/bookings', {
     params: { page },
     signal,
   })
   return {
-    bookings: response.data.data.bookings,
+    bookings: response.data.data.bookings.map(parseBookingStatusPayload),
     meta: response.data.data.meta,
   }
 }
@@ -42,9 +60,11 @@ export async function fetchAdminBookings(
 export async function fetchTrashedBookings(
   signal?: AbortSignal
 ): Promise<AdminBookingsPaginatedResult> {
-  const response = await api.get<TrashedBookingsResponse>('/v1/admin/bookings/trashed', { signal })
+  const response = await api.get<TrashedBookingsResponsePayload>('/v1/admin/bookings/trashed', {
+    signal,
+  })
   return {
-    bookings: response.data.data.bookings,
+    bookings: response.data.data.bookings.map(parseBookingStatusPayload),
     meta: {
       current_page: 1,
       last_page: 1,

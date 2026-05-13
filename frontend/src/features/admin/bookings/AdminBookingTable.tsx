@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import type { BookingDetailRaw } from '@/features/booking/booking.types'
+import type { BookingDetailRaw } from '@/shared/types/booking.types'
 import {
   buildBookingReference,
   formatAdminBookingAmount,

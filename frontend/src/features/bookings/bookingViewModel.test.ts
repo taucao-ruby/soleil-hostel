@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { toBookingViewModel, isUpcoming, isPast } from './bookingViewModel'
-import type { BookingApiRaw } from '@/features/booking/booking.types'
+import type { BookingApiRaw } from '@/shared/types/booking.types'
 
 function makeRaw(overrides: Partial<BookingApiRaw> = {}): BookingApiRaw {
   return {
@@ -44,6 +44,11 @@ describe('toBookingViewModel', () => {
   it('maps refund_pending status to canCancel=false', () => {
     const vm = toBookingViewModel(makeRaw({ status: 'refund_pending' }))
     expect(vm.canCancel).toBe(false)
+  })
+
+  it('maps refund_failed status to canCancel=true for retry/force-cancel flow', () => {
+    const vm = toBookingViewModel(makeRaw({ status: 'refund_failed' }))
+    expect(vm.canCancel).toBe(true)
   })
 
   it('parses check_in and check_out as Date objects', () => {

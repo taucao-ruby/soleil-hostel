@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { getBookingById } from '@/features/booking/booking.api'
-import type { BookingDetailRaw } from '@/features/booking/booking.types'
+import type { BookingDetailRaw } from '@/shared/types/booking.types'
 import { getStatusConfig, formatDateVN } from '@/shared/lib/booking.utils'
 import Skeleton from '@/shared/components/ui/Skeleton'
 import Button from '@/shared/components/ui/Button'

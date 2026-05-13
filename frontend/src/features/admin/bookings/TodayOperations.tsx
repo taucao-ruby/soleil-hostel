@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getTodayArrivals, getTodayDepartures } from './adminBooking.api'
-import type { BookingDetailRaw } from '@/features/booking/booking.types'
+import type { BookingDetailRaw } from '@/shared/types/booking.types'
 import LoadingSpinner from '@/shared/components/feedback/LoadingSpinner'
 import { getLocations } from '@/shared/lib/location.api'
 import { roomApi } from '@/shared/lib/room.api'

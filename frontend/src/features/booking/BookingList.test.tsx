@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import BookingList from './BookingList'
-import type { BookingApiRaw } from './booking.types'
+import type { BookingApiRaw } from '@/shared/types/booking.types'
 
 const { mockFetchMyBookings, mockCancelBooking } = vi.hoisted(() => ({
   mockFetchMyBookings: vi.fn(),

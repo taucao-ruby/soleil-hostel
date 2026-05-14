@@ -16,20 +16,54 @@ class CspViolationReportController extends Controller
      */
     public function report(Request $request): Response
     {
-        // Get the CSP violation report from the request body
-        // CSP reports come as application/csp-report content type
-        $violation = $request->json()->all() ?? $request->all();
+        $payload = $request->json()->all();
+        $report = $payload['csp-report'] ?? null;
 
-        // Log the CSP violation for monitoring
+        if (! is_array($report)) {
+            return response('', 204);
+        }
+
         Log::warning('CSP Violation Report', [
-            'document_uri' => $violation['document-uri'] ?? 'unknown',
-            'blocked_uri' => $violation['blocked-uri'] ?? 'unknown',
-            'directive' => $violation['violated-directive'] ?? 'unknown',
-            'status_code' => $violation['status-code'] ?? 0,
-            'original_policy' => $violation['original-policy'] ?? 'unknown',
+            'ip' => $this->cleanForLog($request->ip(), 64),
+            'user_agent' => $this->cleanForLog($request->userAgent(), 256),
+            'document_uri' => $this->cleanForLog($report['document-uri'] ?? null, 512),
+            'blocked_uri' => $this->cleanForLog($report['blocked-uri'] ?? null, 512),
+            'effective_directive' => $this->cleanForLog($report['effective-directive'] ?? null, 128),
+            'violated_directive' => $this->cleanForLog($report['violated-directive'] ?? null, 128),
+            'disposition' => $this->cleanForLog($report['disposition'] ?? null, 32),
+            'status_code' => $this->statusCodeForLog($report['status-code'] ?? null),
         ]);
 
-        // Return 204 No Content (standard response for CSP reports)
         return response('', 204);
+    }
+
+    private function cleanForLog(mixed $value, int $maxLength): ?string
+    {
+        if (! is_scalar($value)) {
+            return null;
+        }
+
+        $clean = preg_replace('/[\x00-\x1F\x7F]+/', ' ', (string) $value);
+        $clean = preg_replace('/\s+/', ' ', $clean ?? '');
+        $clean = trim($clean ?? '');
+
+        if ($clean === '') {
+            return null;
+        }
+
+        if (function_exists('mb_substr')) {
+            return mb_substr($clean, 0, $maxLength);
+        }
+
+        return substr($clean, 0, $maxLength);
+    }
+
+    private function statusCodeForLog(mixed $value): ?int
+    {
+        if (! is_numeric($value)) {
+            return null;
+        }
+
+        return (int) $value;
     }
 }

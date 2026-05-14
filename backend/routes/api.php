@@ -105,7 +105,10 @@ Route::get('/auth/csrf-token', function (Request $request) {
 
 // Security: CSP violation reporting
 Route::post('/csp-violation-report', [CspViolationReportController::class, 'report'])
-    ->withoutMiddleware(['throttle:api']);
+    ->middleware([
+        'csp.report.size:4096',
+        'throttle:csp-violation-report',
+    ]);
 
 // Contact form (public - with rate limiting)
 Route::post('/contact', [ContactController::class, 'store'])->middleware('throttle:3,1');

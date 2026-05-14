@@ -136,7 +136,10 @@ class AuthController extends Controller
      */
     public function logout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        // Revoke (not hard-delete) so the token row is retained for audit/reconciliation.
+        /** @var \App\Models\PersonalAccessToken $token */
+        $token = $request->user()->currentAccessToken();
+        $token->revoke();
 
         return $this->success(null, 'Logged out successfully');
     }
@@ -148,8 +151,10 @@ class AuthController extends Controller
     {
         $user = $request->user();
 
-        // Revoke old token
-        $request->user()->currentAccessToken()->delete();
+        // Revoke (not hard-delete) the old token so the row is retained for audit/reconciliation.
+        /** @var \App\Models\PersonalAccessToken $oldToken */
+        $oldToken = $user->currentAccessToken();
+        $oldToken->revoke();
 
         // Create new token with full security columns populated.
         $token = $this->issueLegacyBearerToken($user, $request, 'auth_token');

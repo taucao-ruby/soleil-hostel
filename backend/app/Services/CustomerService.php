@@ -43,7 +43,7 @@ class CustomerService
      */
     public function getCustomerProfile(string $email)
     {
-        $cacheKey = "customer_profile_{$email}";
+        $cacheKey = 'customer_profile_'.hash('sha256', strtolower(trim($email)));
 
         return Cache::remember($cacheKey, 300, function () use ($email) {
             $stats = DB::table('bookings')

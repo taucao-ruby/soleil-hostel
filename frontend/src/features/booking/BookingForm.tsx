@@ -15,9 +15,46 @@ import {
   validateBookingForm,
 } from './booking.validation'
 import { formatVND } from '@/shared/lib/formatCurrency'
+import { isAxiosError } from '@/shared/lib/api'
 
-const API_ERROR_MESSAGE =
-  'Không thể đặt phòng. Phòng này có thể đã được đặt. Vui lòng thử ngày khác.'
+type ApiErrorBody = {
+  message?: unknown
+  errors?: Record<string, unknown>
+}
+
+const BOOKING_OVERLAP_MESSAGE =
+  'Phòng đã có người đặt trong khoảng thời gian này. Vui lòng chọn ngày khác.'
+
+const BOOKING_VALIDATION_FALLBACK_MESSAGE =
+  'Thông tin đặt phòng không hợp lệ. Vui lòng kiểm tra lại.'
+
+const BOOKING_GENERIC_ERROR_MESSAGE = 'Không thể tạo đặt phòng lúc này. Vui lòng thử lại sau.'
+
+function getSafeServerMessage(data: ApiErrorBody | undefined): string | null {
+  if (typeof data?.message === 'string' && data.message.trim().length > 0) {
+    return data.message
+  }
+
+  return null
+}
+
+function resolveBookingSubmitErrorMessage(error: unknown): string {
+  if (!isAxiosError<ApiErrorBody>(error)) {
+    return BOOKING_GENERIC_ERROR_MESSAGE
+  }
+
+  const status = error.response?.status
+
+  if (status === 409) {
+    return BOOKING_OVERLAP_MESSAGE
+  }
+
+  if (status === 422) {
+    return getSafeServerMessage(error.response?.data) ?? BOOKING_VALIDATION_FALLBACK_MESSAGE
+  }
+
+  return BOOKING_GENERIC_ERROR_MESSAGE
+}
 
 function formatCompactVND(amount: number): string {
   return formatVND(amount).replace(/\s?₫/, '₫')
@@ -272,8 +309,8 @@ const BookingForm: React.FC = () => {
       const booking = await createBooking(bookingData)
       setBookingReference(buildBookingReference(booking))
       setIsSuccess(true)
-    } catch {
-      setSubmitError(API_ERROR_MESSAGE)
+    } catch (error) {
+      setSubmitError(resolveBookingSubmitErrorMessage(error))
     } finally {
       setIsSubmitting(false)
     }

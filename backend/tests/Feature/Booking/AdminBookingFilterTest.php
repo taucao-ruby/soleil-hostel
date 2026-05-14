@@ -268,6 +268,32 @@ class AdminBookingFilterTest extends TestCase
             ]);
     }
 
+    public function test_index_includes_cancelled_by_for_cancelled_booking(): void
+    {
+        $canceller = User::factory()->admin()->create([
+            'name' => 'Casey Canceller',
+            'email' => 'casey.canceller@example.com',
+        ]);
+        $booking = $this->booking([
+            'status' => 'cancelled',
+            'cancelled_by' => $canceller->id,
+        ]);
+
+        $response = $this->asAdmin()->getJson('/api/v1/admin/bookings');
+
+        $response->assertStatus(200);
+
+        $bookingPayload = collect($response->json('data.bookings'))
+            ->firstWhere('id', $booking->id);
+
+        $this->assertNotNull($bookingPayload);
+        $this->assertIsArray($bookingPayload);
+        $this->assertArrayHasKey('cancelled_by', $bookingPayload);
+        $this->assertIsArray($bookingPayload['cancelled_by']);
+        $this->assertSame($canceller->id, $bookingPayload['cancelled_by']['id']);
+        $this->assertSame('Casey Canceller', $bookingPayload['cancelled_by']['name']);
+    }
+
     // ─── 9. Soft-deleted bookings included by default (admin view) ─────────
 
     public function test_trashed_bookings_are_included_in_admin_index(): void

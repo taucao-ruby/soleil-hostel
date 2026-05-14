@@ -66,6 +66,14 @@ class AdminBookingController extends Controller
             'room' => fn ($q) => $q->select(['id', 'name', 'price', 'created_at', 'updated_at']),
             'user' => fn ($q) => $q->select(['id', 'name', 'email', 'role', 'created_at', 'updated_at']),
             'deletedBy' => fn ($q) => $q->select(['id', 'name', 'email', 'role', 'created_at', 'updated_at']),
+            'cancelledBy' => static fn ($q) => $q->select([
+                'id',
+                'name',
+                'email',
+                'role',
+                'created_at',
+                'updated_at',
+            ]),
         ], $perPage);
 
         return $this->success([

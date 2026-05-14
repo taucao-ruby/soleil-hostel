@@ -37,7 +37,13 @@ return new class extends Migration
         });
 
         // Drop and recreate the FK with nullOnDelete. Doctrine DBAL is not in
-        // composer here; use raw SQL for the constraint swap. Postgres-only.
+        // composer here; use raw SQL for the constraint swap. Postgres-only —
+        // SQLite (tests/CI) has no ALTER TABLE ... DROP CONSTRAINT, so skip it
+        // there; the portable actor columns above still apply on every driver.
+        if (DB::getDriverName() !== 'pgsql') {
+            return;
+        }
+
         DB::statement('ALTER TABLE ai_proposal_events DROP CONSTRAINT IF EXISTS ai_proposal_events_user_id_foreign');
         DB::statement('ALTER TABLE ai_proposal_events ALTER COLUMN user_id DROP NOT NULL');
         DB::statement('
@@ -49,12 +55,15 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE ai_proposal_events DROP CONSTRAINT IF EXISTS ai_proposal_events_user_id_foreign');
-        DB::statement('
-            ALTER TABLE ai_proposal_events
-            ADD CONSTRAINT ai_proposal_events_user_id_foreign
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        ');
+        // Postgres-only FK rollback — mirrors the driver guard in up().
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('ALTER TABLE ai_proposal_events DROP CONSTRAINT IF EXISTS ai_proposal_events_user_id_foreign');
+            DB::statement('
+                ALTER TABLE ai_proposal_events
+                ADD CONSTRAINT ai_proposal_events_user_id_foreign
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            ');
+        }
 
         Schema::table('ai_proposal_events', function (Blueprint $table) {
             if (Schema::hasColumn('ai_proposal_events', 'actor_display_name')) {

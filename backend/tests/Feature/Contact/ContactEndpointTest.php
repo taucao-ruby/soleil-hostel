@@ -103,7 +103,60 @@ class ContactEndpointTest extends TestCase
             ->getJson('/api/v1/admin/contact-messages');
 
         $response->assertStatus(200)
-            ->assertJsonPath('success', true);
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.per_page', 15);
+    }
+
+    public function test_contact_index_accepts_per_page_fifty_for_admin(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $response = $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/admin/contact-messages?per_page=50');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.per_page', 50);
+    }
+
+    public function test_contact_index_rejects_oversized_per_page_for_admin(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/admin/contact-messages?per_page=1000000')
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('per_page');
+    }
+
+    public function test_contact_index_rejects_zero_per_page_for_admin(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/admin/contact-messages?per_page=0')
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('per_page');
+    }
+
+    public function test_contact_index_rejects_negative_per_page_for_admin(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/admin/contact-messages?per_page=-1')
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('per_page');
+    }
+
+    public function test_contact_index_rejects_non_integer_per_page_for_admin(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/admin/contact-messages?per_page=abc')
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('per_page');
     }
 
     // ========== PATCH /api/v1/admin/contact-messages/{id}/read ==========

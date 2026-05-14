@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\BookingRestoreConflictException;
+use App\Http\Requests\Admin\AdminBookingIndexRequest;
 use App\Http\Requests\BulkRestoreBookingsRequest;
 use App\Http\Resources\BookingResource;
 use App\Repositories\Contracts\BookingRepositoryInterface;
@@ -35,32 +36,37 @@ class AdminBookingController extends Controller
      *
      * GET /api/admin/bookings
      *
-     * Supports optional query filters:
+     * Supports optional query filters (validated by AdminBookingIndexRequest):
      *   check_in_start, check_in_end   — filter by check_in date (inclusive)
      *   check_out_start, check_out_end — filter by check_out date (inclusive)
      *   status                         — exact status match (e.g., 'confirmed')
      *   location_id                    — filter by denormalized location_id
      *   search                         — guest_name, guest_email, or booking id
+     *   per_page                       — page size, 1–100 (default 50)
      */
-    public function index(Request $request): JsonResponse
+    public function index(AdminBookingIndexRequest $request): JsonResponse
     {
         Gate::authorize('view-all-bookings');
 
+        $validated = $request->validated();
+
         $filters = array_filter([
-            'check_in_start' => $request->query('check_in_start'),
-            'check_in_end' => $request->query('check_in_end'),
-            'check_out_start' => $request->query('check_out_start'),
-            'check_out_end' => $request->query('check_out_end'),
-            'status' => $request->query('status'),
-            'location_id' => $request->query('location_id') !== null ? (int) $request->query('location_id') : null,
-            'search' => $request->query('search'),
+            'check_in_start' => $validated['check_in_start'] ?? null,
+            'check_in_end' => $validated['check_in_end'] ?? null,
+            'check_out_start' => $validated['check_out_start'] ?? null,
+            'check_out_end' => $validated['check_out_end'] ?? null,
+            'status' => $validated['status'] ?? null,
+            'location_id' => isset($validated['location_id']) ? (int) $validated['location_id'] : null,
+            'search' => $validated['search'] ?? null,
         ], fn ($v) => $v !== null && $v !== '');
+
+        $perPage = (int) ($validated['per_page'] ?? 50);
 
         $bookings = $this->bookingRepository->getAdminPaginated($filters, [
             'room' => fn ($q) => $q->select(['id', 'name', 'price', 'created_at', 'updated_at']),
             'user' => fn ($q) => $q->select(['id', 'name', 'email', 'role', 'created_at', 'updated_at']),
             'deletedBy' => fn ($q) => $q->select(['id', 'name', 'email', 'role', 'created_at', 'updated_at']),
-        ]);
+        ], $perPage);
 
         return $this->success([
             'bookings' => BookingResource::collection($bookings),

@@ -271,9 +271,10 @@ class Room extends Model
         // status='available' AND readiness_status='ready' AND location.is_active.
         return $query->bookable()
             ->whereDoesntHave('bookings', function (Builder $q) use ($checkInDt, $checkOutDt) {
-                $q->whereIn('status', BookingStatus::ACTIVE_STATUSES)
-                    ->where('check_in', '<', $checkOutDt)
-                    ->where('check_out', '>', $checkInDt);
+                $q->whereNull('bookings.deleted_at')
+                    ->whereIn('bookings.status', BookingStatus::ACTIVE_STATUSES)
+                    ->where('bookings.check_in', '<', $checkOutDt)
+                    ->where('bookings.check_out', '>', $checkInDt);
             });
     }
 

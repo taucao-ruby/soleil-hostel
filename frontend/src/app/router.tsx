@@ -86,7 +86,7 @@ const PublicLayout: React.FC = () => {
  */
 const withSuspense = (Component: React.LazyExoticComponent<React.ComponentType>) => {
   return (
-    <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Loading..." />}>
+    <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Đang tải..." />}>
       <Component />
     </Suspense>
   )
@@ -150,7 +150,7 @@ export const router = createBrowserRouter([
             path: 'booking',
             element: (
               <ProtectedRoute>
-                <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Loading..." />}>
+                <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Đang tải..." />}>
                   <BookingForm />
                 </Suspense>
               </ProtectedRoute>
@@ -160,7 +160,7 @@ export const router = createBrowserRouter([
             path: 'my-bookings',
             element: (
               <ProtectedRoute>
-                <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Loading..." />}>
+                <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Đang tải..." />}>
                   <BookingList />
                 </Suspense>
               </ProtectedRoute>
@@ -170,7 +170,7 @@ export const router = createBrowserRouter([
             path: 'my-bookings/:id',
             element: (
               <ProtectedRoute>
-                <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Loading..." />}>
+                <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Đang tải..." />}>
                   <BookingDetailPage />
                 </Suspense>
               </ProtectedRoute>
@@ -180,7 +180,7 @@ export const router = createBrowserRouter([
             path: 'dashboard',
             element: (
               <ProtectedRoute>
-                <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Loading..." />}>
+                <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Đang tải..." />}>
                   <DashboardPage />
                 </Suspense>
               </ProtectedRoute>
@@ -200,7 +200,9 @@ export const router = createBrowserRouter([
           <ProtectedRoute>
             <AdminRoute>
               <Suspense
-                fallback={<LoadingSpinner size="xl" fullScreen message="Loading Admin..." />}
+                fallback={
+                  <LoadingSpinner size="xl" fullScreen message="Đang tải trang quản trị..." />
+                }
               >
                 <AdminLayout />
               </Suspense>
@@ -220,7 +222,7 @@ export const router = createBrowserRouter([
             path: 'rooms/new',
             element: (
               <AdminRoute minRole="admin">
-                <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Loading..." />}>
+                <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Đang tải..." />}>
                   <RoomForm />
                 </Suspense>
               </AdminRoute>
@@ -230,7 +232,7 @@ export const router = createBrowserRouter([
             path: 'rooms/:id/edit',
             element: (
               <AdminRoute minRole="admin">
-                <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Loading..." />}>
+                <Suspense fallback={<LoadingSpinner size="xl" fullScreen message="Đang tải..." />}>
                   <RoomForm />
                 </Suspense>
               </AdminRoute>

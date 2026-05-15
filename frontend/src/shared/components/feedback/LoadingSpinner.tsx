@@ -29,9 +29,9 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
       <div
         className={`${sizeStyles[size]} border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin`}
         role="status"
-        aria-label="Loading"
+        aria-label="Đang tải..."
       >
-        <span className="sr-only">Loading...</span>
+        <span className="sr-only">Đang tải...</span>
       </div>
       {message && <p className="mt-4 font-medium text-gray-600 animate-pulse">{message}</p>}
     </div>

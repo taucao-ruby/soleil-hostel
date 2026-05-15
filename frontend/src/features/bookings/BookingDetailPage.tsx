@@ -110,7 +110,7 @@ const InfoCell: React.FC<InfoCellProps> = ({ label, value, emphasize = false, cl
 
 const DetailSkeleton: React.FC = () => (
   <div className="rounded-[28px] border border-gray-200 bg-white p-8 shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
-    <div className="animate-pulse space-y-6" role="status" aria-label="Loading booking details">
+    <div className="animate-pulse space-y-6" role="status" aria-label="Đang tải chi tiết đặt phòng">
       <div className="flex items-center justify-between gap-4">
         <div className="h-10 w-64 rounded bg-gray-200" />
         <div className="h-10 w-28 rounded-full bg-gray-200" />

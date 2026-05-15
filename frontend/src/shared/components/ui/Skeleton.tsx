@@ -27,9 +27,9 @@ const Skeleton: React.FC<SkeletonProps> = ({ className = '', width, height, roun
       className={`animate-pulse bg-gray-200 ${roundedStyles[rounded]} ${className}`}
       style={{ width, height }}
       role="status"
-      aria-label="Loading..."
+      aria-label="Đang tải..."
     >
-      <span className="sr-only">Loading...</span>
+      <span className="sr-only">Đang tải...</span>
     </div>
   )
 }

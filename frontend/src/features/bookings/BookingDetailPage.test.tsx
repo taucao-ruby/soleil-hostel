@@ -106,6 +106,11 @@ describe('BookingDetailPage', () => {
 
     renderDetail('/my-bookings/42')
 
+    expect(screen.getByRole('status', { name: 'Đang tải chi tiết đặt phòng' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('status', { name: 'Loading booking details' })
+    ).not.toBeInTheDocument()
+
     await waitFor(() => {
       expect(screen.getByText('Chi tiết đặt phòng')).toBeInTheDocument()
     })

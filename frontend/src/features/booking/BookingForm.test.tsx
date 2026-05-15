@@ -3,9 +3,26 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import BookingForm from './BookingForm'
 
-const { mockNavigate, mockSearchParamsRef } = vi.hoisted(() => ({
+const {
+  mockNavigate,
+  mockSearchParamsRef,
+  mockGetRooms,
+  mockCreateBooking,
+  mockValidateBookingForm,
+  mockGetMinCheckInDate,
+  mockGetMinCheckOutDate,
+  mockGetMaxCheckOutDate,
+  mockCalculateNights,
+} = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
   mockSearchParamsRef: { current: new URLSearchParams() },
+  mockGetRooms: vi.fn(),
+  mockCreateBooking: vi.fn(),
+  mockValidateBookingForm: vi.fn(),
+  mockGetMinCheckInDate: vi.fn(),
+  mockGetMinCheckOutDate: vi.fn(),
+  mockGetMaxCheckOutDate: vi.fn(),
+  mockCalculateNights: vi.fn(),
 }))
 
 vi.mock('react-router-dom', () => ({
@@ -13,21 +30,13 @@ vi.mock('react-router-dom', () => ({
   useSearchParams: () => [mockSearchParamsRef.current],
 }))
 
-const mockGetRooms = vi.fn()
 vi.mock('../rooms/room.api', () => ({
   getRooms: (...args: unknown[]) => mockGetRooms(...args),
 }))
 
-const mockCreateBooking = vi.fn()
 vi.mock('./booking.api', () => ({
   createBooking: (...args: unknown[]) => mockCreateBooking(...args),
 }))
-
-const mockValidateBookingForm = vi.fn()
-const mockGetMinCheckInDate = vi.fn()
-const mockGetMinCheckOutDate = vi.fn()
-const mockGetMaxCheckOutDate = vi.fn()
-const mockCalculateNights = vi.fn()
 
 vi.mock('./booking.validation', () => ({
   MAX_STAY_DAYS: 30,

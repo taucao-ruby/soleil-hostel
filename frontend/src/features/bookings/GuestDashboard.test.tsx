@@ -7,14 +7,10 @@ import { toBookingViewModel } from './bookingViewModel'
 import type { CancelBookingResult } from './useMyBookings'
 import type { BookingApiRaw } from '@/shared/types/booking.types'
 
-const mockRefetch = vi.fn()
-const mockCancel = vi.fn<(id: number) => Promise<CancelBookingResult>>()
-
-const { mockUseAuth } = vi.hoisted(() => ({
+const { mockRefetch, mockCancel, mockUseAuth, mockShowToast, mockApiPost } = vi.hoisted(() => ({
+  mockRefetch: vi.fn(),
+  mockCancel: vi.fn<(id: number) => Promise<CancelBookingResult>>(),
   mockUseAuth: vi.fn(),
-}))
-
-const { mockShowToast } = vi.hoisted(() => ({
   mockShowToast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -22,9 +18,6 @@ const { mockShowToast } = vi.hoisted(() => ({
     info: vi.fn(),
     promise: vi.fn(),
   },
-}))
-
-const { mockApiPost } = vi.hoisted(() => ({
   mockApiPost: vi.fn(),
 }))
 

@@ -52,6 +52,7 @@ describe('AuthContext', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     sessionStorage.clear()
+    localStorage.clear()
   })
 
   it('provides default unauthenticated state when no csrf token', async () => {
@@ -115,7 +116,7 @@ describe('AuthContext', () => {
     expect(screen.getByTestId('user').textContent).toBe('null')
   })
 
-  it('logs in successfully and sets user', async () => {
+  it('does not write legacy bearer token keys to localStorage after login success', async () => {
     mockPost.mockResolvedValue({
       data: {
         success: true,
@@ -149,6 +150,8 @@ describe('AuthContext', () => {
       password: 'password123',
       remember_me: false,
     })
+    expect(localStorage.getItem('auth_token')).toBeNull()
+    expect(localStorage.getItem('refresh_token')).toBeNull()
   })
 
   it('sets error on login failure', async () => {

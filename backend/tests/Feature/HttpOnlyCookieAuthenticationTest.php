@@ -345,6 +345,31 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
     }
 
     /**
+     * F-39 regression: a cookie whose name shares the soleil_token prefix
+     * (e.g. soleil_token_backup) must NEVER authenticate against the
+     * soleil_token middleware, even when it carries a real token identifier.
+     */
+    public function test_prefix_collision_cookie_does_not_authenticate(): void
+    {
+        $this->postJson('/api/auth/login-httponly', [
+            'email' => 'test@example.com',
+            'password' => 'password123',
+        ]);
+
+        $token = PersonalAccessToken::where('tokenable_id', $this->user->id)->first();
+        $tokenIdentifier = $token->token_identifier;
+
+        $cookieName = env('SANCTUM_COOKIE_NAME', 'soleil_token');
+        $collisionName = $cookieName.'_backup';
+
+        $response = $this
+            ->withHeader('Cookie', "{$collisionName}={$tokenIdentifier}; other=value")
+            ->getJson('/api/auth/me-httponly');
+
+        $response->assertStatus(401);
+    }
+
+    /**
      * Test 11: Multiple refreshes > threshold triggers SUSPICIOUS_ACTIVITY
      *
      * Security Check:

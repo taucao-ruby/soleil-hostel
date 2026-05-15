@@ -306,6 +306,14 @@ final class CancellationService
 
     /**
      * Finalize cancellation after successful refund (or no refund needed).
+     *
+     * F-33: re-acquires a pessimistic row lock before any state mutation.
+     * Between Phase 1 (transitionToRefundPending) and this method, the Stripe
+     * refund network call runs *outside* any transaction. During that window
+     * an out-of-band path (admin force-cancel, webhook retry, future caller)
+     * could mutate the booking row. We therefore lock and re-read the row
+     * fresh before transitioning so the stale in-memory $booking parameter
+     * cannot overwrite a newer authoritative state.
      */
     private function finalizeCancellation(
         Booking $booking,
@@ -314,8 +322,25 @@ final class CancellationService
         ?User $actor = null
     ): Booking {
         return DB::transaction(function () use ($booking, $refundId, $refundAmount, $actor) {
-            $booking = $booking->transitionTo(BookingStatus::CANCELLED, $actor);
-            $booking->update([
+            // Re-acquire pessimistic lock and reload the row inside this
+            // transaction. Mirrors transitionToRefundPending so the lock
+            // pattern is consistent at every cancellation boundary.
+            $locked = Booking::query()
+                ->whereKey($booking->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            // Idempotent no-op when another path already terminated the
+            // booking during the Stripe round-trip. The Stripe refund (if
+            // one was just issued by this caller) is reconciled out-of-band
+            // via ReconcileRefundsJob; we deliberately do not overwrite the
+            // audit columns set by the racing path.
+            if ($locked->status === BookingStatus::CANCELLED) {
+                return $locked;
+            }
+
+            $locked = $locked->transitionTo(BookingStatus::CANCELLED, $actor);
+            $locked->update([
                 'refund_id' => $refundId,
                 'refund_status' => $refundId ? 'succeeded' : null,
                 'refund_amount' => $refundAmount ?: null,
@@ -323,9 +348,9 @@ final class CancellationService
             ]);
 
             // Dispatch event (notification listener will pick this up)
-            event(new BookingCancelled($booking, $actor));
+            event(new BookingCancelled($locked, $actor));
 
-            return $booking->fresh();
+            return $locked->fresh();
         });
     }
 

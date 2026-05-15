@@ -66,19 +66,24 @@ final class BookingPaymentHoldTest extends TestCase
         $room = Room::factory()->available()->ready()->create(['price' => 125000]);
         $stripeSawBookingId = null;
 
-        $this->mock(StripeService::class, function (MockInterface $mock): void {
+        $baselineTxLevel = DB::transactionLevel();
+        $callCount = 0;
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($baselineTxLevel, &$callCount): void {
             $mock->shouldReceive('createPaymentIntent')
-                ->once()
-                ->with(Mockery::on(function (Booking $booking): bool {
-                    $this->assertSame(0, DB::transactionLevel());
-                    $this->assertDatabaseHas('bookings', [
-                        'id' => $booking->id,
-                        'status' => BookingStatus::PENDING->value,
-                    ]);
+                ->twice()
+                ->andReturnUsing(function (Booking $booking) use ($baselineTxLevel, &$callCount): string {
+                    $callCount++;
+                    if ($callCount === 1) {
+                        $this->assertSame($baselineTxLevel, DB::transactionLevel());
+                        $this->assertDatabaseHas('bookings', [
+                            'id' => $booking->id,
+                            'status' => BookingStatus::PENDING->value,
+                        ]);
+                        throw new Exception('Stripe unavailable');
+                    }
 
-                    return true;
-                }))
-                ->andThrow(new Exception('Stripe unavailable'));
+                    return 'pi_after_void_123';
+                });
         });
 
         $response = $this->actingAs($user, 'sanctum')
@@ -106,12 +111,6 @@ final class BookingPaymentHoldTest extends TestCase
             'guest_email' => 'rollback@example.com',
             'status' => BookingStatus::PENDING->value,
         ]);
-
-        $this->mock(StripeService::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('createPaymentIntent')
-                ->once()
-                ->andReturn('pi_after_void_123');
-        });
 
         $retry = $this->actingAs($user, 'sanctum')
             ->postJson('/api/v1/bookings', [
@@ -141,11 +140,12 @@ final class BookingPaymentHoldTest extends TestCase
         $user = User::factory()->create();
         $room = Room::factory()->available()->ready()->create(['price' => 150000]);
 
-        $this->mock(StripeService::class, function (MockInterface $mock): void {
+        $baselineTxLevel = DB::transactionLevel();
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($baselineTxLevel): void {
             $mock->shouldReceive('createPaymentIntent')
                 ->once()
-                ->with(Mockery::on(function (Booking $booking): bool {
-                    $this->assertSame(0, DB::transactionLevel());
+                ->with(Mockery::on(function (Booking $booking) use ($baselineTxLevel): bool {
+                    $this->assertSame($baselineTxLevel, DB::transactionLevel());
                     $this->assertDatabaseHas('bookings', [
                         'id' => $booking->id,
                         'status' => BookingStatus::PENDING->value,
@@ -202,7 +202,7 @@ final class BookingPaymentHoldTest extends TestCase
             'payload' => null,
             'options' => null,
         ];
-        $fakeStripe = new class($capture)
+        $fakeStripe = new class($capture) extends \Stripe\StripeClient
         {
             public object $paymentIntents;
 

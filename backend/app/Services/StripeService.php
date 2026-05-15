@@ -6,11 +6,15 @@ namespace App\Services;
 
 use App\Models\Booking;
 use Illuminate\Support\Str;
-use Laravel\Cashier\Cashier;
 use RuntimeException;
+use Stripe\StripeClient;
 
 class StripeService
 {
+    public function __construct(
+        private readonly StripeClient $stripeClient
+    ) {}
+
     public function createPaymentIntent(Booking $booking): string
     {
         $amount = (int) $booking->amount;
@@ -27,7 +31,7 @@ class StripeService
             return 'pi_test_'.$booking->id.'_'.substr(hash('sha256', $idempotencyKey), 0, 12);
         }
 
-        $paymentIntent = Cashier::stripe()->paymentIntents->create(
+        $paymentIntent = $this->stripeClient->paymentIntents->create(
             [
                 'amount' => $amount,
                 'currency' => $currency,
@@ -67,7 +71,7 @@ class StripeService
             return;
         }
 
-        Cashier::stripe()->paymentIntents->cancel($paymentIntentId);
+        $this->stripeClient->paymentIntents->cancel($paymentIntentId);
     }
 
     /**
@@ -98,7 +102,7 @@ class StripeService
 
         $idempotencyKey = sprintf('deposit_refund_%d_%s', $booking->id, $reason);
 
-        $refund = Cashier::stripe()->refunds->create(
+        $refund = $this->stripeClient->refunds->create(
             [
                 'payment_intent' => $booking->payment_intent_id,
                 'amount' => $amount,

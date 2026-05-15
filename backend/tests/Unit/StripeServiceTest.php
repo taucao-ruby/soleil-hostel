@@ -18,7 +18,7 @@ final class StripeServiceTest extends TestCase
         ]);
         $booking->exists = true;
 
-        $service = new StripeService;
+        $service = new StripeService($this->createMock(\Stripe\StripeClient::class));
 
         $this->assertSame('booking_payment_intent_123', $service->paymentIntentIdempotencyKey($booking));
         $this->assertSame($service->paymentIntentIdempotencyKey($booking), $service->paymentIntentIdempotencyKey($booking));

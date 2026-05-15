@@ -4,10 +4,11 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import GuestDashboard from './GuestDashboard'
 import { toBookingViewModel } from './bookingViewModel'
+import type { CancelBookingResult } from './useMyBookings'
 import type { BookingApiRaw } from '@/shared/types/booking.types'
 
 const mockRefetch = vi.fn()
-const mockCancel = vi.fn<(id: number) => Promise<boolean>>()
+const mockCancel = vi.fn<(id: number) => Promise<CancelBookingResult>>()
 
 const { mockUseAuth } = vi.hoisted(() => ({
   mockUseAuth: vi.fn(),
@@ -212,7 +213,7 @@ describe('GuestDashboard', () => {
 
   it('opens confirm dialog and triggers cancel + toast on success', async () => {
     const bookings = [toViewModel(makeRaw({ id: 42, status: 'pending' }))]
-    mockCancel.mockResolvedValue(true)
+    mockCancel.mockResolvedValue({ ok: true, errorMessage: null })
 
     mockedQuery.mockReturnValue({
       bookings,
@@ -237,14 +238,15 @@ describe('GuestDashboard', () => {
     })
   })
 
-  it('shows error toast when cancel fails', async () => {
+  it('surfaces backend-localized cancellation message in error toast', async () => {
     const bookings = [toViewModel(makeRaw({ id: 42, status: 'pending' }))]
-    mockCancel.mockResolvedValue(false)
+    const backendMessage = 'Không thể hủy đặt phòng trong vòng 24 giờ trước ngày nhận phòng.'
+    mockCancel.mockResolvedValue({ ok: false, errorMessage: backendMessage })
 
     mockedMutation.mockReturnValue({
       cancel: mockCancel,
       isPending: false,
-      error: 'Cancel failed',
+      error: backendMessage,
       clearError: vi.fn(),
     })
 
@@ -260,8 +262,9 @@ describe('GuestDashboard', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Xác nhận hủy' }))
 
     await waitFor(() => {
-      expect(mockShowToast.error).toHaveBeenCalledWith('Không thể hủy đặt phòng. Vui lòng thử lại.')
+      expect(mockShowToast.error).toHaveBeenCalledWith(backendMessage)
     })
+    expect(mockRefetch).not.toHaveBeenCalled()
   })
 
   it('shows Vietnamese date format in booking cards', () => {

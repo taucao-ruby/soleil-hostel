@@ -150,15 +150,15 @@ const GuestDashboard: React.FC = () => {
   const handleCancelConfirm = async () => {
     if (!cancelTarget) return
 
-    const success = await cancel(cancelTarget.id)
-    if (success) {
+    const result = await cancel(cancelTarget.id)
+    if (result.ok) {
       setCancelTarget(null)
       showToast.success('Đã hủy đặt phòng thành công.')
       refetch()
       return
     }
 
-    showToast.error('Không thể hủy đặt phòng. Vui lòng thử lại.')
+    showToast.error(result.errorMessage)
   }
 
   const handleResendVerification = async () => {

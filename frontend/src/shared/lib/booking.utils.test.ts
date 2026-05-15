@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { getStatusConfig, formatDateVN, formatDateRangeVN } from './booking.utils'
+import {
+  getStatusConfig,
+  formatDateVN,
+  formatDateRangeVN,
+  formatDateOnly,
+  parseDateOnly,
+  todayDateOnly,
+} from './booking.utils'
 import { BOOKING_STATUSES } from '@/shared/types/booking.types'
 
 describe('getStatusConfig', () => {
@@ -40,5 +47,53 @@ describe('formatDateRangeVN', () => {
     expect(result).toContain('—')
     expect(result).toMatch(/01\/06\/2026/)
     expect(result).toMatch(/03\/06\/2026/)
+  })
+})
+
+describe('formatDateOnly', () => {
+  it('formats a YYYY-MM-DD civil date as dd/MM/yyyy', () => {
+    expect(formatDateOnly('2026-06-01')).toBe('01/06/2026')
+  })
+
+  it('formats without Date or Intl, so the result is timezone-independent', () => {
+    // Direct string rearrangement — no dependency on the runtime timezone.
+    // The TZ-pinned vitest runs exercise the rendered path end-to-end.
+    expect(formatDateOnly('2026-12-31')).toBe('31/12/2026')
+    expect(formatDateOnly('2026-01-05')).toBe('05/01/2026')
+  })
+
+  it('renders an em dash for nullish or empty input', () => {
+    expect(formatDateOnly(null)).toBe('—')
+    expect(formatDateOnly(undefined)).toBe('—')
+    expect(formatDateOnly('')).toBe('—')
+  })
+
+  it('returns non-date-only strings unchanged without throwing', () => {
+    expect(formatDateOnly('invalid')).toBe('invalid')
+    expect(formatDateOnly('2026-06-01T10:00:00Z')).toBe('2026-06-01T10:00:00Z')
+  })
+})
+
+describe('parseDateOnly', () => {
+  it('parses a YYYY-MM-DD string to a UTC-midnight Date', () => {
+    const d = parseDateOnly('2026-06-01')
+    expect(d).toBeInstanceOf(Date)
+    expect(d.toISOString()).toBe('2026-06-01T00:00:00.000Z')
+  })
+
+  it('round-trips to the same calendar date when formatted with timeZone: UTC', () => {
+    const formatted = new Intl.DateTimeFormat('vi-VN', {
+      timeZone: 'UTC',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    }).format(parseDateOnly('2026-06-01'))
+    expect(formatted).toMatch(/01\/06\/2026/)
+  })
+})
+
+describe('todayDateOnly', () => {
+  it('returns today as a YYYY-MM-DD string', () => {
+    expect(todayDateOnly()).toMatch(/^\d{4}-\d{2}-\d{2}$/)
   })
 })

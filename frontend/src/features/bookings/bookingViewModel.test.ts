@@ -57,6 +57,12 @@ describe('toBookingViewModel', () => {
     expect(vm.checkOut).toBeInstanceOf(Date)
   })
 
+  it('exposes timezone-stable dd/MM/yyyy display strings for check-in/check-out', () => {
+    const vm = toBookingViewModel(makeRaw({ check_in: '2026-06-01', check_out: '2026-06-03' }))
+    expect(vm.checkInDisplay).toBe('01/06/2026')
+    expect(vm.checkOutDisplay).toBe('03/06/2026')
+  })
+
   it('uses status as fallback when status_label is null', () => {
     const vm = toBookingViewModel(makeRaw({ status: 'pending', status_label: null }))
     expect(vm.statusLabel).toBe('pending')

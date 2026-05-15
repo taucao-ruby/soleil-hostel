@@ -4,7 +4,6 @@ import { useAuth } from '@/features/auth/AuthContext'
 import api from '@/shared/lib/api'
 import { useMyBookingsQuery, useCancelBookingMutation } from './useMyBookings'
 import { isUpcoming, isPast, type BookingViewModel } from './bookingViewModel'
-import { formatDateRangeVN } from '@/shared/lib/booking.utils'
 import type { BookingStatus } from '@/shared/types/booking.types'
 import { getErrorMessage, showToast } from '@/shared/utils/toast'
 
@@ -55,7 +54,7 @@ function formatBookingReference(booking: Pick<BookingViewModel, 'id' | 'createdA
 }
 
 function formatDashboardDateRange(booking: BookingViewModel): string {
-  return formatDateRangeVN(booking.checkIn, booking.checkOut).replace(' — ', ' → ')
+  return `${booking.checkInDisplay} → ${booking.checkOutDisplay}`
 }
 
 interface BookingCardProps {

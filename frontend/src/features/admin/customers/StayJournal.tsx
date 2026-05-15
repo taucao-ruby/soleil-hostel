@@ -5,41 +5,34 @@ import {
   type BookingDetailRaw,
 } from '@/shared/types/booking.types'
 import { STAY_STATUS_CONFIG, type StayStatus } from '@/shared/components/ui/StatusBadge'
+import { formatDateOnly, todayDateOnly } from '@/shared/lib/booking.utils'
 
 interface StayJournalProps {
   bookings: BookingDetailRaw[]
 }
 
+// check_in/check_out are zoneless civil dates — compared as YYYY-MM-DD strings
+// against today's civil date so stay-status derivation stays stable across
+// timezones. Routing them through `new Date()` anchors them to UTC midnight and
+// skews the comparison in off-UTC zones.
 function deriveStayStatus(booking: BookingApiRaw): StayStatus {
-  const now = new Date()
-  const checkIn = new Date(booking.check_in)
-  const checkOut = new Date(booking.check_out)
+  const today = todayDateOnly()
+  const checkIn = booking.check_in
+  const checkOut = booking.check_out
 
   switch (booking.status) {
     case 'cancelled':
     case 'refund_pending':
     case 'refund_failed':
-      return checkIn <= now ? 'no_show' : 'checked_out'
+      return checkIn <= today ? 'no_show' : 'checked_out'
     case 'pending':
-      return now >= checkIn && now < checkOut ? 'in_house' : 'checked_out'
+      return today >= checkIn && today < checkOut ? 'in_house' : 'checked_out'
     case 'confirmed':
-      if (now >= checkIn && now < checkOut) return 'in_house'
-      if (now < checkIn) return 'expected'
+      if (today >= checkIn && today < checkOut) return 'in_house'
+      if (today < checkIn) return 'expected'
       return 'checked_out'
     default:
       return assertNever(booking.status)
-  }
-}
-
-// ─── Date helpers ─────────────────────────────────────────────────────────────
-
-function fmtDate(iso: string): string {
-  if (!iso) return '---'
-  try {
-    const d = new Date(iso.split('T')[0] + 'T00:00:00')
-    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
-  } catch {
-    return iso
   }
 }
 
@@ -86,7 +79,7 @@ const StayJournal: React.FC<StayJournalProps> = ({ bookings }) => {
               <div>
                 {/* Date row */}
                 <p className="text-[13px] font-medium text-[#1C1A17] leading-snug">
-                  {fmtDate(booking.check_in)}
+                  {formatDateOnly(booking.check_in)}
                 </p>
 
                 {/* Room name */}

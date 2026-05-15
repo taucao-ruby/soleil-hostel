@@ -7,6 +7,7 @@ import {
   type BookingStatus,
 } from '@/shared/types/booking.types'
 import { formatVND } from '@/shared/lib/formatCurrency'
+import { parseDateOnly } from '@/shared/lib/booking.utils'
 import { getErrorMessage, showToast } from '@/shared/utils/toast'
 import BookingDetailPanel from './BookingDetailPanel'
 import ReviewForm from './ReviewForm'
@@ -37,14 +38,17 @@ function capitalizeFirstLetter(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
+// `dateString` is a civil date-only value (YYYY-MM-DD). Anchor it to UTC and
+// format in UTC so the rendered day/weekday cannot drift across timezones.
 function formatDetailDate(dateString: string): string {
   return capitalizeFirstLetter(
     new Intl.DateTimeFormat('vi-VN', {
+      timeZone: 'UTC',
       weekday: 'long',
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
-    }).format(new Date(dateString))
+    }).format(parseDateOnly(dateString))
   )
 }
 

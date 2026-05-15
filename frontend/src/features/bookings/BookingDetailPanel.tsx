@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { getBookingById } from '@/features/booking/booking.api'
 import type { BookingDetailRaw } from '@/shared/types/booking.types'
-import { getStatusConfig, formatDateVN } from '@/shared/lib/booking.utils'
+import { getStatusConfig, formatDateVN, formatDateOnly } from '@/shared/lib/booking.utils'
 import Skeleton from '@/shared/components/ui/Skeleton'
 import Button from '@/shared/components/ui/Button'
 import ReviewForm from './ReviewForm'
@@ -21,8 +21,6 @@ interface DetailContentProps {
 
 const DetailContent: React.FC<DetailContentProps> = ({ booking }) => {
   const statusConfig = getStatusConfig(booking.status)
-  const checkInDate = new Date(booking.check_in)
-  const checkOutDate = new Date(booking.check_out)
   const createdAtDate = new Date(booking.created_at)
 
   return (
@@ -42,11 +40,11 @@ const DetailContent: React.FC<DetailContentProps> = ({ booking }) => {
         {/* Dates */}
         <div className="flex justify-between gap-4">
           <dt className="text-gray-500 shrink-0">Nhận phòng</dt>
-          <dd className="text-right text-gray-900">{formatDateVN(checkInDate)}</dd>
+          <dd className="text-right text-gray-900">{formatDateOnly(booking.check_in)}</dd>
         </div>
         <div className="flex justify-between gap-4">
           <dt className="text-gray-500 shrink-0">Trả phòng</dt>
-          <dd className="text-right text-gray-900">{formatDateVN(checkOutDate)}</dd>
+          <dd className="text-right text-gray-900">{formatDateOnly(booking.check_out)}</dd>
         </div>
 
         {/* Nights */}

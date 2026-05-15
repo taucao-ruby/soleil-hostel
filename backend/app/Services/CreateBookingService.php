@@ -514,10 +514,11 @@ class CreateBookingService
             );
         }
 
-        // Only enforce future check-in for new bookings, not updates to existing ones
-        if (! $isUpdate && $checkIn->isPast()) {
+        // Only reject dates before today for new bookings, not updates to existing ones.
+        // Check-in is date-only, so same-day bookings are valid throughout the day.
+        if (! $isUpdate && $checkIn->lt(Carbon::today())) {
             throw new RuntimeException(
-                'Ngày check-in phải là ngày trong tương lai'
+                'Ngày check-in không được là ngày đã qua'
             );
         }
     }

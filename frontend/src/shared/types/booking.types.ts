@@ -68,8 +68,8 @@ export interface BookingApiRaw {
   refund_amount?: number
   refund_amount_formatted?: string
   refund_status?: string
-  cancelled_at?: string
-  cancelled_by?: BookingActorSummary
+  cancelled_at?: string | null
+  cancelled_by?: BookingActorSummary | null
   refund_percentage?: number
   created_at: string
   updated_at: string

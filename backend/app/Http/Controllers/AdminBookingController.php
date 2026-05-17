@@ -14,7 +14,6 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Throwable;
 
 /**
  * AdminBookingController - Backoffice booking management
@@ -293,10 +292,13 @@ class AdminBookingController extends Controller
      * commits caught by no_overlapping_bookings → 409) from generic DB errors
      * (which must propagate as 500 rather than be silently swallowed).
      */
-    private function isPgExclusionViolation(Throwable $e): bool
+    private function isPgExclusionViolation(QueryException $e): bool
     {
-        return $e instanceof QueryException
-            && ((($e->errorInfo[0] ?? null) === '23P01')
-                || $e->getCode() === '23P01');
+        if (($e->errorInfo[0] ?? null) === '23P01') {
+            return true;
+        }
+
+        /** @psalm-suppress TypeDoesNotContainType PDOException overrides getCode() to return SQLSTATE string, but Throwable's int typing wins in Psalm's inference here. */
+        return $e->getCode() === '23P01';
     }
 }

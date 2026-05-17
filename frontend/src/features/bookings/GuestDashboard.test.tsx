@@ -4,16 +4,13 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import GuestDashboard from './GuestDashboard'
 import { toBookingViewModel } from './bookingViewModel'
-import type { BookingApiRaw } from '@/features/booking/booking.types'
+import type { CancelBookingResult } from './useMyBookings'
+import type { BookingApiRaw } from '@/shared/types/booking.types'
 
-const mockRefetch = vi.fn()
-const mockCancel = vi.fn<(id: number) => Promise<boolean>>()
-
-const { mockUseAuth } = vi.hoisted(() => ({
+const { mockRefetch, mockCancel, mockUseAuth, mockShowToast, mockApiPost } = vi.hoisted(() => ({
+  mockRefetch: vi.fn(),
+  mockCancel: vi.fn<(id: number) => Promise<CancelBookingResult>>(),
   mockUseAuth: vi.fn(),
-}))
-
-const { mockShowToast } = vi.hoisted(() => ({
   mockShowToast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -21,9 +18,6 @@ const { mockShowToast } = vi.hoisted(() => ({
     info: vi.fn(),
     promise: vi.fn(),
   },
-}))
-
-const { mockApiPost } = vi.hoisted(() => ({
   mockApiPost: vi.fn(),
 }))
 
@@ -195,6 +189,8 @@ describe('GuestDashboard', () => {
       toViewModel(
         makeRaw({ id: 2, status: 'cancelled', check_in: '2020-01-01', check_out: '2020-01-03' })
       ),
+      toViewModel(makeRaw({ id: 3, status: 'refund_pending' })),
+      toViewModel(makeRaw({ id: 4, status: 'refund_failed' })),
     ]
 
     mockedQuery.mockReturnValue({
@@ -205,12 +201,12 @@ describe('GuestDashboard', () => {
     })
 
     renderDashboard()
-    expect(screen.getAllByRole('button', { name: /Hủy đặt phòng/ })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: /Hủy đặt phòng/ })).toHaveLength(2)
   })
 
   it('opens confirm dialog and triggers cancel + toast on success', async () => {
     const bookings = [toViewModel(makeRaw({ id: 42, status: 'pending' }))]
-    mockCancel.mockResolvedValue(true)
+    mockCancel.mockResolvedValue({ ok: true, errorMessage: null })
 
     mockedQuery.mockReturnValue({
       bookings,
@@ -235,14 +231,15 @@ describe('GuestDashboard', () => {
     })
   })
 
-  it('shows error toast when cancel fails', async () => {
+  it('surfaces backend-localized cancellation message in error toast', async () => {
     const bookings = [toViewModel(makeRaw({ id: 42, status: 'pending' }))]
-    mockCancel.mockResolvedValue(false)
+    const backendMessage = 'Không thể hủy đặt phòng trong vòng 24 giờ trước ngày nhận phòng.'
+    mockCancel.mockResolvedValue({ ok: false, errorMessage: backendMessage })
 
     mockedMutation.mockReturnValue({
       cancel: mockCancel,
       isPending: false,
-      error: 'Cancel failed',
+      error: backendMessage,
       clearError: vi.fn(),
     })
 
@@ -258,8 +255,9 @@ describe('GuestDashboard', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Xác nhận hủy' }))
 
     await waitFor(() => {
-      expect(mockShowToast.error).toHaveBeenCalledWith('Không thể hủy đặt phòng. Vui lòng thử lại.')
+      expect(mockShowToast.error).toHaveBeenCalledWith(backendMessage)
     })
+    expect(mockRefetch).not.toHaveBeenCalled()
   })
 
   it('shows Vietnamese date format in booking cards', () => {

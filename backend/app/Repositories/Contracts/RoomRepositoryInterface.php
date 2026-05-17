@@ -27,11 +27,11 @@ interface RoomRepositoryInterface
     public function findByIdWithBookings(int $roomId): ?Room;
 
     /**
-     * Find a room by ID with confirmed bookings filtered by callback.
+     * Find a room by ID with active bookings filtered by callback.
      *
      * Mirrors: Room::with(['bookings' => function ($q) { ... }])->find($roomId)
      */
-    public function findByIdWithConfirmedBookings(int $roomId): ?Room;
+    public function findByIdWithActiveBookings(int $roomId): ?Room;
 
     /**
      * Get all rooms ordered by name.
@@ -43,13 +43,13 @@ interface RoomRepositoryInterface
     public function getAllOrderedByName(): Collection;
 
     /**
-     * Check if overlapping confirmed bookings exist for a room.
+     * Check if overlapping active bookings exist for a room.
      *
      * @return bool True if overlapping bookings exist
      *
      * @throws \Illuminate\Database\Eloquent\ModelNotFoundException If room does not exist
      */
-    public function hasOverlappingConfirmedBookings(int $roomId, string $checkIn, string $checkOut): bool;
+    public function hasOverlappingActiveBookings(int $roomId, string $checkIn, string $checkOut): bool;
 
     /**
      * Create a new room.

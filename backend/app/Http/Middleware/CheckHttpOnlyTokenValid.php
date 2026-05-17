@@ -34,20 +34,8 @@ class CheckHttpOnlyTokenValid
         // ========== Extract Token from Cookie ==========
         // Browser automatically sends httpOnly cookie
         $cookieName = config('sanctum.cookie_name', 'soleil_token');
-        $tokenIdentifier = $request->cookie($cookieName);
-
-        // Fallback: Try to extract from Cookie header for testing compatibility
-        if (! $tokenIdentifier && $request->hasHeader('Cookie')) {
-            $cookieHeader = $request->header('Cookie');
-            // Parse cookie header: "name=value; other=value"
-            $cookies = array_map('trim', explode(';', $cookieHeader));
-            foreach ($cookies as $cookie) {
-                if (strpos($cookie, $cookieName.'=') === 0) {
-                    $tokenIdentifier = substr($cookie, strlen($cookieName.'='));
-                    break;
-                }
-            }
-        }
+        $tokenIdentifier = $request->cookie($cookieName)
+            ?? $this->extractCookieFromHeader($request, $cookieName);
 
         if (! $tokenIdentifier) {
             throw new AuthenticationException('Unauthenticated. Please log in.');
@@ -138,6 +126,49 @@ class CheckHttpOnlyTokenValid
         }
 
         return $next($request);
+    }
+
+    /**
+     * Fallback cookie extraction from the raw Cookie header.
+     *
+     * Needed because feature tests construct requests with
+     * `withHeader('Cookie', ...)` rather than `withCookie(...)`, which does
+     * not populate Laravel's cookie bag. Production traffic goes through
+     * the normal cookie bag and never reaches this fallback.
+     *
+     * Hardened against the F-39 finding:
+     * - Exact name match (no prefix collision like `soleil_token_backup`
+     *   being accepted as `soleil_token`).
+     * - Splits each pair on the first `=` only, so cookie values containing
+     *   `=` are preserved instead of being truncated.
+     * - Uses rawurldecode, which preserves `+` (urldecode would convert
+     *   `+` to space — form-body semantics, wrong for cookie material).
+     */
+    private function extractCookieFromHeader(Request $request, string $cookieName): ?string
+    {
+        $cookieHeader = $request->header('Cookie');
+
+        if (! is_string($cookieHeader) || $cookieHeader === '') {
+            return null;
+        }
+
+        foreach (explode(';', $cookieHeader) as $cookiePair) {
+            $parts = explode('=', trim($cookiePair), 2);
+
+            if (count($parts) !== 2) {
+                continue;
+            }
+
+            [$name, $value] = $parts;
+
+            if (rawurldecode(trim($name)) !== $cookieName) {
+                continue;
+            }
+
+            return rawurldecode($value);
+        }
+
+        return null;
     }
 
     /**

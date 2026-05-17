@@ -1,5 +1,10 @@
-import type { BookingApiRaw } from '@/features/booking/booking.types'
+import {
+  isCancellableBookingStatus,
+  type BookingApiRaw,
+  type BookingStatus,
+} from '@/shared/types/booking.types'
 import { formatVND } from '@/shared/lib/formatCurrency'
+import { formatDateOnly, parseDateOnly } from '@/shared/lib/booking.utils'
 
 /**
  * Booking ViewModel
@@ -8,15 +13,18 @@ import { formatVND } from '@/shared/lib/formatCurrency'
  * All display logic lives here — components stay dumb.
  */
 
-const CANCELLABLE_STATUSES: readonly string[] = ['pending', 'confirmed'] as const
-
 export interface BookingViewModel {
   id: number
-  status: string
+  status: BookingStatus
   statusLabel: string
   roomName: string
+  // `checkIn`/`checkOut` are UTC-midnight Dates for date math (isUpcoming/isPast).
+  // `checkInDisplay`/`checkOutDisplay` are the timezone-stable dd/MM/yyyy strings
+  // to render — formatting the Dates directly would drift a day off-UTC.
   checkIn: Date
   checkOut: Date
+  checkInDisplay: string
+  checkOutDisplay: string
   guestName: string
   nights: number
   amountFormatted: string | undefined
@@ -47,12 +55,14 @@ export function toBookingViewModel(raw: BookingApiRaw): BookingViewModel {
     status: raw.status,
     statusLabel: raw.status_label ?? raw.status,
     roomName: getRoomName(raw),
-    checkIn: new Date(raw.check_in),
-    checkOut: new Date(raw.check_out),
+    checkIn: parseDateOnly(raw.check_in),
+    checkOut: parseDateOnly(raw.check_out),
+    checkInDisplay: formatDateOnly(raw.check_in),
+    checkOutDisplay: formatDateOnly(raw.check_out),
     guestName: raw.guest_name,
     nights: raw.nights,
     amountFormatted: getAmountFormatted(raw),
-    canCancel: CANCELLABLE_STATUSES.includes(raw.status),
+    canCancel: isCancellableBookingStatus(raw.status),
     createdAt: new Date(raw.created_at),
   }
 }

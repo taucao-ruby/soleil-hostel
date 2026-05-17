@@ -22,8 +22,8 @@ class ShowLocationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'check_in' => 'nullable|date|required_with:check_out',
-            'check_out' => 'nullable|date|after:check_in',
+            'check_in' => 'nullable|date|required_with:check_out|after_or_equal:today',
+            'check_out' => 'nullable|date|after:check_in|after_or_equal:today',
             'guests' => 'nullable|integer|min:1',
         ];
     }

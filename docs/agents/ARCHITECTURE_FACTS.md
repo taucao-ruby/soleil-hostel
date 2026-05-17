@@ -202,6 +202,8 @@ Added across two migrations (`2025_11_20_000100` + `2025_11_21_150000`):
 ### Auth Enforcement
 - Middleware checks: expiry, revocation, refresh abuse
 - Controllers: `HttpOnlyTokenController`, `UnifiedAuthController`, `AuthController`
+- Public CSRF bootstrap is Laravel Sanctum's `GET /sanctum/csrf-cookie`.
+- Supplementary `GET /api/auth/csrf-token` is authenticated-only via `check_token_valid`; `throttle:csrf-token` is retained as secondary abuse control.
 
 ## Multi-Location
 

@@ -3,9 +3,26 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import BookingForm from './BookingForm'
 
-const { mockNavigate, mockSearchParamsRef } = vi.hoisted(() => ({
+const {
+  mockNavigate,
+  mockSearchParamsRef,
+  mockGetRooms,
+  mockCreateBooking,
+  mockValidateBookingForm,
+  mockGetMinCheckInDate,
+  mockGetMinCheckOutDate,
+  mockGetMaxCheckOutDate,
+  mockCalculateNights,
+} = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
   mockSearchParamsRef: { current: new URLSearchParams() },
+  mockGetRooms: vi.fn(),
+  mockCreateBooking: vi.fn(),
+  mockValidateBookingForm: vi.fn(),
+  mockGetMinCheckInDate: vi.fn(),
+  mockGetMinCheckOutDate: vi.fn(),
+  mockGetMaxCheckOutDate: vi.fn(),
+  mockCalculateNights: vi.fn(),
 }))
 
 vi.mock('react-router-dom', () => ({
@@ -13,21 +30,13 @@ vi.mock('react-router-dom', () => ({
   useSearchParams: () => [mockSearchParamsRef.current],
 }))
 
-const mockGetRooms = vi.fn()
 vi.mock('../rooms/room.api', () => ({
   getRooms: (...args: unknown[]) => mockGetRooms(...args),
 }))
 
-const mockCreateBooking = vi.fn()
 vi.mock('./booking.api', () => ({
   createBooking: (...args: unknown[]) => mockCreateBooking(...args),
 }))
-
-const mockValidateBookingForm = vi.fn()
-const mockGetMinCheckInDate = vi.fn()
-const mockGetMinCheckOutDate = vi.fn()
-const mockGetMaxCheckOutDate = vi.fn()
-const mockCalculateNights = vi.fn()
 
 vi.mock('./booking.validation', () => ({
   MAX_STAY_DAYS: 30,
@@ -37,6 +46,28 @@ vi.mock('./booking.validation', () => ({
   getMaxCheckOutDate: (...args: unknown[]) => mockGetMaxCheckOutDate(...args),
   calculateNights: (...args: unknown[]) => mockCalculateNights(...args),
 }))
+
+function makeAxiosError(response?: { status: number; data?: unknown }) {
+  return Object.assign(new Error('Request failed'), {
+    isAxiosError: true,
+    response,
+  })
+}
+
+async function fillValidBookingAndSubmit() {
+  await waitFor(() => {
+    expect(screen.getByRole('option', { name: /Phòng Dormitory 4 giường/i })).toBeInTheDocument()
+  })
+
+  fireEvent.change(screen.getByLabelText(/Chọn phòng/), { target: { value: '1' } })
+  fireEvent.change(screen.getByLabelText(/Họ và tên/), { target: { value: 'Nguyen Van A' } })
+  fireEvent.change(screen.getByLabelText(/Địa chỉ email/), {
+    target: { value: 'user@example.com' },
+  })
+  fireEvent.change(screen.getByLabelText(/Ngày nhận phòng/), { target: { value: '2026-06-15' } })
+  fireEvent.change(screen.getByLabelText(/Ngày trả phòng/), { target: { value: '2026-06-18' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Xác nhận đặt phòng →' }))
+}
 
 describe('BookingForm', () => {
   beforeEach(() => {
@@ -177,27 +208,93 @@ describe('BookingForm', () => {
     expect(mockCreateBooking).not.toHaveBeenCalled()
   })
 
-  it('shows the API error banner when booking creation fails', async () => {
-    mockCreateBooking.mockRejectedValue(new Error('conflict'))
+  describe('submit error disambiguation', () => {
+    it('shows the overlap-specific message on a 409 conflict', async () => {
+      mockCreateBooking.mockRejectedValue(makeAxiosError({ status: 409 }))
 
-    render(<BookingForm />)
+      render(<BookingForm />)
+      await fillValidBookingAndSubmit()
 
-    const user = userEvent.setup()
-    await waitFor(() => {
-      expect(screen.getByRole('option', { name: /Phòng Dormitory 4 giường/i })).toBeInTheDocument()
+      expect(await screen.findByTestId('error-message')).toHaveTextContent(
+        'Phòng đã có người đặt trong khoảng thời gian này. Vui lòng chọn ngày khác.'
+      )
     })
 
-    await user.selectOptions(screen.getByLabelText(/Chọn phòng/), '1')
-    await user.type(screen.getByLabelText(/Họ và tên/), 'Nguyen Van A')
-    await user.type(screen.getByLabelText(/Địa chỉ email/), 'user@example.com')
-    fireEvent.change(screen.getByLabelText(/Ngày nhận phòng/), { target: { value: '2026-06-15' } })
-    fireEvent.change(screen.getByLabelText(/Ngày trả phòng/), { target: { value: '2026-06-18' } })
+    it('surfaces the backend message on a 422 pending-limit failure', async () => {
+      mockCreateBooking.mockRejectedValue(
+        makeAxiosError({
+          status: 422,
+          data: { message: 'Bạn đã đạt giới hạn đơn đặt phòng đang chờ xử lý.' },
+        })
+      )
 
-    await user.click(screen.getByRole('button', { name: 'Xác nhận đặt phòng →' }))
+      render(<BookingForm />)
+      await fillValidBookingAndSubmit()
 
-    expect(await screen.findByTestId('error-message')).toHaveTextContent(
-      'Không thể đặt phòng. Phòng này có thể đã được đặt. Vui lòng thử ngày khác.'
-    )
+      expect(await screen.findByTestId('error-message')).toHaveTextContent(
+        'Bạn đã đạt giới hạn đơn đặt phòng đang chờ xử lý.'
+      )
+    })
+
+    it('surfaces the backend message on a 422 max-guests failure', async () => {
+      mockCreateBooking.mockRejectedValue(
+        makeAxiosError({
+          status: 422,
+          data: { message: 'Số khách vượt quá sức chứa tối đa của phòng.' },
+        })
+      )
+
+      render(<BookingForm />)
+      await fillValidBookingAndSubmit()
+
+      expect(await screen.findByTestId('error-message')).toHaveTextContent(
+        'Số khách vượt quá sức chứa tối đa của phòng.'
+      )
+    })
+
+    it('shows the validation fallback on a 422 without a usable message', async () => {
+      mockCreateBooking.mockRejectedValue(makeAxiosError({ status: 422, data: { message: '   ' } }))
+
+      render(<BookingForm />)
+      await fillValidBookingAndSubmit()
+
+      expect(await screen.findByTestId('error-message')).toHaveTextContent(
+        'Thông tin đặt phòng không hợp lệ. Vui lòng kiểm tra lại.'
+      )
+    })
+
+    it('shows the generic message on a 500 server error', async () => {
+      mockCreateBooking.mockRejectedValue(makeAxiosError({ status: 500 }))
+
+      render(<BookingForm />)
+      await fillValidBookingAndSubmit()
+
+      expect(await screen.findByTestId('error-message')).toHaveTextContent(
+        'Không thể tạo đặt phòng lúc này. Vui lòng thử lại sau.'
+      )
+    })
+
+    it('shows the generic message on a network error with no response', async () => {
+      mockCreateBooking.mockRejectedValue(makeAxiosError())
+
+      render(<BookingForm />)
+      await fillValidBookingAndSubmit()
+
+      expect(await screen.findByTestId('error-message')).toHaveTextContent(
+        'Không thể tạo đặt phòng lúc này. Vui lòng thử lại sau.'
+      )
+    })
+
+    it('shows the generic message on a non-Axios error', async () => {
+      mockCreateBooking.mockRejectedValue(new Error('conflict'))
+
+      render(<BookingForm />)
+      await fillValidBookingAndSubmit()
+
+      expect(await screen.findByTestId('error-message')).toHaveTextContent(
+        'Không thể tạo đặt phòng lúc này. Vui lòng thử lại sau.'
+      )
+    })
   })
 
   it('shows the success state and redirects after two seconds', async () => {

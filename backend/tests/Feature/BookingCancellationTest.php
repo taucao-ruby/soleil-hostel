@@ -10,7 +10,9 @@ use App\Events\BookingCancelled;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
+use App\Services\CancellationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
@@ -588,5 +590,158 @@ class BookingCancellationTest extends TestCase
         // Invalid transitions
         $this->assertFalse(BookingStatus::CANCELLED->canTransitionTo(BookingStatus::CONFIRMED));
         $this->assertFalse(BookingStatus::CANCELLED->canTransitionTo(BookingStatus::PENDING));
+    }
+
+    // ===== F-33 RACE / STALE-MODEL REGRESSION =====
+
+    /**
+     * Regression for F-33: finalizeCancellation() must re-acquire the row
+     * lock and re-read state before mutating, so a stale Booking instance
+     * passed by the caller (e.g. after the Stripe round-trip in
+     * processRefund) cannot overwrite a newer authoritative state written by
+     * a concurrent path.
+     *
+     * Scenario simulated:
+     *   1. A booking sits in REFUND_PENDING (Phase 1 completed).
+     *   2. The caller is holding a stale in-memory instance (Phase 2 in
+     *      flight — Stripe just returned).
+     *   3. Another path (here: a direct DB write standing in for an admin
+     *      force-cancel or a webhook retry) terminates the row to CANCELLED
+     *      and writes its own audit columns.
+     *   4. finalizeCancellation() is invoked with the stale instance.
+     *
+     * Invariant verified:
+     *   - The freshly locked row is the source of truth.
+     *   - The stale refund_id / refund_status fields are NOT persisted on
+     *     top of the racing path's audit columns.
+     *   - The pre-existing audit marker (refund_error written by the racing
+     *     path) survives untouched.
+     *   - No additional BookingCancelled event is dispatched for the
+     *     already-terminated row.
+     */
+    public function test_finalize_cancellation_does_not_overwrite_concurrently_cancelled_row(): void
+    {
+        Event::fake([BookingCancelled::class]);
+
+        $racingActor = User::factory()->admin()->create([
+            'name' => 'Race Admin',
+            'email' => 'race.admin@example.test',
+        ]);
+
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($this->room)
+            ->create([
+                'status' => BookingStatus::REFUND_PENDING,
+                'check_in' => now()->addDays(5),
+                'check_out' => now()->addDays(7),
+                'payment_intent_id' => 'pi_f33_race',
+                'amount' => 10000,
+            ]);
+
+        // Caller is holding a stale model whose in-memory status is
+        // REFUND_PENDING (Phase 1 result). Stripe has just returned but the
+        // DB write below has not yet been observed by this instance.
+        $stale = $booking->fresh();
+        $this->assertSame(BookingStatus::REFUND_PENDING, $stale->status);
+
+        // Racing path: terminate the booking out-of-band with its own audit
+        // columns. We use DB::table to bypass model events / soft-delete
+        // scopes and produce a clean "row was mutated under us" scenario.
+        DB::table('bookings')->where('id', $booking->id)->update([
+            'status' => BookingStatus::CANCELLED->value,
+            'cancelled_at' => now(),
+            'cancelled_by' => $racingActor->id,
+            'cancelled_by_email' => $racingActor->email,
+            'cancelled_by_role' => $racingActor->role->value,
+            'cancelled_by_display' => $racingActor->name,
+            'refund_error' => 'racing-path-audit-marker',
+            'updated_at' => now(),
+        ]);
+
+        // Drive finalizeCancellation directly with the stale instance,
+        // standing in for processRefund's call after a successful Stripe
+        // refund. The method is private — we use reflection rather than
+        // building a controller-level Stripe double for this targeted
+        // regression.
+        $service = app(CancellationService::class);
+        $reflection = new \ReflectionMethod($service, 'finalizeCancellation');
+        $reflection->setAccessible(true);
+
+        $callerActor = User::factory()->create();
+        $result = $reflection->invoke(
+            $service,
+            $stale,
+            'rf_stale_refund_should_not_persist',
+            5000,
+            $callerActor,
+        );
+
+        // The locked re-read must win. The fresh row's audit columns set by
+        // the racing path are preserved verbatim; the stale refund_id from
+        // this caller is not persisted on top.
+        $row = DB::table('bookings')->where('id', $booking->id)->first();
+        $this->assertNotNull($row);
+        $this->assertSame(BookingStatus::CANCELLED->value, $row->status);
+        $this->assertSame('racing-path-audit-marker', $row->refund_error);
+        $this->assertNull(
+            $row->refund_id,
+            'stale refund_id from caller must not overwrite the racing path\'s state',
+        );
+        $this->assertSame((int) $racingActor->id, (int) $row->cancelled_by);
+        $this->assertSame($racingActor->email, $row->cancelled_by_email);
+
+        // The returned model is the freshly locked CANCELLED row, not the
+        // stale REFUND_PENDING input.
+        $this->assertInstanceOf(Booking::class, $result);
+        $this->assertSame($booking->id, $result->id);
+        $this->assertSame(BookingStatus::CANCELLED, $result->status);
+
+        // No additional cancellation event is dispatched: the idempotent
+        // early return must not double-notify.
+        Event::assertNotDispatched(BookingCancelled::class);
+    }
+
+    /**
+     * Companion to the F-33 regression above: when no race occurs,
+     * finalizeCancellation() must still drive the canonical
+     * REFUND_PENDING → CANCELLED transition and persist refund metadata
+     * onto the fresh locked row. Guards against an over-zealous
+     * idempotency check accidentally short-circuiting the happy path.
+     */
+    public function test_finalize_cancellation_happy_path_persists_refund_metadata(): void
+    {
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($this->room)
+            ->create([
+                'status' => BookingStatus::REFUND_PENDING,
+                'check_in' => now()->addDays(5),
+                'check_out' => now()->addDays(7),
+                'payment_intent_id' => 'pi_f33_happy',
+                'amount' => 10000,
+            ]);
+
+        $service = app(CancellationService::class);
+        $reflection = new \ReflectionMethod($service, 'finalizeCancellation');
+        $reflection->setAccessible(true);
+
+        $result = $reflection->invoke(
+            $service,
+            $booking->fresh(),
+            'rf_happy_refund_id',
+            7500,
+            $this->user,
+        );
+
+        $row = DB::table('bookings')->where('id', $booking->id)->first();
+        $this->assertNotNull($row);
+        $this->assertSame(BookingStatus::CANCELLED->value, $row->status);
+        $this->assertSame('rf_happy_refund_id', $row->refund_id);
+        $this->assertSame('succeeded', $row->refund_status);
+        $this->assertSame(7500, (int) $row->refund_amount);
+        $this->assertNull($row->refund_error);
+
+        $this->assertSame(BookingStatus::CANCELLED, $result->status);
     }
 }

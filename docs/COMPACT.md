@@ -15,13 +15,13 @@
 
 ## 1) Current Snapshot (keep under 12 lines)
 
-- Date updated: 2026-05-08
-- Current branch: `dev` (HEAD=`6372d7f`)
-- Latest commit: `6372d7f` — fix(backend): graceful degradation in `FeatureFlag::forget()` + Redis-free `AiHarnessDisabledTest`; explicit `REDIS_HOST`/`REDIS_PORT`/`REDIS_PASSWORD` in `phpunit.xml` and CI.
-- Backend test baseline: re-verification required since `b69a7a0` (2026-05-03 PASS 1414/4110). May 5–8 added Redis-free harness setup (`6372d7f`/`2ab45ae`) + Stripe charge type guard (`1441edb`) + Booking PHPDoc generic alignment (`176051d`); no test count regression expected, no new green run yet.
+- Date updated: 2026-05-11
+- Current branch: `dev` (HEAD=`748cf34`)
+- Latest commit: `748cf34` — fix(infra): add KNOWN_ABSENT allowlist to lint-doc-pointers.
+- Backend gate baseline: 2026-05-11 F-30 run PASS — `php artisan test --filter=Csrf` (10/35), `php artisan test --filter=Auth` (205 passed / 1 skipped / 623), full `php -d max_execution_time=0 artisan test` (1304 passed / 110 skipped / 3763); Pint, PHPStan, Psalm PASS.
 - Frontend: 39 Vitest test files; May 3 intermediate run 418 tests PASS; axios bumped `^1.15.0`→`^1.16.0` (`97c684c`); typecheck PASS.
 - AI Harness: kill-switch contract finalized — `FeatureFlag::killSwitch()` is the sole gate (the `config('ai_harness.enabled', …)` path was non-functional and silently passing tests for the wrong reason — `2ab45ae`); `FeatureFlag::forget()` no longer re-throws Redis exceptions (`6372d7f`).
-- Open findings: F-23, F-25, F-26–F-62 (35 open after F-48 close), F-63–F-66, F-68. F-67 **Mitigated**. T-13 **Mitigated**. See `FINDINGS_BACKLOG.md` §F-ID namespace note for the F-06→F-67 promotion.
+- Open findings: F-23, F-25, F-26–F-29, F-31–F-47, F-49–F-62, F-63–F-66, F-68. F-30 **Fixed** (authenticated-only `/api/auth/csrf-token`; `/sanctum/csrf-cookie` remains pre-auth bootstrap). F-67 **Mitigated**. T-13 **Mitigated**.
 - **F-68 (2026-04-19, Open, Medium)**: `backend/database/migrations/2026_02_09_000005_assign_rooms_to_locations.php:50` — doctrine-routed `->change()` races primary connection for `rooms` locks during `RefreshDatabase`. Test-infra only, no production impact.
 - **H-06**: `phpunit.xml` defaults to PostgreSQL; run `docker compose up -d db` before `php artisan test`. Test env vars now declared explicitly (`6372d7f`).
 

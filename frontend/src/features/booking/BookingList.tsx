@@ -1,9 +1,49 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchMyBookings } from './booking.api'
-import type { BookingApiRaw } from './booking.types'
+import {
+  isCancellableBookingStatus,
+  isCancelledBookingStatus,
+  type BookingApiRaw,
+  type BookingStatus,
+} from '@/shared/types/booking.types'
 import LoadingSpinner from '@/shared/components/feedback/LoadingSpinner'
 import BookingCancelDialog from './BookingCancelDialog'
+
+const BOOKING_LIST_STATUS_BADGES: Record<BookingStatus, { label: string; className: string }> = {
+  pending: {
+    label: 'Chờ duyệt',
+    className: 'bg-yellow-100 text-yellow-800',
+  },
+  confirmed: {
+    label: 'Đã xác nhận',
+    className: 'bg-green-100 text-green-800',
+  },
+  refund_pending: {
+    label: 'Đang hoàn tiền',
+    className: 'bg-blue-100 text-blue-800',
+  },
+  cancelled: {
+    label: 'Đã hủy',
+    className: 'bg-gray-100 text-gray-800',
+  },
+  refund_failed: {
+    label: 'Hoàn tiền thất bại',
+    className: 'bg-red-100 text-red-800',
+  },
+}
+
+const getStatusBadge = (status: BookingStatus) => {
+  const config = BOOKING_LIST_STATUS_BADGES[status]
+
+  return (
+    <span
+      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${config.className}`}
+    >
+      {config.label}
+    </span>
+  )
+}
 
 const isAbortError = (error: unknown): boolean => {
   if (error instanceof DOMException) {
@@ -65,55 +105,11 @@ const BookingList: React.FC = () => {
   const today = new Date().toISOString().split('T')[0]
   const filteredBookings = bookings.filter(b => {
     if (filter === 'all') return true
-    if (filter === 'cancelled')
-      return (
-        b.status === 'cancelled' || b.status === 'refund_failed' || b.status === 'refund_pending'
-      )
-    if (filter === 'upcoming') return b.check_in >= today && b.status !== 'cancelled'
-    if (filter === 'past') return b.check_out < today && b.status !== 'cancelled'
+    if (filter === 'cancelled') return isCancelledBookingStatus(b.status)
+    if (filter === 'upcoming') return b.check_in >= today && !isCancelledBookingStatus(b.status)
+    if (filter === 'past') return b.check_out < today && !isCancelledBookingStatus(b.status)
     return true
   })
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return (
-          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-            Đã xác nhận
-          </span>
-        )
-      case 'pending':
-        return (
-          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-            Chờ duyệt
-          </span>
-        )
-      case 'cancelled':
-        return (
-          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-            Đã hủy
-          </span>
-        )
-      case 'refund_pending':
-        return (
-          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-            Đang hoàn tiền
-          </span>
-        )
-      case 'refund_failed':
-        return (
-          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-            Hoàn tiền thất bại
-          </span>
-        )
-      default:
-        return (
-          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-            {status}
-          </span>
-        )
-    }
-  }
 
   return (
     <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -225,15 +221,14 @@ const BookingList: React.FC = () => {
                         Xem chi tiết
                       </Link>
 
-                      {['pending', 'confirmed'].includes(booking.status) &&
-                        booking.check_in >= today && (
-                          <button
-                            onClick={() => setCancelModalBooking(booking)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            Hủy
-                          </button>
-                        )}
+                      {isCancellableBookingStatus(booking.status) && booking.check_in >= today && (
+                        <button
+                          onClick={() => setCancelModalBooking(booking)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          Hủy
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

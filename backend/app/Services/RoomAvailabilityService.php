@@ -128,7 +128,7 @@ class RoomAvailabilityService
         $cacheKey = "room-availability:detail:{$roomId}:bookings";
 
         $fetchData = function () use ($roomId): ?array {
-            $room = $this->roomRepository->findByIdWithConfirmedBookings($roomId);
+            $room = $this->roomRepository->findByIdWithActiveBookings($roomId);
 
             if (! $room instanceof Room) {
                 return null;
@@ -214,11 +214,11 @@ class RoomAvailabilityService
 
     /**
      * Check for overlapping bookings (moved from RoomService).
-     * Returns true if room is available (no overlapping confirmed bookings).
+     * Returns true if room is available (no overlapping active bookings).
      */
     public function checkOverlappingBookings(int $roomId, string $checkIn, string $checkOut): bool
     {
-        return ! $this->roomRepository->hasOverlappingConfirmedBookings($roomId, $checkIn, $checkOut);
+        return ! $this->roomRepository->hasOverlappingActiveBookings($roomId, $checkIn, $checkOut);
     }
 
     /**

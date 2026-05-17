@@ -3,7 +3,7 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import TodayOperations from './TodayOperations'
-import type { BookingDetailRaw } from '@/features/booking/booking.types'
+import type { BookingDetailRaw } from '@/shared/types/booking.types'
 
 const { mockGetLocations, mockGetTodayArrivals, mockGetTodayDepartures, mockApiGet, mockApiPatch } =
   vi.hoisted(() => ({

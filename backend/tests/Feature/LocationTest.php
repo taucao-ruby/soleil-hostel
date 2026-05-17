@@ -348,6 +348,28 @@ class LocationTest extends TestCase
         $this->assertEquals($room2->id, $available->first()->id);
     }
 
+    #[\PHPUnit\Framework\Attributes\Test]
+    public function room_available_between_scope_ignores_soft_deleted_active_bookings(): void
+    {
+        $location = Location::factory()->create();
+        $room = Room::factory()->create([
+            'location_id' => $location->id,
+            'status' => 'available',
+        ]);
+
+        $booking = Booking::factory()->confirmed()->create([
+            'room_id' => $room->id,
+            'check_in' => '2026-06-01',
+            'check_out' => '2026-06-03',
+        ]);
+        $booking->delete();
+
+        $available = Room::availableBetween('2026-06-01', '2026-06-03')->get();
+
+        $this->assertCount(1, $available);
+        $this->assertEquals($room->id, $available->first()->id);
+    }
+
     /** @test */
     public function room_available_between_allows_same_day_checkout_checkin(): void
     {

@@ -4,7 +4,7 @@ import { useAuth } from '@/features/auth/AuthContext'
 import api from '@/shared/lib/api'
 import { useMyBookingsQuery, useCancelBookingMutation } from './useMyBookings'
 import { isUpcoming, isPast, type BookingViewModel } from './bookingViewModel'
-import { formatDateRangeVN } from '@/shared/lib/booking.utils'
+import type { BookingStatus } from '@/shared/types/booking.types'
 import { getErrorMessage, showToast } from '@/shared/utils/toast'
 
 type FilterTab = 'all' | 'upcoming' | 'past'
@@ -15,7 +15,7 @@ const FILTER_TABS: { key: FilterTab; label: string }[] = [
   { key: 'past', label: 'Đã qua' },
 ]
 
-const DASHBOARD_STATUS_STYLES: Record<string, { label: string; className: string }> = {
+const DASHBOARD_STATUS_STYLES: Record<BookingStatus, { label: string; className: string }> = {
   pending: {
     label: 'Chờ xác nhận',
     className:
@@ -42,13 +42,7 @@ const DASHBOARD_STATUS_STYLES: Record<string, { label: string; className: string
 }
 
 function getDashboardStatus(booking: BookingViewModel) {
-  return (
-    DASHBOARD_STATUS_STYLES[booking.status] ?? {
-      label: booking.statusLabel,
-      className:
-        'bg-gray-100 text-gray-700 border border-gray-200 text-xs px-2 py-0.5 rounded-full',
-    }
-  )
+  return DASHBOARD_STATUS_STYLES[booking.status]
 }
 
 function formatBookingReference(booking: Pick<BookingViewModel, 'id' | 'createdAt'>): string {
@@ -60,7 +54,7 @@ function formatBookingReference(booking: Pick<BookingViewModel, 'id' | 'createdA
 }
 
 function formatDashboardDateRange(booking: BookingViewModel): string {
-  return formatDateRangeVN(booking.checkIn, booking.checkOut).replace(' — ', ' → ')
+  return `${booking.checkInDisplay} → ${booking.checkOutDisplay}`
 }
 
 interface BookingCardProps {
@@ -156,15 +150,15 @@ const GuestDashboard: React.FC = () => {
   const handleCancelConfirm = async () => {
     if (!cancelTarget) return
 
-    const success = await cancel(cancelTarget.id)
-    if (success) {
+    const result = await cancel(cancelTarget.id)
+    if (result.ok) {
       setCancelTarget(null)
       showToast.success('Đã hủy đặt phòng thành công.')
       refetch()
       return
     }
 
-    showToast.error('Không thể hủy đặt phòng. Vui lòng thử lại.')
+    showToast.error(result.errorMessage)
   }
 
   const handleResendVerification = async () => {

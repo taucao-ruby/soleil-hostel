@@ -295,17 +295,16 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
     }
 
     /**
-     * Test 9: GET /api/auth/csrf-token returns token without authentication
+     * Test 9: GET /api/auth/csrf-token requires authentication.
      *
-     * Public endpoint để frontend lấy CSRF token trước login
+     * Pre-login SPA bootstrap must use Laravel Sanctum's /sanctum/csrf-cookie
+     * route, not this supplementary authenticated endpoint.
      */
-    public function test_csrf_token_endpoint_accessible_publicly(): void
+    public function test_csrf_token_endpoint_requires_authentication(): void
     {
-        $response = $this->withSession([])->getJson('/api/auth/csrf-token');
+        $response = $this->getJson('/api/auth/csrf-token');
 
-        $response->assertStatus(200);
-        $response->assertJsonStructure(['csrf_token']);
-        $this->assertNotEmpty($response->json('csrf_token'));
+        $response->assertStatus(401);
     }
 
     /**
@@ -343,6 +342,31 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
         $this->assertTrue($response->json('success'));
         $this->assertEquals($this->user->id, $response->json('data.user.id'));
         $this->assertEquals($this->user->email, $response->json('data.user.email'));
+    }
+
+    /**
+     * F-39 regression: a cookie whose name shares the soleil_token prefix
+     * (e.g. soleil_token_backup) must NEVER authenticate against the
+     * soleil_token middleware, even when it carries a real token identifier.
+     */
+    public function test_prefix_collision_cookie_does_not_authenticate(): void
+    {
+        $this->postJson('/api/auth/login-httponly', [
+            'email' => 'test@example.com',
+            'password' => 'password123',
+        ]);
+
+        $token = PersonalAccessToken::where('tokenable_id', $this->user->id)->first();
+        $tokenIdentifier = $token->token_identifier;
+
+        $cookieName = env('SANCTUM_COOKIE_NAME', 'soleil_token');
+        $collisionName = $cookieName.'_backup';
+
+        $response = $this
+            ->withHeader('Cookie', "{$collisionName}={$tokenIdentifier}; other=value")
+            ->getJson('/api/auth/me-httponly');
+
+        $response->assertStatus(401);
     }
 
     /**

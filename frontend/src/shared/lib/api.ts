@@ -164,7 +164,7 @@ api.interceptors.response.use(
         }
 
         // Clear auth-related storage only (preserve user preferences, UI state, etc.)
-        const AUTH_STORAGE_KEYS = ['csrf_token', 'auth_token', 'user', 'refresh_token']
+        const AUTH_STORAGE_KEYS = ['csrf_token']
         AUTH_STORAGE_KEYS.forEach(key => {
           sessionStorage.removeItem(key)
           localStorage.removeItem(key)

@@ -2,7 +2,7 @@
 
 namespace App\Repositories;
 
-use App\Models\Booking;
+use App\Enums\BookingStatus;
 use App\Models\Room;
 use App\Repositories\Contracts\RoomRepositoryInterface;
 use Illuminate\Support\Collection;
@@ -57,17 +57,17 @@ class EloquentRoomRepository implements RoomRepositoryInterface
     }
 
     /**
-     * Find a room by ID with confirmed bookings filtered.
+     * Find a room by ID with active bookings filtered.
      *
      * Reproduces: Room::with(['bookings' => function ($q) {
-     *     $q->where('status', 'confirmed')
+     *     $q->whereIn('status', BookingStatus::ACTIVE_STATUSES)
      *       ->select(['id', 'room_id', 'check_in', 'check_out', 'status']);
      * }])->find($roomId)
      */
-    public function findByIdWithConfirmedBookings(int $roomId): ?Room
+    public function findByIdWithActiveBookings(int $roomId): ?Room
     {
         return Room::with(['bookings' => function ($q) {
-            $q->where('status', 'confirmed')
+            $q->whereIn('status', BookingStatus::ACTIVE_STATUSES)
                 ->select(['id', 'room_id', 'check_in', 'check_out', 'status']);
         }])->find($roomId);
     }
@@ -95,14 +95,11 @@ class EloquentRoomRepository implements RoomRepositoryInterface
      *
      * @throws \Illuminate\Database\Eloquent\ModelNotFoundException If room does not exist
      */
-    public function hasOverlappingConfirmedBookings(int $roomId, string $checkIn, string $checkOut): bool
+    public function hasOverlappingActiveBookings(int $roomId, string $checkIn, string $checkOut): bool
     {
         return Room::findOrFail($roomId)
             ->bookings()
-            ->whereIn('status', array_map(
-                static fn ($status) => $status->value,
-                Booking::ACTIVE_STATUSES
-            ))
+            ->whereIn('status', BookingStatus::ACTIVE_STATUSES)
             ->where('check_in', '<', $checkOut)
             ->where('check_out', '>', $checkIn)
             ->exists();

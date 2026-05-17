@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { BookingDetailRaw } from '@/features/booking/booking.types'
+import type { BookingDetailRaw } from '@/shared/types/booking.types'
 
 // ── Hoist mock before vi.mock() factory ──────────────────────
 const { mockGetBookingById, mockSubmitReview } = vi.hoisted(() => ({

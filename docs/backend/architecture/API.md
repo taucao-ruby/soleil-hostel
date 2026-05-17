@@ -71,7 +71,6 @@ To migrate from legacy to v1 endpoints, simply add `/v1` prefix:
 | POST   | `/auth/login`          | Login (Bearer token)      | 5/min      |
 | POST   | `/auth/login-v2`       | Login with token metadata | 5/min      |
 | POST   | `/auth/login-httponly` | Login (HttpOnly cookie)   | 5/min      |
-| GET    | `/auth/csrf-token`     | Get CSRF token            | -          |
 
 ### Protected Endpoints (Bearer Token)
 
@@ -84,6 +83,7 @@ To migrate from legacy to v1 endpoints, simply add `/v1` prefix:
 | POST   | `/auth/refresh-v2`    | Refresh (v2)       | Required |
 | POST   | `/auth/logout-all-v2` | Logout all devices | Required |
 | GET    | `/auth/me-v2`         | Get user (v2)      | Required |
+| GET    | `/auth/csrf-token`    | Supplementary CSRF token | Required |
 
 ### Protected Endpoints (HttpOnly Cookie)
 
@@ -92,6 +92,8 @@ To migrate from legacy to v1 endpoints, simply add `/v1` prefix:
 | POST   | `/auth/refresh-httponly` | Refresh token | Cookie |
 | POST   | `/auth/logout-httponly`  | Logout        | Cookie |
 | GET    | `/auth/me-httponly`      | Get user      | Cookie |
+
+Pre-auth SPA bootstrap uses Sanctum `GET /sanctum/csrf-cookie`. The supplementary `/auth/csrf-token` endpoint is authenticated-only and rate-limited.
 
 ### Unified Auth Endpoints (Mode-Agnostic)
 

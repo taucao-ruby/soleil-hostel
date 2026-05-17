@@ -1,5 +1,9 @@
 import api from '@/shared/lib/api'
-import type { BookingDetailRaw } from '@/features/booking/booking.types'
+import {
+  parseBookingStatusPayload,
+  type BookingDetailRaw,
+  type UnvalidatedBooking,
+} from '@/shared/types/booking.types'
 
 export interface CustomerSummary {
   email: string
@@ -50,8 +54,10 @@ export const getCustomerProfile = async (email: string): Promise<CustomerProfile
 }
 
 export const getCustomerBookings = async (email: string): Promise<BookingDetailRaw[]> => {
-  const response = await api.get(`/v1/admin/customers/${encodeURIComponent(email)}/bookings`)
-  return response.data.data
+  const response = await api.get<{ data: Array<UnvalidatedBooking<BookingDetailRaw>> }>(
+    `/v1/admin/customers/${encodeURIComponent(email)}/bookings`
+  )
+  return response.data.data.map(parseBookingStatusPayload)
 }
 
 export const getCustomerStats = async (): Promise<CustomerStats> => {

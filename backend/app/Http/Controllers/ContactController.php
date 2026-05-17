@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Admin\ContactIndexRequest;
 use App\Http\Requests\StoreContactRequest;
 use App\Models\ContactMessage;
 use App\Services\ContactMessageService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
 class ContactController extends Controller
@@ -37,11 +37,11 @@ class ContactController extends Controller
      * List all contact messages (admin-only).
      * Paginated, sorted by newest first.
      */
-    public function index(Request $request): JsonResponse
+    public function index(ContactIndexRequest $request): JsonResponse
     {
         Gate::authorize('viewAny', ContactMessage::class);
 
-        $perPage = $request->input('per_page', 15);
+        $perPage = $request->perPage();
         $status = $request->input('status');
 
         $messages = $this->contactMessageService->getPaginated($perPage, $status);

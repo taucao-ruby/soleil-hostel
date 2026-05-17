@@ -1,5 +1,8 @@
 /* eslint-disable react-refresh/only-export-components */
 import React from 'react'
+import type { BookingStatus } from '@/shared/types/booking.types'
+
+export type { BookingStatus } from '@/shared/types/booking.types'
 
 /**
  * StatusBadge — canonical status badge system (PROMPT_SH2).
@@ -16,13 +19,6 @@ import React from 'react'
  */
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-export type BookingStatus =
-  | 'pending'
-  | 'confirmed'
-  | 'cancelled'
-  | 'refund_pending'
-  | 'refund_failed'
 
 export type RoomStatus = 'available' | 'booked' | 'maintenance'
 
@@ -153,7 +149,7 @@ const PILL_BASE = 'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs f
 // ─── BookingStatusBadge ───────────────────────────────────────────────────────
 
 interface BookingStatusBadgeProps {
-  status: string
+  status: BookingStatus
   className?: string
 }
 
@@ -161,10 +157,7 @@ export const BookingStatusBadge: React.FC<BookingStatusBadgeProps> = ({
   status,
   className = '',
 }) => {
-  const cfg = BOOKING_STATUS_CONFIG[status as BookingStatus] ?? {
-    label: status,
-    cls: 'bg-gray-100 text-gray-600 border border-gray-200',
-  }
+  const cfg = BOOKING_STATUS_CONFIG[status]
   return <span className={`${PILL_BASE} ${cfg.cls} ${className}`.trim()}>{cfg.label}</span>
 }
 

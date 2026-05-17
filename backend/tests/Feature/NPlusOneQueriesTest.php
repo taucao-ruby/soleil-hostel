@@ -131,7 +131,7 @@ class NPlusOneQueriesTest extends TestCase
                 'guest_name' => 'Test Guest',
                 'guest_email' => 'test@example.com',
             ])->assertCreated();
-        }, expectedCount: 10, tolerance: 3); // Create booking with pending-cap locks + payment hold + event dispatch
+        }, expectedCount: 11, tolerance: 3); // Create booking with pending-cap locks + payment hold + event dispatch
     }
 
     /**

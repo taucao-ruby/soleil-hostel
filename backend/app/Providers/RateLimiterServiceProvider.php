@@ -110,6 +110,50 @@ class RateLimiterServiceProvider extends RouteServiceProvider
                 });
         });
 
+        // ========== CSRF TOKEN RATE LIMITING ==========
+        // Strategy: 5 requests per minute per authenticated user
+        // Purpose: Secondary abuse control for the authenticated supplementary token endpoint
+        RateLimiter::for('csrf-token', function (Request $request) {
+            $user = $request->user();
+
+            return Limit::perMinute(5)
+                ->by($user
+                    ? 'csrf-token:user:'.$user->getAuthIdentifier()
+                    : 'csrf-token:ip:'.$request->ip()
+                )
+                ->response(function (Request $request, array $headers) {
+                    return response()->json([
+                        'message' => 'Too many CSRF token requests. Please try again later.',
+                        'retry_after' => $headers['Retry-After'],
+                    ], 429, $headers);
+                });
+        });
+
+        // ========== CSP VIOLATION REPORT RATE LIMITING ==========
+        // Strategy: 60 requests per minute per IP + 300 per hour per IP
+        // Purpose: Bound public browser telemetry ingestion and log amplification
+        RateLimiter::for('csp-violation-report', function (Request $request) {
+            return [
+                Limit::perMinute(60)
+                    ->by('csp-report:minute:'.$request->ip())
+                    ->response(function (Request $request, array $headers) {
+                        return response()->json([
+                            'message' => 'Too many CSP violation reports. Please try again later.',
+                            'retry_after' => $headers['Retry-After'],
+                        ], 429, $headers);
+                    }),
+
+                Limit::perHour(300)
+                    ->by('csp-report:hour:'.$request->ip())
+                    ->response(function (Request $request, array $headers) {
+                        return response()->json([
+                            'message' => 'Too many CSP violation reports. Please try again later.',
+                            'retry_after' => $headers['Retry-After'],
+                        ], 429, $headers);
+                    }),
+            ];
+        });
+
         // ========== GLOBAL API RATE LIMITING ==========
         // Strategy: 1000 requests per minute per IP (catch-all)
         // Purpose: Prevent DoS attacks

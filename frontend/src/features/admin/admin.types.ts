@@ -15,8 +15,6 @@ export interface AdminBookingRaw extends BookingApiRaw {
   is_trashed?: boolean
   deleted_at?: string | null
   deleted_by?: { id: number; name: string; email: string } | null
-  cancelled_at?: string | null
-  cancelled_by?: { id: number; name: string } | null
   refund_amount?: number
   refund_amount_formatted?: string
   refund_status?: string

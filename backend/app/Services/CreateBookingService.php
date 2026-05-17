@@ -129,6 +129,18 @@ class CreateBookingService
                     $additionalData
                 );
 
+                if ($booking->status === BookingStatus::PENDING) {
+                    try {
+                        $paymentIntentId = $this->createPaymentIntentOutsideTransaction($booking);
+                    } catch (Throwable $e) {
+                        $this->voidPendingBookingAfterPaymentIntentFailure($booking, $e);
+
+                        throw $e;
+                    }
+
+                    $booking = $this->attachPaymentIntentToBooking($booking, $paymentIntentId);
+                }
+
                 // Record success metrics
                 $durationMs = (microtime(true) - $startTime) * 1000;
                 TransactionMetrics::recordSuccess(
@@ -258,7 +270,7 @@ class CreateBookingService
     }
 
     /**
-     * Create a booking using pessimistic locking (SELECT ... FOR UPDATE)
+     * Create the local booking row using pessimistic locking (SELECT ... FOR UPDATE).
      *
      * Flow:
      * 1. Begin transaction
@@ -269,6 +281,7 @@ class CreateBookingService
      *
      * Key: Lock is held until the transaction commits or rolls back,
      * preventing any other transaction from creating a conflicting booking
+     * while external payment I/O happens only after this method returns.
      */
     private function createBookingWithLocking(
         int $roomId,
@@ -334,16 +347,77 @@ class CreateBookingService
                 ...$additionalData,
             ]);
 
-            if ($booking->status === BookingStatus::PENDING) {
-                $paymentIntentId = $this->stripeService->createPaymentIntent($booking);
-
-                $booking->update([
-                    'payment_intent_id' => $paymentIntentId,
-                ]);
-            }
-
             // Step 5: Return booking (transaction auto-commit, lock released)
             return $booking->fresh();
+        });
+    }
+
+    /**
+     * Create the Stripe PaymentIntent after the booking transaction commits.
+     */
+    private function createPaymentIntentOutsideTransaction(Booking $booking): string
+    {
+        return $this->stripeService->createPaymentIntent($booking);
+    }
+
+    /**
+     * Attach Stripe's PaymentIntent to the still-pending booking with a guarded update.
+     */
+    private function attachPaymentIntentToBooking(Booking $booking, string $paymentIntentId): Booking
+    {
+        $updated = Booking::query()
+            ->whereKey($booking->id)
+            ->where('status', BookingStatus::PENDING->value)
+            ->whereNull('payment_intent_id')
+            ->update([
+                'payment_intent_id' => $paymentIntentId,
+                'updated_at' => now(),
+            ]);
+
+        if ($updated !== 1) {
+            throw new RuntimeException(
+                "Could not attach PaymentIntent to pending booking #{$booking->id}; reconciliation required."
+            );
+        }
+
+        return $booking->fresh();
+    }
+
+    /**
+     * Release inventory if Stripe PaymentIntent creation fails after local commit.
+     */
+    private function voidPendingBookingAfterPaymentIntentFailure(Booking $booking, Throwable $e): void
+    {
+        Log::error('Booking PaymentIntent creation failed; voiding pending booking', [
+            'booking_id' => $booking->id,
+            'room_id' => $booking->room_id,
+            'location_id' => $booking->location_id,
+            'user_id' => $booking->user_id,
+            'amount' => $booking->amount,
+            'exception' => class_basename($e),
+            'code' => $e->getCode(),
+        ]);
+
+        DB::transaction(function () use ($booking): void {
+            $locked = Booking::query()
+                ->whereKey($booking->id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($locked === null) {
+                return;
+            }
+
+            if ($locked->status !== BookingStatus::PENDING || $locked->payment_intent_id !== null) {
+                return;
+            }
+
+            $locked = $locked->transitionTo(BookingStatus::CANCELLED);
+            $locked->update([
+                'cancelled_at' => now(),
+                'cancelled_by' => null,
+                'cancellation_reason' => 'payment_intent_creation_failed',
+            ]);
         });
     }
 
@@ -440,10 +514,11 @@ class CreateBookingService
             );
         }
 
-        // Only enforce future check-in for new bookings, not updates to existing ones
-        if (! $isUpdate && $checkIn->isPast()) {
+        // Only reject dates before today for new bookings, not updates to existing ones.
+        // Check-in is date-only, so same-day bookings are valid throughout the day.
+        if (! $isUpdate && $checkIn->lt(Carbon::today())) {
             throw new RuntimeException(
-                'Ngày check-in phải là ngày trong tương lai'
+                'Ngày check-in không được là ngày đã qua'
             );
         }
     }

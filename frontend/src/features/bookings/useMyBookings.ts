@@ -1,7 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { fetchMyBookings, cancelBooking } from '@/features/booking/booking.api'
-import type { BookingApiRaw } from '@/features/booking/booking.types'
+import type { BookingApiRaw } from '@/shared/types/booking.types'
+import { getErrorMessage } from '@/shared/utils/toast'
 import { toBookingViewModel, type BookingViewModel } from './bookingViewModel'
+
+export type CancelBookingResult =
+  | { ok: true; errorMessage: null }
+  | { ok: false; errorMessage: string }
 
 /**
  * useMyBookingsQuery
@@ -68,16 +73,16 @@ export function useCancelBookingMutation() {
   const [isPending, setIsPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const cancel = useCallback(async (id: number): Promise<boolean> => {
+  const cancel = useCallback(async (id: number): Promise<CancelBookingResult> => {
     setIsPending(true)
     setError(null)
     try {
       await cancelBooking(id)
-      return true
+      return { ok: true, errorMessage: null }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to cancel booking'
+      const message = getErrorMessage(err)
       setError(message)
-      return false
+      return { ok: false, errorMessage: message }
     } finally {
       setIsPending(false)
     }

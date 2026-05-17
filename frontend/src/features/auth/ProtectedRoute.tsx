@@ -31,7 +31,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
         <div className="text-center">
           {/* Spinner */}
           <div className="inline-block w-16 h-16 mb-4 border-4 border-blue-200 rounded-full border-t-blue-600 animate-spin"></div>
-          <p className="font-medium text-gray-600">Checking authentication...</p>
+          <p className="font-medium text-gray-600">Đang kiểm tra phiên đăng nhập...</p>
         </div>
       </div>
     )

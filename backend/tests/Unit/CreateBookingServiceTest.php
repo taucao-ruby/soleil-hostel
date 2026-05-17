@@ -94,6 +94,48 @@ class CreateBookingServiceTest extends TestCase
         );
     }
 
+    public function test_service_allows_same_day_check_in_date_string(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-05-15 15:30:00'));
+
+        try {
+            $booking = $this->service->create(
+                roomId: $this->room->id,
+                checkIn: Carbon::today()->toDateString(),
+                checkOut: Carbon::tomorrow()->toDateString(),
+                guestName: 'Same Day Guest',
+                guestEmail: 'same-day@example.com',
+                userId: $this->user->id,
+            );
+
+            $this->assertNotNull($booking->id);
+            $this->assertEquals(Carbon::today()->toDateString(), $booking->check_in->toDateString());
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_service_rejects_check_in_before_today(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-05-15 15:30:00'));
+
+        try {
+            $this->expectException(RuntimeException::class);
+            $this->expectExceptionMessage('Ngày check-in không được là ngày đã qua');
+
+            $this->service->create(
+                roomId: $this->room->id,
+                checkIn: Carbon::yesterday()->toDateString(),
+                checkOut: Carbon::tomorrow()->toDateString(),
+                guestName: 'Past Guest',
+                guestEmail: 'past@example.com',
+                userId: $this->user->id,
+            );
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
     /**
      * Test: Service throw exception khi overlap xảy ra
      */

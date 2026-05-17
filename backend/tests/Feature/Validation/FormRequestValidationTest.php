@@ -123,6 +123,66 @@ class FormRequestValidationTest extends TestCase
         $response->assertStatus(200);
     }
 
+    public function test_location_show_rejects_past_check_in(): void
+    {
+        $location = Location::factory()->create(['is_active' => true]);
+
+        $past = now()->subDay()->toDateString();
+        $future = now()->addDay()->toDateString();
+
+        $response = $this->getJson("/api/v1/locations/{$location->slug}?check_in={$past}&check_out={$future}");
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors('check_in');
+    }
+
+    public function test_location_show_accepts_today_check_in(): void
+    {
+        $location = Location::factory()->create(['is_active' => true]);
+
+        $today = now()->toDateString();
+        $tomorrow = now()->addDay()->toDateString();
+
+        $response = $this->getJson("/api/v1/locations/{$location->slug}?check_in={$today}&check_out={$tomorrow}");
+
+        $response->assertStatus(200);
+    }
+
+    // ========== ListRoomsRequest ==========
+
+    public function test_list_rooms_rejects_past_check_in(): void
+    {
+        $past = now()->subDay()->toDateString();
+        $future = now()->addDay()->toDateString();
+
+        $response = $this->getJson("/api/v1/rooms?check_in={$past}&check_out={$future}");
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors('check_in');
+    }
+
+    public function test_list_rooms_rejects_check_out_before_check_in(): void
+    {
+        // Both dates are in the future; check_out is before check_in.
+        $later = now()->addDays(5)->toDateString();
+        $earlier = now()->addDays(2)->toDateString();
+
+        $response = $this->getJson("/api/v1/rooms?check_in={$later}&check_out={$earlier}");
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors('check_out');
+    }
+
+    public function test_list_rooms_accepts_today_check_in(): void
+    {
+        $today = now()->toDateString();
+        $tomorrow = now()->addDay()->toDateString();
+
+        $response = $this->getJson("/api/v1/rooms?check_in={$today}&check_out={$tomorrow}");
+
+        $response->assertStatus(200);
+    }
+
     // ========== LocationAvailabilityRequest ==========
 
     public function test_availability_requires_check_in(): void

@@ -81,7 +81,7 @@ class Booking extends Model
     }
 
     /** Active booking statuses for query scopes. */
-    public const ACTIVE_STATUSES = [BookingStatus::PENDING, BookingStatus::CONFIRMED];
+    public const ACTIVE_STATUSES = BookingStatus::ACTIVE_STATUSES;
 
     /**
      * Get the room that owns the booking.
@@ -514,28 +514,5 @@ class Booking extends Model
         $this->deleted_by = null;
 
         return $this->restore();
-    }
-
-    /**
-     * Scope: Filter overlapping bookings including soft deleted ones.
-     * Use this for historical reports where deleted bookings matter.
-     */
-    public function scopeOverlappingBookingsIncludingTrashed(
-        Builder $query,
-        int $roomId,
-        $checkIn,
-        $checkOut,
-        ?int $excludeBookingId = null
-    ): Builder {
-        $checkIn = $checkIn instanceof Carbon ? $checkIn : Carbon::parse($checkIn);
-        $checkOut = $checkOut instanceof Carbon ? $checkOut : Carbon::parse($checkOut);
-
-        return $query
-            ->withTrashed()
-            ->where('room_id', $roomId)
-            ->whereIn('status', self::ACTIVE_STATUSES)
-            ->where('check_in', '<', $checkOut)
-            ->where('check_out', '>', $checkIn)
-            ->when($excludeBookingId, fn ($q, $excludeId) => $q->where('id', '!=', $excludeId));
     }
 }

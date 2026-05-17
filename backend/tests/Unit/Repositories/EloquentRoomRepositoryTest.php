@@ -2,7 +2,7 @@
 
 namespace Tests\Unit\Repositories;
 
-use App\Models\Booking;
+use App\Enums\BookingStatus;
 use App\Models\Room;
 use App\Repositories\EloquentRoomRepository;
 use Illuminate\Database\Eloquent\Builder;
@@ -162,9 +162,9 @@ class EloquentRoomRepositoryTest extends TestCase
      *
      * @preserveGlobalState disabled
      *
-     * @covers \App\Repositories\EloquentRoomRepository::findByIdWithConfirmedBookings
+     * @covers \App\Repositories\EloquentRoomRepository::findByIdWithActiveBookings
      */
-    public function find_by_id_with_confirmed_bookings_returns_room_with_filtered_bookings(): void
+    public function find_by_id_with_active_bookings_returns_room_with_filtered_bookings(): void
     {
         $roomId = 1;
 
@@ -180,12 +180,28 @@ class EloquentRoomRepositoryTest extends TestCase
         $mockModel->shouldReceive('with')
             ->once()
             ->withArgs(function ($relations) {
-                return is_array($relations) && isset($relations['bookings']) && is_callable($relations['bookings']);
+                if (! is_array($relations) || ! isset($relations['bookings']) || ! is_callable($relations['bookings'])) {
+                    return false;
+                }
+
+                $mockBookingBuilder = Mockery::mock(Builder::class);
+                $mockBookingBuilder->shouldReceive('whereIn')
+                    ->once()
+                    ->with('status', BookingStatus::ACTIVE_STATUSES)
+                    ->andReturnSelf();
+                $mockBookingBuilder->shouldReceive('select')
+                    ->once()
+                    ->with(['id', 'room_id', 'check_in', 'check_out', 'status'])
+                    ->andReturnSelf();
+
+                $relations['bookings']($mockBookingBuilder);
+
+                return true;
             })
             ->andReturn($mockBuilder);
 
         $repository = new EloquentRoomRepository;
-        $result = $repository->findByIdWithConfirmedBookings($roomId);
+        $result = $repository->findByIdWithActiveBookings($roomId);
 
         $this->assertSame($mockModel, $result);
     }
@@ -197,9 +213,9 @@ class EloquentRoomRepositoryTest extends TestCase
      *
      * @preserveGlobalState disabled
      *
-     * @covers \App\Repositories\EloquentRoomRepository::findByIdWithConfirmedBookings
+     * @covers \App\Repositories\EloquentRoomRepository::findByIdWithActiveBookings
      */
-    public function find_by_id_with_confirmed_bookings_returns_null_when_room_not_found(): void
+    public function find_by_id_with_active_bookings_returns_null_when_room_not_found(): void
     {
         $roomId = 999;
 
@@ -215,7 +231,7 @@ class EloquentRoomRepositoryTest extends TestCase
             ->andReturn($mockBuilder);
 
         $repository = new EloquentRoomRepository;
-        $result = $repository->findByIdWithConfirmedBookings($roomId);
+        $result = $repository->findByIdWithActiveBookings($roomId);
 
         $this->assertNull($result);
     }
@@ -297,7 +313,7 @@ class EloquentRoomRepositoryTest extends TestCase
      *
      * @preserveGlobalState disabled
      *
-     * @covers \App\Repositories\EloquentRoomRepository::hasOverlappingConfirmedBookings
+     * @covers \App\Repositories\EloquentRoomRepository::hasOverlappingActiveBookings
      *
      * COMPLEX MOCK EXAMPLE: This tests the overlap detection chain:
      * Room::find($roomId)->bookings()->whereIn(...)->where(...)->where(...)->exists()
@@ -307,7 +323,7 @@ class EloquentRoomRepositoryTest extends TestCase
      * - check_in < $checkOut (existing booking starts before new checkout)
      * - check_out > $checkIn (existing booking ends after new checkin)
      */
-    public function has_overlapping_confirmed_bookings_returns_true_when_conflicts_exist(): void
+    public function has_overlapping_active_bookings_returns_true_when_conflicts_exist(): void
     {
         $roomId = 1;
         $checkIn = '2026-01-10';
@@ -317,10 +333,7 @@ class EloquentRoomRepositoryTest extends TestCase
         $mockRelationBuilder = Mockery::mock(HasMany::class);
         $mockRelationBuilder->shouldReceive('whereIn')
             ->once()
-            ->with('status', array_map(
-                static fn ($status) => $status->value,
-                Booking::ACTIVE_STATUSES
-            ))
+            ->with('status', BookingStatus::ACTIVE_STATUSES)
             ->andReturnSelf();
         $mockRelationBuilder->shouldReceive('where')
             ->once()
@@ -357,7 +370,7 @@ class EloquentRoomRepositoryTest extends TestCase
             ->andReturn($mockRoom);
 
         $repository = new EloquentRoomRepository;
-        $result = $repository->hasOverlappingConfirmedBookings($roomId, $checkIn, $checkOut);
+        $result = $repository->hasOverlappingActiveBookings($roomId, $checkIn, $checkOut);
 
         $this->assertTrue($result);
     }
@@ -369,9 +382,9 @@ class EloquentRoomRepositoryTest extends TestCase
      *
      * @preserveGlobalState disabled
      *
-     * @covers \App\Repositories\EloquentRoomRepository::hasOverlappingConfirmedBookings
+     * @covers \App\Repositories\EloquentRoomRepository::hasOverlappingActiveBookings
      */
-    public function has_overlapping_confirmed_bookings_returns_false_when_no_conflicts(): void
+    public function has_overlapping_active_bookings_returns_false_when_no_conflicts(): void
     {
         $roomId = 1;
         $checkIn = '2026-01-10';
@@ -380,10 +393,7 @@ class EloquentRoomRepositoryTest extends TestCase
         $mockRelationBuilder = Mockery::mock(HasMany::class);
         $mockRelationBuilder->shouldReceive('whereIn')
             ->once()
-            ->with('status', array_map(
-                static fn ($status) => $status->value,
-                Booking::ACTIVE_STATUSES
-            ))
+            ->with('status', BookingStatus::ACTIVE_STATUSES)
             ->andReturnSelf();
         $mockRelationBuilder->shouldReceive('where')
             ->once()
@@ -420,7 +430,7 @@ class EloquentRoomRepositoryTest extends TestCase
             ->andReturn($mockRoom);
 
         $repository = new EloquentRoomRepository;
-        $result = $repository->hasOverlappingConfirmedBookings($roomId, $checkIn, $checkOut);
+        $result = $repository->hasOverlappingActiveBookings($roomId, $checkIn, $checkOut);
 
         $this->assertFalse($result);
     }

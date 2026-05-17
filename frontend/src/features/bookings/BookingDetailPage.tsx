@@ -1,13 +1,18 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { cancelBooking, getBookingById } from '@/features/booking/booking.api'
-import type { BookingDetailRaw } from '@/features/booking/booking.types'
+import {
+  isCancellableBookingStatus,
+  type BookingDetailRaw,
+  type BookingStatus,
+} from '@/shared/types/booking.types'
 import { formatVND } from '@/shared/lib/formatCurrency'
+import { parseDateOnly } from '@/shared/lib/booking.utils'
 import { getErrorMessage, showToast } from '@/shared/utils/toast'
 import BookingDetailPanel from './BookingDetailPanel'
 import ReviewForm from './ReviewForm'
 
-const DETAIL_STATUS_STYLES: Record<string, string> = {
+const DETAIL_STATUS_STYLES: Record<BookingStatus, string> = {
   pending:
     'bg-amber-50 text-amber-800 border border-amber-200 text-sm px-3 py-1 rounded-full font-medium',
   confirmed:
@@ -33,14 +38,17 @@ function capitalizeFirstLetter(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
+// `dateString` is a civil date-only value (YYYY-MM-DD). Anchor it to UTC and
+// format in UTC so the rendered day/weekday cannot drift across timezones.
 function formatDetailDate(dateString: string): string {
   return capitalizeFirstLetter(
     new Intl.DateTimeFormat('vi-VN', {
+      timeZone: 'UTC',
       weekday: 'long',
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
-    }).format(new Date(dateString))
+    }).format(parseDateOnly(dateString))
   )
 }
 
@@ -73,7 +81,7 @@ function getRoomLabel(booking: BookingDetailRaw): string {
 }
 
 function canCancelBooking(booking: BookingDetailRaw): boolean {
-  return booking.status === 'pending' || booking.status === 'confirmed'
+  return isCancellableBookingStatus(booking.status)
 }
 
 function canReviewBooking(booking: BookingDetailRaw): boolean {
@@ -102,7 +110,7 @@ const InfoCell: React.FC<InfoCellProps> = ({ label, value, emphasize = false, cl
 
 const DetailSkeleton: React.FC = () => (
   <div className="rounded-[28px] border border-gray-200 bg-white p-8 shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
-    <div className="animate-pulse space-y-6" role="status" aria-label="Loading booking details">
+    <div className="animate-pulse space-y-6" role="status" aria-label="Đang tải chi tiết đặt phòng">
       <div className="flex items-center justify-between gap-4">
         <div className="h-10 w-64 rounded bg-gray-200" />
         <div className="h-10 w-28 rounded-full bg-gray-200" />
@@ -277,12 +285,7 @@ const BookingDetailPage: React.FC = () => {
                     Kiểm tra thông tin đặt phòng và theo dõi trạng thái hiện tại của bạn.
                   </p>
                 </div>
-                <span
-                  className={
-                    DETAIL_STATUS_STYLES[booking.status] ??
-                    'bg-gray-100 text-gray-700 border border-gray-200 text-sm px-3 py-1 rounded-full font-medium'
-                  }
-                >
+                <span className={DETAIL_STATUS_STYLES[booking.status]}>
                   {booking.status_label ?? booking.status}
                 </span>
               </div>

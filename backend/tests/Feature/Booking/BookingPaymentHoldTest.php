@@ -13,6 +13,7 @@ use App\Services\StripeService;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Mockery;
 use Mockery\MockInterface;
 use Tests\TestCase;
@@ -59,15 +60,30 @@ final class BookingPaymentHoldTest extends TestCase
             ->assertJsonPath('errors.code', 'PENDING_LIMIT_EXCEEDED');
     }
 
-    public function test_booking_creation_rolls_back_when_payment_intent_creation_fails(): void
+    public function test_booking_creation_voids_pending_booking_when_payment_intent_creation_fails(): void
     {
         $user = User::factory()->create();
         $room = Room::factory()->available()->ready()->create(['price' => 125000]);
+        $stripeSawBookingId = null;
 
-        $this->mock(StripeService::class, function (MockInterface $mock): void {
+        $baselineTxLevel = DB::transactionLevel();
+        $callCount = 0;
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($baselineTxLevel, &$callCount): void {
             $mock->shouldReceive('createPaymentIntent')
-                ->once()
-                ->andThrow(new Exception('Stripe unavailable'));
+                ->twice()
+                ->andReturnUsing(function (Booking $booking) use ($baselineTxLevel, &$callCount): string {
+                    $callCount++;
+                    if ($callCount === 1) {
+                        $this->assertSame($baselineTxLevel, DB::transactionLevel());
+                        $this->assertDatabaseHas('bookings', [
+                            'id' => $booking->id,
+                            'status' => BookingStatus::PENDING->value,
+                        ]);
+                        throw new Exception('Stripe unavailable');
+                    }
+
+                    return 'pi_after_void_123';
+                });
         });
 
         $response = $this->actingAs($user, 'sanctum')
@@ -81,9 +97,41 @@ final class BookingPaymentHoldTest extends TestCase
 
         $response->assertStatus(500);
 
+        $failedBooking = Booking::query()
+            ->where('guest_email', 'rollback@example.com')
+            ->sole()
+            ->refresh();
+        $stripeSawBookingId = $failedBooking->id;
+
+        $this->assertSame(BookingStatus::CANCELLED, $failedBooking->status);
+        $this->assertNull($failedBooking->payment_intent_id);
+        $this->assertSame('payment_intent_creation_failed', $failedBooking->cancellation_reason);
+        $this->assertNotNull($failedBooking->cancelled_at);
         $this->assertDatabaseMissing('bookings', [
             'guest_email' => 'rollback@example.com',
             'status' => BookingStatus::PENDING->value,
+        ]);
+
+        $retry = $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/bookings', [
+                'room_id' => $room->id,
+                'check_in' => Carbon::now()->addDays(10)->format('Y-m-d'),
+                'check_out' => Carbon::now()->addDays(12)->format('Y-m-d'),
+                'guest_name' => 'Retry Guest',
+                'guest_email' => 'retry@example.com',
+            ]);
+
+        $retry->assertCreated()
+            ->assertJsonPath('success', true);
+
+        $this->assertDatabaseHas('bookings', [
+            'id' => $stripeSawBookingId,
+            'status' => BookingStatus::CANCELLED->value,
+        ]);
+        $this->assertDatabaseHas('bookings', [
+            'guest_email' => 'retry@example.com',
+            'status' => BookingStatus::PENDING->value,
+            'payment_intent_id' => 'pi_after_void_123',
         ]);
     }
 
@@ -92,10 +140,18 @@ final class BookingPaymentHoldTest extends TestCase
         $user = User::factory()->create();
         $room = Room::factory()->available()->ready()->create(['price' => 150000]);
 
-        $this->mock(StripeService::class, function (MockInterface $mock): void {
+        $baselineTxLevel = DB::transactionLevel();
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($baselineTxLevel): void {
             $mock->shouldReceive('createPaymentIntent')
                 ->once()
-                ->with(Mockery::on(function (Booking $booking): bool {
+                ->with(Mockery::on(function (Booking $booking) use ($baselineTxLevel): bool {
+                    $this->assertSame($baselineTxLevel, DB::transactionLevel());
+                    $this->assertDatabaseHas('bookings', [
+                        'id' => $booking->id,
+                        'status' => BookingStatus::PENDING->value,
+                        'payment_intent_id' => null,
+                    ]);
+
                     return $booking->status === BookingStatus::PENDING
                         && $booking->amount === 300000;
                 }))
@@ -119,9 +175,77 @@ final class BookingPaymentHoldTest extends TestCase
 
         $this->assertDatabaseHas('bookings', [
             'guest_email' => 'payment@example.com',
+            'status' => BookingStatus::PENDING->value,
             'payment_intent_id' => 'pi_hold_test_123',
             'amount' => 300000,
         ]);
+    }
+
+    public function test_payment_intent_creation_passes_deterministic_idempotency_key_and_metadata(): void
+    {
+        config()->set('cashier.secret', 'sk_test_local');
+        config()->set('cashier.currency', 'vnd');
+
+        $user = User::factory()->create();
+        $room = Room::factory()->available()->ready()->create(['price' => 150000]);
+        $booking = Booking::factory()
+            ->for($user)
+            ->for($room)
+            ->pending()
+            ->create([
+                'amount' => 300000,
+                'check_in' => Carbon::now()->addDays(20)->startOfDay(),
+                'check_out' => Carbon::now()->addDays(22)->startOfDay(),
+            ]);
+
+        $capture = (object) [
+            'payload' => null,
+            'options' => null,
+        ];
+        $fakeStripe = new class($capture) extends \Stripe\StripeClient
+        {
+            public object $paymentIntents;
+
+            public function __construct(object $capture)
+            {
+                $this->paymentIntents = new class($capture)
+                {
+                    public function __construct(private object $capture) {}
+
+                    /**
+                     * @param  array<string, mixed>  $payload
+                     * @param  array<string, mixed>  $options
+                     */
+                    public function create(array $payload, array $options): object
+                    {
+                        $this->capture->payload = $payload;
+                        $this->capture->options = $options;
+
+                        return (object) [
+                            'id' => 'pi_captured_idempotent',
+                            'amount' => $payload['amount'],
+                            'currency' => $payload['currency'],
+                            'metadata' => $payload['metadata'],
+                        ];
+                    }
+                };
+            }
+        };
+
+        $this->app->instance(\Stripe\StripeClient::class, $fakeStripe);
+
+        $service = app(StripeService::class);
+        $paymentIntentId = $service->createPaymentIntent($booking);
+
+        $this->assertSame('pi_captured_idempotent', $paymentIntentId);
+        $this->assertSame(
+            'booking_payment_intent_'.$booking->id,
+            $capture->options['idempotency_key']
+        );
+        $this->assertSame((string) $booking->id, $capture->payload['metadata']['booking_id']);
+        $this->assertSame((string) $booking->room_id, $capture->payload['metadata']['room_id']);
+        $this->assertSame((string) $booking->location_id, $capture->payload['metadata']['location_id']);
+        $this->assertSame((string) $booking->user_id, $capture->payload['metadata']['user_id']);
     }
 
     public function test_expire_stale_bookings_cancels_payment_intent_before_expiring_booking(): void

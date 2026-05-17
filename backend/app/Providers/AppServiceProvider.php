@@ -62,8 +62,12 @@ class AppServiceProvider extends ServiceProvider
         // Bind Stripe\StripeClient directly (cannot use Cashier::stripe() here because
         // Cashier::stripe() calls app(StripeClient::class) which would cause infinite recursion).
         $this->app->bind(\Stripe\StripeClient::class, function ($app, array $params = []) {
+            $secret = config('cashier.secret');
+            // Stripe SDK rejects '' but accepts null. CI seeds .env.testing from .env.example
+            // (STRIPE_SECRET=) so the raw config value is ''; normalize to null so the
+            // container can construct the client. Methods still guard via shouldUseTestingFake().
             $config = $params['config'] ?? [
-                'api_key' => config('cashier.secret'),
+                'api_key' => $secret === '' ? null : $secret,
                 'stripe_version' => \Laravel\Cashier\Cashier::STRIPE_VERSION,
             ];
             return new \Stripe\StripeClient($config);

@@ -70,6 +70,7 @@ class AppServiceProvider extends ServiceProvider
                 'api_key' => $secret === '' ? null : $secret,
                 'stripe_version' => \Laravel\Cashier\Cashier::STRIPE_VERSION,
             ];
+
             return new \Stripe\StripeClient($config);
         });
     }

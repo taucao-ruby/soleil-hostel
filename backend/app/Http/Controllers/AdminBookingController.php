@@ -14,6 +14,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Throwable;
 
 /**
  * AdminBookingController - Backoffice booking management
@@ -152,7 +153,7 @@ class AdminBookingController extends Controller
         } catch (BookingRestoreConflictException) {
             return $this->error(__('booking.restore_conflict'), 422);
         } catch (QueryException $e) {
-            if ($e->getCode() === '23P01') {
+            if ($this->isPgExclusionViolation($e)) {
                 return $this->error(__('booking.restore_concurrent_conflict'), 409);
             }
             throw $e;
@@ -262,7 +263,7 @@ class AdminBookingController extends Controller
             } catch (BookingRestoreConflictException) {
                 $failed[] = ['id' => $id, 'reason' => __('booking.bulk_date_conflict')];
             } catch (QueryException $e) {
-                if ($e->getCode() === '23P01') {
+                if ($this->isPgExclusionViolation($e)) {
                     $failed[] = ['id' => $id, 'reason' => __('booking.bulk_date_conflict')];
                 } else {
                     $failed[] = ['id' => $id, 'reason' => __('booking.bulk_restore_failed')];
@@ -276,5 +277,26 @@ class AdminBookingController extends Controller
             'restored_count' => $successCount,  // backward compat alias
             'failed' => $failed,
         ], __('booking.bulk_restored', ['count' => $successCount]));
+    }
+
+    /**
+     * Detect the PostgreSQL exclusion-constraint violation (SQLSTATE 23P01)
+     * that backstops the booking-overlap invariant.
+     *
+     * Checks both error channels for robustness across PDO configurations:
+     *  - errorInfo[0] is always populated when PDO surfaces a driver error
+     *  - getCode() reflects the SQLSTATE when QueryException copies it from
+     *    the previous PDOException (the path exercised by RestoreIntegrityTest
+     *    and ConcurrentBookingTest::test_postgres_exclusion_constraint_emits_sqlstate_23p01)
+     *
+     * Used to distinguish the BL-1 empty-overlap-set race (concurrent restore
+     * commits caught by no_overlapping_bookings → 409) from generic DB errors
+     * (which must propagate as 500 rather than be silently swallowed).
+     */
+    private function isPgExclusionViolation(Throwable $e): bool
+    {
+        return $e instanceof QueryException
+            && ((($e->errorInfo[0] ?? null) === '23P01')
+                || $e->getCode() === '23P01');
     }
 }

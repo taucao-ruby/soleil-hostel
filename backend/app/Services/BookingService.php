@@ -310,17 +310,29 @@ class BookingService
      * Restore a soft deleted booking.
      *
      * Executes the overlap check and the restore inside a single DB transaction
-     * using a pessimistic lock on any overlapping rows. This eliminates the
-     * TOCTOU window where two concurrent restores could both pass the pre-lock
-     * check and then race to the exclusion constraint.
+     * using two layers of pessimistic locking:
      *
-     * The PostgreSQL exclusion constraint (no_overlapping_bookings) remains the
-     * final backstop. If a concurrent restore slips through the lock window
-     * (e.g. both started before any overlapping row existed), a QueryException
-     * with SQLSTATE 23P01 will propagate to the controller which maps it to 409.
+     *   1. lockForUpdate() on the booking row itself — serializes concurrent
+     *      restore/forceDelete/cancellation against the same booking, and
+     *      makes the in-transaction trashed-state read authoritative.
+     *   2. hasOverlappingBookingsWithLock() — acquires FOR UPDATE on any
+     *      conflicting active rows, preventing other transactions from
+     *      restoring into the same slot once at least one overlapping
+     *      active row exists.
+     *
+     * Neither lock helps when the overlap-set is empty (BL-1): if two
+     * concurrent restores both observe zero active overlap (because both
+     * candidates are still soft-deleted at lock time), there is nothing to
+     * lock at the application layer. The PostgreSQL exclusion constraint
+     * (no_overlapping_bookings) is the final authority for that race —
+     * exactly one UPDATE that flips deleted_at to NULL can commit; the loser
+     * surfaces as QueryException with SQLSTATE 23P01 and the controller
+     * maps it to 409 Conflict.
      *
      * @param  Booking  $booking  The trashed booking to restore
-     * @return bool Success status (false only if booking was not trashed)
+     * @return bool Success status (false if booking was not trashed, or was
+     *              concurrently restored before this transaction acquired
+     *              the row lock — idempotent no-op)
      *
      * @throws BookingRestoreConflictException When an overlapping active booking is detected
      * @throws \Illuminate\Database\QueryException If the DB exclusion constraint fires (23P01)
@@ -332,20 +344,38 @@ class BookingService
         }
 
         $restored = DB::transaction(function () use ($booking) {
-            // Lock-aware overlap check: acquires FOR UPDATE on any conflicting rows,
-            // preventing concurrent transactions from restoring into the same slot.
+            // Defense-in-depth: lock the booking row first so concurrent
+            // mutations against this exact booking serialize. Does NOT solve
+            // the empty-overlap-set race — that is what the PG EXCLUDE
+            // constraint backstop is for (see method docblock).
+            $locked = Booking::withTrashed()
+                ->whereKey($booking->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            // Another transaction already restored this booking after the
+            // controller loaded it. Treat as idempotent no-op rather than
+            // double-firing BookingRestored or running the restore UPDATE
+            // a second time.
+            if (! $locked->trashed()) {
+                return false;
+            }
+
+            // Lock-aware overlap check: acquires FOR UPDATE on any conflicting
+            // rows, preventing concurrent transactions from restoring into the
+            // same slot once at least one active overlap exists.
             $hasOverlap = $this->bookingRepository->hasOverlappingBookingsWithLock(
-                roomId: $booking->room_id,
-                checkIn: $booking->check_in,
-                checkOut: $booking->check_out,
-                excludeBookingId: $booking->id
+                roomId: $locked->room_id,
+                checkIn: $locked->check_in,
+                checkOut: $locked->check_out,
+                excludeBookingId: $locked->id
             );
 
             if ($hasOverlap) {
-                throw new BookingRestoreConflictException($booking);
+                throw new BookingRestoreConflictException($locked);
             }
 
-            return $booking->restoreWithAudit();
+            return $locked->restoreWithAudit();
         });
 
         if ($restored) {

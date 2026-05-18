@@ -44,6 +44,12 @@ class StripeWebhookController extends CashierWebhookController
             return response()->json(['handled' => false], 400);
         }
 
+        // BL-3 idempotency: INSERT-first against the stripe_event_id UNIQUE
+        // constraint. A SELECT-FOR-UPDATE-then-INSERT pattern would race
+        // (two readers both find "no row" and both run side effects before
+        // either INSERT lands); the constraint itself is the linearization
+        // point. Duplicate delivery throws here and returns 200 immediately.
+        // Locked in by tests/Feature/Payment/StripeWebhookIdempotencyTest.php.
         try {
             $webhookEvent = DB::transaction(fn () => StripeWebhookEvent::create([
                 'stripe_event_id' => $stripeEventId,

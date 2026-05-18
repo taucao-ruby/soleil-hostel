@@ -7,16 +7,15 @@ use App\Enums\StayStatus;
 use App\Events\BookingRestored;
 use App\Exceptions\BookingCancellationException;
 use App\Exceptions\BookingRestoreConflictException;
+use App\Jobs\SendBookingConfirmationEmail;
 use App\Models\Booking;
 use App\Models\Stay;
-use App\Notifications\BookingConfirmed;
 use App\Repositories\Contracts\BookingRepositoryInterface;
 use App\Traits\HasCacheTagSupport;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\RateLimiter;
 
 class BookingService
 {
@@ -35,9 +34,6 @@ class BookingService
     private const CACHE_TAG_USER = 'user-bookings';
 
     private const CACHE_TAG_TRASHED = 'trashed-bookings';
-
-    // Rate limiting: max 5 confirmation emails per user per minute
-    private const RATE_LIMIT_CONFIRMATIONS_PER_MINUTE = 5;
 
     // Column list for booking queries (consistent across all queries)
     private const BOOKING_COLUMNS = [
@@ -80,18 +76,24 @@ class BookingService
     ) {}
 
     /**
-     * Confirm a pending booking and trigger confirmation email notification.
+     * Confirm a pending booking and queue a recipient-throttled confirmation email.
      *
      * Architecture:
-     * - Updates booking status to confirmed within a transaction
-     * - Dispatches BookingConfirmed notification (queued, afterCommit)
-     * - Rate limits per-user to prevent email abuse
-     * - Notification is non-blocking: booking is confirmed even if email fails
+     * - Booking status transition and operational Stay record are committed inside
+     *   a DB transaction (synchronous, authoritative).
+     * - Confirmation email is queued via SendBookingConfirmationEmail with
+     *   afterCommit(): the job is only enqueued once the transaction succeeds.
+     * - Recipient-level throttling (5/min per guest user_id) is enforced at the
+     *   queue-middleware layer. When the recipient limit is hit, the job is
+     *   released back to the queue with a delay — it is never silently dropped.
+     *   See BL-4 in docs/FINDINGS_BACKLOG.md.
+     * - Actor-level abuse protection is enforced at the HTTP layer via the
+     *   throttle:10,1 middleware on POST /api/v1/bookings/{booking}/confirm.
      *
      * @param  Booking  $booking  The pending booking to confirm
      * @return Booking The confirmed booking
      *
-     * @throws \RuntimeException If booking is not in pending status
+     * @throws \App\Exceptions\BookingTransitionException If the booking is not pending
      *
      * @see docs/backend/BOOKING_CONFIRMATION_NOTIFICATION_ARCHITECTURE.md
      */
@@ -117,26 +119,19 @@ class BookingService
             // Invalidate cache
             $this->invalidateBooking($booking->id, $booking->user_id);
 
-            // Rate limit confirmation emails per user
-            $rateLimitKey = 'booking-confirm-email:'.$booking->user_id;
+            // Queue the confirmation email. afterCommit() guarantees the job is
+            // only enqueued if THIS transaction commits — a rollback leaves no
+            // ghost email job behind. Recipient throttling is enforced inside
+            // the job's queue middleware (delay-not-drop). actor id is captured
+            // here for the delivery audit log.
+            SendBookingConfirmationEmail::dispatch($booking->id, auth()->id())
+                ->afterCommit();
 
-            if (RateLimiter::tooManyAttempts($rateLimitKey, self::RATE_LIMIT_CONFIRMATIONS_PER_MINUTE)) {
-                Log::warning('Rate limit hit for booking confirmation email', [
-                    'user_id' => $booking->user_id,
-                    'booking_id' => $booking->id,
-                ]);
-                // Still confirm booking, just skip notification (business decision: email is non-critical)
-            } else {
-                RateLimiter::hit($rateLimitKey, decaySeconds: 60);
-
-                // Dispatch notification to user (afterCommit ensures it waits for transaction)
-                $booking->user->notify(new BookingConfirmed($booking));
-
-                Log::info('Booking confirmed and notification queued', [
-                    'booking_id' => $booking->id,
-                    'user_id' => $booking->user_id,
-                ]);
-            }
+            Log::info('booking_confirmation_email.queued', [
+                'booking_id' => $booking->id,
+                'user_id' => $booking->user_id,
+                'actor_id' => auth()->id(),
+            ]);
 
             return $booking->fresh();
         });
@@ -310,17 +305,29 @@ class BookingService
      * Restore a soft deleted booking.
      *
      * Executes the overlap check and the restore inside a single DB transaction
-     * using a pessimistic lock on any overlapping rows. This eliminates the
-     * TOCTOU window where two concurrent restores could both pass the pre-lock
-     * check and then race to the exclusion constraint.
+     * using two layers of pessimistic locking:
      *
-     * The PostgreSQL exclusion constraint (no_overlapping_bookings) remains the
-     * final backstop. If a concurrent restore slips through the lock window
-     * (e.g. both started before any overlapping row existed), a QueryException
-     * with SQLSTATE 23P01 will propagate to the controller which maps it to 409.
+     *   1. lockForUpdate() on the booking row itself — serializes concurrent
+     *      restore/forceDelete/cancellation against the same booking, and
+     *      makes the in-transaction trashed-state read authoritative.
+     *   2. hasOverlappingBookingsWithLock() — acquires FOR UPDATE on any
+     *      conflicting active rows, preventing other transactions from
+     *      restoring into the same slot once at least one overlapping
+     *      active row exists.
+     *
+     * Neither lock helps when the overlap-set is empty (BL-1): if two
+     * concurrent restores both observe zero active overlap (because both
+     * candidates are still soft-deleted at lock time), there is nothing to
+     * lock at the application layer. The PostgreSQL exclusion constraint
+     * (no_overlapping_bookings) is the final authority for that race —
+     * exactly one UPDATE that flips deleted_at to NULL can commit; the loser
+     * surfaces as QueryException with SQLSTATE 23P01 and the controller
+     * maps it to 409 Conflict.
      *
      * @param  Booking  $booking  The trashed booking to restore
-     * @return bool Success status (false only if booking was not trashed)
+     * @return bool Success status (false if booking was not trashed, or was
+     *              concurrently restored before this transaction acquired
+     *              the row lock — idempotent no-op)
      *
      * @throws BookingRestoreConflictException When an overlapping active booking is detected
      * @throws \Illuminate\Database\QueryException If the DB exclusion constraint fires (23P01)
@@ -332,20 +339,38 @@ class BookingService
         }
 
         $restored = DB::transaction(function () use ($booking) {
-            // Lock-aware overlap check: acquires FOR UPDATE on any conflicting rows,
-            // preventing concurrent transactions from restoring into the same slot.
+            // Defense-in-depth: lock the booking row first so concurrent
+            // mutations against this exact booking serialize. Does NOT solve
+            // the empty-overlap-set race — that is what the PG EXCLUDE
+            // constraint backstop is for (see method docblock).
+            $locked = Booking::withTrashed()
+                ->whereKey($booking->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            // Another transaction already restored this booking after the
+            // controller loaded it. Treat as idempotent no-op rather than
+            // double-firing BookingRestored or running the restore UPDATE
+            // a second time.
+            if (! $locked->trashed()) {
+                return false;
+            }
+
+            // Lock-aware overlap check: acquires FOR UPDATE on any conflicting
+            // rows, preventing concurrent transactions from restoring into the
+            // same slot once at least one active overlap exists.
             $hasOverlap = $this->bookingRepository->hasOverlappingBookingsWithLock(
-                roomId: $booking->room_id,
-                checkIn: $booking->check_in,
-                checkOut: $booking->check_out,
-                excludeBookingId: $booking->id
+                roomId: $locked->room_id,
+                checkIn: $locked->check_in,
+                checkOut: $locked->check_out,
+                excludeBookingId: $locked->id
             );
 
             if ($hasOverlap) {
-                throw new BookingRestoreConflictException($booking);
+                throw new BookingRestoreConflictException($locked);
             }
 
-            return $booking->restoreWithAudit();
+            return $locked->restoreWithAudit();
         });
 
         if ($restored) {

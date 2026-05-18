@@ -4,6 +4,7 @@ namespace Tests\Feature\Notifications;
 
 use App\Enums\BookingStatus;
 use App\Exceptions\BookingTransitionException;
+use App\Jobs\SendBookingConfirmationEmail;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
@@ -12,8 +13,8 @@ use App\Notifications\BookingConfirmed;
 use App\Notifications\BookingUpdated;
 use App\Services\BookingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
 
@@ -50,16 +51,22 @@ class BookingNotificationTest extends TestCase
         $this->user = User::factory()->create(['email_verified_at' => now()]);
         $this->room = Room::factory()->create();
 
-        // Clear rate limiter before each test
+        // Legacy dispatch-site key (now removed by BL-4 fix) plus the new
+        // queue-middleware recipient key — clear both so prior runs cannot
+        // bleed into the per-recipient throttle bucket exercised by these tests.
         RateLimiter::clear('booking-confirm-email:'.$this->user->id);
+        RateLimiter::clear('booking-confirmation-email-recipient:'.$this->user->id);
     }
 
     // ========== BOOKING CONFIRMED NOTIFICATION TESTS ==========
 
     /** @test */
-    public function confirmation_notification_is_dispatched_when_booking_confirmed(): void
+    public function confirmation_email_job_is_dispatched_when_booking_confirmed(): void
     {
-        Notification::fake();
+        // Post-BL-4 contract: BookingService dispatches a queued job; the job
+        // (not the service) talks to the notification system. Recipient
+        // throttling lives in the job's queue middleware.
+        Bus::fake([SendBookingConfirmationEmail::class]);
 
         $booking = Booking::factory()->create([
             'user_id' => $this->user->id,
@@ -69,10 +76,9 @@ class BookingNotificationTest extends TestCase
 
         $this->bookingService->confirmBooking($booking);
 
-        Notification::assertSentTo(
-            $this->user,
-            BookingConfirmed::class,
-            fn ($notification) => $notification->booking->id === $booking->id
+        Bus::assertDispatched(
+            SendBookingConfirmationEmail::class,
+            fn (SendBookingConfirmationEmail $job): bool => $job->bookingId === $booking->id
         );
     }
 
@@ -108,13 +114,18 @@ class BookingNotificationTest extends TestCase
     }
 
     /** @test */
-    public function confirmation_notification_rate_limited(): void
+    public function recipient_rate_limit_does_not_drop_dispatch_intent(): void
     {
-        Notification::fake();
+        // BL-4 regression: pre-fix, exhausting the dispatch-site rate limiter
+        // caused BookingService to confirm the booking but silently swallow
+        // the notification — losing comms intent. Post-fix, the dispatch is
+        // unconditional; recipient throttling happens later inside the queued
+        // job's middleware (delay-not-drop). Even with the recipient bucket
+        // pre-exhausted, a job MUST still be dispatched.
+        Bus::fake([SendBookingConfirmationEmail::class]);
 
-        // Exhaust rate limit (5 per minute)
         for ($i = 0; $i < 5; $i++) {
-            RateLimiter::hit('booking-confirm-email:'.$this->user->id, 60);
+            RateLimiter::hit('booking-confirmation-email-recipient:'.$this->user->id, 60);
         }
 
         $booking = Booking::factory()->create([
@@ -125,9 +136,8 @@ class BookingNotificationTest extends TestCase
 
         $this->bookingService->confirmBooking($booking);
 
-        // Booking should be confirmed but notification not sent
         $this->assertEquals(BookingStatus::CONFIRMED, $booking->fresh()->status);
-        Notification::assertNothingSentTo($this->user);
+        Bus::assertDispatchedTimes(SendBookingConfirmationEmail::class, 1);
     }
 
     /** @test */
@@ -238,7 +248,10 @@ class BookingNotificationTest extends TestCase
     /** @test */
     public function admin_can_confirm_booking_via_api(): void
     {
-        Notification::fake();
+        // Post-BL-4: the API path dispatches a queued
+        // SendBookingConfirmationEmail job; the underlying BookingConfirmed
+        // notification is delivered by the job's handle(), not by the service.
+        Bus::fake([SendBookingConfirmationEmail::class]);
 
         $booking = Booking::factory()->create([
             'user_id' => $this->user->id,
@@ -256,7 +269,11 @@ class BookingNotificationTest extends TestCase
             ]);
 
         $this->assertEquals(BookingStatus::CONFIRMED, $booking->fresh()->status);
-        Notification::assertSentTo($this->user, BookingConfirmed::class);
+        Bus::assertDispatched(
+            SendBookingConfirmationEmail::class,
+            fn (SendBookingConfirmationEmail $job): bool => $job->bookingId === $booking->id
+                && $job->actorId === $this->admin->id
+        );
     }
 
     /** @test */

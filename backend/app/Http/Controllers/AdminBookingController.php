@@ -25,6 +25,8 @@ class AdminBookingController extends Controller
 {
     use ApiResponse;
 
+    private const POSTGRES_EXCLUSION_VIOLATION = '23P01';
+
     public function __construct(
         private BookingService $bookingService,
         private BookingRepositoryInterface $bookingRepository,
@@ -152,7 +154,7 @@ class AdminBookingController extends Controller
         } catch (BookingRestoreConflictException) {
             return $this->error(__('booking.restore_conflict'), 422);
         } catch (QueryException $e) {
-            if ($e->getCode() === '23P01') {
+            if ($this->isPgExclusionViolation($e)) {
                 return $this->error(__('booking.restore_concurrent_conflict'), 409);
             }
             throw $e;
@@ -262,7 +264,7 @@ class AdminBookingController extends Controller
             } catch (BookingRestoreConflictException) {
                 $failed[] = ['id' => $id, 'reason' => __('booking.bulk_date_conflict')];
             } catch (QueryException $e) {
-                if ($e->getCode() === '23P01') {
+                if ($this->isPgExclusionViolation($e)) {
                     $failed[] = ['id' => $id, 'reason' => __('booking.bulk_date_conflict')];
                 } else {
                     $failed[] = ['id' => $id, 'reason' => __('booking.bulk_restore_failed')];
@@ -276,5 +278,19 @@ class AdminBookingController extends Controller
             'restored_count' => $successCount,  // backward compat alias
             'failed' => $failed,
         ], __('booking.bulk_restored', ['count' => $successCount]));
+    }
+
+    /**
+     * Detects the PostgreSQL SQLSTATE 23P01 (exclusion_violation) that backstops
+     * the booking-overlap invariant. PDO always surfaces the SQLSTATE in
+     * errorInfo[0] for driver-level errors, making it the authoritative source.
+     *
+     * Used to distinguish the BL-1 empty-overlap-set race (concurrent restore
+     * commits caught by no_overlapping_bookings → 409) from generic DB errors
+     * (which must propagate as 500 rather than be silently swallowed).
+     */
+    private function isPgExclusionViolation(QueryException $e): bool
+    {
+        return ($e->errorInfo[0] ?? null) === self::POSTGRES_EXCLUSION_VIOLATION;
     }
 }

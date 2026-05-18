@@ -14,7 +14,7 @@ Prevent double-bookings and preserve the booking-domain relationships that avail
 - Booking availability remains half-open `[check_in, check_out)`; adjacent stays are valid and overlap logic may only treat `pending` and `confirmed` as blocking states.
 - `deleted_at IS NULL` remains aligned in both app-layer overlap checks and the PostgreSQL exclusion constraint.
 - Booking conflict checks and booking writes stay inside the same transaction/lock boundary on write paths that can introduce overlap or race conditions.
-- `bookings.location_id` remains trigger-managed denormalization from `rooms.location_id`; do not replace that contract with application-side drift.
+- `bookings.location_id` MUST equal `rooms.location_id` of the booked room. Three-layer defense: app-set (`CreateBookingService`), Observer (`BookingObserver`), and PostgreSQL `trg_booking_set_location` (root of trust, auto-repair). App code MAY set `bookings.location_id` and should set it from `$room->location_id`; do not introduce paths that write a different value.
 - Reviews remain one-to-one with bookings through `reviews.booking_id`; do not weaken or remove that integrity contract.
 
 ## Why it exists
@@ -27,7 +27,7 @@ Agents, humans, skills, commands, reviews, migrations, and tests touching bookin
 - Widening overlap checks to cancelled or refund states.
 - Removing `deleted_at IS NULL` from either the query path or the DB constraint.
 - Running overlap detection outside the write transaction or without the established lock path.
-- Setting `bookings.location_id` directly in app code.
+- Writing `bookings.location_id` to a value that does not match the booked room's `rooms.location_id` (the three-layer guards exist to catch this; do not bypass them).
 - Breaking the `reviews.booking_id` one-review-per-booking relationship.
 
 ## Enforcement

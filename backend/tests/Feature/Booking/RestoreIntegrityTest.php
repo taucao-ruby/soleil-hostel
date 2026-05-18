@@ -8,12 +8,14 @@ use App\Exceptions\BookingRestoreConflictException;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
+use App\Repositories\Contracts\BookingRepositoryInterface;
 use App\Services\BookingService;
 use App\Services\RoomAvailabilityService;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
@@ -549,5 +551,181 @@ class RestoreIntegrityTest extends TestCase
         $this->actingAs($moderator, 'sanctum')
             ->postJson('/api/v1/admin/bookings/restore-bulk', ['ids' => [$trashed->id]])
             ->assertStatus(403);
+    }
+
+    // =========================================================================
+    // BL-1: PostgreSQL EXCLUDE backstop for empty-overlap-set restore race
+    // =========================================================================
+
+    /**
+     * BL-1 contract: when the app-layer lock-aware overlap check returns
+     * empty (because no active overlapping row exists at lock time), the
+     * PostgreSQL EXCLUDE constraint (no_overlapping_bookings) is the sole
+     * authority that prevents the restore UPDATE from creating an overlap.
+     *
+     * This test exercises a REAL exclusion-constraint violation against the
+     * real database — no mocked QueryException. It simulates the empty-set
+     * race by stubbing BookingRepositoryInterface::hasOverlappingBookingsWithLock
+     * so the service believes there is no overlap to lock, then proves that
+     * the subsequent `UPDATE bookings SET deleted_at = NULL ...` issued by
+     * Eloquent's SoftDeletes::restore() trips the partial-index exclusion
+     * constraint and raises SQLSTATE 23P01.
+     *
+     * Why this is the right shape of test for BL-1:
+     *   - Existing test_restore_db_exclusion_constraint_returns_409 uses a
+     *     reflection-built QueryException — it proves the controller maps a
+     *     23P01 to 409, but does NOT prove the DB actually fires 23P01 on
+     *     the restore UPDATE.
+     *   - Existing test_postgres_exclusion_constraint_emits_sqlstate_23p01
+     *     proves 23P01 fires on a raw INSERT, but not on the restore UPDATE
+     *     path that flips deleted_at NOT NULL → NULL.
+     *   - This test closes both gaps for the restore flow: the empty-set
+     *     race is the precise BL-1 scenario, and the assertion is on real
+     *     PG behavior, not a fixture.
+     *
+     * Skipped on non-pgsql drivers — the EXCLUDE USING gist constraint and
+     * the partial-index predicate are PostgreSQL-specific.
+     */
+    public function test_restore_pg_exclude_fires_23p01_when_app_lock_sees_empty_set(): void
+    {
+        if (DB::connection()->getDriverName() !== 'pgsql') {
+            $this->markTestSkipped('BL-1 EXCLUDE backstop requires PostgreSQL driver.');
+        }
+
+        // Trashed booking — created and soft-deleted FIRST so the factory's
+        // active INSERT does not collide with any blocker. After soft delete
+        // the row sits outside the partial-index predicate
+        // (status IN ('pending','confirmed') AND deleted_at IS NULL).
+        $trashed = $this->trashedBooking([
+            'check_in' => Carbon::parse('2026-06-02')->startOfDay(),
+            'check_out' => Carbon::parse('2026-06-05')->startOfDay(),
+        ]);
+
+        // Conflicting active booking that the partial-index predicate includes.
+        // Inserts cleanly because the trashed candidate is outside the predicate.
+        // This is the row the EXCLUDE constraint will compare the restore UPDATE
+        // against once the test forces the restore to proceed past the empty
+        // app-layer lock check.
+        $blocker = Booking::factory()
+            ->forUser($this->user)
+            ->forRoom($this->room)
+            ->confirmed()
+            ->create([
+                'check_in' => Carbon::parse('2026-06-01')->startOfDay(),
+                'check_out' => Carbon::parse('2026-06-04')->startOfDay(),
+            ]);
+
+        // Simulate the empty-overlap-set race window: the app-layer
+        // hasOverlappingBookingsWithLock returns false even though PG sees
+        // the overlap. This is exactly what happens when two restores both
+        // observe zero conflicts before either commits.
+        $repo = \Mockery::mock(BookingRepositoryInterface::class);
+        $repo->shouldReceive('hasOverlappingBookingsWithLock')
+            ->once()
+            ->andReturn(false);
+        $this->app->instance(BookingRepositoryInterface::class, $repo);
+
+        $service = $this->app->make(BookingService::class);
+
+        $caught = null;
+
+        try {
+            $service->restore($trashed);
+        } catch (QueryException $e) {
+            $caught = $e;
+        }
+
+        $this->assertNotNull(
+            $caught,
+            'PG EXCLUDE constraint must fire on restore UPDATE when app-layer lock missed the conflict'
+        );
+        $this->assertSame(
+            '23P01',
+            $caught->getCode(),
+            'Expected SQLSTATE 23P01 from no_overlapping_bookings on restore UPDATE'
+        );
+        $this->assertSame(
+            '23P01',
+            $caught->errorInfo[0] ?? null,
+            'errorInfo[0] must also carry SQLSTATE 23P01 (relied on by isPgExclusionViolation helper)'
+        );
+        $this->assertStringContainsStringIgnoringCase(
+            'no_overlapping_bookings',
+            $caught->getMessage(),
+            'PG error message must reference the exclusion constraint name'
+        );
+
+        // Final DB state: blocker remains active, trashed booking remains trashed.
+        // The restore UPDATE was rolled back by PG and the service transaction.
+        $this->assertNull(
+            Booking::find($blocker->id)?->deleted_at,
+            'Blocker booking must remain active and committed'
+        );
+        $this->assertSoftDeleted('bookings', ['id' => $trashed->id]);
+
+        // Invariant: no two active overlapping bookings for this room.
+        $activeOverlap = Booking::query()
+            ->where('room_id', $this->room->id)
+            ->whereIn('status', Booking::ACTIVE_STATUSES)
+            ->where('check_in', '<', Carbon::parse('2026-06-05')->startOfDay())
+            ->where('check_out', '>', Carbon::parse('2026-06-01')->startOfDay())
+            ->count();
+        $this->assertSame(1, $activeOverlap, 'DB must contain exactly one active booking in the contested range');
+    }
+
+    /**
+     * BL-1 end-to-end: when PG EXCLUDE fires on the restore UPDATE, the
+     * AdminBookingController must surface a 409 Conflict (not 500) and must
+     * not leak SQLSTATE / constraint internals to the client.
+     *
+     * Pairs with the service-layer test above: the service-layer test proves
+     * PG raises 23P01; this test proves the controller's isPgExclusionViolation
+     * helper recognizes the real PG exception (not just our reflection fixture).
+     */
+    public function test_restore_returns_409_on_real_pg_exclusion_violation(): void
+    {
+        if (DB::connection()->getDriverName() !== 'pgsql') {
+            $this->markTestSkipped('BL-1 EXCLUDE backstop requires PostgreSQL driver.');
+        }
+
+        // Create trashed candidate first so the factory's active INSERT does
+        // not collide with the blocker (see test above for rationale).
+        $trashed = $this->trashedBooking([
+            'check_in' => Carbon::parse('2026-07-02')->startOfDay(),
+            'check_out' => Carbon::parse('2026-07-05')->startOfDay(),
+        ]);
+
+        $blocker = Booking::factory()
+            ->forUser($this->user)
+            ->forRoom($this->room)
+            ->confirmed()
+            ->create([
+                'check_in' => Carbon::parse('2026-07-01')->startOfDay(),
+                'check_out' => Carbon::parse('2026-07-04')->startOfDay(),
+            ]);
+
+        // Force the empty-overlap-set window at the service layer.
+        $repo = \Mockery::mock(BookingRepositoryInterface::class);
+        $repo->shouldReceive('hasOverlappingBookingsWithLock')
+            ->once()
+            ->andReturn(false);
+        $this->app->instance(BookingRepositoryInterface::class, $repo);
+
+        $response = $this->actingAs($this->admin, 'sanctum')
+            ->postJson("/api/v1/admin/bookings/{$trashed->id}/restore");
+
+        $response->assertStatus(409)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', __('booking.restore_concurrent_conflict'));
+
+        // Must not leak SQLSTATE or constraint internals
+        $body = (string) $response->getContent();
+        $this->assertStringNotContainsString('23P01', $body, 'SQLSTATE 23P01 must not leak to client');
+        $this->assertStringNotContainsString('SQLSTATE', $body, 'SQLSTATE prefix must not leak to client');
+        $this->assertStringNotContainsString('no_overlapping_bookings', $body, 'Constraint name must not leak to client');
+
+        // Trashed booking must remain trashed and blocker remains active
+        $this->assertSoftDeleted('bookings', ['id' => $trashed->id]);
+        $this->assertNull(Booking::find($blocker->id)?->deleted_at);
     }
 }

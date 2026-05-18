@@ -285,8 +285,16 @@ class ProposalConfirmationController extends Controller
      * mapped to a stable downstream code so the audit log records the
      * refusal without leaking the internal exception message to the
      * client.
+     *
+     * BL-7 invariant: $actorUserId is the AUTHENTICATED proposer/decider
+     * derived from $request->user()->id in decide(). It is NOT
+     * $booking->user_id. Substituting the booking owner here would silently
+     * satisfy the service-layer ownership check and convert this method
+     * into a confused-deputy authorization bypass — any caller who can
+     * name a booking_id would be able to cancel it. See
+     * ProposalCancellationOwnershipTest for the regression net.
      */
-    private function executeCancellation(int $userId, array $params): string
+    private function executeCancellation(int $actorUserId, array $params): string
     {
         $bookingId = (int) ($params['booking_id'] ?? 0);
 
@@ -302,11 +310,16 @@ class ProposalConfirmationController extends Controller
         }
 
         try {
-            $service->cancelBooking($booking, $userId);
+            // Intentionally pass the authenticated proposer/actor id.
+            // CancellationService::validateCancellation enforces booking
+            // ownership against this actor. Do not replace with
+            // $booking->user_id — that would make the ownership check
+            // tautologically true and bypass BL-7.
+            $service->cancelBooking($booking, $actorUserId);
         } catch (\App\Exceptions\BookingCancellationException $e) {
             if ($e->getErrorCode() === 'unauthorized') {
                 Log::channel('ai')->warning('Proposal cancellation blocked by service-layer ownership check', [
-                    'decider_user_id' => $userId,
+                    'decider_user_id' => $actorUserId,
                     'booking_id' => $bookingId,
                     'booking_owner_id' => $booking->user_id,
                 ]);

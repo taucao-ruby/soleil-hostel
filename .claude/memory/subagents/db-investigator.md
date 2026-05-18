@@ -8,7 +8,7 @@ Role-scoped memory for schema, constraints, indexes, FK behavior, query paths, N
 - `no_overlapping_bookings` EXCLUDE USING gist requires `btree_gist` extension — does not exist in SQLite
 - Migration: `2026_02_12_000001_fix_overlapping_bookings_constraint_soft_deletes.php`
 - Constraint WHERE clause: `status IN ('pending', 'confirmed') AND deleted_at IS NULL`
-- `trg_booking_set_location` trigger sets `bookings.location_id` from `rooms.location_id` — app code must not set it directly
+- `trg_booking_set_location` trigger (PG only) auto-repairs `bookings.location_id` from `rooms.location_id` on `BEFORE INSERT OR UPDATE OF room_id`. Three-layer defense: app-set (`CreateBookingService::createBookingWithLocking`) → Observer (`BookingObserver`) → PG trigger (root of trust). App code MAY set `bookings.location_id`; the invariant is that the written value must match `rooms.location_id`. SQLite path has no trigger parity; Observer is the only driver-independent layer (compensating control, not root of trust). Default test driver is PostgreSQL (`backend/phpunit.xml`)
 
 ### Optimistic Locking Columns
 - `rooms.lock_version` — NOT NULL, default 1 (migration `2025_12_18_200000`)

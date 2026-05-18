@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Jobs\SendBookingConfirmationEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider;
 use Illuminate\Http\Request;
@@ -198,6 +199,22 @@ class RateLimiterServiceProvider extends RouteServiceProvider
                         'retry_after' => $headers['Retry-After'],
                     ], 429, $headers);
                 });
+        });
+
+        // ========== BOOKING CONFIRMATION EMAIL — RECIPIENT-LEVEL THROTTLING ==========
+        // Strategy: 5 emails per minute per recipient (guest user_id)
+        // Purpose: Guest mailbox protection. Used by ThrottlesPerRecipient queue
+        //          middleware on SendBookingConfirmationEmail — when exceeded, the
+        //          job is RELEASED back to the queue (delayed retry), never silently
+        //          dropped. See BL-4 fix: BookingService::confirmBooking() used to
+        //          suppress emails inline at the dispatch site when this limit was
+        //          hit, which lost (N-5) confirmations in bulk-admin scenarios.
+        //
+        //          Actor abuse protection lives at the HTTP layer
+        //          (throttle:10,1 on POST /api/v1/bookings/{booking}/confirm).
+        //          This limiter is intentionally recipient-scoped, not actor-scoped.
+        RateLimiter::for('booking-confirmation-email-recipient', function (SendBookingConfirmationEmail $job) {
+            return Limit::perMinute(5)->by((string) $job->recipientUserId());
         });
     }
 }

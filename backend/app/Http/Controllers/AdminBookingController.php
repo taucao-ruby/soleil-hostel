@@ -25,6 +25,8 @@ class AdminBookingController extends Controller
 {
     use ApiResponse;
 
+    private const POSTGRES_EXCLUSION_VIOLATION = '23P01';
+
     public function __construct(
         private BookingService $bookingService,
         private BookingRepositoryInterface $bookingRepository,
@@ -279,14 +281,9 @@ class AdminBookingController extends Controller
     }
 
     /**
-     * Detect the PostgreSQL exclusion-constraint violation (SQLSTATE 23P01)
-     * that backstops the booking-overlap invariant.
-     *
-     * Checks both error channels for robustness across PDO configurations:
-     *  - errorInfo[0] is always populated when PDO surfaces a driver error
-     *  - getCode() reflects the SQLSTATE when QueryException copies it from
-     *    the previous PDOException (the path exercised by RestoreIntegrityTest
-     *    and ConcurrentBookingTest::test_postgres_exclusion_constraint_emits_sqlstate_23p01)
+     * Detects the PostgreSQL SQLSTATE 23P01 (exclusion_violation) that backstops
+     * the booking-overlap invariant. PDO always surfaces the SQLSTATE in
+     * errorInfo[0] for driver-level errors, making it the authoritative source.
      *
      * Used to distinguish the BL-1 empty-overlap-set race (concurrent restore
      * commits caught by no_overlapping_bookings → 409) from generic DB errors
@@ -294,11 +291,6 @@ class AdminBookingController extends Controller
      */
     private function isPgExclusionViolation(QueryException $e): bool
     {
-        if (($e->errorInfo[0] ?? null) === '23P01') {
-            return true;
-        }
-
-        /** @psalm-suppress TypeDoesNotContainType PDOException overrides getCode() to return SQLSTATE string, but Throwable's int typing wins in Psalm's inference here. */
-        return $e->getCode() === '23P01';
+        return ($e->errorInfo[0] ?? null) === self::POSTGRES_EXCLUSION_VIOLATION;
     }
 }

@@ -7,16 +7,15 @@ use App\Enums\StayStatus;
 use App\Events\BookingRestored;
 use App\Exceptions\BookingCancellationException;
 use App\Exceptions\BookingRestoreConflictException;
+use App\Jobs\SendBookingConfirmationEmail;
 use App\Models\Booking;
 use App\Models\Stay;
-use App\Notifications\BookingConfirmed;
 use App\Repositories\Contracts\BookingRepositoryInterface;
 use App\Traits\HasCacheTagSupport;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\RateLimiter;
 
 class BookingService
 {
@@ -35,9 +34,6 @@ class BookingService
     private const CACHE_TAG_USER = 'user-bookings';
 
     private const CACHE_TAG_TRASHED = 'trashed-bookings';
-
-    // Rate limiting: max 5 confirmation emails per user per minute
-    private const RATE_LIMIT_CONFIRMATIONS_PER_MINUTE = 5;
 
     // Column list for booking queries (consistent across all queries)
     private const BOOKING_COLUMNS = [
@@ -80,18 +76,24 @@ class BookingService
     ) {}
 
     /**
-     * Confirm a pending booking and trigger confirmation email notification.
+     * Confirm a pending booking and queue a recipient-throttled confirmation email.
      *
      * Architecture:
-     * - Updates booking status to confirmed within a transaction
-     * - Dispatches BookingConfirmed notification (queued, afterCommit)
-     * - Rate limits per-user to prevent email abuse
-     * - Notification is non-blocking: booking is confirmed even if email fails
+     * - Booking status transition and operational Stay record are committed inside
+     *   a DB transaction (synchronous, authoritative).
+     * - Confirmation email is queued via SendBookingConfirmationEmail with
+     *   afterCommit(): the job is only enqueued once the transaction succeeds.
+     * - Recipient-level throttling (5/min per guest user_id) is enforced at the
+     *   queue-middleware layer. When the recipient limit is hit, the job is
+     *   released back to the queue with a delay — it is never silently dropped.
+     *   See BL-4 in docs/FINDINGS_BACKLOG.md.
+     * - Actor-level abuse protection is enforced at the HTTP layer via the
+     *   throttle:10,1 middleware on POST /api/v1/bookings/{booking}/confirm.
      *
      * @param  Booking  $booking  The pending booking to confirm
      * @return Booking The confirmed booking
      *
-     * @throws \RuntimeException If booking is not in pending status
+     * @throws \App\Exceptions\BookingTransitionException If the booking is not pending
      *
      * @see docs/backend/BOOKING_CONFIRMATION_NOTIFICATION_ARCHITECTURE.md
      */
@@ -117,26 +119,19 @@ class BookingService
             // Invalidate cache
             $this->invalidateBooking($booking->id, $booking->user_id);
 
-            // Rate limit confirmation emails per user
-            $rateLimitKey = 'booking-confirm-email:'.$booking->user_id;
+            // Queue the confirmation email. afterCommit() guarantees the job is
+            // only enqueued if THIS transaction commits — a rollback leaves no
+            // ghost email job behind. Recipient throttling is enforced inside
+            // the job's queue middleware (delay-not-drop). actor id is captured
+            // here for the delivery audit log.
+            SendBookingConfirmationEmail::dispatch($booking->id, auth()->id())
+                ->afterCommit();
 
-            if (RateLimiter::tooManyAttempts($rateLimitKey, self::RATE_LIMIT_CONFIRMATIONS_PER_MINUTE)) {
-                Log::warning('Rate limit hit for booking confirmation email', [
-                    'user_id' => $booking->user_id,
-                    'booking_id' => $booking->id,
-                ]);
-                // Still confirm booking, just skip notification (business decision: email is non-critical)
-            } else {
-                RateLimiter::hit($rateLimitKey, decaySeconds: 60);
-
-                // Dispatch notification to user (afterCommit ensures it waits for transaction)
-                $booking->user->notify(new BookingConfirmed($booking));
-
-                Log::info('Booking confirmed and notification queued', [
-                    'booking_id' => $booking->id,
-                    'user_id' => $booking->user_id,
-                ]);
-            }
+            Log::info('booking_confirmation_email.queued', [
+                'booking_id' => $booking->id,
+                'user_id' => $booking->user_id,
+                'actor_id' => auth()->id(),
+            ]);
 
             return $booking->fresh();
         });

@@ -18,11 +18,30 @@ Cross-domain truths no agent may violate. Verified against source on 2026-04-07.
   - Confirmed at: `CancellationService.php:115–120` (transitionToRefundPending)
   - Scope method: `Booking.php:376` (scopeWithLock)
 
-### Denormalization
-- `bookings.location_id` is set by PostgreSQL trigger `trg_booking_set_location` from `rooms.location_id`
-- Application code must NOT set `bookings.location_id` directly
-- `rooms.location_id` is canonical truth; `bookings.location_id` is denormalized for analytics/history
-  - Source: `ARCHITECTURE_FACTS.md` § Multi-location model
+### Denormalization — `bookings.location_id` (three-layer defense)
+
+`rooms.location_id` is canonical truth; `bookings.location_id` is a denormalized snapshot for analytics/history. The invariant is **`bookings.location_id` MUST equal `rooms.location_id` of the booked room** (not "app code must not set it").
+
+PostgreSQL production path (root of trust):
+1. **App-set** — `CreateBookingService::createBookingWithLocking` sets `'location_id' => $room->location_id` explicitly so the app path is self-sufficient (`backend/app/Services/CreateBookingService.php:337-348`).
+2. **Observer** — `BookingObserver::creating` fills `location_id` from `room->location_id` when unset; `BookingObserver::updating` always restamps when `room_id` is dirty (`backend/app/Observers/BookingObserver.php`).
+3. **PG trigger** — `trg_booking_set_location` (function `set_booking_location()`) fires `BEFORE INSERT OR UPDATE OF room_id` and unconditionally assigns `NEW.location_id := (SELECT location_id FROM rooms WHERE id = NEW.room_id)`. Auto-repair, not validation — silently overrides any app/observer value. Migration: `backend/database/migrations/2026_02_09_000006_add_booking_location_trigger.php`.
+
+SQLite path (compensating control only):
+- The PG trigger migration is guarded by `DB::getDriverName() === 'pgsql'` and is **absent on SQLite**. There is no SQLite-side trigger parity.
+- The Observer is the only driver-independent layer. It auto-populates when missing and restamps on `room_id` change, but **does not police app-supplied wrong values on `creating`** (it only fills when `! $booking->location_id`).
+- The default test harness (`backend/phpunit.xml`) runs on PostgreSQL, so the standard `php artisan test` exercises all three layers. SQLite usage is dev/opt-in only.
+- Any claim of "raw-SQL drift cannot happen" applies to PostgreSQL only. On SQLite, raw `DB::table('bookings')->insert([...wrong location_id...])` bypasses the Observer and is not corrected by any DB trigger.
+
+Rule:
+- Application code MAY set `bookings.location_id` and SHOULD set it from `$room->location_id` (the app-set layer is intentional and tested).
+- Production claims of database-level drift prevention require PostgreSQL.
+- Booking-integrity invariants must be enforced at the lowest available layer; Observer-only paths are guards, not root of trust.
+
+Known residual gap (not in scope for BL-5):
+- The PG trigger fires on `INSERT OR UPDATE OF room_id` only. A raw `UPDATE bookings SET location_id = X WHERE ...` that does not touch `room_id` is not intercepted by the trigger (and the Observer's `updating` likewise only restamps when `room_id` is dirty). No app path performs such a write today; tracked here for future hardening.
+
+Sources: `ARCHITECTURE_FACTS.md` § Multi-Location; `DB_FACTS.md` § Invariants > Multi-location truth; migration `2026_02_09_000006`; service/observer files cited above.
 
 ### Optimistic Locking
 - `lock_version` column exists on `rooms` (NOT NULL, default 1) and `locations` (default 1)

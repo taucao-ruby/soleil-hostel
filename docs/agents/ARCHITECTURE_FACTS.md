@@ -67,6 +67,8 @@ Applies to:
 - Cancellation service, job, and proposal confirmation paths all transition via the state machine — never `UPDATE bookings SET status = 'pending'` directly.
 - `ExpireStaleBookings` only runs on `status = PENDING` and re-checks under lock — it cannot resurrect a cancelled booking.
 
+**Cancellation idempotency (BL-6)**: an owner / admin retrying cancellation on an already-cancelled booking is intentionally authorized by `BookingPolicy::cancel`, and `CancellationService::cancel` short-circuits the terminal state to a no-op. The no-op must not dispatch `BookingCancelled`, queue `ProcessDepositRefund`, call Stripe, mutate deposit / availability state, or overwrite cancellation audit columns. Non-owners remain blocked at the policy ownership gate (the idempotency branch sits after it). Regression: `tests/Feature/BookingCancellationTest.php::test_cancelling_already_cancelled_booking_is_idempotent_noop` and companion policy tests.
+
 ### Proposer-Binding Invariant (AI Proposals)
 
 `ProposalConfirmationController::decide` MUST reject any request where the authenticated user is not the original proposer. This is enforced at the cache envelope:

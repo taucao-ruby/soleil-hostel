@@ -112,8 +112,21 @@ class BookingPolicy
      * Rules:
      * 1. User must own the booking OR be an admin
      * 2. Booking must be in a cancellable state (pending, confirmed, or refund_failed)
-     * 3. Already cancelled bookings return true for idempotency
+     * 3. Already cancelled bookings return true for idempotency (BL-6)
      * 4. Cannot cancel after check-in has started (unless admin or config allows)
+     *
+     * BL-6 separation of concerns:
+     *   This policy answers "is this actor allowed to request cancellation?" —
+     *   not "is there a state transition left to perform?". The terminal
+     *   no-op for an already-cancelled booking is owned by
+     *   CancellationService::cancel, which short-circuits without
+     *   re-dispatching BookingCancelled, re-queueing ProcessDepositRefund,
+     *   re-calling Stripe, re-touching deposit/availability state, or
+     *   overwriting cancellation audit columns. Authorization and the
+     *   state machine must remain separate; do not "fix" the owner branch
+     *   below into false — that breaks the idempotency contract relied on
+     *   by retried client requests and the AI proposal confirmation flow.
+     *   Non-owner enumeration is still blocked by the ownership gate above.
      */
     public function cancel(User $user, Booking $booking): bool
     {
@@ -125,7 +138,9 @@ class BookingPolicy
             return false;
         }
 
-        // Allow re-cancellation for idempotency (returns existing state)
+        // Intentional idempotency (BL-6): owner/admin retries on an
+        // already-cancelled booking are authorized; CancellationService
+        // owns the terminal no-op and the duplicate-side-effect guards.
         if ($booking->status === BookingStatus::CANCELLED) {
             return true;
         }

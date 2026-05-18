@@ -56,7 +56,13 @@ final class CancellationService
      */
     public function cancel(Booking $booking, User $actor): Booking
     {
-        // Idempotency: already cancelled bookings return immediately
+        // Intentional idempotency (BL-6): terminal no-op for already-cancelled
+        // bookings. Returns the fresh row without dispatching BookingCancelled,
+        // queueing ProcessDepositRefund, calling Stripe, mutating deposit /
+        // availability state, or overwriting cancellation audit columns.
+        // Pairs with BookingPolicy::cancel which authorizes the retry. Do not
+        // collapse this guard into validateCancellation() below — that path
+        // throws, which would turn legitimate owner retries into 4xx errors.
         if ($booking->status === BookingStatus::CANCELLED) {
             Log::info('Cancellation skipped: already cancelled', [
                 'booking_id' => $booking->id,

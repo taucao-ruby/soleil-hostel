@@ -7,13 +7,17 @@ namespace Tests\Feature;
 use App\Enums\BookingStatus;
 use App\Enums\UserRole;
 use App\Events\BookingCancelled;
+use App\Jobs\ProcessDepositRefund;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
 use App\Services\CancellationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class BookingCancellationTest extends TestCase
@@ -89,7 +93,75 @@ class BookingCancellationTest extends TestCase
         ]);
     }
 
-    public function test_cancellation_is_idempotent(): void
+    /**
+     * BL-6: terminal-state idempotent no-op contract.
+     *
+     * An owner retrying cancellation on an already-cancelled booking must:
+     *   - succeed (HTTP 200) and not be turned into an error
+     *   - not dispatch a second BookingCancelled event (cache invalidation,
+     *     stay propagation, and email listener would all re-fire otherwise)
+     *   - not push a duplicate ProcessDepositRefund job (would attempt a
+     *     second Stripe refund call)
+     *   - not send a duplicate user notification
+     *   - not overwrite cancellation audit columns (cancelled_at/by, refund_*)
+     *
+     * This guards the separation of concerns documented on
+     * BookingPolicy::cancel and CancellationService::cancel: the policy
+     * authorizes the retry; the service short-circuits on terminal state.
+     */
+    public function test_cancelling_already_cancelled_booking_is_idempotent_noop(): void
+    {
+        Event::fake([BookingCancelled::class]);
+        Bus::fake([ProcessDepositRefund::class]);
+        Notification::fake();
+
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($this->room)
+            ->create([
+                'status' => BookingStatus::CANCELLED,
+                'cancelled_at' => now()->subHour(),
+                'cancelled_by' => $this->user->id,
+                'refund_id' => 'rf_original',
+                'refund_status' => 'succeeded',
+                'refund_amount' => 5000,
+                'payment_intent_id' => 'pi_original',
+            ]);
+
+        $original = DB::table('bookings')->where('id', $booking->id)->first();
+        $this->assertNotNull($original);
+
+        $response = $this->actingAs($this->user)
+            ->postJson("/api/bookings/{$booking->id}/cancel");
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.status', BookingStatus::CANCELLED->value);
+
+        // No duplicate side effects.
+        Event::assertNotDispatched(BookingCancelled::class);
+        Bus::assertNotDispatched(ProcessDepositRefund::class);
+        Notification::assertNothingSent();
+
+        // Audit columns and refund metadata are byte-for-byte preserved;
+        // the no-op must not stamp a new cancelled_at or rewrite refund_id.
+        $after = DB::table('bookings')->where('id', $booking->id)->first();
+        $this->assertNotNull($after);
+        $this->assertSame($original->status, $after->status);
+        $this->assertSame($original->cancelled_at, $after->cancelled_at);
+        $this->assertSame($original->cancelled_by, $after->cancelled_by);
+        $this->assertSame($original->refund_id, $after->refund_id);
+        $this->assertSame($original->refund_status, $after->refund_status);
+        $this->assertSame($original->refund_amount, $after->refund_amount);
+    }
+
+    /**
+     * BL-6 policy contract: BookingPolicy::cancel returns true for the
+     * owner even when the booking is already cancelled. The terminal no-op
+     * is enforced one layer down in CancellationService; the policy must
+     * not be "fixed" into denying the retry.
+     */
+    public function test_owner_can_request_cancel_on_already_cancelled_booking_for_idempotency(): void
     {
         $booking = Booking::factory()
             ->for($this->user)
@@ -100,17 +172,50 @@ class BookingCancellationTest extends TestCase
                 'cancelled_by' => $this->user->id,
             ]);
 
-        $originalCancelledAt = $booking->cancelled_at->toDateTimeString();
+        $this->assertTrue(
+            Gate::forUser($this->user)->allows('cancel', $booking),
+            'Owner must be authorized to retry cancel on an already-cancelled booking (BL-6 idempotency).',
+        );
 
-        $response = $this->actingAs($this->user)
+        // Admin parity: matches the existing permission matrix.
+        $this->assertTrue(
+            Gate::forUser($this->admin)->allows('cancel', $booking),
+            'Admin must remain authorized on already-cancelled bookings.',
+        );
+    }
+
+    /**
+     * BL-6 policy contract (counterpart): non-owner / non-admin actors must
+     * NOT gain authorization just because the booking is already in a
+     * terminal state. The idempotency branch sits AFTER the ownership gate
+     * for a reason — protects against enumeration / unauthorized state read
+     * via the cancel endpoint.
+     */
+    public function test_non_owner_cannot_cancel_already_cancelled_booking(): void
+    {
+        $intruder = User::factory()->create();
+
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($this->room)
+            ->create([
+                'status' => BookingStatus::CANCELLED,
+                'cancelled_at' => now()->subHour(),
+                'cancelled_by' => $this->user->id,
+            ]);
+
+        $this->assertFalse(
+            Gate::forUser($intruder)->allows('cancel', $booking),
+            'Non-owner must not be authorized to cancel an already-cancelled booking.',
+        );
+
+        // HTTP parity: the route must respond 403 — not 200 with a leaked
+        // cancelled-booking payload, and not a different status for
+        // already-cancelled vs active bookings (enumeration safety).
+        $response = $this->actingAs($intruder)
             ->postJson("/api/bookings/{$booking->id}/cancel");
 
-        $response->assertOk()
-            ->assertJsonPath('data.status', BookingStatus::CANCELLED->value);
-
-        // Verify no state change
-        $booking->refresh();
-        $this->assertEquals($originalCancelledAt, $booking->cancelled_at->toDateTimeString());
+        $response->assertForbidden();
     }
 
     public function test_pending_booking_can_be_cancelled(): void

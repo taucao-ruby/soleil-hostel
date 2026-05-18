@@ -41,6 +41,10 @@ class ThrottlesPerRecipientTest extends TestCase
         RateLimiter::clear('booking-confirmation-email-recipient:user-42');
         RateLimiter::clear('booking-confirmation-email-recipient:user-77');
         RateLimiter::clear('unlimited-limiter:any');
+        RateLimiter::clear('multi-limit-array:user-42');
+        RateLimiter::clear('multi-limit-array:user-42-hour');
+        RateLimiter::clear('multi-limit-keyed:user-42');
+        RateLimiter::clear('multi-limit-keyed:user-42-hour');
 
         parent::tearDown();
     }
@@ -176,6 +180,90 @@ class ThrottlesPerRecipientTest extends TestCase
 
         $this->expectException(\LogicException::class);
         $this->expectExceptionMessage('Named rate limiter [definitely-not-registered] is not registered.');
+
+        $middleware->handle($userJob, fn () => null);
+    }
+
+    public function test_accepts_list_of_limits_returned_by_callback(): void
+    {
+        RateLimiter::for('multi-limit-array', function (object $job) {
+            return [
+                Limit::perMinute(5)->by('user-42'),
+                Limit::perHour(20)->by('user-42-hour'),
+            ];
+        });
+
+        $queueJob = $this->fakeQueueJob();
+        $userJob = $this->fakeUserJob(42, $queueJob);
+        $middleware = new ThrottlesPerRecipient('multi-limit-array');
+
+        $nextCalled = false;
+        $middleware->handle($userJob, function () use (&$nextCalled): void {
+            $nextCalled = true;
+        });
+
+        $this->assertTrue($nextCalled, 'middleware must forward when neither limit is exhausted');
+        $this->assertFalse($queueJob->released);
+        $this->assertSame(1, RateLimiter::attempts('multi-limit-array:user-42'));
+        $this->assertSame(1, RateLimiter::attempts('multi-limit-array:user-42-hour'));
+    }
+
+    public function test_accepts_keyed_array_of_limits_and_reindexes_internally(): void
+    {
+        // Limit::by() builds the cache key; PHP array keys here would be dropped
+        // by foreach anyway, but the normalizer's array_values() reindex protects
+        // the declared list<Limit> contract regardless of how operators shape the
+        // callback return.
+        RateLimiter::for('multi-limit-keyed', function (object $job) {
+            return [
+                'minute' => Limit::perMinute(5)->by('user-42'),
+                'hour' => Limit::perHour(20)->by('user-42-hour'),
+            ];
+        });
+
+        $queueJob = $this->fakeQueueJob();
+        $userJob = $this->fakeUserJob(42, $queueJob);
+        $middleware = new ThrottlesPerRecipient('multi-limit-keyed');
+
+        $nextCalled = false;
+        $middleware->handle($userJob, function () use (&$nextCalled): void {
+            $nextCalled = true;
+        });
+
+        $this->assertTrue($nextCalled);
+        $this->assertFalse($queueJob->released);
+        $this->assertSame(1, RateLimiter::attempts('multi-limit-keyed:user-42'));
+        $this->assertSame(1, RateLimiter::attempts('multi-limit-keyed:user-42-hour'));
+    }
+
+    public function test_throws_when_callback_returns_array_with_non_limit_element(): void
+    {
+        RateLimiter::for('bad-array-limiter', function (object $job) {
+            return [Limit::perMinute(5)->by('user-42'), 'not-a-limit'];
+        });
+
+        $queueJob = $this->fakeQueueJob();
+        $userJob = $this->fakeUserJob(42, $queueJob);
+        $middleware = new ThrottlesPerRecipient('bad-array-limiter');
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('Named rate limiter [bad-array-limiter] returned an invalid value');
+
+        $middleware->handle($userJob, fn () => null);
+    }
+
+    public function test_throws_when_callback_returns_non_array_non_limit_value(): void
+    {
+        RateLimiter::for('bad-scalar-limiter', function (object $job) {
+            return 'not-a-limit';
+        });
+
+        $queueJob = $this->fakeQueueJob();
+        $userJob = $this->fakeUserJob(42, $queueJob);
+        $middleware = new ThrottlesPerRecipient('bad-scalar-limiter');
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('Named rate limiter [bad-scalar-limiter] returned an invalid value');
 
         $middleware->handle($userJob, fn () => null);
     }

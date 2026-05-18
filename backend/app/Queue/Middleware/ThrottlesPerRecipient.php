@@ -9,6 +9,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Cache\RateLimiting\Unlimited;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
+use LogicException;
 
 /**
  * ThrottlesPerRecipient — queue middleware that enforces a Laravel named rate
@@ -76,32 +77,69 @@ class ThrottlesPerRecipient
     }
 
     /**
-     * @return array<int, Limit|Unlimited>
+     * Unlimited extends Limit, so list<Limit> covers both single-Limit and
+     * Unlimited callback returns without widening the contract.
+     *
+     * @return list<Limit>
      */
     private function resolveLimits(object $job): array
     {
         $callback = RateLimiter::limiter($this->limiterName);
 
         if ($callback === null) {
-            throw new \LogicException(
+            throw new LogicException(
                 "Named rate limiter [{$this->limiterName}] is not registered."
             );
         }
 
+        /** @var mixed $result */
         $result = $callback($job);
 
-        // Unlimited extends Limit, so the single Limit check covers both.
-        if ($result instanceof Limit) {
-            return [$result];
+        try {
+            return $this->normalizeLimits($result);
+        } catch (LogicException $e) {
+            // Preserve the operator-friendly limiter-name context that the
+            // pre-refactor exception carried, while still going through the
+            // strict normalizer for Psalm soundness.
+            throw new LogicException(
+                "Named rate limiter [{$this->limiterName}] returned an invalid value: {$e->getMessage()}",
+                0,
+                $e,
+            );
+        }
+    }
+
+    /**
+     * Reduce a limiter callback's dynamic return value to a strict list<Limit>.
+     * Runtime checks here are what allow resolveLimits() to honor its declared
+     * return type without a Psalm suppression.
+     *
+     * @return list<Limit>
+     */
+    private function normalizeLimits(mixed $value): array
+    {
+        if ($value instanceof Limit) {
+            return [$value];
         }
 
-        if (is_array($result)) {
-            return $result;
+        if (! is_array($value)) {
+            throw new LogicException(
+                'Throttle limits must be a Limit instance or an array of Limit instances.'
+            );
         }
 
-        throw new \LogicException(
-            "Named rate limiter [{$this->limiterName}] must return Limit, Unlimited, or array of those."
-        );
+        $limits = array_values($value);
+
+        foreach ($limits as $limit) {
+            if (! $limit instanceof Limit) {
+                throw new LogicException(
+                    'Every throttle limit must be an instance of Illuminate\\Cache\\RateLimiting\\Limit.'
+                );
+            }
+        }
+
+        /** @var list<Limit> $limits */
+        return $limits;
     }
 
     /**

@@ -6,7 +6,8 @@ use App\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Models\StripeRefundEvent;
 use App\Models\StripeWebhookEvent;
-use App\Services\BookingService;
+use App\Services\Payment\PaymentIntentApplyOutcome;
+use App\Services\Payment\StripePaymentIntentSucceededHandler;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -29,8 +30,11 @@ class StripeWebhookController extends CashierWebhookController
     /**
      * Handle payment_intent.succeeded webhook.
      *
-     * Confirms the associated booking when payment succeeds.
-     * Idempotent: if booking is already confirmed, no-op.
+     * Confirms the associated booking when payment succeeds. Idempotent: if
+     * the booking is already confirmed, no-op. The business effect is
+     * delegated to StripePaymentIntentSucceededHandler so that this HTTP
+     * path and the webhook:reconcile-stuck-events reaper share a single
+     * audited entry point into the booking state machine.
      */
     protected function handlePaymentIntentSucceeded(array $payload): JsonResponse
     {
@@ -66,48 +70,41 @@ class StripeWebhookController extends CashierWebhookController
             'stripe_event_id' => $stripeEventId,
         ]);
 
-        $booking = Booking::where('payment_intent_id', $paymentIntentId)->first();
-
-        if (! $booking) {
-            Log::warning('Stripe webhook: no booking found for payment_intent', [
-                'payment_intent_id' => $paymentIntentId,
-            ]);
-            $webhookEvent->markProcessed();
-
-            return response()->json(['handled' => true]);
-        }
-
-        // Idempotent: skip if already confirmed or in a terminal state
-        if ($booking->status !== BookingStatus::PENDING) {
-            Log::info('Stripe webhook: booking already processed', [
-                'booking_id' => $booking->id,
-                'status' => $booking->status->value,
-            ]);
-            $webhookEvent->markProcessed();
-
-            return response()->json(['handled' => true]);
-        }
-
         try {
-            DB::transaction(function () use ($booking): void {
-                app(BookingService::class)->confirmBooking($booking);
-            });
-
-            Log::info('Stripe webhook: booking confirmed via payment', [
-                'booking_id' => $booking->id,
-                'payment_intent_id' => $paymentIntentId,
-            ]);
-            $webhookEvent->markProcessed();
+            $outcome = app(StripePaymentIntentSucceededHandler::class)
+                ->applyToBooking($paymentIntentId);
         } catch (\Throwable $e) {
             Log::error('Stripe webhook: failed to confirm booking', [
-                'booking_id' => $booking->id,
+                'payment_intent_id' => $paymentIntentId,
                 'error' => $e->getMessage(),
             ]);
 
-            $webhookEvent->markFailed();
+            $webhookEvent->markFailed($e);
 
             return response()->json(['handled' => false], 500);
         }
+
+        match ($outcome) {
+            PaymentIntentApplyOutcome::Confirmed => Log::info('Stripe webhook: booking confirmed via payment', [
+                'payment_intent_id' => $paymentIntentId,
+            ]),
+            PaymentIntentApplyOutcome::AlreadyConfirmed => Log::info('Stripe webhook: booking already confirmed', [
+                'payment_intent_id' => $paymentIntentId,
+            ]),
+            PaymentIntentApplyOutcome::BookingNotFound => Log::warning('Stripe webhook: no booking found for payment_intent', [
+                'payment_intent_id' => $paymentIntentId,
+            ]),
+            PaymentIntentApplyOutcome::InvalidState => Log::info('Stripe webhook: booking in non-pending state', [
+                'payment_intent_id' => $paymentIntentId,
+            ]),
+        };
+
+        // Preserves the pre-extraction HTTP behavior: every non-throwing
+        // outcome (including AlreadyConfirmed and InvalidState) returns 200 so
+        // Stripe stops retrying. The reaper applies a stricter rule for
+        // InvalidState because its scope is operational health, not HTTP
+        // ack semantics.
+        $webhookEvent->markProcessed();
 
         return response()->json(['handled' => true]);
     }

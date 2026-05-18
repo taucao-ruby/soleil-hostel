@@ -28,6 +28,20 @@ Schedule::job(new ReconcileRefundsJob)
     ->onOneServer() // For multi-server deployments
     ->name('reconcile-refunds');
 
+// Reconcile Stripe webhook events stuck in 'processing' every 5 minutes.
+// Addresses the silent-failure path where the webhook controller INSERTs
+// the ledger row with status='processing' and the worker dies before
+// markProcessed/markFailed — the stripe_event_id UNIQUE constraint then
+// absorbs every Stripe retry, leaving the booking PENDING forever. The
+// reaper re-fetches the PaymentIntent from Stripe and replays the
+// idempotent business effect under shared handler.
+// See: docs/backend/STRIPE_WEBHOOK_RECONCILIATION.md
+Schedule::command('webhook:reconcile-stuck-events --minutes=15 --limit=50')
+    ->everyFiveMinutes()
+    ->withoutOverlapping(10)
+    ->onOneServer()
+    ->name('reconcile-stuck-stripe-webhooks');
+
 // Expire stale pending bookings every 5 minutes.
 // A pending booking holds a room via Booking::ACTIVE_STATUSES; without this
 // job, abandoned pending bookings block inventory indefinitely. TTL is

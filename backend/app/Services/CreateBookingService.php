@@ -115,7 +115,6 @@ class CreateBookingService
     ): Booking {
         $attempt = 0;
         $startTime = microtime(true);
-        $lastException = null;
 
         do {
             try {
@@ -154,7 +153,6 @@ class CreateBookingService
 
             } catch (PDOException $e) {
                 $attempt++;
-                $lastException = $e;
                 $errorType = $this->classifyDatabaseError($e);
 
                 Log::warning("Booking creation attempt {$attempt} failed", [
@@ -192,8 +190,6 @@ class CreateBookingService
                 continue;
             }
         } while ($attempt < self::MAX_RETRY_ATTEMPTS);
-
-        throw new RuntimeException('Không thể tạo booking', 0, $lastException);
     }
 
     /**

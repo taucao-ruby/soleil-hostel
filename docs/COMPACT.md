@@ -15,9 +15,9 @@
 
 ## 1) Current Snapshot (keep under 12 lines)
 
-- Date updated: 2026-05-19 (later)
-- Current branch: `dev` (HEAD=`3f35954`)
-- Latest commit: `3f35954` — chore(backend): pint + static analysis pass on Stripe webhook reaper. Working-tree fixes on 2026-05-19: **NEW-5** dead-code removal in `CreateBookingService::createWithDeadlockRetry` — removed unreachable post-loop `throw new RuntimeException('Không thể tạo booking', …)` and the orphan `$lastException` tracker; control flow proves every `do {} while` iteration either `return`s or `throw`s. **NEW-6** corrected `BookingFormData` `check_in`/`check_out` inline comments in `frontend/src/features/booking/booking.types.ts` from "ISO date string" to "YYYY-MM-DD format (date-only)" — matches actual wire format used by `BookingController::store` and exercised by 472 vitest tests. Backend: 13/13 `CreateBookingServiceTest` + 475 booking-related tests green, Pint + composer audit clean. Frontend: `tsc --noEmit` clean, 472/472 vitest tests pass. Neither committed yet.
+- Date updated: 2026-05-19 (later 3)
+- Current branch: `dev` (HEAD=`2cb419d`)
+- Latest commit: `2cb419d` — chore: dead-code prune in CreateBookingService + comment accuracy in booking.types.ts. Working-tree fix on 2026-05-19 (later 3): **NEW-7** Psalm/PHPStan `InvalidReturnType` cleanup in `CreateBookingService::createWithDeadlockRetry` — the do/while was reshaped to `while (true)` and the trailing `continue;` was dropped. Same semantics (every iteration still returns or throws), but the predicate-can-be-false path the analyzers were complaining about (`app/Services/CreateBookingService.php:115`) is gone. Closes the NEW-5 deferred follow-up. Backend gates: Psalm + PHPStan clean on file, 13/13 `CreateBookingServiceTest`, 263 booking + transaction-isolation tests PASS, `composer audit` clean. No frontend or migration surface. Not yet committed.
 - Backend gate baseline: 2026-05-11 F-30 run PASS — `php artisan test --filter=Csrf` (10/35), `php artisan test --filter=Auth` (205 passed / 1 skipped / 623), full `php -d max_execution_time=0 artisan test` (1304 passed / 110 skipped / 3763); Pint, PHPStan, Psalm PASS.
 - Frontend: 39 Vitest test files; May 3 intermediate run 418 tests PASS; axios bumped `^1.15.0`→`^1.16.0` (`97c684c`); typecheck PASS.
 - AI Harness: kill-switch contract finalized — `FeatureFlag::killSwitch()` is the sole gate (the `config('ai_harness.enabled', …)` path was non-functional and silently passing tests for the wrong reason — `2ab45ae`); `FeatureFlag::forget()` no longer re-throws Redis exceptions (`6372d7f`).

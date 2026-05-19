@@ -116,7 +116,7 @@ class CreateBookingService
         $attempt = 0;
         $startTime = microtime(true);
 
-        do {
+        while (true) {
             try {
                 $booking = $this->createBookingWithLocking(
                     $roomId,
@@ -186,10 +186,8 @@ class CreateBookingService
                 // Calculate delay based on error type
                 $delayMs = $this->calculateRetryDelay($attempt, $errorType);
                 usleep($delayMs * 1000);
-
-                continue;
             }
-        } while ($attempt < self::MAX_RETRY_ATTEMPTS);
+        }
     }
 
     /**

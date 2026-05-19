@@ -211,35 +211,125 @@ export function ToastContainer(): React.ReactElement {
 }
 
 /**
- * Helper to extract error message from various error types
+ * Helper to extract a user-safe error message from various error shapes.
+ *
+ * Surfaces server-provided 4xx business messages (Vietnamese, written for end
+ * users) while suppressing 5xx internals, raw axios diagnostics, HTML error
+ * pages, and other operational text that must never reach a guest. Status-
+ * specific copy handles 401/429/network so callers can render a single string
+ * without branching themselves.
  */
-export function getErrorMessage(error: unknown): string {
-  if (typeof error === 'string') return error
+const INTERNAL_ERROR_PATTERNS: readonly RegExp[] = [
+  /SQLSTATE/i,
+  /stack trace/i,
+  /\bexception\b/i,
+  /vendor[\\/]/i,
+  /Illuminate\\/i,
+  /Stripe\\/i,
+  /<html/i,
+  /<!doctype/i,
+  /Authorization:\s*Bearer/i,
+  /Bearer\s+[A-Za-z0-9._-]{8,}/,
+  /XSRF-TOKEN/i,
+  /set-cookie/i,
+  /Request failed with status code/i,
+  /Network Error/i,
+  /PDOException/i,
+  /file_get_contents/i,
+]
 
-  if (error && typeof error === 'object') {
-    // Axios error
-    if ('response' in error && error.response && typeof error.response === 'object') {
-      const response = error.response as {
-        data?: { message?: string; errors?: Record<string, string[]> }
+const FALLBACK_GENERIC = 'Đã có lỗi xảy ra. Vui lòng thử lại.'
+const FALLBACK_NETWORK = 'Không thể kết nối máy chủ. Vui lòng kiểm tra mạng và thử lại.'
+const FALLBACK_SESSION = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
+const FALLBACK_RATE_LIMIT = 'Bạn thao tác quá nhanh. Vui lòng thử lại sau.'
+
+function safeOrNull(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  if (INTERNAL_ERROR_PATTERNS.some(pattern => pattern.test(trimmed))) return null
+  return trimmed
+}
+
+function joinValidationMessages(errors: unknown): string | null {
+  if (!errors || typeof errors !== 'object') return null
+  const messages: string[] = []
+  for (const value of Object.values(errors as Record<string, unknown>)) {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const safe = safeOrNull(item)
+        if (safe) messages.push(safe)
       }
-
-      // Laravel validation errors
-      if (response.data?.errors) {
-        const errors = Object.values(response.data.errors).flat()
-        return errors.join(', ')
-      }
-
-      // Standard error message
-      if (response.data?.message) {
-        return response.data.message
-      }
-    }
-
-    // Standard Error object
-    if ('message' in error && typeof error.message === 'string') {
-      return error.message
+    } else {
+      const safe = safeOrNull(value)
+      if (safe) messages.push(safe)
     }
   }
+  return messages.length > 0 ? messages.join(', ') : null
+}
 
-  return 'An unexpected error occurred'
+function extractPayloadMessage(data: unknown): string | null {
+  if (!data || typeof data !== 'object') return null
+  const d = data as { message?: unknown; error?: unknown; errors?: unknown }
+
+  // Laravel validation: { errors: { field: ["..."] } } takes precedence so the
+  // per-field reasons reach the user instead of a generic summary.
+  const validation = joinValidationMessages(d.errors)
+  if (validation) return validation
+
+  const direct = safeOrNull(d.message)
+  if (direct) return direct
+
+  if (d.error && typeof d.error === 'object' && 'message' in d.error) {
+    const nested = safeOrNull((d.error as { message?: unknown }).message)
+    if (nested) return nested
+  }
+
+  const errorString = safeOrNull(d.error)
+  if (errorString) return errorString
+
+  return null
+}
+
+export function getErrorMessage(error: unknown): string {
+  if (typeof error === 'string') {
+    return safeOrNull(error) ?? FALLBACK_GENERIC
+  }
+
+  if (!error || typeof error !== 'object') {
+    return FALLBACK_GENERIC
+  }
+
+  // Axios-shape with a response → server responded with a status code.
+  if ('response' in error && (error as { response?: unknown }).response) {
+    const response = (error as { response: { status?: number; data?: unknown } }).response
+    const status = typeof response.status === 'number' ? response.status : null
+
+    if (status === 401) return FALLBACK_SESSION
+    if (status === 429) return FALLBACK_RATE_LIMIT
+
+    // 5xx must never surface the server payload — it may contain SQLSTATE,
+    // stack traces, vendor paths, or other operational internals.
+    if (status !== null && status >= 500) return FALLBACK_GENERIC
+
+    if (status !== null && status >= 400 && status < 500) {
+      return extractPayloadMessage(response.data) ?? FALLBACK_GENERIC
+    }
+
+    return extractPayloadMessage(response.data) ?? FALLBACK_GENERIC
+  }
+
+  // Axios-shape without a response → network/transport failure (DNS, offline,
+  // CORS, timeout). Real AxiosError sets isAxiosError; tests duck-type the same.
+  const errObj = error as { isAxiosError?: unknown; code?: unknown }
+  if (errObj.isAxiosError === true || typeof errObj.code === 'string') {
+    return FALLBACK_NETWORK
+  }
+
+  if ('message' in error && typeof (error as { message?: unknown }).message === 'string') {
+    const safe = safeOrNull((error as { message: string }).message)
+    if (safe) return safe
+  }
+
+  return FALLBACK_GENERIC
 }

@@ -72,6 +72,21 @@ describe('formatDateOnly', () => {
     expect(formatDateOnly('invalid')).toBe('invalid')
     expect(formatDateOnly('2026-06-01T10:00:00Z')).toBe('2026-06-01T10:00:00Z')
   })
+
+  // Hostile boundary dates exercised under the TZ env var seen at process
+  // startup (UTC, Asia/Bangkok, America/Los_Angeles, Pacific/Auckland,
+  // Etc/GMT+12). Output must not depend on the runtime timezone — a regression
+  // that routes these through `new Date(...)` would shift the day in
+  // negative-offset zones.
+  it.each([
+    ['2026-01-01', '01/01/2026'],
+    ['2026-03-08', '08/03/2026'],
+    ['2026-03-29', '29/03/2026'],
+    ['2026-05-20', '20/05/2026'],
+    ['2026-12-31', '31/12/2026'],
+  ])('formats hostile boundary date %s as %s', (input, expected) => {
+    expect(formatDateOnly(input)).toBe(expected)
+  })
 })
 
 describe('parseDateOnly', () => {

@@ -6,7 +6,8 @@ use App\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Models\StripeRefundEvent;
 use App\Models\StripeWebhookEvent;
-use App\Services\BookingService;
+use App\Services\Payment\PaymentIntentApplyOutcome;
+use App\Services\Payment\StripePaymentIntentSucceededHandler;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -29,8 +30,11 @@ class StripeWebhookController extends CashierWebhookController
     /**
      * Handle payment_intent.succeeded webhook.
      *
-     * Confirms the associated booking when payment succeeds.
-     * Idempotent: if booking is already confirmed, no-op.
+     * Confirms the associated booking when payment succeeds. Idempotent: if
+     * the booking is already confirmed, no-op. The business effect is
+     * delegated to StripePaymentIntentSucceededHandler so that this HTTP
+     * path and the webhook:reconcile-stuck-events reaper share a single
+     * audited entry point into the booking state machine.
      */
     protected function handlePaymentIntentSucceeded(array $payload): JsonResponse
     {
@@ -66,48 +70,41 @@ class StripeWebhookController extends CashierWebhookController
             'stripe_event_id' => $stripeEventId,
         ]);
 
-        $booking = Booking::where('payment_intent_id', $paymentIntentId)->first();
-
-        if (! $booking) {
-            Log::warning('Stripe webhook: no booking found for payment_intent', [
-                'payment_intent_id' => $paymentIntentId,
-            ]);
-            $webhookEvent->markProcessed();
-
-            return response()->json(['handled' => true]);
-        }
-
-        // Idempotent: skip if already confirmed or in a terminal state
-        if ($booking->status !== BookingStatus::PENDING) {
-            Log::info('Stripe webhook: booking already processed', [
-                'booking_id' => $booking->id,
-                'status' => $booking->status->value,
-            ]);
-            $webhookEvent->markProcessed();
-
-            return response()->json(['handled' => true]);
-        }
-
         try {
-            DB::transaction(function () use ($booking): void {
-                app(BookingService::class)->confirmBooking($booking);
-            });
-
-            Log::info('Stripe webhook: booking confirmed via payment', [
-                'booking_id' => $booking->id,
-                'payment_intent_id' => $paymentIntentId,
-            ]);
-            $webhookEvent->markProcessed();
+            $outcome = app(StripePaymentIntentSucceededHandler::class)
+                ->applyToBooking($paymentIntentId);
         } catch (\Throwable $e) {
             Log::error('Stripe webhook: failed to confirm booking', [
-                'booking_id' => $booking->id,
+                'payment_intent_id' => $paymentIntentId,
                 'error' => $e->getMessage(),
             ]);
 
-            $webhookEvent->markFailed();
+            $webhookEvent->markFailed($e);
 
             return response()->json(['handled' => false], 500);
         }
+
+        match ($outcome) {
+            PaymentIntentApplyOutcome::Confirmed => Log::info('Stripe webhook: booking confirmed via payment', [
+                'payment_intent_id' => $paymentIntentId,
+            ]),
+            PaymentIntentApplyOutcome::AlreadyConfirmed => Log::info('Stripe webhook: booking already confirmed', [
+                'payment_intent_id' => $paymentIntentId,
+            ]),
+            PaymentIntentApplyOutcome::BookingNotFound => Log::warning('Stripe webhook: no booking found for payment_intent', [
+                'payment_intent_id' => $paymentIntentId,
+            ]),
+            PaymentIntentApplyOutcome::InvalidState => Log::info('Stripe webhook: booking in non-pending state', [
+                'payment_intent_id' => $paymentIntentId,
+            ]),
+        };
+
+        // Preserves the pre-extraction HTTP behavior: every non-throwing
+        // outcome (including AlreadyConfirmed and InvalidState) returns 200 so
+        // Stripe stops retrying. The reaper applies a stricter rule for
+        // InvalidState because its scope is operational health, not HTTP
+        // ack semantics.
+        $webhookEvent->markProcessed();
 
         return response()->json(['handled' => true]);
     }
@@ -201,6 +198,13 @@ class StripeWebhookController extends CashierWebhookController
                     $booking = $booking->transitionTo($newStatus);
                 }
 
+                // bookings.refund_id is a latest-refund pointer for operational
+                // lookup, NOT a refund ledger. Under partial refunds one charge
+                // can produce multiple refunds; this column is overwritten by
+                // the most recent one. Refund history, total refunded amount,
+                // full-refund detection, and reconciliation MUST read from
+                // stripe_refund_events. See docs/agents/ARCHITECTURE_FACTS.md
+                // §bookings.refund_id semantics.
                 $booking->update([
                     'refund_id' => $refundId,
                     'refund_status' => $refundStatus,
@@ -250,15 +254,54 @@ class StripeWebhookController extends CashierWebhookController
      * Handle payment_intent.payment_failed webhook.
      *
      * Logs the failure. Booking remains in pending state for retry.
+     *
+     * The handler is idempotent under at-least-once delivery via the same
+     * INSERT-first guard on `stripe_webhook_events.stripe_event_id` used by
+     * the succeeded path. Logging is treated as a side effect: a duplicate
+     * Stripe delivery short-circuits at the UNIQUE constraint before the
+     * warning log fires, so log volume stays bounded and any future
+     * business logic added here inherits the guarantee.
      */
     protected function handlePaymentIntentPaymentFailed(array $payload): JsonResponse
     {
+        $stripeEventId = $payload['id'] ?? null;
+        $eventType = $payload['type'] ?? 'payment_intent.payment_failed';
         $paymentIntentId = $payload['data']['object']['id'] ?? null;
         $failureMessage = $payload['data']['object']['last_payment_error']['message'] ?? 'Unknown';
+
+        if (! $stripeEventId) {
+            // Malformed payload (no event id). Preserve the historical
+            // always-2xx posture on payment_failed so Stripe does not retry
+            // a payload we cannot reason about — duplicate-delivery defense
+            // is moot when we have no identifier to dedupe against.
+            Log::warning('Stripe webhook: payment_intent.payment_failed missing event id', [
+                'payment_intent_id' => $paymentIntentId,
+            ]);
+
+            return response()->json(['handled' => true]);
+        }
+
+        // BL-3 idempotency: constraint-first INSERT against the stripe_event_id
+        // UNIQUE. A SELECT-then-INSERT would race; the constraint itself is the
+        // linearization point. DB::transaction provides a SAVEPOINT so a
+        // duplicate INSERT under a surrounding test transaction rolls back to
+        // a known state instead of aborting it (PG 25P02). Mirrors
+        // handlePaymentIntentSucceeded — see StripeWebhookIdempotencyTest.
+        try {
+            $webhookEvent = DB::transaction(fn () => StripeWebhookEvent::create([
+                'stripe_event_id' => $stripeEventId,
+                'type' => $eventType,
+                'status' => 'processing',
+                'payload' => $payload,
+            ]));
+        } catch (UniqueConstraintViolationException) {
+            return response()->json(['handled' => true]);
+        }
 
         Log::warning('Stripe webhook: payment_intent.payment_failed', [
             'payment_intent_id' => $paymentIntentId,
             'failure_message' => $failureMessage,
+            'stripe_event_id' => $stripeEventId,
         ]);
 
         if ($paymentIntentId) {
@@ -270,6 +313,8 @@ class StripeWebhookController extends CashierWebhookController
                 ]);
             }
         }
+
+        $webhookEvent->markProcessed();
 
         return response()->json(['handled' => true]);
     }

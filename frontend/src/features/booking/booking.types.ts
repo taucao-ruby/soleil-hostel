@@ -10,8 +10,8 @@ export interface BookingFormData {
   room_id: number
   guest_name: string
   guest_email: string
-  check_in: string // ISO date string
-  check_out: string // ISO date string
+  check_in: string // YYYY-MM-DD format (date-only)
+  check_out: string // YYYY-MM-DD format (date-only)
   number_of_guests: number
   special_requests?: string
 }

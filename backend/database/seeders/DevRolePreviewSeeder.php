@@ -173,24 +173,29 @@ class DevRolePreviewSeeder extends Seeder
         ?Carbon $cancelledAt = null,
         ?string $cancellationReason = null,
     ): Booking {
-        return Booking::query()->updateOrCreate(
-            ['guest_email' => $reference],
-            [
-                'user_id' => $user->id,
-                'room_id' => $room->id,
-                'location_id' => $room->location_id,
-                'guest_name' => $user->name,
-                'guest_email' => $reference,
-                'check_in' => $checkIn->toDateString(),
-                'check_out' => $checkOut->toDateString(),
-                'status' => $status,
-                'amount' => $amount,
-                'cancelled_by' => $cancelledBy?->id,
-                'cancelled_at' => $cancelledAt,
-                'cancellation_reason' => $cancellationReason,
-                'deleted_by' => null,
-            ]
-        );
+        // Booking::$fillable is restricted to user-input columns (A-1 defense-in-depth).
+        // The trusted preview seeder writes state-machine, authorship, payment, and
+        // cancellation-audit columns through forceFill so they cannot be silently
+        // dropped by the shrunk mass-assignment surface. Mirrors upsertTrashedBooking.
+        $booking = Booking::query()->firstOrNew(['guest_email' => $reference]);
+
+        $booking->forceFill([
+            'user_id' => $user->id,
+            'room_id' => $room->id,
+            'location_id' => $room->location_id,
+            'guest_name' => $user->name,
+            'guest_email' => $reference,
+            'check_in' => $checkIn->toDateString(),
+            'check_out' => $checkOut->toDateString(),
+            'status' => $status,
+            'amount' => $amount,
+            'cancelled_by' => $cancelledBy?->id,
+            'cancelled_at' => $cancelledAt,
+            'cancellation_reason' => $cancellationReason,
+            'deleted_by' => null,
+        ])->save();
+
+        return $booking;
     }
 
     private function upsertTrashedBooking(

@@ -205,14 +205,14 @@ class StripeWebhookController extends CashierWebhookController
                 // full-refund detection, and reconciliation MUST read from
                 // stripe_refund_events. See docs/agents/ARCHITECTURE_FACTS.md
                 // §bookings.refund_id semantics.
-                $booking->update([
+                $booking->forceFill([
                     'refund_id' => $refundId,
                     'refund_status' => $refundStatus,
                     'refund_amount' => $refundAmount,
                     'refund_error' => $refundStatus === 'failed'
                         ? 'Refund failed on Stripe'
                         : null,
-                ]);
+                ])->save();
 
                 return [
                     'status' => 'processed',

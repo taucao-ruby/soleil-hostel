@@ -204,7 +204,7 @@ class DevRolePreviewSeeder extends Seeder
     ): void {
         $booking = Booking::withTrashed()->firstOrNew(['guest_email' => $reference]);
 
-        $booking->fill([
+        $booking->forceFill([
             'user_id' => $user->id,
             'room_id' => $room->id,
             'location_id' => $room->location_id,

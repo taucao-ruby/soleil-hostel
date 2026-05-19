@@ -326,20 +326,27 @@ class CreateBookingService
             // location_id is set explicitly here from room->location_id so the application
             // path is self-sufficient. The PostgreSQL trigger (trg_booking_set_location)
             // and BookingObserver remain as independent backstops.
+            //
+            // User-input columns flow through fill() (respects $fillable).
+            // Server-controlled columns (location_id, status, user_id, amount,
+            // plus any internal $additionalData) flow through forceFill() so
+            // they cannot be supplied by mass assignment from the controller.
             $amount = $additionalData['amount'] ?? $this->calculateAmount($room, $checkIn, $checkOut);
 
-            $booking = Booking::create([
+            $booking = (new Booking)->fill([
                 'room_id' => $roomId,
-                'location_id' => $room->location_id,
                 'check_in' => $checkIn,
                 'check_out' => $checkOut,
                 'guest_name' => $guestName,
                 'guest_email' => $guestEmail,
+            ])->forceFill([
+                'location_id' => $room->location_id,
                 'status' => BookingStatus::PENDING,
                 'user_id' => $userId,
                 'amount' => $amount,
                 ...$additionalData,
             ]);
+            $booking->save();
 
             // Step 5: Return booking (transaction auto-commit, lock released)
             return $booking->fresh();
@@ -407,11 +414,11 @@ class CreateBookingService
             }
 
             $locked = $locked->transitionTo(BookingStatus::CANCELLED);
-            $locked->update([
+            $locked->forceFill([
                 'cancelled_at' => now(),
                 'cancelled_by' => null,
                 'cancellation_reason' => 'payment_intent_creation_failed',
-            ]);
+            ])->save();
         });
     }
 

@@ -22,37 +22,23 @@ class Booking extends Model
     use HasFactory, Purifiable, SoftDeletes;
 
     /**
-     * deposit_amount remains unearned revenue / liability until the stay is fulfilled.
-     * These fields are operational visibility only and not authoritative accounting.
+     * Mass-assignable attributes — restricted to user-supplied booking input.
+     *
+     * Defense-in-depth (A-1): state-machine columns (status), authorship
+     * (user_id, deleted_by), payment/deposit/refund state, and cancellation
+     * audit fields are intentionally NOT fillable. They must be written via
+     * forceFill / explicit attribute assignment from trusted service layers
+     * (CreateBookingService, CancellationService, ReconcileRefundsJob,
+     * ExpireStaleBookings, Booking::transitionTo, factories/seeders) so a
+     * future controller cannot promote a booking by spreading $request input
+     * into Booking::create / ->update / ->fill.
      */
     protected $fillable = [
         'room_id',
-        'location_id',
         'check_in',
         'check_out',
         'guest_name',
         'guest_email',
-        'status',
-        'user_id',
-        'deleted_by',
-        // Payment fields
-        'payment_intent_id',
-        'amount',
-        'deposit_amount',
-        'deposit_collected_at',
-        'deposit_status',
-        // Refund fields
-        'refund_id',
-        'refund_status',
-        'refund_amount',
-        'refund_error',
-        // Cancellation audit
-        'cancelled_at',
-        'cancelled_by',
-        'cancelled_by_email',
-        'cancelled_by_role',
-        'cancelled_by_display',
-        'cancellation_reason',
     ];
 
     protected $casts = [
@@ -304,10 +290,10 @@ class Booking extends Model
                 throw new BookingTransitionException($locked, $from, $target);
             }
 
-            $locked->update([
+            $locked->forceFill([
                 'status' => $target,
                 'updated_at' => now(),
-            ]);
+            ])->save();
 
             $changed = $locked->fresh();
             event(new BookingStatusChanged($changed, $from, $target, $actor));

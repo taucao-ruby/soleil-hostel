@@ -73,11 +73,13 @@ final class ReconcileRefundsJobTest extends TestCase
 
         // Pre-condition: booking has a non-zero amount so calculateRefundAmount > 0
         // and the retry branch actually attempts a Stripe call.
-        $booking->update([
-            'amount' => 10_000,
+        // amount is not mass-assignable (A-1); use forceFill for protected fields.
+        $booking->fill([
             'check_in' => Carbon::now()->addDays(7),
             'check_out' => Carbon::now()->addDays(9),
-        ]);
+        ])->forceFill([
+            'amount' => 10_000,
+        ])->save();
 
         (new ReconcileRefundsJob)->handle();
 

@@ -237,7 +237,7 @@ class TransactionIsolationIntegrationTest extends TestCase
             $checkIn = Carbon::now()->addDays(20)->startOfDay();
             $checkOut = $checkIn->clone()->addDays(2);
 
-            $booking = Booking::create([
+            $booking = Booking::forceCreate([
                 'room_id' => $this->room->id,
                 'check_in' => $checkIn,
                 'check_out' => $checkOut,

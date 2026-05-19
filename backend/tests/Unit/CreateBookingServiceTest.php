@@ -145,7 +145,7 @@ class CreateBookingServiceTest extends TestCase
         $checkOut1 = Carbon::tomorrow()->addDays(5);
 
         // Create first booking
-        Booking::create([
+        Booking::forceCreate([
             'room_id' => $this->room->id,
             'check_in' => $checkIn1,
             'check_out' => $checkOut1,
@@ -185,7 +185,7 @@ class CreateBookingServiceTest extends TestCase
         $day6 = Carbon::tomorrow()->addDays(6);
         $day10 = Carbon::tomorrow()->addDays(10);
 
-        Booking::create([
+        Booking::forceCreate([
             'room_id' => $this->room->id,
             'check_in' => $day1,
             'check_out' => $day5,
@@ -217,7 +217,7 @@ class CreateBookingServiceTest extends TestCase
         $checkIn = Carbon::tomorrow();
         $checkOut = Carbon::tomorrow()->addDays(5);
 
-        Booking::create([
+        Booking::forceCreate([
             'room_id' => $this->room->id,
             'check_in' => $checkIn,
             'check_out' => $checkOut,
@@ -247,7 +247,7 @@ class CreateBookingServiceTest extends TestCase
         $checkIn1 = Carbon::tomorrow();
         $checkOut1 = Carbon::tomorrow()->addDays(5);
 
-        $booking1 = Booking::create([
+        $booking1 = Booking::forceCreate([
             'room_id' => $this->room->id,
             'check_in' => $checkIn1,
             'check_out' => $checkOut1,
@@ -257,7 +257,7 @@ class CreateBookingServiceTest extends TestCase
             'status' => 'confirmed',
         ]);
 
-        $booking2 = Booking::create([
+        $booking2 = Booking::forceCreate([
             'room_id' => $this->room->id,
             'check_in' => Carbon::tomorrow()->addDays(10),
             'check_out' => Carbon::tomorrow()->addDays(12),
@@ -282,7 +282,7 @@ class CreateBookingServiceTest extends TestCase
      */
     public function test_service_update_booking_successfully(): void
     {
-        $booking = Booking::create([
+        $booking = Booking::forceCreate([
             'room_id' => $this->room->id,
             'check_in' => Carbon::tomorrow(),
             'check_out' => Carbon::tomorrow()->addDays(3),

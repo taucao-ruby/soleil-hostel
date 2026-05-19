@@ -206,11 +206,11 @@ final class ReconcileRefundsJob implements ShouldQueue
         if ($refund->status === 'succeeded') {
             DB::transaction(function () use ($booking, $refund) {
                 $booking = $booking->transitionTo(BookingStatus::CANCELLED);
-                $booking->update([
+                $booking->forceFill([
                     'refund_status' => 'succeeded',
                     'refund_amount' => $refund->amount,
                     'refund_error' => null,
-                ]);
+                ])->save();
 
                 event(new BookingCancelled($booking));
             });
@@ -221,10 +221,10 @@ final class ReconcileRefundsJob implements ShouldQueue
             ]);
         } elseif ($refund->status === 'failed') {
             $booking = $booking->transitionTo(BookingStatus::REFUND_FAILED);
-            $booking->update([
+            $booking->forceFill([
                 'refund_status' => 'failed',
                 'refund_error' => $refund->failure_reason ?? 'Unknown failure',
-            ]);
+            ])->save();
 
             Log::warning('Refund failed on Stripe', [
                 'booking_id' => $booking->id,
@@ -271,12 +271,12 @@ final class ReconcileRefundsJob implements ShouldQueue
         if ($latestRefund->status === 'succeeded') {
             DB::transaction(function () use ($booking, $latestRefund) {
                 $booking = $booking->transitionTo(BookingStatus::CANCELLED);
-                $booking->update([
+                $booking->forceFill([
                     'refund_id' => $latestRefund->id,
                     'refund_status' => 'succeeded',
                     'refund_amount' => $latestRefund->amount,
                     'refund_error' => null,
-                ]);
+                ])->save();
 
                 event(new BookingCancelled($booking));
             });
@@ -310,9 +310,9 @@ final class ReconcileRefundsJob implements ShouldQueue
             if ($refundAmount <= 0) {
                 // No refund needed - just cancel
                 $booking = $booking->transitionTo(BookingStatus::CANCELLED);
-                $booking->update([
+                $booking->forceFill([
                     'refund_error' => null,
-                ]);
+                ])->save();
                 event(new BookingCancelled($booking));
 
                 return;
@@ -338,12 +338,12 @@ final class ReconcileRefundsJob implements ShouldQueue
 
             DB::transaction(function () use ($booking, $refund, $refundAmount) {
                 $booking = $booking->transitionTo(BookingStatus::CANCELLED);
-                $booking->update([
+                $booking->forceFill([
                     'refund_id' => $refund->id,
                     'refund_status' => 'succeeded',
                     'refund_amount' => $refundAmount,
                     'refund_error' => null,
-                ]);
+                ])->save();
 
                 event(new BookingCancelled($booking));
             });
@@ -368,9 +368,9 @@ final class ReconcileRefundsJob implements ShouldQueue
                 $booking = $booking->transitionTo(BookingStatus::REFUND_FAILED);
             }
 
-            $booking->update([
+            $booking->forceFill([
                 'refund_error' => "[Attempt {$attemptNumber}] ".$e->getMessage(),
-            ]);
+            ])->save();
 
             Log::warning('Retry refund failed', [
                 'booking_id' => $booking->id,

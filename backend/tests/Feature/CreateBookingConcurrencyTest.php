@@ -93,7 +93,7 @@ class CreateBookingConcurrencyTest extends TestCase
         $checkIn1 = Carbon::tomorrow()->toDateString();
         $checkOut1 = Carbon::tomorrow()->addDays(5)->toDateString();
 
-        Booking::create([
+        Booking::forceCreate([
             'room_id' => $this->room->id,
             'check_in' => $checkIn1,
             'check_out' => $checkOut1,
@@ -139,7 +139,7 @@ class CreateBookingConcurrencyTest extends TestCase
         $checkIn1 = Carbon::tomorrow()->toDateString();
         $checkOut1 = Carbon::tomorrow()->addDays(4)->toDateString();
 
-        Booking::create([
+        Booking::forceCreate([
             'room_id' => $this->room->id,
             'check_in' => $checkIn1,
             'check_out' => $checkOut1,
@@ -182,7 +182,7 @@ class CreateBookingConcurrencyTest extends TestCase
         $checkIn1 = Carbon::tomorrow()->addDays(1)->toDateString();
         $checkOut1 = Carbon::tomorrow()->addDays(4)->toDateString();
 
-        Booking::create([
+        Booking::forceCreate([
             'room_id' => $this->room->id,
             'check_in' => $checkIn1,
             'check_out' => $checkOut1,
@@ -222,7 +222,7 @@ class CreateBookingConcurrencyTest extends TestCase
         $checkIn1 = Carbon::tomorrow()->toDateString();
         $checkOut1 = Carbon::tomorrow()->addDays(2)->toDateString();
 
-        Booking::create([
+        Booking::forceCreate([
             'room_id' => $this->room->id,
             'check_in' => $checkIn1,
             'check_out' => $checkOut1,
@@ -262,7 +262,7 @@ class CreateBookingConcurrencyTest extends TestCase
         $checkIn1 = Carbon::tomorrow()->toDateString();
         $checkOut1 = Carbon::tomorrow()->addDays(5)->toDateString();
 
-        Booking::create([
+        Booking::forceCreate([
             'room_id' => $this->room->id,
             'check_in' => $checkIn1,
             'check_out' => $checkOut1,
@@ -300,7 +300,7 @@ class CreateBookingConcurrencyTest extends TestCase
     public function test_booking_update_with_overlap_is_rejected(): void
     {
         // Create first booking
-        $booking1 = Booking::create([
+        $booking1 = Booking::forceCreate([
             'room_id' => $this->room->id,
             'check_in' => Carbon::tomorrow()->addDays(1)->toDateString(),
             'check_out' => Carbon::tomorrow()->addDays(5)->toDateString(),
@@ -311,7 +311,7 @@ class CreateBookingConcurrencyTest extends TestCase
         ]);
 
         // Create second booking for same user that won't overlap
-        $booking2 = Booking::create([
+        $booking2 = Booking::forceCreate([
             'room_id' => $this->room->id,
             'check_in' => Carbon::tomorrow()->addDays(10)->toDateString(),
             'check_out' => Carbon::tomorrow()->addDays(12)->toDateString(),
@@ -354,7 +354,7 @@ class CreateBookingConcurrencyTest extends TestCase
         $checkOut = Carbon::tomorrow()->addDays(3)->toDateString();
 
         // Booking room 1
-        Booking::create([
+        Booking::forceCreate([
             'room_id' => $this->room->id,
             'check_in' => $checkIn,
             'check_out' => $checkOut,

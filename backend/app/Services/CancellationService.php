@@ -221,9 +221,9 @@ final class CancellationService
                 : BookingStatus::CANCELLED;
 
             $locked = $locked->transitionTo($newStatus, $actor);
-            $locked->update(array_merge([
+            $locked->forceFill(array_merge([
                 'cancelled_at' => now(),
-            ], $this->cancellationActorSnapshot($actor)));
+            ], $this->cancellationActorSnapshot($actor)))->save();
 
             // If not refundable, we can dispatch the event now
             if (! $isRefundable) {
@@ -346,12 +346,12 @@ final class CancellationService
             }
 
             $locked = $locked->transitionTo(BookingStatus::CANCELLED, $actor);
-            $locked->update([
+            $locked->forceFill([
                 'refund_id' => $refundId,
                 'refund_status' => $refundId ? 'succeeded' : null,
                 'refund_amount' => $refundAmount ?: null,
                 'refund_error' => null,
-            ]);
+            ])->save();
 
             // Dispatch event (notification listener will pick this up)
             event(new BookingCancelled($locked, $actor));
@@ -376,10 +376,10 @@ final class CancellationService
 
         // Update to failed state (allows retry)
         $booking = $booking->transitionTo(BookingStatus::REFUND_FAILED);
-        $booking->update([
+        $booking->forceFill([
             'refund_status' => 'failed',
             'refund_error' => substr($e->getMessage(), 0, 1000),
-        ]);
+        ])->save();
 
         throw RefundFailedException::fromException($booking, $e);
     }
@@ -406,10 +406,10 @@ final class CancellationService
             }
 
             $locked = $locked->transitionTo(BookingStatus::CANCELLED, $actor);
-            $locked->update(array_merge([
+            $locked->forceFill(array_merge([
                 'cancelled_at' => now(),
                 'refund_error' => "Force cancelled: {$reason}",
-            ], $this->cancellationActorSnapshot($actor)));
+            ], $this->cancellationActorSnapshot($actor)))->save();
 
             event(new BookingCancelled($locked, $actor));
 

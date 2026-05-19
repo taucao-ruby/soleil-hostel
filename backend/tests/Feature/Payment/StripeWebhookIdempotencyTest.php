@@ -232,6 +232,88 @@ class StripeWebhookIdempotencyTest extends TestCase
         );
     }
 
+    // ===== payment_intent.payment_failed — duplicate-delivery contract =====
+
+    public function test_payment_intent_payment_failed_webhook_is_idempotent(): void
+    {
+        // Same INSERT-first guard as the succeeded path: a duplicate Stripe
+        // delivery of payment_intent.payment_failed must not double-log or
+        // (in future) double-mutate. Today the handler only logs, but locking
+        // the pattern in now means any business logic added later inherits
+        // the guarantee without re-doing the audit. BL-3.
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($this->room)
+            ->create([
+                'status' => BookingStatus::PENDING,
+                'payment_intent_id' => 'pi_failed_replay',
+            ]);
+
+        $payload = $this->makePaymentFailedPayload(
+            stripeEventId: 'evt_failed_replay',
+            paymentIntentId: 'pi_failed_replay',
+            failureMessage: 'Your card was declined.',
+        );
+
+        // First delivery: writes the ledger row, runs the warning log,
+        // and marks the event processed.
+        $first = $this->callHandler('handlePaymentIntentPaymentFailed', $payload);
+        $this->assertSame(200, $first->getStatusCode());
+        $this->assertTrue($first->getData(true)['handled']);
+
+        $events = StripeWebhookEvent::where('stripe_event_id', 'evt_failed_replay')->get();
+        $this->assertCount(1, $events, 'First delivery must persist exactly one ledger row');
+        $this->assertSame('processed', $events->first()->status);
+        $this->assertNotNull($events->first()->processed_at);
+
+        // Booking state was never touched — the handler is log-only today.
+        $booking->refresh();
+        $this->assertSame(BookingStatus::PENDING, $booking->status);
+
+        // Second delivery (identical payload): short-circuits at the UNIQUE
+        // constraint. No second ledger row, no booking mutation, no
+        // additional side effects — the response is still 200/handled.
+        $second = $this->callHandler('handlePaymentIntentPaymentFailed', $payload);
+        $this->assertSame(200, $second->getStatusCode());
+        $this->assertTrue($second->getData(true)['handled']);
+
+        $this->assertSame(
+            1,
+            StripeWebhookEvent::where('stripe_event_id', 'evt_failed_replay')->count(),
+            'Duplicate payment_failed delivery must not insert a second stripe_webhook_events row',
+        );
+
+        $booking->refresh();
+        $this->assertSame(
+            BookingStatus::PENDING,
+            $booking->status,
+            'payment_failed must not mutate booking state on first OR duplicate delivery',
+        );
+    }
+
+    public function test_payment_intent_payment_failed_without_event_id_short_circuits_2xx(): void
+    {
+        // Malformed payload (no event id). Cannot dedupe against a missing
+        // identifier; we preserve the historical always-2xx posture so Stripe
+        // does not retry a payload we cannot reason about. No ledger row is
+        // written because there is no key to write under.
+        $payload = [
+            'type' => 'payment_intent.payment_failed',
+            'data' => [
+                'object' => [
+                    'id' => 'pi_no_event_id',
+                    'last_payment_error' => ['message' => 'Card declined.'],
+                ],
+            ],
+        ];
+
+        $response = $this->callHandler('handlePaymentIntentPaymentFailed', $payload);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertTrue($response->getData(true)['handled']);
+        $this->assertSame(0, StripeWebhookEvent::count());
+    }
+
     // ===== charge.refunded — duplicate-delivery contract =====
 
     public function test_duplicate_charge_refunded_event_is_no_op_via_refund_id_unique_constraint(): void
@@ -403,6 +485,25 @@ class StripeWebhookIdempotencyTest extends TestCase
                     'status' => 'succeeded',
                     'amount' => 50000,
                     'currency' => 'vnd',
+                ],
+            ],
+        ];
+    }
+
+    private function makePaymentFailedPayload(
+        string $stripeEventId,
+        string $paymentIntentId,
+        string $failureMessage,
+    ): array {
+        return [
+            'id' => $stripeEventId,
+            'type' => 'payment_intent.payment_failed',
+            'data' => [
+                'object' => [
+                    'id' => $paymentIntentId,
+                    'last_payment_error' => [
+                        'message' => $failureMessage,
+                    ],
                 ],
             ],
         ];

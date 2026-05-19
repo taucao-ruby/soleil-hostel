@@ -42,6 +42,18 @@ On `bookings` table: `amount`, `payment_intent_id`, `refund_id`, `refund_status`
 Deposit lifecycle also lives on `bookings`: `deposit_amount`, `deposit_collected_at`, `deposit_status`.
 `deposit_amount` is operational liability tracking only and is **not** recognized revenue at collection time.
 
+### bookings.refund_id semantics
+
+`bookings.refund_id` stores the most-recent Stripe refund ID observed for the booking.
+
+It is a **latest-pointer** field, not an authoritative refund ledger. Under partial refunds (one charge → multiple Stripe `refund` objects), this value is overwritten by each subsequent refund. Code that needs refund history, total refunded amount, full-refund detection, partial-refund classification, or reconciliation MUST read from `stripe_refund_events`.
+
+Invariants:
+- `bookings.refund_id` = latest Stripe refund pointer for operational lookup.
+- `stripe_refund_events` = authoritative refund history ledger (UNIQUE on `stripe_refund_id` is the durable replay guard).
+
+Sources: `app/Http/Controllers/Payment/StripeWebhookController.php` (`handleChargeRefunded`), `app/Models/StripeRefundEvent.php`, migration `2026_04_29_000003_create_stripe_refund_events_table.php`.
+
 ### Booking Status
 
 **VARCHAR column, NOT a PostgreSQL ENUM.** Values enforced at application level (`App\Enums\BookingStatus`) AND DB CHECK constraint `chk_bookings_status` on PostgreSQL (migration `2026_03_17_000003`):

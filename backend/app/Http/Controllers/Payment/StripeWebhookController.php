@@ -198,6 +198,13 @@ class StripeWebhookController extends CashierWebhookController
                     $booking = $booking->transitionTo($newStatus);
                 }
 
+                // bookings.refund_id is a latest-refund pointer for operational
+                // lookup, NOT a refund ledger. Under partial refunds one charge
+                // can produce multiple refunds; this column is overwritten by
+                // the most recent one. Refund history, total refunded amount,
+                // full-refund detection, and reconciliation MUST read from
+                // stripe_refund_events. See docs/agents/ARCHITECTURE_FACTS.md
+                // §bookings.refund_id semantics.
                 $booking->update([
                     'refund_id' => $refundId,
                     'refund_status' => $refundStatus,
@@ -247,15 +254,54 @@ class StripeWebhookController extends CashierWebhookController
      * Handle payment_intent.payment_failed webhook.
      *
      * Logs the failure. Booking remains in pending state for retry.
+     *
+     * The handler is idempotent under at-least-once delivery via the same
+     * INSERT-first guard on `stripe_webhook_events.stripe_event_id` used by
+     * the succeeded path. Logging is treated as a side effect: a duplicate
+     * Stripe delivery short-circuits at the UNIQUE constraint before the
+     * warning log fires, so log volume stays bounded and any future
+     * business logic added here inherits the guarantee.
      */
     protected function handlePaymentIntentPaymentFailed(array $payload): JsonResponse
     {
+        $stripeEventId = $payload['id'] ?? null;
+        $eventType = $payload['type'] ?? 'payment_intent.payment_failed';
         $paymentIntentId = $payload['data']['object']['id'] ?? null;
         $failureMessage = $payload['data']['object']['last_payment_error']['message'] ?? 'Unknown';
+
+        if (! $stripeEventId) {
+            // Malformed payload (no event id). Preserve the historical
+            // always-2xx posture on payment_failed so Stripe does not retry
+            // a payload we cannot reason about — duplicate-delivery defense
+            // is moot when we have no identifier to dedupe against.
+            Log::warning('Stripe webhook: payment_intent.payment_failed missing event id', [
+                'payment_intent_id' => $paymentIntentId,
+            ]);
+
+            return response()->json(['handled' => true]);
+        }
+
+        // BL-3 idempotency: constraint-first INSERT against the stripe_event_id
+        // UNIQUE. A SELECT-then-INSERT would race; the constraint itself is the
+        // linearization point. DB::transaction provides a SAVEPOINT so a
+        // duplicate INSERT under a surrounding test transaction rolls back to
+        // a known state instead of aborting it (PG 25P02). Mirrors
+        // handlePaymentIntentSucceeded — see StripeWebhookIdempotencyTest.
+        try {
+            $webhookEvent = DB::transaction(fn () => StripeWebhookEvent::create([
+                'stripe_event_id' => $stripeEventId,
+                'type' => $eventType,
+                'status' => 'processing',
+                'payload' => $payload,
+            ]));
+        } catch (UniqueConstraintViolationException) {
+            return response()->json(['handled' => true]);
+        }
 
         Log::warning('Stripe webhook: payment_intent.payment_failed', [
             'payment_intent_id' => $paymentIntentId,
             'failure_message' => $failureMessage,
+            'stripe_event_id' => $stripeEventId,
         ]);
 
         if ($paymentIntentId) {
@@ -267,6 +313,8 @@ class StripeWebhookController extends CashierWebhookController
                 ]);
             }
         }
+
+        $webhookEvent->markProcessed();
 
         return response()->json(['handled' => true]);
     }

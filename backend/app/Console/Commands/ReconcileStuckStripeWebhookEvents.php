@@ -359,5 +359,4 @@ final class ReconcileStuckStripeWebhookEvents extends Command
 
         return $client;
     }
-
 }

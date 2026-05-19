@@ -1,5 +1,12 @@
 # WORKLOG — Soleil Hostel (Append-only)
 
+## 2026-05-19
+
+- Change: `backend/app/Console/Commands/ReconcileStuckStripeWebhookEvents.php` — removed trailing blank line immediately before the class closing brace to satisfy Laravel Pint `class_attributes_separation`. Pure style fix; no behavior change. The reaper command was introduced in `ec51d6a` (2026-05-18) and the trailing blank slipped past the local pre-commit because `vendor/bin/pint --test` was not run on the final state of that file.
+- Verification: `vendor/bin/pint --test` PASS (504 files, 0 style issues); `php artisan test --stop-on-failure` PASS (1422 passed, 113 skipped, 4217 assertions, 340.82s, PostgreSQL via `docker compose up -d db`); `composer audit` PASS (no advisories).
+- Scope: backend only — single file, single-line removal. No migration, no contract, no test changes.
+- Follow-up: none; the fix is the entire change.
+
 ## 2026-05-08
 
 - Change: Governance docs sync — `PROJECT_STATUS.md` (HEAD `10b153e`→`6372d7f`, May 5–8 maintenance row added, kill-switch contract paragraph appended), `PRODUCT_GOAL.md` (date refresh), `BACKLOG.md` (8 new Done rows for `aa205a4`/`97c684c`/`77f93b4`/`d488923`/`1441edb`/`176051d`/`2ab45ae`/`6372d7f`), `AUDIT_REPORT.md` (rewritten as rolling current-state index — v1–v9 cycle table, gates with owners, open findings post-F-48-close = 35 from v6 + 4 from v7 + F-23/F-25/F-68; old Feb-23-v4 detail rolled up and preserved at commit `61f430a` per repo history), `docs/COMPACT.md` §1 snapshot refresh.

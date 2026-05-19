@@ -15,9 +15,9 @@
 
 ## 1) Current Snapshot (keep under 12 lines)
 
-- Date updated: 2026-05-11
-- Current branch: `dev` (HEAD=`748cf34`)
-- Latest commit: `748cf34` — fix(infra): add KNOWN_ABSENT allowlist to lint-doc-pointers.
+- Date updated: 2026-05-19
+- Current branch: `dev` (HEAD=`5dd17a6`)
+- Latest commit: `5dd17a6` — test(frontend): harden getErrorMessage + cancel-booking error harness. Working-tree fix on 2026-05-19: pint style on `app/Console/Commands/ReconcileStuckStripeWebhookEvents.php` (trailing blank inside class removed) — not yet committed.
 - Backend gate baseline: 2026-05-11 F-30 run PASS — `php artisan test --filter=Csrf` (10/35), `php artisan test --filter=Auth` (205 passed / 1 skipped / 623), full `php -d max_execution_time=0 artisan test` (1304 passed / 110 skipped / 3763); Pint, PHPStan, Psalm PASS.
 - Frontend: 39 Vitest test files; May 3 intermediate run 418 tests PASS; axios bumped `^1.15.0`→`^1.16.0` (`97c684c`); typecheck PASS.
 - AI Harness: kill-switch contract finalized — `FeatureFlag::killSwitch()` is the sole gate (the `config('ai_harness.enabled', …)` path was non-functional and silently passing tests for the wrong reason — `2ab45ae`); `FeatureFlag::forget()` no longer re-throws Redis exceptions (`6372d7f`).

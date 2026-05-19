@@ -48,7 +48,7 @@ cd backend && composer test
 
 ```bash
 cd backend && vendor/bin/phpstan analyse          # PHPStan Level 5
-cd backend && vendor/bin/psalm                     # Psalm Level 1 (continue-on-error in CI)
+cd backend && vendor/bin/psalm                     # Psalm Level 1 (blocking in CI — continue-on-error: false)
 ```
 
 ### Code Style
@@ -171,6 +171,7 @@ Triggers: PR to `main`/`dev`, push to `main`/`dev`.
 
 <!-- SYNC-EDIT: DRIFT-01 F-03 — composer-audit is blocking (continue-on-error: false) in tests.yml -->
 <!-- SYNC-EDIT: DRIFT-04 F-04 — added missing frontend-typecheck and docker-compose-validate jobs -->
+<!-- SYNC-EDIT: 2026-05-20 — psalm is blocking (continue-on-error: false); npm-audit runs audit-with-exceptions.mjs and is blocking on HIGH/CRITICAL -->
 <!-- SOURCE: .github/workflows/tests.yml -->
 | Job                       | Commands                                                                 | Expected                     | Blocking               |
 | ------------------------- | ------------------------------------------------------------------------ | ---------------------------- | ---------------------- |
@@ -178,11 +179,11 @@ Triggers: PR to `main`/`dev`, push to `main`/`dev`.
 | booking-stress-test       | `php backend/tests/stubs/concurrent_booking_test.php` (50 concurrent)    | No double-bookings           | Yes                    |
 | nplusone-detection        | `php artisan test tests/Feature/NPlusOneQueriesTest.php`                 | Query count within threshold | Yes                    |
 | phpstan                   | `phpstan analyse --error-format=github` (Level 5)                        | 0 errors                     | Yes                    |
-| psalm                     | `psalm --output-format=github` (Level 1)                                 | Advisory                     | No (continue-on-error) |
+| psalm                     | `psalm --output-format=github` (Level 1)                                 | 0 errors                     | Yes                    |
 | pint                      | `vendor/bin/pint --test`                                                 | 0 style violations           | Yes                    |
 | lint (PHP)                | `find app tests -name "*.php" \| xargs php -l`                           | 0 syntax errors              | Yes                    |
 | composer-audit            | `composer audit`                                                         | 0 advisories                 | Yes                    |
-| npm-audit                 | `pnpm audit --audit-level=high`                                          | Advisory                     | No (continue-on-error) |
+| npm-audit                 | `node ../scripts/audit-with-exceptions.mjs` (HIGH/CRITICAL + allowlist)   | 0 advisories                 | Yes                    |
 | security-scan             | Gitleaks action                                                          | No exposed secrets           | Yes                    |
 | frontend-typecheck        | `npx tsc --noEmit`                                                       | 0 type errors                | Yes                    |
 | frontend-unit-tests       | `pnpm test:unit --coverage`                                              | 0 failures                   | Yes                    |

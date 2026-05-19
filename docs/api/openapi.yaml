@@ -2488,6 +2488,82 @@ paths:
         "429":
           description: Rate limit exceeded
 
+  /v1/ai/proposals/{hash}/shown:
+    post:
+      tags: [AI Harness]
+      summary: Mark a booking action proposal as shown
+      operationId: aiProposalShown
+      description: |
+        Records a `shown` event when the frontend mounts the proposal UI (AI-005).
+        Required precondition for `decide` (confirm): confirming a proposal that was
+        never shown is rejected. Idempotent — a repeat call for an already-shown
+        proposal returns 200 without inserting a duplicate event. Ownership-bound to
+        the proposal's originating user; a mismatch returns 404.
+        No model invocation — this is enforcement, not inference.
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: hash
+          in: path
+          required: true
+          description: SHA-256 proposal hash (64 hex characters)
+          schema:
+            type: string
+            pattern: "^[a-f0-9]{64}$"
+      responses:
+        "200":
+          description: Shown event recorded (or already shown)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      proposal_hash:
+                        type: string
+                      shown:
+                        type: boolean
+                        example: true
+                      idempotent:
+                        type: boolean
+                        description: True when the proposal had already been shown.
+        "401":
+          description: Unauthenticated
+        "404":
+          description: Proposal not found, expired, or not owned by the requester
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Proposal not found or expired."
+        "422":
+          description: Proposal expired
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Localized expiry message.
+                  errors:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        description: Stable lifecycle error code (ProposalExpiredException::errorCode).
+        "429":
+          description: Rate limit exceeded
+
   /v1/ai/health:
     get:
       tags: [AI Harness]

@@ -515,6 +515,11 @@ This audit examines the frontend role-based access control (RBAC) implementation
 | 18 | Dual-auth desync: logout clears both Bearer + cookie | invariant | source-inspection | PASS (no Bearer used) | N/A | AuthContext.tsx — HttpOnly-only auth; no Bearer token in frontend |
 | 19 | React 19 Suspense race in role-branching | runtime-flow | source-inspection | PASS (no race) | N/A | Suspense wraps entire DashboardPage in router.tsx; role check is synchronous inside DashboardPage after auth loading completes |
 
+> **Post-audit reconciliation (2026-05-20):** Rows 3, 4, and 17 reflect the 2026-03-09 source state and are **superseded** by later RBAC changes. The original cells are kept as a dated record; current enforcement — canonical source `docs/PERMISSION_MATRIX.md`:
+> - **Row 3** — NOT all admin routes use `role:admin`. Admin booking reads use `role:moderator` (`v1.php:59`) and customer endpoints use `role:moderator` (`v1.php:80`); only writes (restore / force-delete) use `role:admin` (`v1.php:66`).
+> - **Row 4** — Moderator **CAN** access admin read endpoints (`v1.php:59`, `role:moderator`; PERMISSION_MATRIX A7–A9). The original "FAIL (refuted)" no longer holds.
+> - **Row 17** — Room CRUD **does** require admin (`v1.php:34`, `role:admin`; PERMISSION_MATRIX A1–A4). The original "FAIL" is resolved.
+
 ---
 
 ## RESIDUAL RISKS

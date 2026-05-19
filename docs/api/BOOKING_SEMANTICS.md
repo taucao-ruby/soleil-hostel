@@ -13,7 +13,7 @@ Derived from `BookingController`, `AdminBookingController`, `UpdateBookingReques
 > **UI DESIGN CONTEXT (Google Stitch):**
 > Use this document to design booking status badges, timeline steps, and alert variants.
 > The booking state machine governs which actions are available in the UI at any point.
-> Status color guide: `pending` → yellow/amber · `confirmed` → green · `cancelled` → red/muted · `refund_pending` → blue/info · `refund_failed` → orange + escalation alert.
+> Status color guide (source of truth: `frontend/src/shared/lib/booking.utils.ts` `STATUS_MAP`): `pending` → yellow · `confirmed` → green · `cancelled` → gray/muted · `refund_pending` → blue · `refund_failed` → red (+ escalation alert).
 > 409 vs 422 distinction matters for conflict UI: 422 = overlap detected before commit; 409 = concurrent race condition (show "try again" vs "conflict" message accordingly).
 
 ---
@@ -41,9 +41,9 @@ Derived from `BookingController`, `AdminBookingController`, `UpdateBookingReques
 |---|---|---|---|---|---|
 | `pending` | Chờ xác nhận | yellow/amber badge | ✅ (all roles) | N/A | Booking created, awaiting confirmation |
 | `confirmed` | Đã xác nhận | green badge | ✅ (time-limited for non-admin) | N/A | Confirmed; guest arrival expected |
-| `cancelled` | Đã hủy | red/muted badge | ❌ | ✅ (admin: restore) | Soft-deleted; shows in trashed view |
+| `cancelled` | Đã hủy | gray/muted badge | ❌ | ✅ (admin: restore) | Soft-deleted; shows in trashed view |
 | `refund_pending` | Hoàn tiền đang xử lý | blue/info badge | ✅ (admin) | N/A | Stripe refund in progress |
-| `refund_failed` | Hoàn tiền thất bại | orange badge + escalation | ✅ (admin) | N/A | Refund failed; requires admin action |
+| `refund_failed` | Hoàn tiền thất bại | red badge + escalation | ✅ (admin) | N/A | Refund failed; requires admin action |
 
 ### Cancellation Rules (for UI action visibility)
 

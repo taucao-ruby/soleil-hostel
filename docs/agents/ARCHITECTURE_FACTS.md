@@ -89,14 +89,14 @@ Applies to:
 - Consumer (`ProposalConfirmationController::decide`) reads `proposer_user_id` from the envelope. If absent or not equal to `(int) $request->user()->id`, the controller **404s** (not 403 — the contract is "this hash is not yours to decide, and we will not acknowledge its existence").
 - Legacy cache entries written before F-67 lack the field; those are also treated as unbound → 404.
 - Log: `ai` channel, event `Proposal decide blocked by proposer-binding check`.
-- Source: `backend/app/Http/Controllers/ProposalConfirmationController.php:55-62`, `backend/app/AiHarness/Services/AiOrchestrationService.php`, test `backend/tests/Feature/AiHarness/ActionProposalTest.php`.
+- Source: `backend/app/Http/Controllers/ProposalConfirmationController.php:65-74`, `backend/app/AiHarness/Services/AiOrchestrationService.php`, test `backend/tests/Feature/AiHarness/ActionProposalTest.php`.
 
 ### Cancellation Ownership: Defense-in-Depth
 
 Cancellation ownership is enforced at **two independent layers**:
 
 1. **Policy layer** — `BookingPolicy::cancel` (route gate via `authorize()`): non-admin actors may only cancel their own booking.
-2. **Service layer** — `CancellationService::validateCancellation()` (`backend/app/Services/CancellationService.php:106-109`): rechecks `! $actor->isAdmin() && (int) $booking->user_id !== (int) $actor->id` inside the transaction and throws `BookingCancellationException::unauthorized()`.
+2. **Service layer** — `CancellationService::validateCancellation()` (`backend/app/Services/CancellationService.php:174-188`, ownership check at `:176-178`): rechecks `! $actor->isAdmin() && (int) $booking->user_id !== (int) $actor->id` and throws `BookingCancellationException::unauthorized()`.
 
 The service-layer check is the **last line of defense** for alternate entry points (proposal confirmation, queue jobs, artisan commands) that may bypass the HTTP policy gate. It must not be removed without a matching guarantee at every caller.
 
@@ -187,8 +187,8 @@ Stay lifecycle guard: `App\Enums\StayStatus::canTransitionTo()` + `App\Models\St
 ### Pessimistic Locking
 - `SELECT ... FOR UPDATE` via `lockForUpdate()` in booking/cancellation flows
 <!-- SYNC-EDIT: DRIFT-01 F-01 -->
-<!-- SOURCE: backend/app/Models/Booking.php:374-376, backend/app/Services/CancellationService.php:118,318 -->
-- Source: `CancellationService.php:118,318`, `Booking.php:376` (`scopeWithLock`)
+<!-- SOURCE: backend/app/Models/Booking.php:467, backend/app/Services/CancellationService.php:202,336 -->
+- Source: `CancellationService.php:202,336` (`lockForUpdate` in `transitionToRefundPending` / `finalizeCancellation`), `Booking.php:467` (`scopeWithLock`)
 
 ## Authentication
 
@@ -279,7 +279,7 @@ Canonical permission matrix: [docs/PERMISSION_MATRIX.md](../PERMISSION_MATRIX.md
 
 Current enforcement status: PASS WITH FOLLOW-UPS. Room CUD and admin booking endpoints use defense-in-depth (route middleware + controller-level gate/policy). Moderator role is ACTIVE: gates admin booking READ routes (`role:moderator` middleware, v1.php) and customer management endpoints (`/api/v1/admin/customers/*`). Open follow-ups: 5 — see PERMISSION_MATRIX.md.
 
-**Role Hierarchy Stability:** `isAtLeast()` at `User.php:134-146` uses level comparison. Adding or reordering roles silently shifts all HIERARCHY-DEPENDENT permissions. See [PERMISSION_MATRIX.md § Role Hierarchy Stability Warning](../PERMISSION_MATRIX.md) for the required change procedure.
+**Role Hierarchy Stability:** `isAtLeast()` at `User.php:139-151` uses level comparison. Adding or reordering roles silently shifts all HIERARCHY-DEPENDENT permissions. See [PERMISSION_MATRIX.md § Role Hierarchy Stability Warning](../PERMISSION_MATRIX.md) for the required change procedure.
 
 ## AI Harness Domain (Added 2026-04-09)
 
@@ -297,6 +297,7 @@ All AI routes live in `backend/routes/api/v1_ai.php`, mounted under `/api/v1/ai`
 |----------|------|-----------------|------------|
 | `POST /api/v1/ai/{task_type}` | `check_token_valid` + `verified` | `throttle:10,1`, `ai_harness_enabled`, `ai_canary_router`, `ai_request_normalizer` | `AiController::handle` |
 | `POST /api/v1/ai/proposals/{hash}/decide` | `check_token_valid` + `verified` | `throttle:5,1`, `ai_harness_enabled` | `ProposalConfirmationController::decide` |
+| `POST /api/v1/ai/proposals/{hash}/shown` | `check_token_valid` + `verified` | `throttle:5,1`, `ai_harness_enabled` | `ProposalConfirmationController::shown` |
 | `GET /api/v1/ai/health` | None | `ai_harness_enabled` | Inline closure |
 
 > **Proposal decide throttle**: `throttle:5,1` is deliberately tighter than the `throttle:10,1` on the main task handler because `decide` is a confirmed-action surface — each POST can trigger a real booking create or cancellation via the service layer. Per-hash replay is already neutralised by `Cache::forget()` after the first decide. See `backend/routes/api/v1_ai.php:47-58` for the full rationale.

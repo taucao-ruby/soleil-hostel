@@ -42,7 +42,7 @@ Quick-reference for UI conditional rendering. Derived from Tables A–E below.
 | Admin Draft Assistant (`/admin/draft-assistant`) | ❌ | ❌ | ✅ |
 | Proposal Confirmation Modal | ✅ (auth required) | ✅ | ✅ |
 
-> **Status badge color guide**: `pending` → yellow/amber · `confirmed` → green · `cancelled` → red/muted · `refund_failed` → orange + escalation · `refund_pending` → blue/info
+> **Status badge color guide** (source of truth: `frontend/src/shared/lib/booking.utils.ts` `STATUS_MAP`, mirrored by backend `BookingStatus::color()`): `pending` → yellow · `confirmed` → green · `refund_pending` → blue · `cancelled` → gray/muted · `refund_failed` → red
 
 ---
 
@@ -52,21 +52,22 @@ What the system actually does. Tier 1 evidence only.
 
 | # | Operation | Guest | User | Moderator | Admin | Enforcement Layer | Enforcement Type | Defense-in-Depth | Test Coverage | Evidence |
 |---|-----------|-------|------|-----------|-------|-------------------|------------------|------------------|---------------|----------|
-| A1 | `POST /api/v1/rooms` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Route `role:admin` (v1.php:33) + Policy `RoomPolicy::create` | HIERARCHY-DEPENDENT + EXACT-MATCH | YES | TEST-SURFACE DRIFT (legacy path) | OPUS-02R + OPUS-VERIFY-01 |
-| A2 | `PUT /api/v1/rooms/{room}` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Route `role:admin` (v1.php:33) + Policy `RoomPolicy::update` | HIERARCHY-DEPENDENT + EXACT-MATCH | YES | TEST-SURFACE DRIFT (legacy path) | OPUS-02R + OPUS-VERIFY-01 |
-| A3 | `PATCH /api/v1/rooms/{room}` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Route `role:admin` (v1.php:33) + Policy `RoomPolicy::update` | HIERARCHY-DEPENDENT + EXACT-MATCH | YES | CONFIRMED-V1 | OPUS-VERIFY-01 |
-| A4 | `DELETE /api/v1/rooms/{room}` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Route `role:admin` (v1.php:33) + Policy `RoomPolicy::delete` | HIERARCHY-DEPENDENT + EXACT-MATCH | YES | TEST-SURFACE DRIFT (legacy path) | OPUS-02R + OPUS-VERIFY-01 |
+| A1 | `POST /api/v1/rooms` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Route `role:admin` (v1.php:34) + Policy `RoomPolicy::create` | HIERARCHY-DEPENDENT + EXACT-MATCH | YES | TEST-SURFACE DRIFT (legacy path) | OPUS-02R + OPUS-VERIFY-01 |
+| A2 | `PUT /api/v1/rooms/{room}` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Route `role:admin` (v1.php:34) + Policy `RoomPolicy::update` | HIERARCHY-DEPENDENT + EXACT-MATCH | YES | TEST-SURFACE DRIFT (legacy path) | OPUS-02R + OPUS-VERIFY-01 |
+| A3 | `PATCH /api/v1/rooms/{room}` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Route `role:admin` (v1.php:34) + Policy `RoomPolicy::update` | HIERARCHY-DEPENDENT + EXACT-MATCH | YES | CONFIRMED-V1 | OPUS-VERIFY-01 |
+| A4 | `DELETE /api/v1/rooms/{room}` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Route `role:admin` (v1.php:34) + Policy `RoomPolicy::delete` | HIERARCHY-DEPENDENT + EXACT-MATCH | YES | TEST-SURFACE DRIFT (legacy path) | OPUS-02R + OPUS-VERIFY-01 |
 | A5 | `POST /api/v1/bookings/{b}/cancel` (own) | DENIED-EXPLICIT (401) | ALLOWED-OWN-ONLY | ALLOWED-OWN-ONLY | ALLOWED | Policy `BookingPolicy::cancel` + Service `CancellationService` | ROLE-OR-OWNERSHIP | NO (policy only) | CONFIRMED-V1 | OPUS-03R + OPUS-VERIFY-01 |
 | A6 | `POST /api/v1/bookings/{b}/cancel` (others') | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Policy `BookingPolicy::cancel` | ROLE-OR-OWNERSHIP | NO (policy only) | CONFIRMED-V1 | OPUS-03R + OPUS-VERIFY-01 |
-| A7 | `GET /api/v1/admin/bookings` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | ALLOWED | ALLOWED | Route `role:moderator` (v1.php:57) + Gate `view-all-bookings` (AdminBookingController) | HIERARCHY-DEPENDENT | YES | CONFIRMED-V1 | OPUS-VERIFY-01 |
-| A8 | `GET /api/v1/admin/bookings/trashed` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | ALLOWED | ALLOWED | Route `role:moderator` (v1.php:57) + Gate `view-all-bookings` (AdminBookingController) | HIERARCHY-DEPENDENT | YES | CONFIRMED-V1 | OPUS-VERIFY-01 |
-| A9 | `GET /api/v1/admin/bookings/trashed/{id}` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | ALLOWED | ALLOWED | Route `role:moderator` (v1.php:57) + Gate `view-all-bookings` (AdminBookingController) | HIERARCHY-DEPENDENT | YES | FOLLOW-UP REQUIRED (no v1 pin test) | OPUS-VERIFY-01 |
-| A10 | `POST /api/v1/admin/bookings/{b}/restore` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Route `role:admin` (v1.php:57) + Gate `admin` (AdminBookingController:109) | HIERARCHY-DEPENDENT + EXACT-MATCH | YES | CONFIRMED-V1 | OPUS-VERIFY-01 |
-| A11 | `DELETE /api/v1/admin/bookings/{b}/force` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Route `role:admin` (v1.php:57) + Gate `admin` (AdminBookingController:152) | HIERARCHY-DEPENDENT + EXACT-MATCH | YES | CONFIRMED-V1 | OPUS-VERIFY-01 |
-| A12 | `POST /api/v1/admin/bookings/restore-bulk` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Route `role:admin` (v1.php:57) + Gate `admin` (AdminBookingController:178) | HIERARCHY-DEPENDENT + EXACT-MATCH | YES | FOLLOW-UP REQUIRED (no moderator-denial test) | OPUS-VERIFY-01 |
+| A7 | `GET /api/v1/admin/bookings` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | ALLOWED | ALLOWED | Route `role:moderator` (v1.php:59) + Gate `view-all-bookings` (AdminBookingController) | HIERARCHY-DEPENDENT | YES | CONFIRMED-V1 | OPUS-VERIFY-01 |
+| A8 | `GET /api/v1/admin/bookings/trashed` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | ALLOWED | ALLOWED | Route `role:moderator` (v1.php:59) + Gate `view-all-bookings` (AdminBookingController) | HIERARCHY-DEPENDENT | YES | CONFIRMED-V1 | OPUS-VERIFY-01 |
+| A9 | `GET /api/v1/admin/bookings/trashed/{id}` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | ALLOWED | ALLOWED | Route `role:moderator` (v1.php:59) + Gate `view-all-bookings` (AdminBookingController) | HIERARCHY-DEPENDENT | YES | FOLLOW-UP REQUIRED (no v1 pin test) | OPUS-VERIFY-01 |
+| A10 | `POST /api/v1/admin/bookings/{b}/restore` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Route `role:admin` (v1.php:66) + Gate `admin` (AdminBookingController:109) | HIERARCHY-DEPENDENT + EXACT-MATCH | YES | CONFIRMED-V1 | OPUS-VERIFY-01 |
+| A11 | `DELETE /api/v1/admin/bookings/{b}/force` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Route `role:admin` (v1.php:66) + Gate `admin` (AdminBookingController:152) | HIERARCHY-DEPENDENT + EXACT-MATCH | YES | CONFIRMED-V1 | OPUS-VERIFY-01 |
+| A12 | `POST /api/v1/admin/bookings/restore-bulk` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Route `role:admin` (v1.php:66) + Gate `admin` (AdminBookingController:178) | HIERARCHY-DEPENDENT + EXACT-MATCH | YES | FOLLOW-UP REQUIRED (no moderator-denial test) | OPUS-VERIFY-01 |
 | A13 | `POST /api/v1/ai/{task_type}` | DENIED-EXPLICIT (401) | ALLOWED (verified) | ALLOWED (verified) | ALLOWED | Route `check_token_valid` + `verified` + `throttle:10,1` + `ai_harness_enabled` + `ai_canary_router` + `ai_request_normalizer` (v1_ai.php:24-30) | AUTH-REQUIRED + FEATURE-GATED | NO (kill switch + rate limit only) | CONFIRMED-V1 | AI-HARNESS-01 |
-| A14 | `POST /api/v1/ai/proposals/{hash}/decide` | DENIED-EXPLICIT (401) | ALLOWED-OWN-PROPOSAL-ONLY | ALLOWED-OWN-PROPOSAL-ONLY | ALLOWED-OWN-PROPOSAL-ONLY | Route `check_token_valid` + `verified` + `throttle:5,1` + `ai_harness_enabled` (v1_ai.php:62-66) + Controller `proposer_user_id` check (ProposalConfirmationController.php:55-62) | AUTH-REQUIRED + FEATURE-GATED + OWNERSHIP-BOUND | YES (cache envelope proposer-binding + service-layer ownership) | CONFIRMED-V1 | AI-HARNESS-01 + F-67 (2026-04-18) |
-| A15 | `GET /api/v1/ai/health` | ALLOWED | ALLOWED | ALLOWED | ALLOWED | Route `ai_harness_enabled` only (v1_ai.php:68-70) | FEATURE-GATED | NO | CONFIRMED-V1 | AI-HARNESS-01 |
+| A14 | `POST /api/v1/ai/proposals/{hash}/decide` | DENIED-EXPLICIT (401) | ALLOWED-OWN-PROPOSAL-ONLY | ALLOWED-OWN-PROPOSAL-ONLY | ALLOWED-OWN-PROPOSAL-ONLY | Route `check_token_valid` + `verified` + `throttle:5,1` + `ai_harness_enabled` (v1_ai.php:62-67) + Controller `proposer_user_id` check (ProposalConfirmationController.php:65-74) | AUTH-REQUIRED + FEATURE-GATED + OWNERSHIP-BOUND | YES (cache envelope proposer-binding + service-layer ownership) | CONFIRMED-V1 | AI-HARNESS-01 + F-67 (2026-04-18) |
+| A14b | `POST /api/v1/ai/proposals/{hash}/shown` | DENIED-EXPLICIT (401) | ALLOWED-OWN-PROPOSAL-ONLY | ALLOWED-OWN-PROPOSAL-ONLY | ALLOWED-OWN-PROPOSAL-ONLY | Route `check_token_valid` + `verified` + `throttle:5,1` + `ai_harness_enabled` (v1_ai.php:62-67) + Controller `AiProposal.user_id` ownership (ProposalConfirmationController.php:351-360) | AUTH-REQUIRED + FEATURE-GATED + OWNERSHIP-BOUND | YES (durable proposal-row ownership; 404 on mismatch) | CONFIRMED-V1 | AI-005 |
+| A15 | `GET /api/v1/ai/health` | ALLOWED | ALLOWED | ALLOWED | ALLOWED | Route `ai_harness_enabled` only (v1_ai.php:91-93) | FEATURE-GATED | NO | CONFIRMED-V1 | AI-HARNESS-01 |
 | A16 | `GET /api/v1/admin/contact-messages` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Route `role:admin` (v1.php) + Policy `ContactMessagePolicy::viewAny` | HIERARCHY-DEPENDENT + EXACT-MATCH | YES | CONFIRMED-V1 | RBAC-001 |
 | A17 | `PATCH /api/v1/admin/contact-messages/{id}/read` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Route `role:admin` (v1.php) + Policy `ContactMessagePolicy::markRead` | HIERARCHY-DEPENDENT + EXACT-MATCH | YES | CONFIRMED-V1 | RBAC-001 |
 
@@ -92,7 +93,7 @@ What the system actually does. Tier 1 evidence only.
 
 ### Role Hierarchy Stability Warning
 
-The `isAtLeast()` method (`User.php:134-146`) uses a static level mapping: `USER=1, MODERATOR=2, ADMIN=3`. This means:
+The `isAtLeast()` method (`User.php:139-151`) uses a static level mapping: `USER=1, MODERATOR=2, ADMIN=3`. This means:
 
 - **Adding a role between existing roles** (e.g., `MANAGER` at level 3, pushing `ADMIN` to 4) silently shifts all `isAtLeast(ADMIN)` checks to include the new role.
 - **Reordering role levels** changes every HIERARCHY-DEPENDENT permission row in Table A without any code change in controllers, policies, or routes.
@@ -134,12 +135,12 @@ Capabilities that exist in code but are NOT currently enforced in any active exe
 
 | # | Capability | Status | Location | Shadowed By | Activation Condition | Evidence |
 |---|-----------|--------|----------|-------------|---------------------|----------|
-| C1 | `BookingPolicy::viewAny()` moderator grant | LATENT | BookingPolicy.php:50 | N/A — not invoked | Route `role:moderator` and gate `view-all-bookings` both independently allow moderator; policy grant is consistent with but not in the active call path for admin booking reads. | OPUS-01 C1 |
+| C1 | `BookingPolicy::viewAny()` moderator grant | LATENT | BookingPolicy.php:65-68 | N/A — not invoked | Route `role:moderator` and gate `view-all-bookings` both independently allow moderator; policy grant is consistent with but not in the active call path for admin booking reads. | OPUS-01 C1 |
 | C2 | Gate `view-all-bookings` | CURRENT | AuthServiceProvider.php:73 | N/A — invoked by AdminBookingController | `AdminBookingController::index()`, `trashed()`, `showTrashed()` | OPUS-01 C3 |
 | C3 | Gate `manage-rooms` | LATENT-UNUSED | AuthServiceProvider.php:81 | N/A — never invoked | Any controller calls `Gate::authorize('manage-rooms')` | OPUS-01 C3 |
 | C4 | Gate `moderate-content` | LATENT-UNUSED | AuthServiceProvider.php:65 | N/A — never invoked | Any controller calls `Gate::authorize('moderate-content')`; contact messages are intentionally admin-only through `ContactMessagePolicy`. | OPUS-01 C3 + RBAC-001 |
 | C5 | Moderator cancel-any | NO-PATH-FOUND | — | N/A | No route, controller branch, or policy path grants moderator cancel on others' bookings | OPUS-03R |
-| C6 | Moderator admin booking read access | ROUTE-ACCESSIBLE | v1.php:57, AdminBookingController | N/A — active path | Route `role:moderator` + gate `view-all-bookings` both grant moderator read access to A7/A8/A9; no longer latent or shadowed. | OPUS-VERIFY-01 CLAIM-L1 |
+| C6 | Moderator admin booking read access | ROUTE-ACCESSIBLE | v1.php:59, AdminBookingController | N/A — active path | Route `role:moderator` + gate `view-all-bookings` both grant moderator read access to A7/A8/A9; no longer latent or shadowed. | OPUS-VERIFY-01 CLAIM-L1 |
 | C7 | Moderator frontend admin access | CURRENT | router.tsx + AdminRoute.tsx | N/A — active path | AdminRoute default minRole='moderator' gates all /admin/* routes; room CUD uses minRole='admin'. Both align with backend enforcement. | 2026-03-29 Wave 2 |
 
 ---
@@ -152,27 +153,26 @@ These restrict **when** an action is allowed, not **who** can perform it. They a
 
 - **Rule**: Cancellation blocked when `booking.status` NOT IN `[pending, confirmed, refund_failed]`
 - **Applies to**: All roles equally (admin is NOT exempt from this rule)
-- **Source**: `BookingPolicy.php:116` + `BookingStatus.php:28-35`
-- **Defense-in-depth**: also enforced in `CancellationService.php:96`, which is the last line of defense for alternate callers (proposal confirmation, queue jobs). Policy and service must be updated together or behavior diverges.
+- **Source**: `BookingPolicy.php:149` + `BookingStatus.php:33-40` (`isCancellable`)
+- **Defense-in-depth**: also enforced in `CancellationService.php:180`, which is the last line of defense for alternate callers (proposal confirmation, queue jobs). Policy and service must be updated together or behavior diverges.
 - **Terminal-state immutability** (see `ARCHITECTURE_FACTS.md` §Terminal-State Immutability): `cancelled` is terminal — direct resurrection to `pending` is forbidden at every layer. Admin may restore a soft-deleted booking via `BookingService::restore()` but cannot re-use cancellation as a reversible operation.
 
 ### BR-2: Timing Restriction (Started Booking)
 
 - **Rule**: Non-admin cannot cancel after `booking.isStarted()` returns true
 - **Applies to**: User, Moderator (not admin)
-- **Admin exempt**: YES — admin bypasses at both policy and service layers, but ONLY for the timing gate; ownership checks apply only to non-admin actors per `CancellationService::validateCancellation` (`CancellationService.php:106-109`).
-- **Source**: `BookingPolicy.php:121-123` + `CancellationService.php:101`
-- **Note**: the service-layer ownership check (`CancellationService.php:106-109`) is authoritative for alternate entry points — proposal confirmation (`ProposalConfirmationController::executeCancellation`) reuses this gate and logs blocked attempts to the `ai` log channel.
+- **Admin exempt**: YES — admin bypasses at both policy and service layers, but ONLY for the timing gate; ownership checks apply only to non-admin actors per `CancellationService::validateCancellation` (`CancellationService.php:176-178`).
+- **Source**: `BookingPolicy.php:153-156` + `CancellationService.php:185`
+- **Note**: the service-layer ownership check (`CancellationService.php:176-178`) is authoritative for alternate entry points — proposal confirmation (`ProposalConfirmationController::executeCancellation`) reuses this gate and logs blocked attempts to the `ai` log channel.
 
 ### BR-3: Config-Variable Timing Override
 
 - **Rule**: `config('booking.cancellation.allow_after_checkin')` can disable BR-2 for non-admin actors
 - **Default**: `false` (BR-2 is active)
 - **If true**: Non-admin timing restriction is disabled
-- **Source**: `BookingPolicy.php:122`
-- **Config source**: NOT VERIFIED — **CONFIG-VARIABLE [SOURCE-UNVERIFIED]**
-- **Risk**: Permission changes without code review if config is set to `true` in any environment
-- **FOLLOW-UP REQUIRED**: Verify config source file and whether any environment sets this to `true` (OPUS-VERIFY-01 follow-up 3)
+- **Source**: `BookingPolicy.php:155`, `CancellationService.php:185`
+- **Config source**: VERIFIED — `config/booking.php:118` → `env('BOOKING_ALLOW_CANCEL_AFTER_CHECKIN', false)`; not set in any committed `.env*`, so it defaults to `false`
+- **Risk**: Permission changes without code review only if a deployed environment sets `BOOKING_ALLOW_CANCEL_AFTER_CHECKIN=true` (no repo `.env` does)
 
 ---
 
@@ -246,9 +246,10 @@ These are NOT resolved by the current batch. Do not close without explicit inves
 ### FU-3: Config Source Verification
 
 - **Source**: OPUS-VERIFY-01 follow-up 3
-- **What**: `config('booking.cancellation.allow_after_checkin')` — source file and production value unknown
-- **Action**: Verify config file; confirm whether any environment sets this to `true`
-- **Impact**: BR-3 severity cannot be confirmed; CONFIG-VARIABLE [SOURCE-UNVERIFIED] until closed
+- **What**: `config('booking.cancellation.allow_after_checkin')` source + production value
+- **Status (2026-05-20)**: Source VERIFIED — `config/booking.php:118` → `env('BOOKING_ALLOW_CANCEL_AFTER_CHECKIN', false)`, default `false`; not overridden in any committed `.env*`. The `[SOURCE-UNVERIFIED]` flag is cleared.
+- **Residual**: a production-only env override (`BOOKING_ALLOW_CANCEL_AFTER_CHECKIN=true`) cannot be confirmed from the repo; audit deploy config if BR-2 behavior is ever in question.
+- **Impact**: BR-3 severity is now bounded by a deploy-env check only.
 
 ### FU-4: Room CUD Policy Re-verification
 
@@ -286,7 +287,7 @@ Actual gates defined in `AuthServiceProvider.php` and their invocation status:
 
 | ID | Contradiction | Resolution | Status |
 |----|--------------|------------|--------|
-| C1 | `BookingPolicy::viewAny()` grants moderator vs route blocks moderator | Route changed to `role:moderator` (v1.php:57); gate changed to `view-all-bookings` (allows `isModerator()`). Both now allow moderator. Policy grant is consistent with route+gate enforcement. | RESOLVED |
+| C1 | `BookingPolicy::viewAny()` grants moderator vs route blocks moderator | Route changed to `role:moderator` (v1.php:59); gate changed to `view-all-bookings` (allows `isModerator()`). Both now allow moderator. Policy grant is consistent with route+gate enforcement. | RESOLVED |
 | C2 | `RBAC.md` route examples show `role:moderator` on admin booking routes | DOC DRIFT — `v1.php` is canonical Tier 1. RBAC.md updated. | RESOLVED |
 | C3 | `POLICIES.md` gate list vs actual AuthServiceProvider | DOC DRIFT — AuthServiceProvider is canonical. POLICIES.md updated. | RESOLVED |
 | C4 | Room CUD route comment vs actual enforcement | Moot — route hardening makes comment accurate. | RESOLVED |

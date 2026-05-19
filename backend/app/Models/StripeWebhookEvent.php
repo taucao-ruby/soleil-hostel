@@ -131,7 +131,7 @@ final class StripeWebhookEvent extends Model
 
         $message = $error instanceof Throwable ? $error->getMessage() : $error;
 
-        if (! is_string($message) || $message === '') {
+        if ($message === '') {
             return null;
         }
 

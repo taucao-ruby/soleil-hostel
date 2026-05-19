@@ -117,12 +117,12 @@ final class ReconcileStuckStripeWebhookEvents extends Command
      * be re-claimed mid-flight even if a future run shortens --minutes.
      * The transaction is short and does NOT make any Stripe HTTP call.
      *
-     * @return \Illuminate\Support\Collection<int, StripeWebhookEvent>
+     * @return \Illuminate\Database\Eloquent\Collection<int, StripeWebhookEvent>
      */
-    private function claimStaleEvents(\Illuminate\Support\Carbon $cutoff, int $limit): \Illuminate\Support\Collection
+    private function claimStaleEvents(\Illuminate\Support\Carbon $cutoff, int $limit): \Illuminate\Database\Eloquent\Collection
     {
-        return DB::transaction(function () use ($cutoff, $limit): \Illuminate\Support\Collection {
-            /** @var \Illuminate\Support\Collection<int, StripeWebhookEvent> $rows */
+        return DB::transaction(function () use ($cutoff, $limit): \Illuminate\Database\Eloquent\Collection {
+            /** @var \Illuminate\Database\Eloquent\Collection<int, StripeWebhookEvent> $rows */
             $rows = StripeWebhookEvent::query()
                 ->staleProcessing($cutoff)
                 ->orderBy('created_at')
@@ -141,13 +141,18 @@ final class ReconcileStuckStripeWebhookEvents extends Command
                     'reconcile_attempts' => DB::raw('reconcile_attempts + 1'),
                 ]);
 
-            return $rows->fresh();
+            /** @var \Illuminate\Database\Eloquent\Collection<int, StripeWebhookEvent> $refreshed */
+            $refreshed = $rows->fresh();
+
+            return $refreshed;
         });
     }
 
     /**
      * Reconcile a single claimed event. Returns 'processed', 'failed', or
      * 'deferred' (transient — left in processing for the next run).
+     *
+     * @return 'processed'|'failed'|'deferred'
      */
     private function reconcileOne(
         StripeWebhookEvent $event,
@@ -300,6 +305,9 @@ final class ReconcileStuckStripeWebhookEvents extends Command
         return true;
     }
 
+    /**
+     * @return 'processed'|'failed'
+     */
     private function applyOutcome(
         StripeWebhookEvent $event,
         PaymentIntentApplyOutcome $outcome,
@@ -354,9 +362,6 @@ final class ReconcileStuckStripeWebhookEvents extends Command
             return null;
         }
 
-        /** @var StripeClient $client */
-        $client = app(StripeClient::class);
-
-        return $client;
+        return app(StripeClient::class);
     }
 }

@@ -57,12 +57,32 @@ final class ReconcileStuckStripeWebhookEvents extends Command
     {
         $minutes = max(1, (int) $this->option('minutes'));
         $limit = max(1, (int) $this->option('limit'));
+        $maxAttempts = max(1, (int) config('booking.reconciliation.webhook_max_attempts', 12));
         $cutoff = now()->subMinutes($minutes);
 
-        $claimed = $this->claimStaleEvents($cutoff, $limit);
+        // Surface rows that exhausted their reconciliation budget BEFORE
+        // claiming: mark them failed so they leave the processing pool and an
+        // operator can see them, instead of letting them be re-claimed every
+        // run forever.
+        $exhausted = $this->failExhaustedEvents($maxAttempts, $limit);
+
+        $claimed = $this->claimStaleEvents($cutoff, $limit, $maxAttempts);
 
         if ($claimed->isEmpty()) {
-            $this->info("No stuck stripe_webhook_events older than {$minutes} minute(s).");
+            $this->info(sprintf(
+                'No stuck stripe_webhook_events older than %d minute(s). (exhausted=%d)',
+                $minutes,
+                $exhausted,
+            ));
+
+            Log::info('stripe_webhook_reconciler.run_complete', [
+                'claimed' => 0,
+                'processed' => 0,
+                'failed' => 0,
+                'deferred' => 0,
+                'exhausted' => $exhausted,
+                'cutoff_minutes' => $minutes,
+            ]);
 
             return self::SUCCESS;
         }
@@ -90,10 +110,11 @@ final class ReconcileStuckStripeWebhookEvents extends Command
         }
 
         $this->info(sprintf(
-            'Reconciliation finished: processed=%d failed=%d deferred=%d (claimed=%d)',
+            'Reconciliation finished: processed=%d failed=%d deferred=%d exhausted=%d (claimed=%d)',
             $processed,
             $failed,
             $deferred,
+            $exhausted,
             $claimed->count(),
         ));
 
@@ -102,6 +123,7 @@ final class ReconcileStuckStripeWebhookEvents extends Command
             'processed' => $processed,
             'failed' => $failed,
             'deferred' => $deferred,
+            'exhausted' => $exhausted,
             'cutoff_minutes' => $minutes,
         ]);
 
@@ -119,12 +141,12 @@ final class ReconcileStuckStripeWebhookEvents extends Command
      *
      * @return \Illuminate\Database\Eloquent\Collection<int, StripeWebhookEvent>
      */
-    private function claimStaleEvents(\Illuminate\Support\Carbon $cutoff, int $limit): \Illuminate\Database\Eloquent\Collection
+    private function claimStaleEvents(\Illuminate\Support\Carbon $cutoff, int $limit, int $maxAttempts): \Illuminate\Database\Eloquent\Collection
     {
-        return DB::transaction(function () use ($cutoff, $limit): \Illuminate\Database\Eloquent\Collection {
+        return DB::transaction(function () use ($cutoff, $limit, $maxAttempts): \Illuminate\Database\Eloquent\Collection {
             /** @var \Illuminate\Database\Eloquent\Collection<int, StripeWebhookEvent> $rows */
             $rows = StripeWebhookEvent::query()
-                ->staleProcessing($cutoff)
+                ->staleProcessing($cutoff, $maxAttempts)
                 ->orderBy('created_at')
                 ->limit($limit)
                 ->lockForUpdate()
@@ -145,6 +167,45 @@ final class ReconcileStuckStripeWebhookEvents extends Command
             $refreshed = $rows->fresh();
 
             return $refreshed;
+        });
+    }
+
+    /**
+     * Terminally fail rows that exhausted their reconciliation budget so they
+     * surface to an operator instead of being re-claimed every run forever.
+     *
+     * Runs under the same lock discipline as the claim so two concurrent
+     * reapers do not both transition (and double-log) the same row. The last
+     * transient error is preserved inline as forensic context by
+     * StripeWebhookEvent::markReconciliationExhausted. A distinct error-level
+     * log line per row gives log-based alerting (SIEM) a key to fire on.
+     *
+     * @return int number of rows transitioned to failed
+     */
+    private function failExhaustedEvents(int $maxAttempts, int $limit): int
+    {
+        return DB::transaction(function () use ($maxAttempts, $limit): int {
+            /** @var \Illuminate\Database\Eloquent\Collection<int, StripeWebhookEvent> $rows */
+            $rows = StripeWebhookEvent::query()
+                ->reconciliationExhausted($maxAttempts)
+                ->orderBy('created_at')
+                ->limit($limit)
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($rows as $event) {
+                $event->markReconciliationExhausted($maxAttempts);
+
+                Log::error('stripe_webhook_reconciler.reconciliation_exhausted', [
+                    'stripe_event_id' => $event->stripe_event_id,
+                    'type' => $event->type,
+                    'payment_intent_id' => $event->paymentIntentId(),
+                    'reconcile_attempts' => (int) $event->reconcile_attempts,
+                    'max_attempts' => $maxAttempts,
+                ]);
+            }
+
+            return $rows->count();
         });
     }
 

@@ -99,14 +99,58 @@ final class StripeWebhookEvent extends Model
     }
 
     /**
-     * Stale rows the reaper is eligible to consider — `processing` status,
-     * supported event type, older than the cutoff.
+     * Terminally fail a row that exhausted its reconciliation budget. Unlike a
+     * plain markFailed, this preserves the last transient error inline as
+     * forensic context so an operator can see *why* every attempt deferred.
      */
-    public function scopeStaleProcessing(Builder $query, Carbon $cutoff): Builder
+    public function markReconciliationExhausted(int $maxAttempts): void
+    {
+        $lastError = $this->error;
+        $context = is_string($lastError) && $lastError !== ''
+            ? sprintf(' (last error: %s)', $lastError)
+            : '';
+
+        $this->update([
+            'status' => 'failed',
+            'failed_at' => now(),
+            'error' => self::sanitizeError(sprintf(
+                'reconciliation exhausted after %d attempts (max %d); manual review required%s',
+                (int) $this->reconcile_attempts,
+                $maxAttempts,
+                $context,
+            )),
+        ]);
+    }
+
+    /**
+     * Stale rows the reaper is eligible to consider — `processing` status,
+     * supported event type, older than the cutoff, and not yet exhausted.
+     *
+     * The `reconcile_attempts < $maxAttempts` gate is what stops a row that
+     * keeps deferring (persistent transient Stripe error, network blackhole)
+     * from being re-claimed forever; once it reaches the threshold it is
+     * picked up by scopeReconciliationExhausted and auto-failed instead.
+     */
+    public function scopeStaleProcessing(Builder $query, Carbon $cutoff, int $maxAttempts): Builder
     {
         return $query
             ->where('status', 'processing')
             ->where('created_at', '<', $cutoff)
+            ->where('reconcile_attempts', '<', $maxAttempts)
+            ->whereIn('type', self::RECONCILABLE_TYPES);
+    }
+
+    /**
+     * Rows that exhausted their reconciliation budget — still `processing`,
+     * a supported event type, but already re-claimed `$maxAttempts` times.
+     * The reaper transitions these to `failed` so they surface to an operator
+     * rather than being silently re-claimed every run.
+     */
+    public function scopeReconciliationExhausted(Builder $query, int $maxAttempts): Builder
+    {
+        return $query
+            ->where('status', 'processing')
+            ->where('reconcile_attempts', '>=', $maxAttempts)
             ->whereIn('type', self::RECONCILABLE_TYPES);
     }
 

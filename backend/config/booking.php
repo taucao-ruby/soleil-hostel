@@ -165,6 +165,23 @@ return [
         */
         'max_attempts' => env('BOOKING_RECONCILE_MAX_ATTEMPTS', 5),
 
+        /*
+        |--------------------------------------------------------------------------
+        | Webhook Reaper Maximum Claim Attempts
+        |--------------------------------------------------------------------------
+        |
+        | Distinct from max_attempts above (which governs ReconcileRefundsJob):
+        | the number of times webhook:reconcile-stuck-events will re-claim a
+        | single stuck stripe_webhook_events row before giving up. A row that
+        | keeps deferring (persistent transient Stripe error, network blackhole,
+        | misconfigured PaymentIntent) is auto-marked failed once it crosses
+        | this threshold so it surfaces to an operator instead of being
+        | re-claimed forever. The last error context is preserved on the row.
+        | Default: 12
+        |
+        */
+        'webhook_max_attempts' => env('BOOKING_WEBHOOK_RECONCILE_MAX_ATTEMPTS', 12),
+
     ],
 
     /*

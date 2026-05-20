@@ -358,12 +358,149 @@ final class ReconcileStuckStripeWebhookEventsTest extends TestCase
         $this->assertStringContainsString('manual review required', (string) $event->error);
     }
 
+    public function test_exhausted_event_is_auto_failed_with_preserved_error_and_no_stripe_contact(): void
+    {
+        config(['booking.reconciliation.webhook_max_attempts' => 3]);
+
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($this->room)
+            ->create([
+                'status' => BookingStatus::PENDING,
+                'payment_intent_id' => 'pi_exhausted',
+                'amount' => 50000,
+            ]);
+
+        // A row that has already been re-claimed up to the threshold, carrying
+        // the last transient error from a prior deferral.
+        $event = $this->makeStuckEvent(
+            stripeEventId: 'evt_exhausted',
+            paymentIntentId: 'pi_exhausted',
+            createdMinutesAgo: 60,
+            reconcileAttempts: 3,
+            error: 'upstream tcp reset (stripe.com)',
+        );
+
+        // Any Stripe retrieve would fail the test loudly: an exhausted row must
+        // be failed WITHOUT another Stripe round-trip.
+        $this->fakeStripeClientReturning([]);
+
+        $exit = Artisan::call('webhook:reconcile-stuck-events', ['--minutes' => 15, '--limit' => 50]);
+
+        $this->assertSame(0, $exit);
+
+        $booking->refresh();
+        $event->refresh();
+
+        $this->assertSame(
+            BookingStatus::PENDING,
+            $booking->status,
+            'An exhausted webhook event must not mutate the booking',
+        );
+        $this->assertSame('failed', $event->status);
+        $this->assertNotNull($event->failed_at);
+        $this->assertSame(3, $event->reconcile_attempts, 'Exhaustion fail must not bump the attempt counter');
+        $this->assertStringContainsString('exhausted after 3 attempts', (string) $event->error);
+        $this->assertStringContainsString('upstream tcp reset', (string) $event->error);
+    }
+
+    public function test_event_one_below_max_attempts_is_still_reconciled(): void
+    {
+        config(['booking.reconciliation.webhook_max_attempts' => 3]);
+
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($this->room)
+            ->create([
+                'status' => BookingStatus::PENDING,
+                'payment_intent_id' => 'pi_last_chance',
+                'amount' => 50000,
+            ]);
+
+        $event = $this->makeStuckEvent(
+            stripeEventId: 'evt_last_chance',
+            paymentIntentId: 'pi_last_chance',
+            createdMinutesAgo: 20,
+            reconcileAttempts: 2,
+        );
+
+        $this->fakeStripeClientReturning([
+            'pi_last_chance' => $this->fakePaymentIntent(
+                id: 'pi_last_chance',
+                status: 'succeeded',
+                amount: 50000,
+                currency: 'vnd',
+            ),
+        ]);
+
+        Artisan::call('webhook:reconcile-stuck-events', ['--minutes' => 15, '--limit' => 50]);
+
+        $booking->refresh();
+        $event->refresh();
+
+        $this->assertSame(BookingStatus::CONFIRMED, $booking->status);
+        $this->assertSame('processed', $event->status);
+        $this->assertSame(
+            3,
+            $event->reconcile_attempts,
+            'A row one below the threshold gets one final claim (attempts -> max), not an early skip',
+        );
+    }
+
+    public function test_event_that_keeps_deferring_is_failed_once_attempts_exhaust(): void
+    {
+        config(['booking.reconciliation.webhook_max_attempts' => 2]);
+
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($this->room)
+            ->create([
+                'status' => BookingStatus::PENDING,
+                'payment_intent_id' => 'pi_persistent_transient',
+                'amount' => 50000,
+            ]);
+
+        $event = $this->makeStuckEvent(
+            stripeEventId: 'evt_persistent_transient',
+            paymentIntentId: 'pi_persistent_transient',
+            createdMinutesAgo: 20,
+            reconcileAttempts: 1,
+        );
+
+        // Stripe is a black hole: every retrieve is a transient connection error.
+        $this->app->instance(StripeClient::class, $this->makeThrowingStripeClient(
+            ApiConnectionException::factory('upstream tcp reset (stripe.com)'),
+        ));
+
+        // Run 1: attempts 1 -> 2 (claimed, transient defer), still processing.
+        Artisan::call('webhook:reconcile-stuck-events', ['--minutes' => 15, '--limit' => 50]);
+
+        $event->refresh();
+        $this->assertSame('processing', $event->status);
+        $this->assertSame(2, $event->reconcile_attempts);
+
+        // Run 2: attempts already at the threshold -> auto-failed, no re-claim.
+        Artisan::call('webhook:reconcile-stuck-events', ['--minutes' => 15, '--limit' => 50]);
+
+        $booking->refresh();
+        $event->refresh();
+
+        $this->assertSame(BookingStatus::PENDING, $booking->status);
+        $this->assertSame('failed', $event->status);
+        $this->assertNotNull($event->failed_at);
+        $this->assertSame(2, $event->reconcile_attempts, 'No further claim once exhausted');
+        $this->assertStringContainsString('exhausted after 2 attempts', (string) $event->error);
+        $this->assertStringContainsString('upstream tcp reset', (string) $event->error);
+    }
+
     // ===== Helpers =====
 
     private function makeStuckEvent(
         string $stripeEventId,
         string $paymentIntentId,
         int $createdMinutesAgo,
+        int $reconcileAttempts = 0,
+        ?string $error = null,
     ): StripeWebhookEvent {
         $event = StripeWebhookEvent::create([
             'stripe_event_id' => $stripeEventId,
@@ -376,10 +513,15 @@ final class ReconcileStuckStripeWebhookEventsTest extends TestCase
             ],
         ]);
 
-        // Backdate created_at so it falls past the --minutes threshold.
+        // Backdate created_at so it falls past the --minutes threshold and
+        // seed the prior reconcile state (attempts/error) some tests rely on.
         DB::table('stripe_webhook_events')
             ->where('id', $event->id)
-            ->update(['created_at' => Carbon::now()->subMinutes($createdMinutesAgo)]);
+            ->update([
+                'created_at' => Carbon::now()->subMinutes($createdMinutesAgo),
+                'reconcile_attempts' => $reconcileAttempts,
+                'error' => $error,
+            ]);
 
         return $event->fresh();
     }

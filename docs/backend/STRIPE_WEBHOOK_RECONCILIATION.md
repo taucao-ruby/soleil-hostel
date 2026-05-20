@@ -16,11 +16,14 @@ php artisan webhook:reconcile-stuck-events --minutes=15 --limit=50
 
 Behavior:
 
-1. Atomically **claim** stale `processing` rows (status=processing, type ∈ `StripeWebhookEvent::RECONCILABLE_TYPES`, created_at < cutoff). The claim bumps `reconcile_started_at` and `reconcile_attempts` under `SELECT ... FOR UPDATE` so concurrent reapers cannot double-process.
-2. After the claim transaction commits, **re-fetch** each PaymentIntent from Stripe — Stripe is the source of truth.
-3. Verify `paymentIntent.status === 'succeeded'` and that amount/currency match the local booking (defense in depth).
-4. Apply the idempotent business effect via the shared [`StripePaymentIntentSucceededHandler`](../../backend/app/Services/Payment/StripePaymentIntentSucceededHandler.php) — the same handler the live controller uses.
-5. Mark the event `processed` on success, `failed` (with sanitized `error` context) on unrecoverable error. Transient Stripe errors (`RateLimitException`, `ApiConnectionException`) leave the event `processing` so the next run retries; the row carries the last failure context in `error` + `reconcile_finished_at`.
+1. **Fail exhausted rows first.** Any `processing` row whose `reconcile_attempts >= booking.reconciliation.webhook_max_attempts` (default 12, env `BOOKING_WEBHOOK_RECONCILE_MAX_ATTEMPTS`) is transitioned to `failed` and surfaced via a `stripe_webhook_reconciler.reconciliation_exhausted` error log. The last transient `error` is preserved inline as forensic context. This is what stops a row that keeps deferring (persistent transient Stripe error, network blackhole, misconfigured PaymentIntent) from being re-claimed every 5 minutes forever with no operator signal.
+2. Atomically **claim** stale `processing` rows (status=processing, type ∈ `StripeWebhookEvent::RECONCILABLE_TYPES`, created_at < cutoff, **and `reconcile_attempts < webhook_max_attempts`**). The claim bumps `reconcile_started_at` and `reconcile_attempts` under `SELECT ... FOR UPDATE` so concurrent reapers cannot double-process.
+3. After the claim transaction commits, **re-fetch** each PaymentIntent from Stripe — Stripe is the source of truth.
+4. Verify `paymentIntent.status === 'succeeded'` and that amount/currency match the local booking (defense in depth).
+5. Apply the idempotent business effect via the shared [`StripePaymentIntentSucceededHandler`](../../backend/app/Services/Payment/StripePaymentIntentSucceededHandler.php) — the same handler the live controller uses.
+6. Mark the event `processed` on success, `failed` (with sanitized `error` context) on unrecoverable error. Transient Stripe errors (`RateLimitException`, `ApiConnectionException`) leave the event `processing` so the next run retries; the row carries the last failure context in `error` + `reconcile_finished_at`. A row that keeps deferring this way climbs `reconcile_attempts` until step 1 retires it.
+
+> **Threshold semantics.** `webhook_max_attempts` is the webhook reaper's own knob and is intentionally distinct from `booking.reconciliation.max_attempts` (default 5), which governs the unrelated `ReconcileRefundsJob`. A row gets up to `webhook_max_attempts` claim attempts; the run *after* the counter reaches the threshold auto-fails it.
 
 Schedule: every 5 minutes ([routes/console.php](../../backend/routes/console.php)), with `withoutOverlapping(10)` and `onOneServer()` matching the rest of the project's scheduler conventions.
 
@@ -34,7 +37,7 @@ Migration: [2026_05_18_000001_add_reconciliation_fields_to_stripe_webhook_events
 | `failed_at` | timestamp nullable | Set when the event transitions to `failed` |
 | `reconcile_started_at` | timestamp nullable | Bumped when the reaper claims the row |
 | `reconcile_finished_at` | timestamp nullable | End-of-attempt timestamp (terminal or transient) |
-| `reconcile_attempts` | unsigned integer default 0 | Increments on each claim — useful for detecting flapping events |
+| `reconcile_attempts` | unsigned integer default 0 | Increments on each claim. Gates re-claim: once it reaches `booking.reconciliation.webhook_max_attempts` the reaper auto-fails the row instead of re-claiming it |
 
 The composite index `idx_stripe_webhook_events_status_created_at` backs the reaper's selection predicate.
 
@@ -70,6 +73,20 @@ WHERE status = 'failed'
 
 **Page when** `recent_failures > 0`.
 
+### P2 — Reconciliation-exhausted events
+
+A row that exhausts `webhook_max_attempts` is auto-failed by step 1 and emits `stripe_webhook_reconciler.reconciliation_exhausted` at `error` level. These are distinguishable from other failures by the `error` column prefix `reconciliation exhausted after N attempts` and indicate a *persistent* upstream problem (Stripe outage, blackholed network, misconfigured PaymentIntent) rather than a one-off rejection.
+
+```sql
+SELECT COUNT(*) AS exhausted_count
+FROM stripe_webhook_events
+WHERE status = 'failed'
+  AND error LIKE 'reconciliation exhausted after%'
+  AND failed_at > NOW() - INTERVAL '1 hour';
+```
+
+**Page when** `exhausted_count > 0`. Log-based alerting can equivalently key on the `stripe_webhook_reconciler.reconciliation_exhausted` event name.
+
 ### Investigative query — current failure context
 
 ```sql
@@ -85,7 +102,7 @@ The `error` column is sanitized at write time (see `StripeWebhookEvent::markFail
 ## Runbook on alert
 
 1. Identify the offending event with the investigative query above.
-2. Check `reconcile_attempts`. If high (≥3) with a recurring transient error → Stripe outage; check status.stripe.com.
+2. Check `reconcile_attempts`. If the row reached `webhook_max_attempts` and was auto-failed (`error` begins `reconciliation exhausted after`), the inline `(last error: …)` context names the recurring transient cause — typically a Stripe outage (check status.stripe.com) or a blackholed PaymentIntent. After the underlying issue clears, reset and re-run (step 5).
 3. If `failed` due to PaymentIntent status mismatch → look up the PaymentIntent in the Stripe dashboard. If Stripe shows succeeded but local says otherwise, the booking row was modified out-of-band; verify with `bookings` table.
 4. If `failed` due to "manual review required" (InvalidState outcome) → the booking is `CANCELLED`/`REFUND_PENDING`/`REFUND_FAILED` but Stripe charged the guest. This is a refund-due scenario; route to finance ops.
 5. Recovery: once the underlying issue is resolved, an operator can re-claim a single event manually with a tighter window:
@@ -95,6 +112,16 @@ The `error` column is sanitized at write time (see `StripeWebhookEvent::markFail
    ```
 
    The reaper is idempotent — re-running it against an already-`processed` row is a no-op because `staleProcessing` filters by `status='processing'`.
+
+   For an **auto-failed exhausted row** (`status='failed'`), the reaper will not pick it up until it is put back in flight. Reset both the status and the attempt counter, then re-run the command above:
+
+   ```sql
+   UPDATE stripe_webhook_events
+   SET status = 'processing', reconcile_attempts = 0, failed_at = NULL
+   WHERE id = :id;
+   ```
+
+   Leaving `reconcile_attempts` at the threshold would cause step 1 to immediately re-fail the row.
 
 ## Security notes
 

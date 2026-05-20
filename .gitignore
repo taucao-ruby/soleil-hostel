@@ -50,6 +50,7 @@ database.sqlite
 .claude/settings.local.json
 .claude/worktrees/
 .claude/hook-audit.log
+.claude/scheduled_tasks.lock
 
 # Dev/debug scripts that must not be committed
 backend/storage/check_pw.php

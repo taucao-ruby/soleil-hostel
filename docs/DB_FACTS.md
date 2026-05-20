@@ -24,7 +24,7 @@ Audit & integrity tables:
 
 Stripe integration tables:
 - `stripe_webhook_events`: Stripe webhook ingestion ledger (added 2026-04-28, migration `2026_04_28_000001`). Columns: `stripe_event_id` UNIQUE, `type`, `status` (enum `processing`/`processed`/`failed`), `payload` JSONB, `processed_at`. Used to dedupe webhook deliveries at the event level.
-- `stripe_refund_events`: Durable refund-event replay fence (added 2026-04-29, migration `2026_04_29_000003`; replaced ephemeral `IdempotencyGuard`). Columns: `stripe_refund_id` UNIQUE, `stripe_event_id`, `booking_id` FK→`bookings` SET NULL (decouples audit trail from booking lifecycle), `amount_refunded` (cents, cumulative — sourced from `charge.amount_refunded`, not `refunds[0].amount`), `currency`, `processed_at`. **The UNIQUE on `stripe_refund_id` is the canonical idempotency authority** — `INSERT` happens before booking lookup; eliminates the TOCTOU window present in the prior application-layer state check.
+- `stripe_refund_events`: Durable refund-event replay fence (added 2026-04-29, migration `2026_04_29_000003`; replaced ephemeral `IdempotencyGuard`). Columns: `stripe_refund_id` UNIQUE, `stripe_event_id`, `booking_id` FK→`bookings` SET NULL (decouples audit trail from booking lifecycle), `amount_refunded` (cents, cumulative — sourced from `charge.amount_refunded`, not `refunds[0].amount`), `currency`, `processed_at`. **The UNIQUE on `stripe_refund_id` is the canonical idempotency authority** — inside one transaction the booking row is locked `FOR UPDATE` and the refund event is `INSERT`ed under this constraint; a replayed delivery violates the UNIQUE and is caught (transaction rolls back, no duplicate side effects), eliminating the TOCTOU window present in the prior application-layer state check.
 
 Operational domain tables (added 2026-03-20, see `docs/DOMAIN_LAYERS.md`):
 - `stays`: Operational occupancy lifecycle per booking (`stay_status`). One per booking (UNIQUE `booking_id`). `cancelled` is a terminal state since 2026-05-03 (`2026_05_03_000001`, OPS-004).
@@ -76,7 +76,7 @@ Other framework tables exist (`sessions`, `cache`, `cache_locks`, `jobs`, `job_b
   - [DB] soft-delete audit: `deleted_at`, `deleted_by`.
 - Stripe webhook idempotency (durable, replaces in-memory `IdempotencyGuard`):
   - [DB] `stripe_webhook_events.stripe_event_id` UNIQUE — event-level dedupe (added 2026-04-28).
-  - [DB] `stripe_refund_events.stripe_refund_id` UNIQUE — refund-level replay fence; `INSERT` happens before booking lookup, eliminating the TOCTOU window (added 2026-04-29).
+  - [DB] `stripe_refund_events.stripe_refund_id` UNIQUE — refund-level replay fence; the refund event is `INSERT`ed under this constraint inside the same transaction that locks the booking `FOR UPDATE`, so a replayed delivery violates the UNIQUE and is caught with no duplicate side effects (added 2026-04-29). Source: `StripeWebhookController::handleChargeRefunded`.
   - [APP] `StripeWebhookController::handleChargeRefunded` sources `amount_refunded` from `charge.amount_refunded` (cumulative), not `refunds[0].amount` — correctly handles partial-then-full refund sequences.
 - AI proposal durability:
   - [DB] `ai_proposals.proposal_hash` UNIQUE (added 2026-05-01) — durable contract that survives Cache TTL; `context_version` enables drift detection at confirm time.

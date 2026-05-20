@@ -47,7 +47,7 @@
 ### V-5: Proposal Hash Guessing / Cross-User Confirmation (Phase 4)
 - **Path**: Attacker guesses/brute-forces 64-char SHA-256 proposal hash or obtains one via side channel → attempts to confirm another user's proposal
 - **Controls**:
-  1. **Proposer-binding** (F-67, 2026-04-18 — `ProposalConfirmationController.php:55-62`): cache envelope carries `proposer_user_id`; decide() 404s on absence or mismatch. Legacy cache entries without the field are also treated as unbound → 404.
+  1. **Proposer-binding** (F-67, 2026-04-18 — `ProposalConfirmationController.php:65-74`): cache envelope carries `proposer_user_id`; decide() 404s on absence or mismatch. Legacy cache entries without the field are also treated as unbound → 404.
   2. Hash entropy: 64 hex chars / 256-bit random.
   3. Rate limit: `throttle:5,1` per authenticated user (stricter than the `throttle:10,1` on the main AI handler).
   4. Cache TTL expires proposals; `Cache::forget()` runs after every decide (confirm or decline) so a single hash cannot be replayed.

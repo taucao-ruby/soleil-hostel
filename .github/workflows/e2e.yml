@@ -75,6 +75,9 @@ jobs:
       - name: Bootstrap testing environment
         working-directory: ./backend
         env:
+          # APP_ENV=testing flips StripeService::shouldUseTestingFake() on, so the
+          # booking flow gets a fake PaymentIntent (no Stripe key needed in CI).
+          APP_ENV: testing
           DB_CONNECTION: pgsql
           DB_HOST: 127.0.0.1
           DB_PORT: 5432
@@ -87,9 +90,15 @@ jobs:
           cp .env.example .env
           php artisan key:generate
           php artisan migrate --force
+          # Seed a verified guest (user@soleil.test / P@ssworD!123) + bookable rooms
+          # for the @smoke guest-booking flow.
+          php artisan db:seed --class=DevRolePreviewSeeder --force
       - name: Start backend (background)
         working-directory: ./backend
         env:
+          # APP_ENV=testing flips StripeService::shouldUseTestingFake() on, so the
+          # booking flow gets a fake PaymentIntent (no Stripe key needed in CI).
+          APP_ENV: testing
           DB_CONNECTION: pgsql
           DB_HOST: 127.0.0.1
           DB_PORT: 5432
@@ -125,7 +134,9 @@ jobs:
       - name: Build frontend (preview-mode artifact)
         working-directory: ./frontend
         env:
-          VITE_API_URL: "http://127.0.0.1:8000/api"
+          # localhost (same site as the http://localhost:4173 preview) so the
+          # SameSite=Strict auth cookie flows during the authenticated booking flow.
+          VITE_API_URL: "http://localhost:8000/api"
           NODE_ENV: production
         run: pnpm run build
 
@@ -203,6 +214,9 @@ jobs:
       - name: Bootstrap testing environment
         working-directory: ./backend
         env:
+          # APP_ENV=testing flips StripeService::shouldUseTestingFake() on, so the
+          # booking flow gets a fake PaymentIntent (no Stripe key needed in CI).
+          APP_ENV: testing
           DB_CONNECTION: pgsql
           DB_HOST: 127.0.0.1
           DB_PORT: 5432
@@ -215,6 +229,9 @@ jobs:
           cp .env.example .env
           php artisan key:generate
           php artisan migrate --force
+          # Seed a verified guest (user@soleil.test / P@ssworD!123) + bookable rooms
+          # for the @smoke guest-booking flow.
+          php artisan db:seed --class=DevRolePreviewSeeder --force
           php artisan serve --host=127.0.0.1 --port=8000 &
           for i in {1..30}; do
             if curl -sf http://127.0.0.1:8000/up >/dev/null 2>&1; then
@@ -236,7 +253,9 @@ jobs:
       - name: Build frontend
         working-directory: ./frontend
         env:
-          VITE_API_URL: "http://127.0.0.1:8000/api"
+          # localhost (same site as the http://localhost:4173 preview) so the
+          # SameSite=Strict auth cookie flows during the authenticated booking flow.
+          VITE_API_URL: "http://localhost:8000/api"
           NODE_ENV: production
         run: pnpm run build
       - name: Install Playwright (all browsers)

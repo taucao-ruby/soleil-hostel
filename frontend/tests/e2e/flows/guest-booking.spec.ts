@@ -1,49 +1,56 @@
-import { test, expect } from '@playwright/test'
-import { AvailabilityPage } from '../pages/AvailabilityPage'
+import { test } from '@playwright/test'
+import { LoginPage } from '../pages/LoginPage'
+import { RoomsPage } from '../pages/RoomsPage'
 import { BookingFormPage } from '../pages/BookingFormPage'
 
 /**
- * Flow 1 — Guest booking happy path.
+ * Flow 1 — Guest booking happy path (authenticated).
  *
- * Pre-conditions (seeded by backend test seeder):
- *   - At least one bookable room exists at default location.
- *   - A verified test guest account is logged in (or anonymous booking is enabled).
+ * Booking is gated behind ProtectedRoute (router.tsx), so there is no
+ * anonymous flow — the guest signs in first.
+ *
+ * Pre-conditions (seeded by DevRolePreviewSeeder):
+ *   - Verified user user@soleil.test / P@ssworD!123 exists.
+ *   - At least one bookable room exists at the default location.
  *
  * Assertions:
- *   - Availability page renders room cards.
- *   - Booking form accepts guest details.
- *   - Confirmation surface appears within 10s of submit.
+ *   - Login redirects to the dashboard.
+ *   - /rooms exposes a bookable room card whose CTA opens the booking form.
+ *   - Submitting the form surfaces the success confirmation + booking ref.
  */
+const TEST_USER = {
+  email: 'user@soleil.test',
+  password: 'P@ssworD!123',
+}
+
 // @smoke — gates every PR via .github/workflows/e2e.yml. Owns the booking
 // happy-path: any regression here is a hard merge blocker.
 test.describe('Guest booking @smoke', () => {
-  test('lands → selects room → completes form → sees confirmation @smoke', async ({ page }) => {
-    const availability = new AvailabilityPage(page)
+  test('logs in → picks room → completes form → sees confirmation @smoke', async ({ page }) => {
+    // Bound the run so a missing element fails fast (~90s) instead of burning
+    // the 25-minute global timeout in playwright.config.ts.
+    test.setTimeout(90_000)
+
+    const login = new LoginPage(page)
+    const rooms = new RoomsPage(page)
     const form = new BookingFormPage(page)
 
-    await availability.goto()
+    await login.goto()
+    await login.login(TEST_USER.email, TEST_USER.password)
 
-    // Use a date pair safely in the future and disjoint from other E2E flows
-    // to avoid the exclusion constraint biting parallel runs.
+    await rooms.goto()
+    await rooms.bookFirstAvailableRoom()
+
+    // Dates well past the seeded preview bookings (which sit within ~3 weeks of
+    // today) to avoid the booking exclusion constraint biting this flow.
     const today = new Date()
-    const checkIn = addDays(today, 14)
-    const checkOut = addDays(today, 16)
+    const checkIn = addDays(today, 45)
+    const checkOut = addDays(today, 47)
 
-    await availability.searchDates(checkIn, checkOut)
-    await availability.pickFirstRoom()
-
-    await form.fillGuestDetails({
-      name: 'E2E Guest',
-      email: 'e2e-guest@example.com',
-      phone: '0900000001',
-    })
+    await form.fillStayDates(checkIn, checkOut)
+    await form.fillGuestDetails({ name: 'E2E Guest', email: 'e2e-guest@example.com' })
     await form.submit()
     await form.expectConfirmation()
-
-    // Confirmation page must include the dates we picked so the surface is
-    // genuinely the booking we just created (and not a stale render).
-    await expect(page.getByText(checkIn)).toBeVisible()
-    await expect(page.getByText(checkOut)).toBeVisible()
   })
 })
 

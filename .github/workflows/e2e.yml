@@ -86,6 +86,16 @@ jobs:
           DB_PASSWORD: password
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: 6379
+          # Webhook secret the BACKEND verifies against. MUST equal the value the
+          # Playwright step signs with (STRIPE_WEBHOOK_SECRET, below) — the
+          # controller verifies the signature, so a mismatch or empty secret
+          # rejects payment_intent.succeeded and the webhook smoke flow fails.
+          STRIPE_WEBHOOK_SECRET: "whsec_e2e_test_secret"
+          # The booking-confirmation email is dispatched afterCommit and, under
+          # QUEUE_CONNECTION=sync, sends inline inside the webhook request. Route
+          # it to the log driver so the placeholder SMTP transport in .env.example
+          # can't throw and turn a confirmed booking into a 500 webhook response.
+          MAIL_MAILER: log
         run: |
           cp .env.example .env
           php artisan key:generate
@@ -107,6 +117,16 @@ jobs:
           DB_PASSWORD: password
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: 6379
+          # Webhook secret the BACKEND verifies against. MUST equal the value the
+          # Playwright step signs with (STRIPE_WEBHOOK_SECRET, below) — the
+          # controller verifies the signature, so a mismatch or empty secret
+          # rejects payment_intent.succeeded and the webhook smoke flow fails.
+          STRIPE_WEBHOOK_SECRET: "whsec_e2e_test_secret"
+          # The booking-confirmation email is dispatched afterCommit and, under
+          # QUEUE_CONNECTION=sync, sends inline inside the webhook request. Route
+          # it to the log driver so the placeholder SMTP transport in .env.example
+          # can't throw and turn a confirmed booking into a 500 webhook response.
+          MAIL_MAILER: log
         run: |
           php artisan serve --host=127.0.0.1 --port=8000 &
           # Wait until /up returns 200 instead of a fixed sleep — saves wall-clock
@@ -225,6 +245,16 @@ jobs:
           DB_PASSWORD: password
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: 6379
+          # Webhook secret the BACKEND verifies against. MUST equal the value the
+          # Playwright step signs with (STRIPE_WEBHOOK_SECRET, below) — the
+          # controller verifies the signature, so a mismatch or empty secret
+          # rejects payment_intent.succeeded and the webhook smoke flow fails.
+          STRIPE_WEBHOOK_SECRET: "whsec_e2e_test_secret"
+          # The booking-confirmation email is dispatched afterCommit and, under
+          # QUEUE_CONNECTION=sync, sends inline inside the webhook request. Route
+          # it to the log driver so the placeholder SMTP transport in .env.example
+          # can't throw and turn a confirmed booking into a 500 webhook response.
+          MAIL_MAILER: log
         run: |
           cp .env.example .env
           php artisan key:generate

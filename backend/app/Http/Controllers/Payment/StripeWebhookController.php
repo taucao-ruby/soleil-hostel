@@ -10,15 +10,26 @@ use App\Services\Payment\PaymentIntentApplyOutcome;
 use App\Services\Payment\StripePaymentIntentSucceededHandler;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Laravel\Cashier\Http\Controllers\WebhookController as CashierWebhookController;
+use Stripe\Exception\SignatureVerificationException;
+use Stripe\Webhook;
+use Symfony\Component\HttpFoundation\Response;
+use UnexpectedValueException;
 
 /**
  * Stripe webhook handler — extends Cashier's built-in controller.
  *
- * Cashier handles signature verification automatically via
- * the STRIPE_WEBHOOK_SECRET env var.
+ * Signature verification is performed explicitly in handleWebhook() rather than
+ * via Cashier's optional VerifyWebhookSignature middleware. Cashier registers
+ * that middleware ONLY when cashier.webhook.secret is truthy, so an empty/unset
+ * secret would silently disable verification and accept every unsigned webhook —
+ * an unauthenticated path into booking confirmation and refund state changes.
+ * We fail closed instead: a missing secret rejects the request, and every
+ * malformed or forged request returns a controlled 400 — never an unhandled 500
+ * from invalid external input.
  *
  * To add custom event handling, create methods named:
  *   handle{EventType}(array $payload): Response
@@ -27,6 +38,62 @@ use Laravel\Cashier\Http\Controllers\WebhookController as CashierWebhookControll
  */
 class StripeWebhookController extends CashierWebhookController
 {
+    /**
+     * Deliberately does NOT call parent::__construct(): Cashier's constructor
+     * registers VerifyWebhookSignature only when cashier.webhook.secret is set
+     * (rejecting with 403). Verification is owned by handleWebhook() so a
+     * misconfigured/empty secret can never silently disable it.
+     */
+    public function __construct() {}
+
+    /**
+     * Verify the Stripe signature, then dispatch to the typed event handlers.
+     *
+     * Fail-closed contract:
+     *   - secret not configured        -> 500 (server misconfiguration, not attacker input)
+     *   - missing Stripe-Signature     -> 400
+     *   - malformed JSON payload       -> 400
+     *   - signature mismatch / expired -> 400
+     *
+     * On success, delegates to Cashier's dispatcher (parent::handleWebhook),
+     * which routes to handlePaymentIntentSucceeded / handleChargeRefunded / etc.
+     */
+    public function handleWebhook(Request $request): Response
+    {
+        $secret = config('cashier.webhook.secret');
+
+        if (! is_string($secret) || $secret === '') {
+            Log::error('Stripe webhook rejected: STRIPE_WEBHOOK_SECRET is not configured');
+
+            return response()->json(['message' => 'Webhook signature verification is not configured.'], 500);
+        }
+
+        $signature = $request->header('Stripe-Signature');
+
+        if (! is_string($signature) || $signature === '') {
+            return response()->json(['message' => 'Missing Stripe-Signature header.'], 400);
+        }
+
+        try {
+            Webhook::constructEvent(
+                $request->getContent(),
+                $signature,
+                $secret,
+                (int) config('cashier.webhook.tolerance', 300),
+            );
+        } catch (UnexpectedValueException $e) {
+            Log::warning('Stripe webhook rejected: invalid payload', ['error' => $e->getMessage()]);
+
+            return response()->json(['message' => 'Invalid Stripe webhook payload.'], 400);
+        } catch (SignatureVerificationException $e) {
+            Log::warning('Stripe webhook rejected: invalid signature', ['error' => $e->getMessage()]);
+
+            return response()->json(['message' => 'Invalid Stripe webhook signature.'], 400);
+        }
+
+        return parent::handleWebhook($request);
+    }
+
     /**
      * Handle payment_intent.succeeded webhook.
      *

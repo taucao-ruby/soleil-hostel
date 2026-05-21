@@ -205,7 +205,7 @@ components:
         refund_status:
           type: string
           nullable: true
-          enum: [null, pending, completed, failed]
+          enum: [pending, completed, failed]
         refund_amount:
           type: integer
           nullable: true

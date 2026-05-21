@@ -5,12 +5,12 @@ model so locators and step semantics are reused across tests.
 
 ## Flows
 
-| File                            | Flow                                                                              |
-| ------------------------------- | --------------------------------------------------------------------------------- |
-| `flows/guest-booking.spec.ts`   | Land on availability page → select room → complete booking form → confirmation    |
-| `flows/payment-webhook.spec.ts` | Trigger Stripe `payment_intent.succeeded` → admin dashboard shows `confirmed`     |
-| `flows/ai-proposal.spec.ts`     | Open room discovery widget → submit NL query → confirm proposal → booking created |
-| `flows/admin-restore.spec.ts`   | Admin soft-deletes booking → trashed list → restore → reappears in active list    |
+| File                            | Flow                                                                                                     |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `flows/guest-booking.spec.ts`   | Land on availability page → select room → complete booking form → confirmation                           |
+| `flows/payment-webhook.spec.ts` | Seed a pending booking via the API → signed `payment_intent.succeeded` → booking API reports `confirmed` |
+| `flows/ai-proposal.spec.ts`     | Open room discovery widget → submit NL query → confirm proposal → booking created                        |
+| `flows/admin-restore.spec.ts`   | Admin soft-deletes booking → trashed list → restore → reappears in active list                           |
 
 ## Running
 
@@ -38,6 +38,13 @@ multiple pages; pages must not import other pages or test files.
 
 ## CI
 
-Flows are gated behind `workflow_dispatch` until the suite stabilises.
-Once green for two consecutive merges, promote to `pull_request` trigger
-in `.github/workflows/e2e.yml`.
+See `.github/workflows/e2e.yml`. Two modes:
+
+- **PR gate** (`pull_request` → `main`/`dev`): runs only the `@smoke` flows
+  (`guest-booking` + `payment-webhook`) on chromium. Failure blocks merge.
+- **Nightly + manual** (`schedule` 02:00 UTC, `workflow_dispatch`): the full
+  suite across all browsers. Non-smoke flows live here until stable enough to
+  earn a `@smoke` tag.
+
+`@smoke` flows must seed through the real API (no test-only backend harness):
+log in (`/auth/login-v2`), create/mutate via the v1 endpoints, then assert.

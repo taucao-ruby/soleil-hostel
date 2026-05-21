@@ -2,6 +2,7 @@
 
 namespace App\Listeners;
 
+use App\Enums\BookingStatus;
 use App\Events\BookingCancelled;
 use App\Events\BookingDeleted;
 use App\Notifications\BookingCancelled as BookingCancelledNotification;
@@ -31,6 +32,22 @@ class SendBookingCancellation
         if (! config('booking.notifications.send_cancellation_email', true)) {
             \Log::info('Booking cancellation notification skipped (disabled)', [
                 'booking_id' => $booking->id,
+            ]);
+
+            return;
+        }
+
+        // Soft delete (BookingDeleted) is NOT a cancellation — the booking keeps
+        // its current status. BookingCancelled::toMail() returns null unless the
+        // booking is actually CANCELLED, and routing a null mail message through
+        // an on-demand notifiable crashes MailChannel ("Attempt to read property
+        // 'view' on null") → 500 on DELETE /bookings/{id} under the sync queue.
+        // Only notify genuinely cancelled bookings (F-72).
+        if ($booking->status !== BookingStatus::CANCELLED) {
+            \Log::info('Booking cancellation notification skipped — booking not cancelled', [
+                'booking_id' => $booking->id,
+                'status' => $booking->status->value,
+                'event_type' => class_basename($event),
             ]);
 
             return;

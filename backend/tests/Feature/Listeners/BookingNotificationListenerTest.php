@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Listeners;
 
+use App\Enums\BookingStatus;
 use App\Events\BookingCreated;
 use App\Events\BookingDeleted;
 use App\Events\BookingUpdated as BookingUpdatedEvent;
@@ -56,11 +57,13 @@ class BookingNotificationListenerTest extends TestCase
     /** @test */
     public function send_booking_cancellation_listener_sends_notification()
     {
-        // Arrange
+        // Arrange — a genuinely cancelled booking. BookingCancelled::toMail()
+        // only renders for CANCELLED bookings, so the listener gates on that.
         $room = Room::factory()->create();
         $booking = Booking::factory()->create([
             'room_id' => $room->id,
             'guest_email' => 'guest@example.com',
+            'status' => BookingStatus::CANCELLED,
         ]);
         $event = new BookingDeleted($booking);
         $listener = new SendBookingCancellation;
@@ -77,6 +80,34 @@ class BookingNotificationListenerTest extends TestCase
                     && $notification->booking->id === $booking->id;
             }
         );
+    }
+
+    /**
+     * Regression for F-72: a soft delete of a NON-cancelled booking must not
+     * route the cancellation notification. BookingCancelled::toMail() returns
+     * null for non-cancelled bookings, and routing a null mail message through
+     * an on-demand notifiable crashes MailChannel ("Attempt to read property
+     * 'view' on null") → 500 on DELETE /bookings/{id} under the sync queue.
+     *
+     * @test
+     */
+    public function cancellation_listener_skips_non_cancelled_booking_on_soft_delete()
+    {
+        // Arrange — a confirmed (not cancelled) booking being soft-deleted.
+        $room = Room::factory()->create();
+        $booking = Booking::factory()->create([
+            'room_id' => $room->id,
+            'guest_email' => 'guest@example.com',
+            'status' => BookingStatus::CONFIRMED,
+        ]);
+        $event = new BookingDeleted($booking);
+        $listener = new SendBookingCancellation;
+
+        // Act
+        $listener->handle($event);
+
+        // Assert — no cancellation email routed for a non-cancelled booking.
+        Notification::assertNothingSent();
     }
 
     /** @test */

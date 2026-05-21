@@ -5,6 +5,7 @@ import {
   type APIRequestContext,
 } from '@playwright/test'
 import crypto from 'node:crypto'
+import { signStripeWebhookPayload } from '../helpers/stripeWebhook'
 
 /**
  * Flow 2 — Payment webhook → booking confirmed.
@@ -87,25 +88,30 @@ test.describe('Payment webhook @smoke', () => {
       const paymentIntentId = fakePaymentIntentId(bookingId)
 
       // 3. POST a signed payment_intent.succeeded event to our own webhook.
-      const payload = JSON.stringify({
+      //    Sign the EXACT raw body string we transmit: Playwright sends a string
+      //    `data` verbatim, so the bytes the backend verifies are the bytes we
+      //    signed. (Signing this string but sending `data: <object>` would make
+      //    Playwright re-serialize and break verification.)
+      const rawPayload = JSON.stringify({
         id: `evt_e2e_${Date.now()}`,
         type: 'payment_intent.succeeded',
         data: { object: { id: paymentIntentId, status: 'succeeded' } },
       })
-      const timestamp = Math.floor(Date.now() / 1000)
-      const signature = crypto
-        .createHmac('sha256', webhookSecret)
-        .update(`${timestamp}.${payload}`)
-        .digest('hex')
+      const stripeSignature = signStripeWebhookPayload(rawPayload, webhookSecret)
 
       const webhookResp = await ctx.post(url('/webhooks/stripe'), {
         headers: {
           'content-type': 'application/json',
-          'stripe-signature': `t=${timestamp},v1=${signature}`,
+          'stripe-signature': stripeSignature,
         },
-        data: payload,
+        data: rawPayload,
       })
-      expect(webhookResp.status(), 'webhook must accept signed payload').toBeLessThan(300)
+      // Surface status + body on failure so a rejected/500 webhook is
+      // self-diagnosing in CI instead of just "expected < 300, got 500".
+      expect(
+        webhookResp.status(),
+        `webhook must accept signed payload (got ${webhookResp.status()}): ${await webhookResp.text()}`
+      ).toBeLessThan(300)
 
       // 4. The booking — read back through the owner's API — is now confirmed.
       const confirmResp = await ctx.get(url(`/v1/bookings/${bookingId}`), { headers: authHeaders })

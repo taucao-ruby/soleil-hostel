@@ -114,7 +114,9 @@ Route::post('/csp-violation-report', [CspViolationReportController::class, 'repo
 Route::post('/contact', [ContactController::class, 'store'])->middleware('throttle:3,1');
 
 // ========== STRIPE WEBHOOKS ==========
-// Signature verification handled by Cashier (STRIPE_WEBHOOK_SECRET env var)
+// Signature verified explicitly in StripeWebhookController::handleWebhook (fail
+// closed; controlled 400 on missing/invalid signature). STRIPE_WEBHOOK_SECRET
+// must be set in every runtime — an empty secret rejects all webhooks.
 Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handleWebhook']);
 
 // ========== EMAIL VERIFICATION ROUTES (OTP Code Flow) ==========

@@ -926,12 +926,20 @@ See `docs/agents/ARCHITECTURE_FACTS.md` §Pending TTL (Auto-Expiry Invariant) fo
 
 #### Deploy Workflow Ordering (2026-04-17)
 
-The `deploy.yml` workflow was reordered so database migrations run **before** the Health Check step and before cache warmup. This closed a class of silent-corruption incidents where the new application code would go live against the old schema during the health-check window. Consequences of the OLD ordering that the new ordering prevents:
+The `deploy.yml` workflow was reordered so database migrations and production runtime config assertions run **before** the Health Check step and before cache warmup. This closed a class of silent-corruption incidents where the new application code would go live against the old schema or unsafe runtime security config during the health-check window. Consequences of the OLD ordering that the new ordering prevents:
 
 - Any new query referencing a not-yet-migrated column/table would 5xx user traffic while CI reported the deploy as successful.
+- Unsafe production config, including insecure session cookies or unauthenticated Redis, could reach traffic before the deploy failed.
 - Cache warmup populated stale schemas, requiring a second deploy + cache flush to recover.
 
-The Health Check (`/api/health`) now represents "schema AND code are current" rather than "code is responding". Provider-managed deploys (Forge/Render/Coolify) run migrations in their own hooks; the SSH post-deploy `php artisan migrate --force` is idempotent, so the new ordering is safe across all deploy targets. Source: `.github/workflows/deploy.yml` (commits `75bb790`, `ec025ca`).
+Production deploy pre-traffic gates now include:
+
+1. `php artisan db:assert-schema-constraints`
+2. `php artisan app:assert-production-config`
+
+The second gate validates runtime security-critical production config, including secure cookies and Redis password/auth expectations. Deployment must fail closed if the assertion fails.
+
+The Health Check (`/api/health`) now represents "schema, runtime security config, and code are current" rather than "code is responding". Provider-managed deploys (Forge/Render/Coolify) run migrations in their own hooks; the SSH post-deploy `php artisan migrate --force` is idempotent, and the production config assertion runs over SSH in the deployed backend runtime before health check. Workflow-managed production deploys require `DEPLOY_HOST`, `DEPLOY_USER`, and `DEPLOY_KEY` so these runtime gates can run before health/success. Source: `.github/workflows/deploy.yml`.
 
 ---
 

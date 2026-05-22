@@ -74,6 +74,9 @@ cd backend && php artisan stays:backfill-operational --dry-run  # count eligible
 # Cache warmup
 cd backend && php artisan cache:warmup
 
+# Production runtime config assertion (deploy pre-traffic gate)
+cd backend && php artisan app:assert-production-config
+
 # Prune old soft-deleted bookings
 cd backend && php artisan bookings:prune-soft-deleted
 ```
@@ -219,7 +222,7 @@ Triggers: push tags `v*`, manual workflow_dispatch.
 | e2e-tests      | Playwright (tags/manual only)             | Chromium, backend+frontend servers |
 | docker-build   | Build + push to GHCR                      | Tags: semver, sha                  |
 | trivy-scan     | Docker image vulnerability scan           | Advisory                           |
-| deploy         | Zero-downtime to Forge/Render/Coolify/SSH | Health check after deploy          |
+| deploy         | Zero-downtime to Forge/Render/Coolify/SSH | Pre-traffic gates: `db:assert-schema-constraints`, `app:assert-production-config`; health check after deploy |
 | release        | Semantic release (tags only)              | GitHub release                     |
 
 ## Quality Gates Summary

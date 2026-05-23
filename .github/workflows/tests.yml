@@ -543,7 +543,48 @@ jobs:
         run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
       - name: Audit Composer dependencies
         working-directory: ./backend
-        run: composer audit
+        env:
+          COMPOSER_NO_INTERACTION: 1
+          COMPOSER_IPRESOLVE: 4
+        run: |
+          set +e
+
+          composer --version
+          php -r "echo 'default_socket_timeout='.ini_get('default_socket_timeout').PHP_EOL;"
+          composer diagnose -vvv || true
+
+          curl -4 -I \
+            --connect-timeout 20 \
+            --max-time 60 \
+            https://packagist.org/api/security-advisories/ || true
+
+          # Exit-code contract (do not widen the retry branch):
+          #   0   = clean -> pass
+          #   100 = Composer transport/runtime failure (e.g. Packagist timeout) -> retry
+          #   any other non-zero = real advisory/abandoned/policy finding -> hard fail now
+          # Retry never converts a non-zero into success, so the gate cannot fail open.
+          for attempt in 1 2 3; do
+            php -d default_socket_timeout=300 "$(command -v composer)" audit \
+              --locked \
+              --no-interaction \
+              --format=summary
+
+            status=$?
+
+            if [ "$status" -eq 0 ]; then
+              exit 0
+            fi
+
+            if [ "$status" -eq 100 ]; then
+              echo "composer audit transport/runtime failure (exit 100); retry ${attempt}/3"
+              sleep $((attempt * 10))
+              continue
+            fi
+
+            exit "$status"
+          done
+
+          exit 100
 
   # ========== SECURITY: NPM Audit ==========
   # Batch 4 / 3C: now blocking on HIGH/CRITICAL. Accepted advisories must be added

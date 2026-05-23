@@ -77,14 +77,9 @@ class CheckTokenNotRevokedAndNotExpired
             ], 401);
         }
 
-        // Check suspicious activity
-        if ($token->refresh_count > config('sanctum.max_refresh_count_per_hour')) {
-            $token->revoke();
-            return response()->json([
-                'message' => 'Suspicious activity detected.',
-                'code' => 'SUSPICIOUS_ACTIVITY',
-            ], 401);
-        }
+        // Refresh endpoints additionally enforce
+        // sanctum.max_token_refreshes_per_hour as a 60-minute limiter.
+        // refresh_count is lifetime telemetry, not enforcement.
 
         // Update last_used_at
         $token->touchLastUsed();
@@ -100,7 +95,7 @@ class CheckTokenNotRevokedAndNotExpired
 | --------------------- | ---- | --------------------- |
 | `TOKEN_EXPIRED`       | 401  | Call refresh endpoint |
 | `TOKEN_REVOKED`       | 401  | Login again           |
-| `SUSPICIOUS_ACTIVITY` | 401  | Login again           |
+| refresh rate limit    | 429  | Retry after window    |
 
 ---
 

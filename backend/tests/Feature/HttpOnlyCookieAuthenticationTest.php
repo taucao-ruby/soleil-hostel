@@ -370,17 +370,17 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
     }
 
     /**
-     * Test 11: Multiple refreshes > threshold triggers SUSPICIOUS_ACTIVITY
+     * Test 11: Multiple refreshes > threshold returns 429
      *
      * Security Check:
-     * - Refresh count incremented on each refresh
-     * - After max_refresh_count threshold, token revoked
-     * - Returns 401 with SUSPICIOUS_ACTIVITY code
+     * - Refresh count incremented only on successful refresh
+     * - After max_token_refreshes threshold, token is rate limited
+     * - Returns 429 without revoking the active token
      */
-    public function test_excessive_refresh_triggers_suspicious_activity(): void
+    public function test_excessive_refresh_returns_rate_limit(): void
     {
         // Set low threshold for testing
-        config(['sanctum.max_refresh_count_per_hour' => 2]);
+        config(['sanctum.max_token_refreshes_per_hour' => 2]);
 
         // Login
         $this->postJson('/api/auth/login-httponly', [
@@ -410,7 +410,7 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
             ->postJson('/api/auth/refresh-httponly');
         $refresh2->assertStatus(200);
 
-        // Third refresh - Should trigger SUSPICIOUS_ACTIVITY
+        // Third refresh - Should trigger hourly rate limit
         $token = PersonalAccessToken::where('tokenable_id', $this->user->id)
             ->whereNull('revoked_at')
             ->first();
@@ -418,7 +418,14 @@ class HttpOnlyCookieAuthenticationTest extends TestCase
 
         $refresh3 = $this->withHeader('Cookie', "{$cookieName}={$tokenIdentifier3}")
             ->postJson('/api/auth/refresh-httponly');
-        $refresh3->assertStatus(401);
-        $this->assertEquals('SUSPICIOUS_ACTIVITY', $refresh3->json('errors.code'));
+        $refresh3->assertStatus(429);
+        $this->assertEquals(
+            'Too many token refresh attempts. Please try again later.',
+            $refresh3->json('message')
+        );
+
+        $token->refresh();
+        $this->assertNull($token->revoked_at);
+        $this->assertSame(2, (int) $token->refresh_count);
     }
 }

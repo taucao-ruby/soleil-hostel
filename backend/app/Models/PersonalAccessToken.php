@@ -268,9 +268,10 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
     }
 
     /**
-     * Increment refresh count (used to detect suspicious activity)
+     * Increment lifetime refresh telemetry after a successful rotation.
      *
-     * If token is refreshed too many times within seconds → suspicious
+     * Hourly refresh-rate enforcement is cache-backed and does not read this
+     * cumulative counter.
      */
     public function incrementRefreshCount(): void
     {
@@ -278,7 +279,7 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
     }
 
     /**
-     * Reset refresh count (on logout or session end)
+     * Reset lifetime refresh telemetry (on logout or session end)
      */
     public function resetRefreshCount(): void
     {

@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Http\Controllers\Auth\AuthController as BearerAuthController;
 use App\Models\PersonalAccessToken;
+use App\Services\Auth\TokenRefreshRateLimiter;
 use Closure;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
@@ -102,20 +103,6 @@ class CheckTokenNotRevokedAndNotExpired
         // Store the access token on the user so currentAccessToken() works
         $user->withAccessToken($token);
 
-        // ========== CHECK: Refresh count (suspicious activity) ==========
-        // Inclusive cap: refresh_count >= max → blocked. Unified with controllers and cookie middleware.
-        if ($token->refresh_count >= (int) config('sanctum.max_refresh_count_per_hour', 10)) {
-            // Too many refreshes in a short period → suspicious
-            // Revoke this token to protect the account
-            $token->revoke();
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Phát hiện hoạt động bất thường. Token đã bị vô hiệu hóa. Vui lòng login lại.',
-                'errors' => ['code' => 'SUSPICIOUS_ACTIVITY'],
-            ], 401);
-        }
-
         // ========== CHECK: Device fingerprint (bearer-mode replay defence) ==========
         // If a bearer token carries a stored fingerprint, replays from a different
         // UA/IP-/24 combination are treated as theft and rejected. Tokens without a
@@ -134,6 +121,13 @@ class CheckTokenNotRevokedAndNotExpired
             }
         }
 
+        // ========== CHECK: Token refresh rate ==========
+        // refresh_count is lifetime telemetry only. Hourly refresh enforcement is
+        // cache-backed and scoped to the token session, separate from expiry/revocation.
+        if ($this->isRefreshRequest($request)) {
+            app(TokenRefreshRateLimiter::class)->enforce($token);
+        }
+
         // ========== SUCCESS: Token is valid ==========
         // Update last_used_at to track token usage
         // Optimization: only update if more than 1 minute has passed since last update (reduces write frequency)
@@ -141,5 +135,10 @@ class CheckTokenNotRevokedAndNotExpired
 
         // Continue with request
         return $next($request);
+    }
+
+    private function isRefreshRequest(Request $request): bool
+    {
+        return $request->is('api/auth/refresh', 'api/auth/refresh-v2');
     }
 }

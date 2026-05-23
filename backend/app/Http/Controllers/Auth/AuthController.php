@@ -212,15 +212,8 @@ class AuthController extends Controller
                 return $this->error('Token đã bị revoke. Vui lòng login lại.', 401, ['code' => 'TOKEN_REVOKED']);
             }
 
-            // ========== Check: Refresh count (suspicious activity) ==========
-            // IMPORTANT: Check threshold BEFORE incrementing using >= to catch exact threshold
-            if ($oldToken->refresh_count >= config('sanctum.max_refresh_count_per_hour')) {
-                $oldToken->revoke();
-
-                return $this->error('Phát hiện hoạt động bất thường. Vui lòng login lại.', 401, ['code' => 'SUSPICIOUS_ACTIVITY']);
-            }
-
-            // Only increment after passing threshold check
+            // refresh_count is lifetime telemetry only. The per-hour refresh
+            // limit is enforced in CheckTokenNotRevokedAndNotExpired.
             $oldToken->incrementRefreshCount();
 
             // ========== Get user + token info ==========

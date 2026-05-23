@@ -15,6 +15,8 @@ use App\Models\Booking;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
+use Stripe\Exception\ApiErrorException;
 
 /**
  * Handles booking cancellation with optional refund processing.
@@ -44,6 +46,10 @@ use Illuminate\Support\Facades\Log;
  */
 final class CancellationService
 {
+    public function __construct(
+        private readonly StripeService $stripeService
+    ) {}
+
     /**
      * Cancel a booking with optional refund.
      *
@@ -255,6 +261,7 @@ final class CancellationService
      * Idempotency:
      * - The booking is moved to refund_pending under a row lock before this method runs.
      * - Concurrent or replayed cancellation attempts re-check that state and do not call Stripe.
+     * - Null-user fallback uses a stable Stripe idempotency key in StripeService.
      * - Stripe refund webhook replays are persisted in stripe_refund_events.
      *
      * @throws RefundFailedException If Stripe refund fails
@@ -269,32 +276,46 @@ final class CancellationService
         }
 
         try {
-            $refund = $booking->user->refund(
-                $booking->payment_intent_id,
-                ['amount' => $refundAmount]
-            );
+            $paymentIntentId = $this->refundPaymentIntentId($booking);
+            $user = $booking->user;
 
-            TransactionMetrics::recordSuccess(
-                'process_refund',
-                'external_api',
-                0,
-                0
-            );
-
-            return $this->finalizeCancellation(
-                $booking,
-                $refund->id,
-                $refundAmount,
-                $actor
-            );
-
+            $refundId = $user instanceof User
+                ? $user->refund($paymentIntentId, ['amount' => $refundAmount])->id
+                : $this->stripeService->createBookingRefund($booking, $refundAmount);
             // TODO: Add Cashier exception handling when payment integration is implemented
             // } catch (\Laravel\Cashier\Exceptions\IncompletePayment $e) {
             //     return $this->handleRefundFailure($booking, $e);
-        } catch (\Stripe\Exception\ApiErrorException $e) {
+        } catch (ApiErrorException|RuntimeException $e) {
             /** @var \Throwable $e */
             return $this->handleRefundFailure($booking, $e);
         }
+
+        TransactionMetrics::recordSuccess(
+            'process_refund',
+            'external_api',
+            0,
+            0
+        );
+
+        return $this->finalizeCancellation(
+            $booking,
+            $refundId,
+            $refundAmount,
+            $actor
+        );
+    }
+
+    private function refundPaymentIntentId(Booking $booking): string
+    {
+        $paymentIntentId = $booking->payment_intent_id;
+
+        if (! is_string($paymentIntentId) || blank($paymentIntentId)) {
+            throw new RuntimeException(
+                "Booking #{$booking->id} has no Stripe PaymentIntent to refund.",
+            );
+        }
+
+        return $paymentIntentId;
     }
 
     /**

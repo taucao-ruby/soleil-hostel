@@ -7,17 +7,20 @@ namespace Tests\Feature;
 use App\Enums\BookingStatus;
 use App\Enums\UserRole;
 use App\Events\BookingCancelled;
+use App\Exceptions\RefundFailedException;
 use App\Jobs\ProcessDepositRefund;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
 use App\Services\CancellationService;
+use App\Services\StripeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
+use Mockery\MockInterface;
 use Tests\TestCase;
 
 class BookingCancellationTest extends TestCase
@@ -639,6 +642,113 @@ class BookingCancellationTest extends TestCase
         Event::assertDispatched(BookingCancelled::class);
     }
 
+    public function test_refund_with_user_keeps_cashier_refund_path(): void
+    {
+        Event::fake([BookingCancelled::class]);
+        config()->set('cashier.secret', 'sk_test_local');
+        $this->travelTo(now()->startOfDay()->addHours(12));
+
+        $capture = $this->fakeStripeRefundClient('re_user_refund');
+
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($this->room)
+            ->confirmed()
+            ->create([
+                'check_in' => now()->addDays(3)->startOfDay(),
+                'check_out' => now()->addDays(5)->startOfDay(),
+                'amount' => 10_000,
+                'payment_intent_id' => 'pi_user_refund',
+            ]);
+
+        $cancelled = app(CancellationService::class)->cancel($booking->fresh(), $this->user);
+
+        $this->assertSame(BookingStatus::CANCELLED, $cancelled->status);
+        $this->assertSame('re_user_refund', $cancelled->refund_id);
+        $this->assertSame(1, $capture->calls);
+        $this->assertSame([
+            'payment_intent' => 'pi_user_refund',
+            'amount' => 10_000,
+        ], $capture->payload);
+        $this->assertSame([], $capture->options);
+    }
+
+    public function test_refund_with_null_user_uses_stripe_payment_intent_fallback(): void
+    {
+        Event::fake([BookingCancelled::class]);
+        config()->set('cashier.secret', 'sk_test_local');
+        $this->travelTo(now()->startOfDay()->addHours(12));
+
+        $capture = $this->fakeStripeRefundClient('re_orphan_refund');
+
+        $booking = Booking::factory()
+            ->for($this->room)
+            ->confirmed()
+            ->create([
+                'user_id' => null,
+                'guest_email' => 'orphan-refund@example.test',
+                'check_in' => now()->addDays(2)->startOfDay(),
+                'check_out' => now()->addDays(4)->startOfDay(),
+                'amount' => 10_000,
+                'payment_intent_id' => 'pi_orphan_refund',
+            ]);
+
+        $cancelled = app(CancellationService::class)->cancel($booking->fresh(), $this->admin);
+
+        $this->assertSame(BookingStatus::CANCELLED, $cancelled->status);
+        $this->assertSame('re_orphan_refund', $cancelled->refund_id);
+        $this->assertSame(1, $capture->calls);
+        $this->assertSame('pi_orphan_refund', $capture->payload['payment_intent']);
+        $this->assertSame(5_000, $capture->payload['amount']);
+        $this->assertSame((string) $booking->id, $capture->payload['metadata']['booking_id']);
+        $this->assertSame('booking_cancellation_refund', $capture->payload['metadata']['kind']);
+        $this->assertSame('cancellation_service', $capture->payload['metadata']['source']);
+
+        $idempotencyKey = $capture->options['idempotency_key'];
+        $this->assertSame("booking:{$booking->id}:refund:pi_orphan_refund", $idempotencyKey);
+        $this->assertStringNotContainsString('orphan-refund@example.test', $idempotencyKey);
+        $this->assertStringNotContainsString($this->admin->email, $idempotencyKey);
+    }
+
+    public function test_refund_with_null_user_and_missing_payment_intent_fails_with_domain_error(): void
+    {
+        $this->travelTo(now()->startOfDay()->addHours(12));
+
+        $this->mock(StripeService::class, function (MockInterface $mock): void {
+            $mock->shouldNotReceive('createBookingRefund');
+        });
+
+        $booking = Booking::factory()
+            ->for($this->room)
+            ->create([
+                'user_id' => null,
+                'status' => BookingStatus::REFUND_PENDING,
+                'check_in' => now()->addDays(3)->startOfDay(),
+                'check_out' => now()->addDays(5)->startOfDay(),
+                'amount' => 10_000,
+                'payment_intent_id' => null,
+            ]);
+
+        $service = app(CancellationService::class);
+        $reflection = new \ReflectionMethod($service, 'processRefund');
+        $reflection->setAccessible(true);
+
+        $thrown = null;
+        try {
+            $reflection->invoke($service, $booking->fresh(), $this->admin);
+        } catch (\Throwable $e) {
+            $thrown = $e;
+        }
+
+        $this->assertInstanceOf(RefundFailedException::class, $thrown);
+        $this->assertSame('refund_failed', $thrown->getErrorCode());
+
+        $booking->refresh();
+        $this->assertSame(BookingStatus::REFUND_FAILED, $booking->status);
+        $this->assertSame('failed', $booking->refund_status);
+        $this->assertStringContainsString('no Stripe PaymentIntent', (string) $booking->refund_error);
+    }
+
     // ===== AUDIT TRAIL TESTS =====
 
     public function test_cancellation_records_timestamp_and_actor(): void
@@ -848,5 +958,49 @@ class BookingCancellationTest extends TestCase
         $this->assertNull($row->refund_error);
 
         $this->assertSame(BookingStatus::CANCELLED, $result->status);
+    }
+
+    private function fakeStripeRefundClient(string $refundId): object
+    {
+        $capture = (object) [
+            'calls' => 0,
+            'payload' => null,
+            'options' => null,
+        ];
+
+        $fakeStripe = new class($capture, $refundId) extends \Stripe\StripeClient
+        {
+            public object $refunds;
+
+            public function __construct(object $capture, string $refundId)
+            {
+                $this->refunds = new class($capture, $refundId)
+                {
+                    public function __construct(
+                        private object $capture,
+                        private string $refundId,
+                    ) {}
+
+                    /**
+                     * @param  array<string, mixed>  $payload
+                     * @param  array<string, mixed>  $options
+                     */
+                    public function create(array $payload, array $options = []): object
+                    {
+                        $this->capture->calls++;
+                        $this->capture->payload = $payload;
+                        $this->capture->options = $options;
+
+                        return (object) [
+                            'id' => $this->refundId,
+                        ];
+                    }
+                };
+            }
+        };
+
+        $this->app->bind(\Stripe\StripeClient::class, static fn () => $fakeStripe);
+
+        return $capture;
     }
 }

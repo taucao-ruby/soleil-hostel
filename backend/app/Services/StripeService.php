@@ -118,9 +118,67 @@ class StripeService
         return $refund->id;
     }
 
+    /**
+     * Create a booking-level cancellation refund when no Cashier billable user exists.
+     */
+    public function createBookingRefund(Booking $booking, int $amount): string
+    {
+        if ($amount <= 0) {
+            throw new RuntimeException('Refund amount must be greater than zero.');
+        }
+
+        $paymentIntentId = $this->refundPaymentIntentId($booking);
+        $idempotencyKey = $this->bookingRefundIdempotencyKey($booking);
+
+        if ($this->shouldUseTestingFake()) {
+            return 're_test_booking_'.$booking->id.'_'.substr(hash('sha256', $idempotencyKey), 0, 12);
+        }
+
+        $refund = $this->stripeClient->refunds->create(
+            [
+                'payment_intent' => $paymentIntentId,
+                'amount' => $amount,
+                'metadata' => [
+                    'booking_id' => (string) $booking->id,
+                    'kind' => 'booking_cancellation_refund',
+                    'source' => 'cancellation_service',
+                ],
+            ],
+            ['idempotency_key' => $idempotencyKey],
+        );
+
+        return $refund->id;
+    }
+
+    public function bookingRefundIdempotencyKey(Booking $booking): string
+    {
+        if (! $booking->exists) {
+            throw new RuntimeException('Booking must be persisted before creating a refund.');
+        }
+
+        return sprintf(
+            'booking:%d:refund:%s',
+            (int) $booking->getKey(),
+            $this->refundPaymentIntentId($booking),
+        );
+    }
+
     private function shouldUseTestingFake(): bool
     {
         return app()->environment('testing') && blank(config('cashier.secret'));
+    }
+
+    private function refundPaymentIntentId(Booking $booking): string
+    {
+        $paymentIntentId = $booking->payment_intent_id;
+
+        if (! is_string($paymentIntentId) || blank($paymentIntentId)) {
+            throw new RuntimeException(
+                "Booking #{$booking->id} has no payment_intent_id; cannot refund.",
+            );
+        }
+
+        return $paymentIntentId;
     }
 
     /**

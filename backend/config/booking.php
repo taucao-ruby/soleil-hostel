@@ -184,20 +184,23 @@ return [
 
         /*
         |--------------------------------------------------------------------------
-        | Webhook Backlog Alert Threshold (multiplier)
+        | Webhook Backlog Alert Threshold
         |--------------------------------------------------------------------------
         |
-        | webhook:reconcile-stuck-events emits a WARNING-level structured log
-        | line (stripe_webhook_reconciler.backlog_high) when the number of
-        | stripe_webhook_events still in 'processing' exceeds this multiple of
-        | the per-run --limit. It signals the fixed drain rate is losing to
-        | inflow (e.g. recovery from a regional Stripe outage), so log-based
-        | SIEM alerting can page an operator. The intended "3 consecutive runs"
-        | debounce lives in the SIEM rule, not here — the reaper only emits the
-        | signal on each run the threshold is crossed.
-        | Default: 2 (alert when backlog > 2 x limit).
+        | webhook:reconcile-stuck-events emits structured log metrics for the
+        | current stuck webhook backlog on every run. The high-backlog signal
+        | uses this formula:
+        |
+        | backlog_high = stuck_webhook_count >=
+        |     webhook_backlog_alert_baseline * webhook_backlog_alert_multiplier
+        |
+        | The intended debounce lives in the SIEM rule, not here — the reaper
+        | only emits the current gauge values for each run.
+        | Default threshold: 20 (10 baseline x 2 multiplier).
         |
         */
+        'webhook_backlog_alert_baseline' => env('BOOKING_WEBHOOK_BACKLOG_ALERT_BASELINE', 10),
+
         'webhook_backlog_alert_multiplier' => env('BOOKING_WEBHOOK_BACKLOG_ALERT_MULTIPLIER', 2),
 
     ],

@@ -11,8 +11,9 @@ use Illuminate\Foundation\Http\FormRequest;
  * - token: required, string (current token)
  *
  * Flow:
- * 1. Extract token from the Authorization header
- * 2. Validate: token exists, not expired, not revoked
+ * 1. Apply route-level throttle before token lookup
+ * 2. Extract token from the Authorization header
+ * 3. Validate: token exists, not expired, not revoked
  * 3. Create new token (same type as the original)
  * 4. Revoke old token
  * 5. Return new token
@@ -27,15 +28,14 @@ class RefreshTokenRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // Token validation is handled by middleware; authorize() is always true here
+        // Token validation is handled by the refresh controller after route throttling.
         return true;
     }
 
     public function rules(): array
     {
         return [
-            // Token: not a form field; validated by the Authorization header in middleware
-            // Middleware validates the Authorization header, not a form field
+            // Token: not a form field; validated from the Authorization header.
         ];
     }
 

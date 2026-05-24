@@ -10,6 +10,7 @@ use App\Services\CreateBookingService;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
 use Tests\TestCase;
@@ -303,6 +304,8 @@ class ConcurrentBookingTest extends TestCase
      */
     public function test_concurrent_bookings_same_room_only_one_succeeds(): void
     {
+        $this->withoutMiddleware(ThrottleRequests::class);
+
         $checkIn = Carbon::now()->addDays(10)->startOfDay();
         $checkOut = $checkIn->clone()->addDays(2);
 

@@ -266,13 +266,15 @@ class BookingPolicyTest extends TestCase
      */
     public function test_booking_creation_rate_limiting(): void
     {
-        // Throttle is 10 requests per 1 minute
+        // throttle:booking allows 5 creation attempts per actor+IP per minute.
         $checkIn = Carbon::now()->addDays(5)->startOfDay();
         $checkOut = $checkIn->clone()->addDays(2);
+        $ip = '203.0.113.71';
 
-        for ($i = 0; $i < 11; $i++) {
+        for ($i = 0; $i < 6; $i++) {
             $room = Room::factory()->create();
             $response = $this->actingAs($this->owner, 'sanctum')
+                ->withServerVariables(['REMOTE_ADDR' => $ip])
                 ->postJson('/api/bookings', [
                     'room_id' => $room->id,
                     'check_in' => $checkIn->toDateString(),
@@ -281,10 +283,10 @@ class BookingPolicyTest extends TestCase
                     'guest_email' => "guest{$i}@example.com",
                 ]);
 
-            if ($i < 10) {
+            if ($i < 5) {
                 $this->assertTrue($response->status() === 201 || $response->status() === 422);
             } else {
-                // 11th request should be throttled
+                // 6th request should be throttled
                 $this->assertEquals(429, $response->status());
             }
         }

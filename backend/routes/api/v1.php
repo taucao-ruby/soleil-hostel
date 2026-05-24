@@ -41,7 +41,7 @@ Route::middleware(['check_token_valid', 'role:admin'])->group(function () {
 // ========== BOOKING ENDPOINTS (v1) ==========
 // All booking endpoints require authenticated + verified email
 Route::middleware(['check_token_valid', 'verified'])->group(function () {
-    Route::post('/bookings', [BookingController::class, 'store'])->name('v1.bookings.store')->middleware('throttle:10,1');
+    Route::post('/bookings', [BookingController::class, 'store'])->name('v1.bookings.store')->middleware('throttle:booking');
     Route::get('/bookings', [BookingController::class, 'index'])->name('v1.bookings.index');
     Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('v1.bookings.show');
     Route::put('/bookings/{booking}', [BookingController::class, 'update'])->name('v1.bookings.update')->middleware('throttle:10,1');

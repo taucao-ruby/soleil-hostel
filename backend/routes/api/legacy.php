@@ -47,7 +47,8 @@ Route::middleware(['check_token_valid', 'role:admin'])->group(function () {
 // All booking endpoints require authenticated + verified email
 Route::middleware(['check_token_valid', 'verified'])->group(function () {
     Route::post('/bookings', [BookingController::class, 'store'])
-        ->middleware(['throttle:10,1', 'deprecated:2026-07-01,/api/v1/bookings']);
+        ->name('bookings.store')
+        ->middleware(['throttle:booking', 'deprecated:2026-07-01,/api/v1/bookings']);
     Route::get('/bookings', [BookingController::class, 'index'])
         ->middleware('deprecated:2026-07-01,/api/v1/bookings');
     Route::get('/bookings/{booking}', [BookingController::class, 'show'])

@@ -147,7 +147,8 @@ class ProposalCancellationOwnershipTest extends TestCase
 
         $response->assertStatus(422);
         $response->assertJsonPath('success', false);
-        $response->assertJsonPath('errors.downstream_result', 'error:unauthorized_booking_owner');
+        $response->assertJsonPath('errors.downstream_result.status', 'failed');
+        $response->assertJsonPath('errors.downstream_result.failure_reason', 'unauthorized_booking_owner');
 
         // Bob's booking is untouched — no status change, no cancellation columns set.
         $bobsBooking->refresh();
@@ -156,17 +157,27 @@ class ProposalCancellationOwnershipTest extends TestCase
         $this->assertNull($bobsBooking->cancelled_by);
 
         // No "booking_cancelled:" audit row was emitted under any actor —
-        // the only event for this proposal is the refused confirmation.
+        // the only event for this proposal is the refused execution.
         $this->assertDatabaseMissing('ai_proposal_events', [
             'proposal_hash' => $hash,
             'downstream_result' => "booking_cancelled:{$bobsBooking->id}",
         ]);
-        $this->assertDatabaseHas('ai_proposal_events', [
-            'user_id' => $alice->id,
+
+        $event = \App\Models\AiProposalEvent::where('proposal_hash', $hash)->first();
+        $this->assertNotNull($event);
+        $this->assertSame($alice->id, $event->user_id);
+        $this->assertSame('suggest_cancellation', $event->action_type);
+        $this->assertSame('errored', $event->user_decision);
+
+        $downstreamResult = json_decode((string) $event->downstream_result, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertSame('failed', $downstreamResult['status']);
+        $this->assertSame('unauthorized_booking_owner', $downstreamResult['failure_reason']);
+
+        $proposal = AiProposal::where('proposal_hash', $hash)->first();
+        $this->assertSame('errored', $proposal?->decision);
+        $this->assertDatabaseMissing('ai_proposal_events', [
             'proposal_hash' => $hash,
-            'action_type' => 'suggest_cancellation',
             'user_decision' => 'confirmed',
-            'downstream_result' => 'error:unauthorized_booking_owner',
         ]);
     }
 

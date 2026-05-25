@@ -498,8 +498,8 @@ Audit trail for AI booking proposal confirm/decline decisions. Added `2026_04_11
 | actor_display_name  | VARCHAR(255) | NULLABLE — denormalized actor snapshot                                    |
 | proposal_hash       | VARCHAR(64)  | NOT NULL, indexed                                                         |
 | action_type         | VARCHAR(30)  | NOT NULL                                                                  |
-| user_decision       | VARCHAR(20)  | NOT NULL (confirmed/declined/shown)                                       |
-| downstream_result   | TEXT         | NULLABLE                                                                  |
+| user_decision       | VARCHAR(20)  | NOT NULL (confirmed/declined/shown/errored)                               |
+| downstream_result   | TEXT         | NULLABLE; structured JSON for execution failures                          |
 | created_at          | TIMESTAMP    |                                                                           |
 | updated_at          | TIMESTAMP    |                                                                           |
 
@@ -526,7 +526,7 @@ Durable proposal contract — the cache envelope is fast but offers no revalidat
 | risk_assessment    | JSON         | NOT NULL                                               |
 | expires_at         | TIMESTAMP    | NOT NULL                                               |
 | shown_at           | TIMESTAMP    | NULLABLE                                               |
-| decision           | VARCHAR(20)  | NULLABLE — `confirmed` \| `declined`                   |
+| decision           | VARCHAR(20)  | NULLABLE — `confirmed` \| `declined` \| `errored`      |
 | decided_at         | TIMESTAMP    | NULLABLE                                               |
 | created_at         | TIMESTAMP    |                                                        |
 | updated_at         | TIMESTAMP    |                                                        |

@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('proposal_hash', 64)->index();
             $table->string('action_type', 30);
-            $table->string('user_decision', 20); // confirmed | declined | shown
+            $table->string('user_decision', 20); // confirmed | declined | shown | errored
             $table->text('downstream_result')->nullable();
             $table->timestamps();
 

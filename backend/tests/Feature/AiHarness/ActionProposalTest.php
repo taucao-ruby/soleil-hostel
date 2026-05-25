@@ -312,6 +312,32 @@ class ActionProposalTest extends TestCase
         $this->assertNotSame(42, $context['user_id']);
     }
 
+    public function test_proposal_event_exposes_structured_failure_fields_for_logs(): void
+    {
+        $downstreamResult = json_encode([
+            'status' => 'failed',
+            'failure_reason' => 'downstream_execution_failed',
+            'error_class' => 'RuntimeException',
+            'message' => 'Downstream execution failed.',
+        ], JSON_THROW_ON_ERROR);
+        $this->assertIsString($downstreamResult);
+
+        $event = new ProposalEvent(
+            userId: 42,
+            proposalHash: 'abc123',
+            actionType: 'suggest_booking',
+            userDecision: 'errored',
+            downstreamResult: $downstreamResult,
+            timestamp: '2026-04-11T00:00:00+00:00',
+        );
+
+        $context = $event->toLogContext();
+
+        $this->assertSame('errored', $context['user_decision']);
+        $this->assertSame('failed', $context['downstream_status']);
+        $this->assertSame('downstream_execution_failed', $context['failure_reason']);
+    }
+
     // ── Proposal Confirmation Controller Tests ──
 
     public function test_decline_proposal_returns_success(): void
@@ -547,10 +573,11 @@ class ActionProposalTest extends TestCase
             ]);
 
         // Controller returns 422 with the stable downstream code. The
-        // exception message is NOT leaked; the downstream_result carries
-        // the machine-readable marker.
+        // exception message is NOT leaked; the structured downstream_result
+        // carries the machine-readable marker.
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.downstream_result', 'error:unauthorized_booking_owner');
+        $response->assertJsonPath('errors.downstream_result.status', 'failed');
+        $response->assertJsonPath('errors.downstream_result.failure_reason', 'unauthorized_booking_owner');
         $response->assertJsonPath('success', false);
 
         // Bob's booking must be untouched.
@@ -559,15 +586,23 @@ class ActionProposalTest extends TestCase
         $this->assertNull($bobsBooking->cancelled_at);
         $this->assertNull($bobsBooking->cancelled_by);
 
-        // Audit row records the refused confirmation attempt — the decision
-        // IS logged (cache was cleared, event was recorded) so that forensic
-        // review can see Alice tried to cancel Bob's booking.
-        $this->assertDatabaseHas('ai_proposal_events', [
-            'user_id' => $alice->id,
+        // Audit row records the refused execution attempt as errored, not as
+        // a completed confirmation.
+        $event = AiProposalEvent::where('proposal_hash', $hash)->first();
+        $this->assertNotNull($event);
+        $this->assertSame($alice->id, $event->user_id);
+        $this->assertSame('suggest_cancellation', $event->action_type);
+        $this->assertSame('errored', $event->user_decision);
+
+        $downstreamResult = json_decode((string) $event->downstream_result, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertSame('failed', $downstreamResult['status']);
+        $this->assertSame('unauthorized_booking_owner', $downstreamResult['failure_reason']);
+
+        $proposal = AiProposal::where('proposal_hash', $hash)->first();
+        $this->assertSame('errored', $proposal?->decision);
+        $this->assertDatabaseMissing('ai_proposal_events', [
             'proposal_hash' => $hash,
-            'action_type' => 'suggest_cancellation',
             'user_decision' => 'confirmed',
-            'downstream_result' => 'error:unauthorized_booking_owner',
         ]);
     }
 

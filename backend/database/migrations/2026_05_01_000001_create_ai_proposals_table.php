@@ -45,7 +45,7 @@ return new class extends Migration
 
             $table->timestamp('expires_at');
             $table->timestamp('shown_at')->nullable();
-            $table->string('decision', 20)->nullable(); // confirmed | declined
+            $table->string('decision', 20)->nullable(); // confirmed | declined | errored
             $table->timestamp('decided_at')->nullable();
 
             $table->timestamps();

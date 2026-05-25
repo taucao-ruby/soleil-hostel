@@ -30,6 +30,7 @@ class StoreBookingRequest extends FormRequest
             'guest_name' => 'required|string|min:2|max:255',
             'guest_email' => 'required|email|max:255',
             'number_of_guests' => 'nullable|integer|min:1',
+            'special_requests' => 'nullable|string|max:2000',
         ];
     }
 
@@ -80,6 +81,7 @@ class StoreBookingRequest extends FormRequest
             'guest_email.email' => 'Guest email must be a valid email address.',
             'number_of_guests.integer' => 'Number of guests must be a whole number.',
             'number_of_guests.min' => 'Number of guests must be at least 1.',
+            'special_requests.max' => 'Special requests cannot exceed 2000 characters.',
         ];
     }
 

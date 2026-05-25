@@ -51,6 +51,11 @@ class CreateBookingService
 
     private const SQLSTATE_DEADLOCK_DETECTED = '40P01';
 
+    private const USER_SUPPLIED_ADDITIONAL_FIELDS = [
+        'number_of_guests' => true,
+        'special_requests' => true,
+    ];
+
     public function __construct(
         private readonly StripeService $stripeService
     ) {}
@@ -329,9 +334,18 @@ class CreateBookingService
             //
             // User-input columns flow through fill() (respects $fillable).
             // Server-controlled columns (location_id, status, user_id, amount,
-            // plus any internal $additionalData) flow through forceFill() so
+            // plus trusted internal $additionalData) flow through forceFill() so
             // they cannot be supplied by mass assignment from the controller.
-            $amount = $additionalData['amount'] ?? $this->calculateAmount($room, $checkIn, $checkOut);
+            $userSuppliedAdditionalData = array_intersect_key(
+                $additionalData,
+                self::USER_SUPPLIED_ADDITIONAL_FIELDS
+            );
+            $trustedAdditionalData = array_diff_key(
+                $additionalData,
+                self::USER_SUPPLIED_ADDITIONAL_FIELDS
+            );
+
+            $amount = $trustedAdditionalData['amount'] ?? $this->calculateAmount($room, $checkIn, $checkOut);
 
             $booking = (new Booking)->fill([
                 'room_id' => $roomId,
@@ -339,12 +353,13 @@ class CreateBookingService
                 'check_out' => $checkOut,
                 'guest_name' => $guestName,
                 'guest_email' => $guestEmail,
+                ...$userSuppliedAdditionalData,
             ])->forceFill([
                 'location_id' => $room->location_id,
                 'status' => BookingStatus::PENDING,
                 'user_id' => $userId,
                 'amount' => $amount,
-                ...$additionalData,
+                ...$trustedAdditionalData,
             ]);
             $booking->save();
 

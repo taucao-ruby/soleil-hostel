@@ -23,6 +23,8 @@ class BookingResource extends JsonResource
             'check_out' => $this->check_out->format('Y-m-d'),
             'guest_name' => $this->guest_name,
             'guest_email' => $this->guest_email,
+            'number_of_guests' => $this->number_of_guests,
+            'special_requests' => $this->special_requests,
             'status' => $this->status instanceof BookingStatus
                 ? $this->status->value
                 : $this->status,

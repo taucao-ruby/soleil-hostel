@@ -22,11 +22,13 @@ class UpdateBookingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'room_id' => 'sometimes|integer|exists:rooms,id',
+            'room_id' => 'prohibited',
+            'number_of_guests' => 'prohibited',
             'check_in' => 'required|date_format:Y-m-d|after_or_equal:today',
             'check_out' => 'required|date_format:Y-m-d|after:check_in',
             'guest_name' => 'required|string|min:2|max:255',
             'guest_email' => 'required|email|max:255',
+            'special_requests' => 'nullable|string|max:2000',
         ];
     }
 
@@ -38,10 +40,13 @@ class UpdateBookingRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'room_id.prohibited' => 'Room changes require a dedicated room-change flow.',
+            'number_of_guests.prohibited' => 'Guest count changes are not supported by this update endpoint.',
             'check_in.required' => 'Check-in date is required.',
             'check_in.after' => 'Check-in date must be after today.',
             'check_out.required' => 'Check-out date is required.',
             'check_out.after' => 'Check-out date must be after check-in date.',
+            'special_requests.max' => 'Special requests cannot exceed 2000 characters.',
         ];
     }
 

@@ -39,6 +39,8 @@ class Booking extends Model
         'check_out',
         'guest_name',
         'guest_email',
+        'number_of_guests',
+        'special_requests',
     ];
 
     protected $casts = [
@@ -49,6 +51,7 @@ class Booking extends Model
         'updated_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'status' => BookingStatus::class,
+        'number_of_guests' => 'integer',
         'amount' => 'integer',
         'deposit_amount' => 'integer',
         'deposit_collected_at' => 'datetime',
@@ -335,6 +338,8 @@ class Booking extends Model
             'bookings.check_out',
             'bookings.guest_name',
             'bookings.guest_email',
+            'bookings.number_of_guests',
+            'bookings.special_requests',
             'bookings.status',
             'bookings.amount',
             'bookings.payment_intent_id',

@@ -190,6 +190,16 @@ components:
           type: string
           format: email
           example: "jane@example.com"
+        number_of_guests:
+          type: integer
+          nullable: true
+          minimum: 1
+          example: 2
+        special_requests:
+          type: string
+          nullable: true
+          maxLength: 2000
+          example: "Late arrival after 22:00"
         status:
           type: string
           enum: [pending, confirmed, refund_pending, cancelled, refund_failed]
@@ -1551,6 +1561,17 @@ paths:
                   type: string
                   format: email
                   example: "jane@example.com"
+                number_of_guests:
+                  type: integer
+                  nullable: true
+                  minimum: 1
+                  description: Must not exceed the selected room's max_guests.
+                  example: 2
+                special_requests:
+                  type: string
+                  nullable: true
+                  maxLength: 2000
+                  example: "Late arrival after 22:00"
       responses:
         "201":
           description: Booking created successfully
@@ -1622,7 +1643,13 @@ paths:
       summary: Update a booking
       operationId: updateBooking
       description: |
-        Update booking dates and guest info. Room availability is re-validated.
+        Update booking dates, guest info, and optional guest notes. Room availability is
+        re-validated for date changes on the existing room.
+
+        `room_id` is prohibited on this generic endpoint. Room movement requires a
+        dedicated flow with availability recheck, lock discipline, `location_id`
+        recalculation, pricing review, and audit trail. `number_of_guests` is also
+        prohibited here because guest-count changes are outside this update contract.
 
         **Authorization (BookingPolicy::update — two-stage gate):**
         1. Caller must be the booking owner OR an admin.
@@ -1644,7 +1671,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [check_in, check_out]
+              required: [check_in, check_out, guest_name, guest_email]
               properties:
                 check_in:
                   type: string
@@ -1657,6 +1684,10 @@ paths:
                 guest_email:
                   type: string
                   format: email
+                special_requests:
+                  type: string
+                  nullable: true
+                  maxLength: 2000
       responses:
         "200":
           description: Booking updated

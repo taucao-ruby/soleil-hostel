@@ -99,7 +99,8 @@ export interface Booking {
   guest_email: string
   check_in: string                                                // YYYY-MM-DD
   check_out: string
-  number_of_guests?: number
+  number_of_guests: number | null
+  special_requests: string | null
   status: 'pending' | 'confirmed' | 'refund_pending' | 'cancelled' | 'refund_failed'
   amount?: number                                                 // cents
   payment_intent_id?: string | null                               // Stripe PaymentIntent id (payment-hold, since Apr 22)

@@ -12,8 +12,8 @@
       - PostgreSQL ENUM types
       - Triggers (trg_booking_set_location)
 
-    Docker quick-start:
-      docker compose up -d postgres
+    Docker quick-start (service is named `db` in docker-compose.yml):
+      docker compose up -d db
       php artisan test --configuration=phpunit.pgsql.xml
 -->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"

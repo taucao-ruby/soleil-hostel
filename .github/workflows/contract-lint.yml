@@ -53,6 +53,34 @@ jobs:
     name: Spectral OpenAPI Lint
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # The runtime enum-contract step boots a RefreshDatabase test, so this lane
+    # needs a real PostgreSQL service (the suite is PostgreSQL-only — exclusion
+    # constraints, btree_gist, triggers). Credentials mirror the backend-tests
+    # job in tests.yml so both lanes provision the DB identically.
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: testing
+      DB_USERNAME: testing
+      DB_PASSWORD: password
+      CACHE_DRIVER: array
+      SESSION_DRIVER: array
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: testing
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: testing
+        options: >-
+          --health-cmd="pg_isready -U testing"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+        ports:
+          - 5432:5432
     steps:
       - uses: actions/checkout@v4
 
@@ -75,6 +103,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ env.PHP_VERSION }}
+          extensions: pdo_pgsql
           tools: composer:v2
           coverage: none
 
@@ -89,10 +118,14 @@ jobs:
           php artisan key:generate --env=testing
           php artisan package:discover --ansi --env=testing
 
+      - name: GATE-0 — PostgreSQL test DB readiness
+        working-directory: ./backend
+        run: php scripts/check-test-db.php
+
+      - name: Migrate test database
+        working-directory: ./backend
+        run: php artisan migrate --env=testing --force
+
       - name: Verify OpenAPI runtime enum contract
         working-directory: ./backend
-        env:
-          APP_ENV: testing
-          CACHE_DRIVER: array
-          SESSION_DRIVER: array
         run: php artisan test --filter=OpenApiEnumContractTest --env=testing

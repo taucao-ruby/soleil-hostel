@@ -160,6 +160,7 @@ jobs:
           cp .env.example .env.testing
           php artisan key:generate --env=testing
           php artisan package:discover --ansi --env=testing
+          php scripts/check-test-db.php
           php artisan migrate --env=testing --force
       - name: Assert schema constraints
         if: matrix.db == 'pgsql'

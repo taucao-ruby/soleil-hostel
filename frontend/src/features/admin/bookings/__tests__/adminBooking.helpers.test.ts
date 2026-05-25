@@ -25,6 +25,8 @@ function makeBooking(overrides: Partial<BookingDetailRaw> = {}): BookingDetailRa
     created_at: '2026-05-01T10:00:00+07:00',
     updated_at: '2026-05-01T10:00:00+07:00',
     ...overrides,
+    number_of_guests: overrides.number_of_guests ?? null,
+    special_requests: overrides.special_requests ?? null,
   }
 }
 

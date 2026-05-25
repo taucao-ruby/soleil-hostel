@@ -29,6 +29,8 @@ const booking: BookingApiRaw = {
   check_out: '2026-06-03',
   guest_name: 'Tran Thi B',
   guest_email: 'guest-b@example.com',
+  number_of_guests: null,
+  special_requests: null,
   status: 'confirmed',
   status_label: 'Confirmed',
   nights: 2,

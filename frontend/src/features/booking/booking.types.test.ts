@@ -43,9 +43,9 @@ describe('booking request type contracts', () => {
       number_of_guests: 2,
     }
 
-    // @ts-expect-error room_id is not part of the generic update contract.
     const invalidUpdatePayload: BookingUpdateData = {
       ...validUpdatePayload,
+      // @ts-expect-error room_id is not part of the generic update contract.
       room_id: 11,
     }
 

@@ -45,6 +45,8 @@ const arrival: BookingDetailRaw = {
   check_out: '2026-04-30',
   guest_name: 'Nguyen Van A',
   guest_email: 'guest@example.com',
+  number_of_guests: null,
+  special_requests: null,
   status: 'confirmed',
   status_label: 'Confirmed',
   nights: 1,

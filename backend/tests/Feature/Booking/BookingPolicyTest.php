@@ -128,7 +128,6 @@ class BookingPolicyTest extends TestCase
 
         $response = $this->actingAs($this->owner, 'sanctum')
             ->putJson("/api/bookings/{$this->booking->id}", [
-                'room_id' => $this->room->id,
                 'check_in' => $newCheckIn->toDateString(),
                 'check_out' => $newCheckOut->toDateString(),
                 'guest_name' => 'Updated Guest Name',
@@ -153,7 +152,6 @@ class BookingPolicyTest extends TestCase
     {
         $response = $this->actingAs($this->otherUser, 'sanctum')
             ->putJson("/api/bookings/{$this->booking->id}", [
-                'room_id' => $this->room->id,
                 'check_in' => Carbon::now()->addDays(10)->toDateString(),
                 'check_out' => Carbon::now()->addDays(12)->toDateString(),
                 'guest_name' => 'Hacker',
@@ -300,7 +298,6 @@ class BookingPolicyTest extends TestCase
     {
         $response = $this->actingAs($this->owner, 'sanctum')
             ->putJson("/api/bookings/{$this->booking->id}", [
-                'room_id' => $this->room->id,
                 'check_in' => '2025-12-15',
                 'check_out' => '2025-12-10', // Before checkin
                 'guest_name' => 'Guest',
@@ -328,7 +325,6 @@ class BookingPolicyTest extends TestCase
         // Try to update first booking to overlap with second
         $response = $this->actingAs($this->owner, 'sanctum')
             ->putJson("/api/bookings/{$this->booking->id}", [
-                'room_id' => $this->room->id,
                 'check_in' => Carbon::now()->addDays(16)->toDateString(),
                 'check_out' => Carbon::now()->addDays(20)->toDateString(),
                 'guest_name' => 'Guest',
@@ -374,7 +370,6 @@ class BookingPolicyTest extends TestCase
     {
         $response = $this->actingAs($this->owner, 'sanctum')
             ->putJson('/api/bookings/9999', [
-                'room_id' => $this->room->id,
                 'check_in' => Carbon::now()->addDays(5)->toDateString(),
                 'check_out' => Carbon::now()->addDays(7)->toDateString(),
                 'guest_name' => 'Guest',

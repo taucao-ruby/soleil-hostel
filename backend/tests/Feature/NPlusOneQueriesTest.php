@@ -141,15 +141,13 @@ class NPlusOneQueriesTest extends TestCase
     {
         $user = User::factory()->create();
         $booking = Booking::factory()->create(['user_id' => $user->id]);
-        $roomId = $booking->room_id;
 
         // Act as authenticated user
         $this->actingAs($user, 'sanctum');
 
         $bookingId = $booking->id;
-        $this->assertQueryCount(function () use ($bookingId, $roomId) {
+        $this->assertQueryCount(function () use ($bookingId) {
             $this->putJson("/api/bookings/{$bookingId}", [
-                'room_id' => $roomId,
                 'check_in' => now()->addDays(5)->format('Y-m-d'),
                 'check_out' => now()->addDays(7)->format('Y-m-d'),
                 'guest_name' => 'Updated Guest',

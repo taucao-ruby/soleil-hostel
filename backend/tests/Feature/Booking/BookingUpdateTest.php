@@ -102,7 +102,8 @@ class BookingUpdateTest extends TestCase
             ->assertJsonPath('data.check_in', $newCheckIn)
             ->assertJsonPath('data.check_out', $newCheckOut)
             ->assertJsonPath('data.guest_name', 'Trần Thị C')
-            ->assertJsonPath('data.guest_email', 'tran.thi.c@example.com');
+            ->assertJsonPath('data.guest_email', 'tran.thi.c@example.com')
+            ->assertJsonPath('data.room_id', $this->room->id);
 
         $this->assertDatabaseHas('bookings', [
             'id' => $booking->id,
@@ -269,6 +270,74 @@ class BookingUpdateTest extends TestCase
 
         $response->assertUnprocessable()
             ->assertJsonValidationErrors(['guest_email']);
+    }
+
+    public function test_update_rejects_room_id_because_room_movement_needs_dedicated_flow(): void
+    {
+        $booking = $this->ownerBooking();
+        $otherRoom = Room::factory()->create();
+
+        $response = $this->actingAs($this->user)
+            ->putJson("/api/v1/bookings/{$booking->id}", $this->payload([
+                'room_id' => $otherRoom->id,
+            ]));
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['room_id']);
+
+        $this->assertSame($this->room->id, $booking->fresh()->room_id);
+    }
+
+    public function test_update_rejects_number_of_guests_because_generic_update_does_not_reprice_capacity_contract(): void
+    {
+        $booking = $this->ownerBooking([
+            'number_of_guests' => 2,
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->putJson("/api/v1/bookings/{$booking->id}", $this->payload([
+                'number_of_guests' => 3,
+            ]));
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['number_of_guests']);
+
+        $this->assertSame(2, $booking->fresh()->number_of_guests);
+    }
+
+    public function test_owner_can_update_special_requests_without_changing_room(): void
+    {
+        $booking = $this->ownerBooking([
+            'special_requests' => 'Original note',
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->putJson("/api/v1/bookings/{$booking->id}", $this->payload([
+                'special_requests' => 'Please arrange a lower bunk.',
+            ]));
+
+        $response->assertOk()
+            ->assertJsonPath('data.room_id', $this->room->id)
+            ->assertJsonPath('data.special_requests', 'Please arrange a lower bunk.');
+
+        $this->assertDatabaseHas('bookings', [
+            'id' => $booking->id,
+            'room_id' => $this->room->id,
+            'special_requests' => 'Please arrange a lower bunk.',
+        ]);
+    }
+
+    public function test_update_rejects_oversized_special_requests(): void
+    {
+        $booking = $this->ownerBooking();
+
+        $response = $this->actingAs($this->user)
+            ->putJson("/api/v1/bookings/{$booking->id}", $this->payload([
+                'special_requests' => str_repeat('a', 2001),
+            ]));
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['special_requests']);
     }
 
     // ─── Authorization ────────────────────────────────────────────────────────
@@ -493,6 +562,8 @@ class BookingUpdateTest extends TestCase
                     'check_out',
                     'guest_name',
                     'guest_email',
+                    'number_of_guests',
+                    'special_requests',
                     'status',
                     'status_label',
                     'nights',

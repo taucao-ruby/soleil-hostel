@@ -3,7 +3,7 @@ info:
   title: Soleil Hostel API
   version: 2.0.0
   description: |
-    Production-ready hostel management API built with Laravel 11 + PHP 8.3.
+    Production-ready hostel management API for Soleil Hostel.
 
     ## Features
     - **Dual Auth Modes**: Bearer Token (stateless) + HttpOnly Cookie (web browsers)
@@ -148,8 +148,8 @@ components:
           example: 2
         status:
           type: string
-          enum: [active, inactive]
-          example: "active"
+          enum: [available, unavailable]
+          example: "available"
         lock_version:
           type: integer
           description: |
@@ -215,7 +215,7 @@ components:
         refund_status:
           type: string
           nullable: true
-          enum: [pending, completed, failed]
+          enum: [pending, succeeded, failed]
         refund_amount:
           type: integer
           nullable: true
@@ -1293,8 +1293,8 @@ paths:
                   example: 2
                 status:
                   type: string
-                  enum: [active, inactive]
-                  default: active
+                  enum: [available, unavailable]
+                  default: available
       responses:
         "201":
           description: Room created
@@ -1383,7 +1383,7 @@ paths:
                   type: integer
                 status:
                   type: string
-                  enum: [active, inactive]
+                  enum: [available, unavailable]
                 lock_version:
                   type: integer
                   description: Current version from GET request

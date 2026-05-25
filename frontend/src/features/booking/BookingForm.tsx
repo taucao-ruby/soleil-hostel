@@ -296,6 +296,7 @@ const BookingForm: React.FC = () => {
     setIsSubmitting(true)
 
     try {
+      const specialRequests = formData.special_requests.trim()
       const bookingData: BookingFormData = {
         room_id: formData.room_id!,
         guest_name: formData.guest_name,
@@ -303,7 +304,7 @@ const BookingForm: React.FC = () => {
         check_in: formData.check_in,
         check_out: formData.check_out,
         number_of_guests: formData.number_of_guests,
-        special_requests: formData.special_requests || undefined,
+        special_requests: specialRequests.length > 0 ? specialRequests : null,
       }
 
       const booking = await createBooking(bookingData)

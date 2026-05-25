@@ -13,7 +13,15 @@ export interface BookingFormData {
   check_in: string // YYYY-MM-DD format (date-only)
   check_out: string // YYYY-MM-DD format (date-only)
   number_of_guests: number
-  special_requests?: string
+  special_requests: string | null
+}
+
+export interface BookingUpdateData {
+  guest_name: string
+  guest_email: string
+  check_in: string // YYYY-MM-DD format (date-only)
+  check_out: string // YYYY-MM-DD format (date-only)
+  special_requests?: string | null
 }
 
 export interface BookingResponse {

@@ -59,6 +59,8 @@ export interface BookingApiRaw {
   check_out: string
   guest_name: string
   guest_email: string
+  number_of_guests: number | null
+  special_requests: string | null
   status: BookingStatus
   status_label: string | null
   nights: number
@@ -80,8 +82,6 @@ export interface BookingDetailRaw extends BookingApiRaw {
 }
 
 export interface Booking extends BookingDetailRaw {
-  number_of_guests?: number
-  special_requests?: string | null
   total_price?: number
 }
 

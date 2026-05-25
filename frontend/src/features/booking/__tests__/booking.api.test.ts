@@ -50,6 +50,8 @@ const makeBookingRaw = (overrides: Partial<BookingApiRaw> = {}): BookingApiRaw =
   check_out: '2026-06-03',
   guest_name: 'Nguyễn Văn A',
   guest_email: 'nguyen.van.a@example.com',
+  number_of_guests: 2,
+  special_requests: null,
   status: 'pending',
   status_label: 'Chờ xác nhận',
   nights: 2,
@@ -104,6 +106,7 @@ const makeFormData = (overrides: Partial<BookingFormData> = {}): BookingFormData
   check_in: '2026-06-01',
   check_out: '2026-06-03',
   number_of_guests: 2,
+  special_requests: null,
   ...overrides,
 })
 
@@ -161,6 +164,26 @@ describe('createBooking', () => {
 
     const [, sentData] = mockApiInstance.post.mock.calls[0]
     expect(sentData).toMatchObject({ special_requests: 'Phòng tầng cao' })
+  })
+
+  it('sends number_of_guests in the create payload', async () => {
+    const formData = makeFormData({ number_of_guests: 3 })
+    mockApiInstance.post.mockResolvedValueOnce(axiosResponse({ data: makeBooking() }))
+
+    await createBooking(formData)
+
+    const [, sentData] = mockApiInstance.post.mock.calls[0]
+    expect(sentData).toMatchObject({ number_of_guests: 3 })
+  })
+
+  it('preserves null special_requests when the form has no note', async () => {
+    const formData = makeFormData({ special_requests: null })
+    mockApiInstance.post.mockResolvedValueOnce(axiosResponse({ data: makeBooking() }))
+
+    await createBooking(formData)
+
+    const [, sentData] = mockApiInstance.post.mock.calls[0]
+    expect(sentData).toMatchObject({ special_requests: null })
   })
 })
 

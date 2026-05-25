@@ -69,6 +69,25 @@ async function fillValidBookingAndSubmit() {
   fireEvent.click(screen.getByRole('button', { name: 'Xác nhận đặt phòng →' }))
 }
 
+async function fillValidBookingWithSpecialRequestAndSubmit() {
+  await waitFor(() => {
+    expect(screen.getByRole('option', { name: /Phòng Dormitory 4 giường/i })).toBeInTheDocument()
+  })
+
+  fireEvent.change(screen.getByLabelText(/Chọn phòng/), { target: { value: '1' } })
+  fireEvent.change(screen.getByLabelText(/Họ và tên/), { target: { value: 'Nguyen Van A' } })
+  fireEvent.change(screen.getByLabelText(/Địa chỉ email/), {
+    target: { value: 'user@example.com' },
+  })
+  fireEvent.change(screen.getByLabelText(/Ngày nhận phòng/), { target: { value: '2026-06-15' } })
+  fireEvent.change(screen.getByLabelText(/Ngày trả phòng/), { target: { value: '2026-06-18' } })
+  fireEvent.change(screen.getByLabelText(/Số khách/), { target: { value: '3' } })
+  fireEvent.change(screen.getByLabelText(/Yêu cầu đặc biệt/), {
+    target: { value: '  Phòng tầng cao  ' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Xác nhận đặt phòng →' }))
+}
+
 describe('BookingForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -297,10 +316,11 @@ describe('BookingForm', () => {
     })
   })
 
-  it('shows the success state and redirects after two seconds', async () => {
+  it('submits number_of_guests and null special_requests for a blank note', async () => {
     mockCreateBooking.mockResolvedValue({
       id: 42,
       room_id: 1,
+      user_id: 1,
       guest_name: 'Nguyen Van A',
       guest_email: 'user@example.com',
       check_in: '2026-06-15',
@@ -308,6 +328,66 @@ describe('BookingForm', () => {
       number_of_guests: 2,
       special_requests: null,
       status: 'pending',
+      status_label: null,
+      nights: 3,
+      created_at: '2026-06-01T10:00:00Z',
+      updated_at: '2026-06-01T10:00:00Z',
+    })
+
+    render(<BookingForm />)
+    await fillValidBookingAndSubmit()
+
+    expect(mockCreateBooking).toHaveBeenCalledWith(
+      expect.objectContaining({
+        number_of_guests: 1,
+        special_requests: null,
+      })
+    )
+  })
+
+  it('trims and submits special_requests when provided', async () => {
+    mockCreateBooking.mockResolvedValue({
+      id: 43,
+      room_id: 1,
+      user_id: 1,
+      guest_name: 'Nguyen Van A',
+      guest_email: 'user@example.com',
+      check_in: '2026-06-15',
+      check_out: '2026-06-18',
+      number_of_guests: 3,
+      special_requests: 'Phòng tầng cao',
+      status: 'pending',
+      status_label: null,
+      nights: 3,
+      created_at: '2026-06-01T10:00:00Z',
+      updated_at: '2026-06-01T10:00:00Z',
+    })
+
+    render(<BookingForm />)
+    await fillValidBookingWithSpecialRequestAndSubmit()
+
+    expect(mockCreateBooking).toHaveBeenCalledWith(
+      expect.objectContaining({
+        number_of_guests: 3,
+        special_requests: 'Phòng tầng cao',
+      })
+    )
+  })
+
+  it('shows the success state and redirects after two seconds', async () => {
+    mockCreateBooking.mockResolvedValue({
+      id: 42,
+      room_id: 1,
+      user_id: 1,
+      guest_name: 'Nguyen Van A',
+      guest_email: 'user@example.com',
+      check_in: '2026-06-15',
+      check_out: '2026-06-18',
+      number_of_guests: 2,
+      special_requests: null,
+      status: 'pending',
+      status_label: null,
+      nights: 3,
       total_price: 1050000,
       created_at: '2026-06-01T10:00:00Z',
       updated_at: '2026-06-01T10:00:00Z',

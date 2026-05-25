@@ -181,6 +181,12 @@ parameters:
 			path: app/Http/Resources/BookingResource.php
 
 		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\BookingResource\:\:\$number_of_guests\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/BookingResource.php
+
+		-
 			message: '#^Access to an undefined property App\\Http\\Resources\\BookingResource\:\:\$refund_amount\.$#'
 			identifier: property.notFound
 			count: 4
@@ -200,6 +206,12 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property App\\Http\\Resources\\BookingResource\:\:\$room_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/BookingResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\BookingResource\:\:\$special_requests\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Http/Resources/BookingResource.php

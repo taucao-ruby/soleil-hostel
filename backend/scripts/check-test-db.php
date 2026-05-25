@@ -21,7 +21,6 @@ declare(strict_types=1);
  *   GATE-0-PASSED  -> exit 0   server reachable AND test database present
  *   GATE-0-BLOCKED -> exit 2   driver missing, server down, or database absent
  */
-
 $host = getenv('DB_HOST') ?: '127.0.0.1';
 $port = getenv('DB_PORT') ?: '5432';
 $db = getenv('DB_DATABASE') ?: 'soleil_test';

@@ -318,8 +318,8 @@ class SoleilTokenCookieEncryptionTest extends TestCase
      * Verify that the EncryptCookies exception did not affect the middleware
      * pipeline — all expected security headers must still be present.
      *
-     * In test env, APP_DEBUG=false (phpunit.xml) → SecurityHeaders treats
-     * this as production-like, so all headers including HSTS should be set.
+     * SecurityHeaders applies baseline headers in every environment; production
+     * changes only the stricter HSTS/CSP variants.
      */
     public function test_security_headers_present_on_api_response(): void
     {

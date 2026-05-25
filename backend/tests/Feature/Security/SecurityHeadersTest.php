@@ -114,14 +114,71 @@ class SecurityHeadersTest extends TestCase
         $csp = $response->headers->get('Content-Security-Policy');
         $this->assertNotEmpty($csp, 'CSP header should be present');
 
-        // Check basic CSP structure
-        if (config('app.debug')) {
-            // Dev mode: allow unsafe-eval, unsafe-inline
-            $this->assertStringContainsString('unsafe-eval', $csp);
-        } else {
-            // Production: strict-dynamic, no unsafe
+        // Check basic CSP structure (relaxed only for local + testing)
+        if (! app()->environment(['local', 'testing'])) {
+            // Production-grade (incl. staging): strict-dynamic, no unsafe
             $this->assertStringContainsString('strict-dynamic', $csp);
+        } else {
+            // Dev/test mode: allow unsafe-eval for tooling
+            $this->assertStringContainsString('unsafe-eval', $csp);
         }
+    }
+
+    public function test_production_security_headers_apply_when_debug_is_true(): void
+    {
+        $this->setApplicationEnvironment('production');
+        config(['app.debug' => true]);
+
+        $response = $this->get('/');
+
+        $response->assertHeader('Strict-Transport-Security');
+        $this->assertSame(
+            'max-age=63072000; includeSubDomains; preload',
+            $response->headers->get('Strict-Transport-Security')
+        );
+
+        $csp = $response->headers->get('Content-Security-Policy', '');
+        $this->assertStringContainsString('strict-dynamic', $csp);
+        $this->assertStringNotContainsString("'unsafe-eval'", $csp);
+    }
+
+    public function test_non_production_debug_false_uses_development_security_headers(): void
+    {
+        $this->setApplicationEnvironment('testing');
+        config(['app.debug' => false]);
+
+        $response = $this->get('/');
+
+        $response->assertHeader('Strict-Transport-Security');
+        $this->assertSame(
+            'max-age=31536000; includeSubDomains',
+            $response->headers->get('Strict-Transport-Security')
+        );
+
+        $csp = $response->headers->get('Content-Security-Policy', '');
+        $this->assertStringContainsString("'unsafe-eval'", $csp);
+        $this->assertStringNotContainsString('strict-dynamic', $csp);
+    }
+
+    /**
+     * Regression: staging must NOT be served the relaxed dev policy. Keying on
+     * the environment (local + testing only) rather than isProduction() closes
+     * the gap where staging would otherwise receive the dev CSP/HSTS.
+     */
+    public function test_staging_uses_production_security_headers(): void
+    {
+        $this->setApplicationEnvironment('staging');
+
+        $response = $this->get('/');
+
+        $this->assertSame(
+            'max-age=63072000; includeSubDomains; preload',
+            $response->headers->get('Strict-Transport-Security')
+        );
+
+        $csp = $response->headers->get('Content-Security-Policy', '');
+        $this->assertStringContainsString('strict-dynamic', $csp);
+        $this->assertStringNotContainsString("'unsafe-eval'", $csp);
     }
 
     /**
@@ -219,5 +276,11 @@ class SecurityHeadersTest extends TestCase
         // In test context, nonce should be available
         $this->assertIsString($nonce);
         // Note: nonce is set by SecurityHeaders middleware, so it exists if request is made
+    }
+
+    private function setApplicationEnvironment(string $environment): void
+    {
+        $this->app->detectEnvironment(fn () => $environment);
+        config(['app.env' => $environment]);
     }
 }

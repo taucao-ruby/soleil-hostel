@@ -55,8 +55,8 @@ class SecurityHeaders
 
     private function applySecurityHeaders($response)
     {
-        $isDevelopment = config('app.debug');
-        $isProduction = ! $isDevelopment;
+        $isProduction = $this->shouldApplyProductionSecurityHeaders();
+        $isDevelopment = ! $isProduction;
 
         // ========== 1. HSTS (HTTP Strict-Transport-Security) ==========
         // Forces the browser to use HTTPS; prevents SSL-stripping attacks
@@ -136,7 +136,7 @@ class SecurityHeaders
         // ========== CSP-Report-Only (Audit Mode) ==========
         // Reports CSP violations without blocking (for audit/testing)
         // Enable via CSP_REPORTING=1 in .env to use report-only instead of enforce mode
-        if (config('security-headers.csp.reporting_enabled', false) && ! $isDevelopment) {
+        if (config('security-headers.csp.reporting_enabled', false) && $isProduction) {
             $response->headers->set(
                 'Content-Security-Policy-Report-Only',
                 $csp.'; report-uri /api/csp-violation-report',
@@ -153,6 +153,16 @@ class SecurityHeaders
         $response->headers->remove('X-Nonce');
 
         return $response;
+    }
+
+    private function shouldApplyProductionSecurityHeaders(): bool
+    {
+        // Relax CSP/HSTS only for local dev and the automated test suite, where
+        // the Vite dev server / test tooling need unsafe-eval. Staging,
+        // production, and every other environment get strict headers — so
+        // staging is never served the relaxed dev policy, and a stray
+        // APP_DEBUG=true cannot downgrade them.
+        return ! app()->environment(['local', 'testing']);
     }
 
     /**

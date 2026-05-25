@@ -14,15 +14,35 @@ final class AssertProductionConfig extends Command
 
     public function handle(): int
     {
-        if (config('app.env') === 'production' && config('session.secure') !== true) {
-            $this->error('Config assertion failed: SESSION_SECURE_COOKIE must be true when APP_ENV=production.');
+        $failures = [];
 
-            return Command::FAILURE;
+        if (! app()->isProduction()) {
+            $failures[] = 'APP_ENV must resolve to production for this production assertion.';
         }
 
-        if (! in_array(config('app.env'), ['local', 'testing'], true)
+        if (app()->isProduction() && config('session.secure') !== true) {
+            $failures[] = 'SESSION_SECURE_COOKIE must be true when APP_ENV=production.';
+        }
+
+        if (app()->isProduction() && config('app.debug') !== false) {
+            $failures[] = 'APP_DEBUG must resolve to false in production.';
+        }
+
+        if (! app()->environment(['local', 'testing'])
             && empty(config('database.redis.default.password'))) {
-            $this->error('Config assertion failed: REDIS_PASSWORD must be set in non-local environments.');
+            $failures[] = 'REDIS_PASSWORD must be set in non-local environments.';
+        }
+
+        if ($failures !== []) {
+            $this->error('Production configuration assertion failed.');
+
+            foreach ($failures as $failure) {
+                $this->line("- {$failure}");
+            }
+
+            $this->line("- APP_ENV: {$this->formatDiagnosticValue(app()->environment())}");
+            $this->line("- config('app.debug'): {$this->formatDiagnosticValue(config('app.debug'))}");
+            $this->line("- env('APP_DEBUG'): {$this->formatDiagnosticValue($this->rawAppDebugEnvironmentValue())}");
 
             return Command::FAILURE;
         }
@@ -30,5 +50,25 @@ final class AssertProductionConfig extends Command
         $this->info('Production config OK.');
 
         return Command::SUCCESS;
+    }
+
+    private function formatDiagnosticValue(mixed $value): string
+    {
+        if (is_bool($value)) {
+            return $value ? 'true' : 'false';
+        }
+
+        if ($value === null) {
+            return 'null';
+        }
+
+        return (string) $value;
+    }
+
+    private function rawAppDebugEnvironmentValue(): mixed
+    {
+        $value = $_ENV['APP_DEBUG'] ?? $_SERVER['APP_DEBUG'] ?? getenv('APP_DEBUG');
+
+        return $value === false ? null : $value;
     }
 }

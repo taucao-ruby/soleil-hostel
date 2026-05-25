@@ -160,6 +160,10 @@ return Application::configure(basePath: dirname(__DIR__))
                     'correlation_id' => $request->attributes->get('correlation_id'),
                 ]);
 
+                if (app()->isProduction()) {
+                    return ApiResponse::serverError('Internal server error.');
+                }
+
                 $message = config('app.debug')
                     ? $e->getMessage()
                     : 'Internal server error.';

@@ -10,15 +10,41 @@ use InvalidArgumentException;
 
 final class HostelClock
 {
+    private const DEFAULT_TIMEZONE = 'Asia/Ho_Chi_Minh';
+
     public static function timezone(): DateTimeZone
     {
-        $timezone = config('booking.business_timezone', config('app.timezone', 'Asia/Ho_Chi_Minh'));
+        return new DateTimeZone(self::resolveTimezone());
+    }
 
-        if (! is_string($timezone) || trim($timezone) === '') {
-            $timezone = 'Asia/Ho_Chi_Minh';
+    /**
+     * Resolve the configured hostel-local timezone as a validated IANA identifier.
+     *
+     * The configured value (booking.business_timezone, falling back to app.timezone)
+     * must be a non-empty IANA identifier. Empty, whitespace-only, non-string, or
+     * unrecognised values fail fast with InvalidArgumentException at this boundary
+     * instead of surfacing as a low-level DateTimeZone exception deeper in the stack.
+     * The canonical default applies only when both config keys are entirely absent.
+     *
+     * @return non-empty-string
+     */
+    private static function resolveTimezone(): string
+    {
+        $configured = config('booking.business_timezone', config('app.timezone', self::DEFAULT_TIMEZONE));
+
+        $timezone = is_string($configured) ? trim($configured) : '';
+
+        if ($timezone === '') {
+            throw new InvalidArgumentException('Hostel timezone must not be empty.');
         }
 
-        return new DateTimeZone($timezone);
+        if (! in_array($timezone, DateTimeZone::listIdentifiers(), true)) {
+            throw new InvalidArgumentException(
+                sprintf('Invalid hostel timezone configured: "%s".', $timezone)
+            );
+        }
+
+        return $timezone;
     }
 
     public static function now(): CarbonImmutable

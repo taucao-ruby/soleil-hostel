@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Payment;
 
 use App\Enums\BookingStatus;
 use App\Models\Booking;
-use App\Models\StripeRefundEvent;
 use App\Models\StripeWebhookEvent;
 use App\Services\Payment\PaymentIntentApplyOutcome;
 use App\Services\Payment\StripePaymentIntentSucceededHandler;
+use App\Services\Payment\StripeRefundEventRecorder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -249,13 +249,13 @@ class StripeWebhookController extends CashierWebhookController
                     return ['status' => 'missing_booking'];
                 }
 
-                StripeRefundEvent::create([
-                    'stripe_refund_id' => $refundId,
-                    'stripe_event_id' => $stripeEventId,
-                    'booking_id' => $booking->id,
-                    'amount_refunded' => $refundAmount,
-                    'currency' => strtolower((string) $currency),
-                ]);
+                app(StripeRefundEventRecorder::class)->record(
+                    $booking,
+                    (string) $refundId,
+                    $refundAmount,
+                    (string) $currency,
+                    (string) $stripeEventId,
+                );
 
                 $newStatus = $refundStatus === 'succeeded'
                     ? BookingStatus::CANCELLED

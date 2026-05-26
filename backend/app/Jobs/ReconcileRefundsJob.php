@@ -8,8 +8,10 @@ use App\Enums\BookingStatus;
 use App\Events\BookingCancelled;
 use App\Models\Booking;
 use App\Models\User;
+use App\Services\Payment\StripeRefundEventRecorder;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
@@ -50,6 +52,18 @@ final class ReconcileRefundsJob implements ShouldQueue
      * Delete job if models are missing.
      */
     public bool $deleteWhenMissingModels = true;
+
+    /**
+     * Lazily-resolved refund ledger recorder. Not set in the constructor so the
+     * job stays queue-serializable; the recorder is stateless and resolved from
+     * the container on first use.
+     */
+    private ?StripeRefundEventRecorder $refundLedger = null;
+
+    private function refundLedger(): StripeRefundEventRecorder
+    {
+        return $this->refundLedger ??= app(StripeRefundEventRecorder::class);
+    }
 
     /**
      * Execute the job.
@@ -204,27 +218,63 @@ final class ReconcileRefundsJob implements ShouldQueue
         $refund = $stripe->refunds->retrieve($booking->refund_id);
 
         if ($refund->status === 'succeeded') {
-            DB::transaction(function () use ($booking, $refund) {
-                $booking = $booking->transitionTo(BookingStatus::CANCELLED);
-                $booking->forceFill([
-                    'refund_status' => 'succeeded',
-                    'refund_amount' => $refund->amount,
-                    'refund_error' => null,
-                ])->save();
+            try {
+                DB::transaction(function () use ($booking, $refund) {
+                    $this->refundLedger()->record(
+                        $booking,
+                        (string) $refund->id,
+                        (int) $refund->amount,
+                        (string) $refund->currency,
+                        StripeRefundEventRecorder::reconcileEventKey((string) $refund->id),
+                    );
 
-                event(new BookingCancelled($booking));
-            });
+                    $transitioned = $booking->transitionTo(BookingStatus::CANCELLED);
+                    $transitioned->forceFill([
+                        'refund_status' => 'succeeded',
+                        'refund_amount' => $refund->amount,
+                        'refund_error' => null,
+                    ])->save();
+
+                    event(new BookingCancelled($transitioned));
+                });
+            } catch (UniqueConstraintViolationException) {
+                Log::info('Reconcile: refund already in ledger; webhook won the race', [
+                    'booking_id' => $booking->id,
+                    'refund_id' => $refund->id,
+                ]);
+
+                return;
+            }
 
             Log::info('Reconciled pending refund', [
                 'booking_id' => $booking->id,
                 'refund_id' => $refund->id,
             ]);
         } elseif ($refund->status === 'failed') {
-            $booking = $booking->transitionTo(BookingStatus::REFUND_FAILED);
-            $booking->forceFill([
-                'refund_status' => 'failed',
-                'refund_error' => $refund->failure_reason ?? 'Unknown failure',
-            ])->save();
+            try {
+                DB::transaction(function () use ($booking, $refund) {
+                    $this->refundLedger()->record(
+                        $booking,
+                        (string) $refund->id,
+                        (int) $refund->amount,
+                        (string) $refund->currency,
+                        StripeRefundEventRecorder::reconcileEventKey((string) $refund->id),
+                    );
+
+                    $transitioned = $booking->transitionTo(BookingStatus::REFUND_FAILED);
+                    $transitioned->forceFill([
+                        'refund_status' => 'failed',
+                        'refund_error' => $refund->failure_reason ?? 'Unknown failure',
+                    ])->save();
+                });
+            } catch (UniqueConstraintViolationException) {
+                Log::info('Reconcile: failed refund already in ledger; webhook won the race', [
+                    'booking_id' => $booking->id,
+                    'refund_id' => $refund->id,
+                ]);
+
+                return;
+            }
 
             Log::warning('Refund failed on Stripe', [
                 'booking_id' => $booking->id,
@@ -269,17 +319,34 @@ final class ReconcileRefundsJob implements ShouldQueue
         $latestRefund = $refunds->data[0];
 
         if ($latestRefund->status === 'succeeded') {
-            DB::transaction(function () use ($booking, $latestRefund) {
-                $booking = $booking->transitionTo(BookingStatus::CANCELLED);
-                $booking->forceFill([
-                    'refund_id' => $latestRefund->id,
-                    'refund_status' => 'succeeded',
-                    'refund_amount' => $latestRefund->amount,
-                    'refund_error' => null,
-                ])->save();
+            try {
+                DB::transaction(function () use ($booking, $latestRefund) {
+                    $this->refundLedger()->record(
+                        $booking,
+                        (string) $latestRefund->id,
+                        (int) $latestRefund->amount,
+                        (string) $latestRefund->currency,
+                        StripeRefundEventRecorder::reconcileEventKey((string) $latestRefund->id),
+                    );
 
-                event(new BookingCancelled($booking));
-            });
+                    $transitioned = $booking->transitionTo(BookingStatus::CANCELLED);
+                    $transitioned->forceFill([
+                        'refund_id' => $latestRefund->id,
+                        'refund_status' => 'succeeded',
+                        'refund_amount' => $latestRefund->amount,
+                        'refund_error' => null,
+                    ])->save();
+
+                    event(new BookingCancelled($transitioned));
+                });
+            } catch (UniqueConstraintViolationException) {
+                Log::info('Reconcile: discovered refund already in ledger; webhook won the race', [
+                    'booking_id' => $booking->id,
+                    'refund_id' => $latestRefund->id,
+                ]);
+
+                return;
+            }
 
             Log::info('Discovered and reconciled refund', [
                 'booking_id' => $booking->id,
@@ -336,17 +403,38 @@ final class ReconcileRefundsJob implements ShouldQueue
                 return;
             }
 
-            DB::transaction(function () use ($booking, $refund, $refundAmount) {
-                $booking = $booking->transitionTo(BookingStatus::CANCELLED);
-                $booking->forceFill([
-                    'refund_id' => $refund->id,
-                    'refund_status' => 'succeeded',
-                    'refund_amount' => $refundAmount,
-                    'refund_error' => null,
-                ])->save();
+            try {
+                DB::transaction(function () use ($booking, $refund, $refundAmount) {
+                    $this->refundLedger()->record(
+                        $booking,
+                        (string) $refund->id,
+                        $refundAmount,
+                        (string) $refund->currency,
+                        StripeRefundEventRecorder::reconcileIssueEventKey((string) $refund->id),
+                    );
 
-                event(new BookingCancelled($booking));
-            });
+                    $transitioned = $booking->transitionTo(BookingStatus::CANCELLED);
+                    $transitioned->forceFill([
+                        'refund_id' => $refund->id,
+                        'refund_status' => 'succeeded',
+                        'refund_amount' => $refundAmount,
+                        'refund_error' => null,
+                    ])->save();
+
+                    event(new BookingCancelled($transitioned));
+                });
+            } catch (UniqueConstraintViolationException) {
+                // The just-issued refund is already in the ledger (a fast
+                // charge.refunded webhook won the race). The booking is already
+                // terminal via that path; treat as reconciled, not a failure —
+                // must not fall through to the REFUND_FAILED handler below.
+                Log::info('Reconcile: issued refund already in ledger; webhook won the race', [
+                    'booking_id' => $booking->id,
+                    'refund_id' => $refund->id,
+                ]);
+
+                return;
+            }
 
             Log::info('Retry refund succeeded', [
                 'booking_id' => $booking->id,

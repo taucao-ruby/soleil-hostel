@@ -3,8 +3,10 @@
 namespace App\Http\Requests;
 
 use App\Models\Room;
+use App\Support\HostelClock;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
+use InvalidArgumentException;
 
 class StoreBookingRequest extends FormRequest
 {
@@ -25,7 +27,19 @@ class StoreBookingRequest extends FormRequest
     {
         return [
             'room_id' => 'required|integer|exists:rooms,id',
-            'check_in' => 'required|date_format:Y-m-d|after_or_equal:today',
+            'check_in' => [
+                'required',
+                'date_format:Y-m-d',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    try {
+                        if (HostelClock::isDateBeforeToday((string) $value)) {
+                            $fail('The check-in date must be today or later.');
+                        }
+                    } catch (InvalidArgumentException) {
+                        // date_format reports invalid input; avoid replacing that error.
+                    }
+                },
+            ],
             'check_out' => 'required|date_format:Y-m-d|after:check_in',
             'guest_name' => 'required|string|min:2|max:255',
             'guest_email' => 'required|email|max:255',

@@ -35,6 +35,16 @@ jobs:
         id: pnpm-hash
         run: echo "hash=$(sha256sum frontend/pnpm-lock.yaml | cut -c1-16)" >> $GITHUB_OUTPUT
 
+  # ========== DATE CORRECTNESS GUARDRAIL ==========
+  date-correctness-guard:
+    name: Date Correctness Guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert booking date correctness
+        run: bash scripts/assert-date-correctness.sh
+
   # ========== BACKEND SETUP ==========
   backend-setup:
     name: Backend Setup (Composer)

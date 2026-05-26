@@ -7,6 +7,7 @@ use App\Enums\BookingStatus;
 use App\Enums\DepositStatus;
 use App\Events\BookingStatusChanged;
 use App\Exceptions\BookingTransitionException;
+use App\Support\HostelClock;
 use App\Traits\Purifiable;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -160,7 +161,7 @@ class Booking extends Model
      */
     public function cancellationPolicy(): CancellationPolicy
     {
-        $hoursUntilCheckIn = (int) floor(now()->diffInHours($this->check_in, false));
+        $hoursUntilCheckIn = (int) floor($this->hoursUntilCheckInStart());
         $config = config('booking.cancellation');
 
         $fullWindow = (int) $config['full_refund_hours'];
@@ -213,7 +214,7 @@ class Booking extends Model
             return 0;
         }
 
-        $hoursUntilCheckIn = now()->diffInHours($this->check_in, false);
+        $hoursUntilCheckIn = $this->hoursUntilCheckInStart();
         $config = config('booking.cancellation');
 
         // Already past check-in
@@ -249,7 +250,7 @@ class Booking extends Model
      */
     public function getRefundPercentage(): int
     {
-        $hoursUntilCheckIn = now()->diffInHours($this->check_in, false);
+        $hoursUntilCheckIn = $this->hoursUntilCheckInStart();
         $config = config('booking.cancellation');
 
         if ($hoursUntilCheckIn < 0) {
@@ -436,7 +437,7 @@ class Booking extends Model
      */
     public function isExpired(): bool
     {
-        return $this->check_out->isPast();
+        return $this->check_out->toDateString() <= HostelClock::todayDate();
     }
 
     /**
@@ -444,7 +445,7 @@ class Booking extends Model
      */
     public function isStarted(): bool
     {
-        return $this->check_in->isPast() || $this->check_in->isToday();
+        return $this->check_in->toDateString() <= HostelClock::todayDate();
     }
 
     /**
@@ -505,5 +506,12 @@ class Booking extends Model
         $this->deleted_by = null;
 
         return $this->restore();
+    }
+
+    private function hoursUntilCheckInStart(): float
+    {
+        $checkInStart = HostelClock::parseDate($this->check_in->toDateString());
+
+        return HostelClock::now()->diffInHours($checkInStart, false);
     }
 }

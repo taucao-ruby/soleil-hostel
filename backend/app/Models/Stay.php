@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\StayStatus;
 use App\Exceptions\StayTransitionException;
+use App\Support\HostelClock;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -138,9 +139,11 @@ class Stay extends Model
      */
     public function scopeExpectedToday(Builder $query): Builder
     {
+        [$startUtc, $endUtc] = HostelClock::localDateRangeAsUtc(HostelClock::todayDate());
+
         return $query
             ->where('stay_status', StayStatus::EXPECTED->value)
-            ->whereDate('scheduled_check_in_at', today());
+            ->whereBetween('scheduled_check_in_at', [$startUtc, $endUtc]);
     }
 
     /**
@@ -148,9 +151,11 @@ class Stay extends Model
      */
     public function scopeDueOutToday(Builder $query): Builder
     {
+        [$startUtc, $endUtc] = HostelClock::localDateRangeAsUtc(HostelClock::todayDate());
+
         return $query
             ->where('stay_status', StayStatus::IN_HOUSE->value)
-            ->whereDate('scheduled_check_out_at', today());
+            ->whereBetween('scheduled_check_out_at', [$startUtc, $endUtc]);
     }
 
     /**

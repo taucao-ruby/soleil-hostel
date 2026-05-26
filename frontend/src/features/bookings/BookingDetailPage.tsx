@@ -8,6 +8,7 @@ import {
 } from '@/shared/types/booking.types'
 import { formatVND } from '@/shared/lib/formatCurrency'
 import { parseDateOnly } from '@/shared/lib/booking.utils'
+import { isDateBeforeHostelToday } from '@/shared/lib/hostelDate'
 import { getErrorMessage, showToast } from '@/shared/utils/toast'
 import BookingDetailPanel from './BookingDetailPanel'
 import ReviewForm from './ReviewForm'
@@ -85,9 +86,7 @@ function canCancelBooking(booking: BookingDetailRaw): boolean {
 }
 
 function canReviewBooking(booking: BookingDetailRaw): boolean {
-  return (
-    booking.status === 'confirmed' && booking.check_out < new Date().toISOString().split('T')[0]
-  )
+  return booking.status === 'confirmed' && isDateBeforeHostelToday(booking.check_out)
 }
 
 interface InfoCellProps {

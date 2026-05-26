@@ -9,6 +9,7 @@ use App\Exceptions\PendingBookingLimitExceededException;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
+use App\Support\HostelClock;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
@@ -532,7 +533,7 @@ class CreateBookingService
 
         // Only reject dates before today for new bookings, not updates to existing ones.
         // Check-in is date-only, so same-day bookings are valid throughout the day.
-        if (! $isUpdate && $checkIn->lt(Carbon::today())) {
+        if (! $isUpdate && $checkIn->toDateString() < HostelClock::todayDate()) {
             throw new RuntimeException(
                 'Ngày check-in không được là ngày đã qua'
             );
@@ -545,9 +546,9 @@ class CreateBookingService
     private function parseDate($date): Carbon
     {
         if ($date instanceof Carbon) {
-            return $date;
+            return $date->copy()->startOfDay();
         }
 
-        return Carbon::parse($date)->startOfDay();
+        return HostelClock::parseDate((string) $date)->toMutable();
     }
 }

@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 return [
 
+    'business_timezone' => env(
+        'BOOKING_BUSINESS_TIMEZONE',
+        env('APP_TIMEZONE', 'Asia/Ho_Chi_Minh')
+    ),
+
     /*
     |--------------------------------------------------------------------------
     | Pending Booking Expiry (TTL)

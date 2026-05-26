@@ -5,6 +5,7 @@ import {
 } from '@/shared/types/booking.types'
 import { formatVND } from '@/shared/lib/formatCurrency'
 import { formatDateOnly, parseDateOnly } from '@/shared/lib/booking.utils'
+import { getHostelToday } from '@/shared/lib/hostelDate'
 
 /**
  * Booking ViewModel
@@ -68,13 +69,11 @@ export function toBookingViewModel(raw: BookingApiRaw): BookingViewModel {
 }
 
 export function isUpcoming(booking: BookingViewModel): boolean {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const today = parseDateOnly(getHostelToday())
   return booking.checkIn >= today
 }
 
 export function isPast(booking: BookingViewModel): boolean {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const today = parseDateOnly(getHostelToday())
   return booking.checkOut < today
 }

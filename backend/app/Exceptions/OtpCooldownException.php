@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exceptions;
 
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use RuntimeException;
 
@@ -32,7 +33,7 @@ final class OtpCooldownException extends RuntimeException
      */
     public function retryAfterSeconds(): int
     {
-        $remaining = $this->retryAfter->getTimestamp() - now()->getTimestamp();
+        $remaining = $this->retryAfter->getTimestamp() - CarbonImmutable::now('UTC')->getTimestamp();
 
         return max(0, $remaining);
     }

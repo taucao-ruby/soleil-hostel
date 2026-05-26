@@ -5,6 +5,7 @@
  */
 
 import type { BookingStatus } from '@/shared/types/booking.types'
+import { getHostelToday } from '@/shared/lib/hostelDate'
 
 export interface StatusConfig {
   label: string
@@ -81,13 +82,9 @@ export function parseDateOnly(dateStr: string): Date {
 }
 
 /**
- * Today's civil date as YYYY-MM-DD in the runtime's local zone — for lexical
- * comparison against zoneless booking check-in/check-out values.
+ * Today's hostel-local civil date as YYYY-MM-DD for lexical comparison against
+ * zoneless booking check-in/check-out values.
  */
 export function todayDateOnly(): string {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  return getHostelToday()
 }

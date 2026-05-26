@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { toBookingViewModel, isUpcoming, isPast } from './bookingViewModel'
 import type { BookingApiRaw } from '@/shared/types/booking.types'
 
@@ -110,6 +110,18 @@ describe('isUpcoming', () => {
     const vm = toBookingViewModel(makeRaw({ check_in: '2020-01-01', check_out: '2020-01-03' }))
     expect(isUpcoming(vm)).toBe(false)
   })
+
+  it('treats Vietnam today as upcoming during the UTC previous-day window', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-25T17:30:00.000Z'))
+
+    try {
+      const vm = toBookingViewModel(makeRaw({ check_in: '2026-05-26', check_out: '2026-05-27' }))
+      expect(isUpcoming(vm)).toBe(true)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
 
 describe('isPast', () => {
@@ -121,5 +133,22 @@ describe('isPast', () => {
   it('returns false when checkOut is in the future', () => {
     const vm = toBookingViewModel(makeRaw({ check_in: '2099-01-01', check_out: '2099-01-03' }))
     expect(isPast(vm)).toBe(false)
+  })
+
+  it('uses Vietnam today for past bookings during the UTC previous-day window', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-25T17:30:00.000Z'))
+
+    try {
+      const yesterday = toBookingViewModel(
+        makeRaw({ check_in: '2026-05-24', check_out: '2026-05-25' })
+      )
+      const today = toBookingViewModel(makeRaw({ check_in: '2026-05-25', check_out: '2026-05-26' }))
+
+      expect(isPast(yesterday)).toBe(true)
+      expect(isPast(today)).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

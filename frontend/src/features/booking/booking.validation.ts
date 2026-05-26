@@ -5,6 +5,12 @@
  */
 
 import { isValidEmail } from '@/shared/utils/security'
+import {
+  addDaysToDateOnly,
+  getHostelToday,
+  getHostelTomorrow,
+  isDateBeforeHostelToday,
+} from '@/shared/lib/hostelDate'
 
 export const MAX_STAY_DAYS = 30
 
@@ -37,14 +43,7 @@ function parseDateInput(dateString: string): Date | null {
 }
 
 function addDays(dateString: string, amount: number): string {
-  const baseDate = parseDateInput(dateString)
-  if (!baseDate) {
-    return dateString
-  }
-
-  const nextDate = new Date(baseDate)
-  nextDate.setDate(nextDate.getDate() + amount)
-  return formatDateForInput(nextDate)
+  return addDaysToDateOnly(dateString, amount)
 }
 
 /**
@@ -84,12 +83,10 @@ export function validateBookingForm(data: {
     errors.check_in = 'Vui lòng chọn ngày nhận phòng'
   } else {
     const checkInDate = parseDateInput(data.check_in)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
 
     if (!checkInDate) {
       errors.check_in = 'Ngày nhận phòng không hợp lệ'
-    } else if (checkInDate < today) {
+    } else if (isDateBeforeHostelToday(data.check_in)) {
       errors.check_in = 'Ngày nhận phòng không thể là ngày đã qua'
     }
   }
@@ -155,7 +152,7 @@ export function formatDateForInput(date: Date): string {
  * Get minimum check-in date (today)
  */
 export function getMinCheckInDate(): string {
-  return formatDateForInput(new Date())
+  return getHostelToday()
 }
 
 /**
@@ -165,9 +162,7 @@ export function getMinCheckOutDate(checkInDate?: string): string {
   if (checkInDate) {
     return addDays(checkInDate, 1)
   }
-  const tomorrow = new Date()
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  return formatDateForInput(tomorrow)
+  return getHostelTomorrow()
 }
 
 /**

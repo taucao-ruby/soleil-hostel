@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use Carbon\Carbon;
+use App\Support\HostelClock;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -119,8 +119,8 @@ class Location extends Model
      */
     public function scopeWithRoomCounts(Builder $query): Builder
     {
-        $today = Carbon::today()->toDateString();
-        $tomorrow = Carbon::tomorrow()->toDateString();
+        $today = HostelClock::todayDate();
+        $tomorrow = HostelClock::tomorrowDate();
 
         return $query->withCount([
             'rooms',

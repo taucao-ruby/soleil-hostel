@@ -7,6 +7,7 @@ use App\Exceptions\OtpCooldownException;
 use App\Models\EmailVerificationCode;
 use App\Models\User;
 use App\Notifications\EmailVerificationCodeNotification;
+use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -49,7 +50,7 @@ class EmailVerificationCodeService
             if ($latest !== null && $latest->last_sent_at !== null) {
                 $cooldownExpiresAt = $latest->last_sent_at->copy()->addSeconds($cooldownSeconds);
 
-                if ($cooldownExpiresAt->isFuture()) {
+                if ($cooldownExpiresAt->greaterThan($this->nowUtc())) {
                     throw new OtpCooldownException($cooldownExpiresAt);
                 }
             }
@@ -58,17 +59,18 @@ class EmailVerificationCodeService
             // so a previously delivered code cannot be redeemed once a fresher one exists.
             EmailVerificationCode::where('user_id', $user->id)
                 ->whereNull('consumed_at')
-                ->update(['consumed_at' => now()]);
+                ->update(['consumed_at' => $this->nowUtc()]);
 
             $rawCode = $this->generateCode();
 
+            $now = $this->nowUtc();
             EmailVerificationCode::create([
                 'user_id' => $user->id,
                 'code_hash' => hash('sha256', $rawCode),
-                'expires_at' => now()->addMinutes($ttlMinutes),
+                'expires_at' => $now->addMinutes($ttlMinutes),
                 'attempts' => 0,
                 'max_attempts' => self::MAX_ATTEMPTS,
-                'last_sent_at' => now(),
+                'last_sent_at' => $now,
             ]);
         });
 
@@ -127,7 +129,7 @@ class EmailVerificationCodeService
 
                 // If this attempt exhausted the code, mark it consumed
                 if ($remaining <= 0) {
-                    $record->update(['consumed_at' => now()]);
+                    $record->update(['consumed_at' => $this->nowUtc()]);
                 }
 
                 return [
@@ -137,8 +139,8 @@ class EmailVerificationCodeService
             }
 
             // SUCCESS — atomic state transition
-            $record->update(['consumed_at' => now()]);
-            $user->forceFill(['email_verified_at' => now()])->save();
+            $record->update(['consumed_at' => $this->nowUtc()]);
+            $user->forceFill(['email_verified_at' => $this->nowUtc()])->save();
 
             event(new Verified($user));
 
@@ -166,10 +168,15 @@ class EmailVerificationCodeService
         }
 
         $cooldownSeconds = (int) config('auth.otp_cooldown_seconds', self::COOLDOWN_SECONDS);
-        $elapsed = now()->diffInSeconds($lastCode->last_sent_at, false);
+        $elapsed = $this->nowUtc()->diffInSeconds($lastCode->last_sent_at, false);
         $remaining = $cooldownSeconds - abs($elapsed);
 
         return max(0, (int) $remaining);
+    }
+
+    private function nowUtc(): CarbonImmutable
+    {
+        return CarbonImmutable::now('UTC');
     }
 
     /**

@@ -9,6 +9,7 @@ import {
 } from '@/shared/types/booking.types'
 import LoadingSpinner from '@/shared/components/feedback/LoadingSpinner'
 import BookingCancelDialog from './BookingCancelDialog'
+import { getHostelToday } from '@/shared/lib/hostelDate'
 
 const BOOKING_LIST_STATUS_BADGES: Record<BookingStatus, { label: string; className: string }> = {
   pending: {
@@ -102,7 +103,7 @@ const BookingList: React.FC = () => {
   }
 
   // Basic client-side filtering (ideally should be server-side if paginated)
-  const today = new Date().toISOString().split('T')[0]
+  const today = getHostelToday()
   const filteredBookings = bookings.filter(b => {
     if (filter === 'all') return true
     if (filter === 'cancelled') return isCancelledBookingStatus(b.status)

@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Support\HostelClock;
 use Illuminate\Foundation\Http\FormRequest;
+use InvalidArgumentException;
 
 /**
  * Validates query parameters for location availability check.
@@ -22,8 +24,20 @@ class LocationAvailabilityRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'check_in' => 'required|date|after_or_equal:today',
-            'check_out' => 'required|date|after:check_in',
+            'check_in' => [
+                'required',
+                'date_format:Y-m-d',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    try {
+                        if (HostelClock::isDateBeforeToday((string) $value)) {
+                            $fail('The check-in date must be today or later.');
+                        }
+                    } catch (InvalidArgumentException) {
+                        // date_format reports invalid input; avoid replacing that error.
+                    }
+                },
+            ],
+            'check_out' => 'required|date_format:Y-m-d|after:check_in',
             'guests' => 'nullable|integer|min:1',
         ];
     }

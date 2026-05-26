@@ -38,7 +38,7 @@ class ContextAssemblyUntrustedSourceTest extends TestCase
         config()->set('ai_harness.token_budget.room_discovery', 10000);
 
         $this->assembler = app(ContextAssemblyService::class);
-        $this->user = User::factory()->create();
+        $this->user = User::factory()->admin()->create();
     }
 
     public function test_all_context_sources_are_wrapped_as_untrusted_source_blocks(): void
@@ -129,7 +129,7 @@ class ContextAssemblyUntrustedSourceTest extends TestCase
 
         $adminContext = $this->assembler->assemble($this->makeRequest(
             TaskType::ADMIN_DRAFT,
-            'moderator',
+            'admin',
             $policyQuery,
         ));
         $roomContext = $this->assembler->assemble($this->makeRequest(

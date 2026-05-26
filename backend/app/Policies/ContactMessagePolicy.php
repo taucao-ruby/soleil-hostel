@@ -19,4 +19,9 @@ class ContactMessagePolicy
     {
         return $user->isAdmin();
     }
+
+    public function draftAdminMessage(User $user): bool
+    {
+        return $user->isAdmin();
+    }
 }

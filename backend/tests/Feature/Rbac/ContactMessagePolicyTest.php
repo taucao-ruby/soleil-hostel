@@ -38,4 +38,31 @@ class ContactMessagePolicyTest extends TestCase
             Gate::forUser($user)->allows('markRead', ContactMessage::class)
         );
     }
+
+    public function test_admin_can_draft_admin_message_for_contact_message(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->assertTrue(
+            Gate::forUser($admin)->allows('draftAdminMessage', ContactMessage::class)
+        );
+    }
+
+    public function test_moderator_cannot_draft_admin_message_for_contact_message(): void
+    {
+        $moderator = User::factory()->moderator()->create();
+
+        $this->assertFalse(
+            Gate::forUser($moderator)->allows('draftAdminMessage', ContactMessage::class)
+        );
+    }
+
+    public function test_user_cannot_draft_admin_message_for_contact_message(): void
+    {
+        $user = User::factory()->user()->create();
+
+        $this->assertFalse(
+            Gate::forUser($user)->allows('draftAdminMessage', ContactMessage::class)
+        );
+    }
 }

@@ -7,8 +7,11 @@ namespace App\AiHarness\Services;
 use App\AiHarness\DTOs\GroundedContext;
 use App\AiHarness\DTOs\HarnessRequest;
 use App\AiHarness\Enums\TaskType;
+use App\Models\ContactMessage;
+use App\Models\User;
 use BackedEnum;
 use DateTimeInterface;
+use Illuminate\Support\Facades\Gate;
 use InvalidArgumentException;
 use Normalizer;
 use Stringable;
@@ -104,7 +107,7 @@ XML;
         $securityRulesIncluded = false;
 
         foreach ($allowedSources as $sourceId) {
-            if ($this->isFilteredByRbac($sourceId, $request->userRole)) {
+            if ($this->isFilteredByRbac($sourceId, $request)) {
                 continue;
             }
 
@@ -321,6 +324,10 @@ XML;
      */
     private function retrieveContactMessages(HarnessRequest $request): ?string
     {
+        if (! $this->canAccessContactMessages($request)) {
+            return null;
+        }
+
         // Extract contact_message_id from user input
         $messageId = $this->extractContactMessageId($request->userInput);
 
@@ -513,12 +520,10 @@ XML;
      * Check if a source is filtered out for the user's role.
      * Guests cannot access admin-scoped sources.
      */
-    private function isFilteredByRbac(string $sourceId, string $userRole): bool
+    private function isFilteredByRbac(string $sourceId, HarnessRequest $request): bool
     {
-        $adminOnlySources = ['contact_messages'];
-
-        if (in_array($sourceId, $adminOnlySources, true)) {
-            return ! in_array($userRole, ['admin', 'moderator'], true);
+        if ($sourceId === 'contact_messages') {
+            return ! $this->canAccessContactMessages($request);
         }
 
         return false;
@@ -531,12 +536,37 @@ XML;
     {
         $filters = [];
 
-        if (! in_array($request->userRole, ['admin', 'moderator'], true)) {
+        if (! $this->canAccessContactMessages($request)) {
             $filters[] = 'exclude:contact_messages';
+        }
+
+        if (! $this->actorIsModerator($request)) {
             $filters[] = 'scope:own_bookings_only';
         }
 
         return $filters;
+    }
+
+    private function canAccessContactMessages(HarnessRequest $request): bool
+    {
+        $actor = $this->resolveActor($request);
+
+        return $actor instanceof User
+            && Gate::forUser($actor)->allows('viewAny', ContactMessage::class);
+    }
+
+    private function actorIsModerator(HarnessRequest $request): bool
+    {
+        $actor = $this->resolveActor($request);
+
+        return $actor instanceof User && $actor->isModerator();
+    }
+
+    private function resolveActor(HarnessRequest $request): ?User
+    {
+        $actor = User::query()->find($request->userId);
+
+        return $actor instanceof User ? $actor : null;
     }
 
     /**

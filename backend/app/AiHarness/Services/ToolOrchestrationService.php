@@ -11,6 +11,11 @@ use App\AiHarness\Enums\ProposalActionType;
 use App\AiHarness\Enums\ToolClassification;
 use App\AiHarness\Exceptions\BlockedToolException;
 use App\AiHarness\ToolRegistry;
+use App\Models\Booking;
+use App\Models\ContactMessage;
+use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -55,11 +60,138 @@ class ToolOrchestrationService
         $input = $proposal['input'] ?? [];
         $classification = ToolRegistry::classify($toolName);
 
+        $this->authorizeToolExecution($toolName, $input, $request);
+
         return match ($classification) {
             ToolClassification::READ_ONLY => $this->executeReadOnly($toolName, $input, $request),
             ToolClassification::APPROVAL_REQUIRED => $this->returnDraft($toolName, $input, $request),
             ToolClassification::BLOCKED => $this->rejectBlocked($toolName, $request),
         };
+    }
+
+    private function authorizeToolExecution(string $toolName, array $input, HarnessRequest $request): void
+    {
+        $gate = ToolRegistry::rbacGate($toolName);
+
+        if ($gate === null) {
+            return;
+        }
+
+        $actor = $this->resolveActorForTool($request, $toolName);
+
+        match ($toolName) {
+            'get_booking_status', 'draft_cancellation_summary' => $this->authorizeBookingToolGate(
+                actor: $actor,
+                toolName: $toolName,
+                gate: $gate,
+                input: $input,
+                request: $request,
+            ),
+            default => $this->authorizeGlobalToolGate(
+                actor: $actor,
+                toolName: $toolName,
+                gate: $gate,
+                request: $request,
+            ),
+        };
+    }
+
+    private function resolveActorForTool(HarnessRequest $request, string $toolName): User
+    {
+        $actor = User::query()->find($request->userId);
+
+        if (! $actor instanceof User) {
+            $this->logToolAuthorizationDenied(
+                request: $request,
+                toolName: $toolName,
+                gate: ToolRegistry::rbacGate($toolName),
+                reason: 'actor_not_found',
+            );
+
+            throw new BlockedToolException($toolName, "Tool '{$toolName}' denied: authenticated actor not found.");
+        }
+
+        return $actor;
+    }
+
+    private function authorizeGlobalToolGate(
+        User $actor,
+        string $toolName,
+        string $gate,
+        HarnessRequest $request,
+    ): void {
+        try {
+            Gate::forUser($actor)->authorize($gate);
+        } catch (AuthorizationException) {
+            $this->logToolAuthorizationDenied(
+                request: $request,
+                toolName: $toolName,
+                gate: $gate,
+                reason: 'insufficient_role',
+            );
+
+            throw new BlockedToolException($toolName, "Tool '{$toolName}' denied by RBAC gate '{$gate}'.");
+        }
+    }
+
+    private function authorizeBookingToolGate(
+        User $actor,
+        string $toolName,
+        string $gate,
+        array $input,
+        HarnessRequest $request,
+    ): void {
+        $bookingId = (int) ($input['booking_id'] ?? 0);
+
+        if ($bookingId <= 0) {
+            return;
+        }
+
+        $booking = Booking::query()->find($bookingId);
+
+        if (! $booking instanceof Booking) {
+            return;
+        }
+
+        if (Gate::forUser($actor)->denies($gate, $booking)) {
+            $this->logToolAuthorizationDenied(
+                request: $request,
+                toolName: $toolName,
+                gate: $gate,
+                reason: 'object_policy_denied',
+                bookingId: $bookingId,
+            );
+
+            throw new BlockedToolException($toolName, "Tool '{$toolName}' denied by RBAC gate '{$gate}'.");
+        }
+    }
+
+    private function logToolAuthorizationDenied(
+        HarnessRequest $request,
+        string $toolName,
+        ?string $gate,
+        string $reason,
+        ?int $bookingId = null,
+        ?int $contactMessageId = null,
+    ): void {
+        $context = [
+            'request_id' => $request->requestId,
+            'correlation_id' => $request->correlationId,
+            'user_id' => $request->userId,
+            'tool' => $toolName,
+            'gate' => $gate,
+            'reason' => $reason,
+        ];
+
+        if ($bookingId !== null) {
+            $context['booking_id'] = $bookingId;
+        }
+
+        if ($contactMessageId !== null) {
+            $context['contact_message_id'] = $contactMessageId;
+        }
+
+        Log::channel('ai')->warning('AI tool authorization denied', $context);
     }
 
     /**
@@ -138,6 +270,7 @@ class ToolOrchestrationService
 
     private function buildAdminMessageDraft(array $input, HarnessRequest $request): ToolDraft
     {
+        $actor = $this->resolveActorForTool($request, 'draft_admin_message');
         $contextSources = [];
         $policyRefs = [];
         $keyFacts = [];
@@ -145,14 +278,12 @@ class ToolOrchestrationService
         // Fetch contact message context if provided
         $contactMessageId = (int) ($input['contact_message_id'] ?? 0);
         if ($contactMessageId > 0) {
-            $contactMessage = \App\Models\ContactMessage::find($contactMessageId);
-            if ($contactMessage !== null) {
-                $contextSources[] = "contact_message:{$contactMessageId}";
-                $keyFacts['guest_name'] = $contactMessage->name;
-                $keyFacts['guest_email'] = $contactMessage->email;
-                $keyFacts['subject'] = $contactMessage->subject ?? '';
-                $keyFacts['original_message'] = $contactMessage->message;
-            }
+            $contactMessage = $this->resolveContactMessageForAdminDraft($actor, $contactMessageId, $request);
+            $contextSources[] = "contact_message:{$contactMessageId}";
+            $keyFacts['guest_name'] = $contactMessage->name;
+            $keyFacts['guest_email'] = $contactMessage->email;
+            $keyFacts['subject'] = $contactMessage->subject ?? '';
+            $keyFacts['original_message'] = $contactMessage->message;
         }
 
         // Fetch booking context if provided
@@ -202,6 +333,31 @@ class ToolOrchestrationService
             draftHash: $draftHash,
             generatedAt: $now,
         );
+    }
+
+    private function resolveContactMessageForAdminDraft(
+        User $actor,
+        int $contactMessageId,
+        HarnessRequest $request,
+    ): ContactMessage {
+        if (Gate::forUser($actor)->denies('draftAdminMessage', ContactMessage::class)) {
+            $this->logToolAuthorizationDenied(
+                request: $request,
+                toolName: 'draft_admin_message',
+                gate: 'draftAdminMessage',
+                reason: 'contact_message_policy_denied',
+                contactMessageId: $contactMessageId,
+            );
+
+            throw new BlockedToolException(
+                'draft_admin_message',
+                "Tool 'draft_admin_message' denied by contact message policy.",
+            );
+        }
+
+        return ContactMessage::query()
+            ->whereKey($contactMessageId)
+            ->firstOrFail();
     }
 
     private function buildCancellationSummaryDraft(array $input, HarnessRequest $request): ToolDraft

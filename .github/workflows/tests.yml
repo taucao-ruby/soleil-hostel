@@ -578,7 +578,7 @@ jobs:
             php -d default_socket_timeout=300 "$(command -v composer)" audit \
               --locked \
               --no-interaction \
-              --format=summary
+              --format=table
 
             status=$?
 

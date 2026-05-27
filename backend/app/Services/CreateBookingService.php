@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Database\TransactionIsolation;
 use App\Database\TransactionMetrics;
 use App\Enums\BookingStatus;
+use App\Enums\PaymentPolicy;
+use App\Enums\PaymentStatus;
 use App\Exceptions\PendingBookingLimitExceededException;
 use App\Models\Booking;
 use App\Models\Room;
@@ -56,10 +58,6 @@ class CreateBookingService
         'number_of_guests' => true,
         'special_requests' => true,
     ];
-
-    public function __construct(
-        private readonly StripeService $stripeService
-    ) {}
 
     /**
      * Create a new booking guaranteed not to overlap with existing bookings
@@ -133,18 +131,6 @@ class CreateBookingService
                     $userId,
                     $additionalData
                 );
-
-                if ($booking->status === BookingStatus::PENDING) {
-                    try {
-                        $paymentIntentId = $this->createPaymentIntentOutsideTransaction($booking);
-                    } catch (Throwable $e) {
-                        $this->voidPendingBookingAfterPaymentIntentFailure($booking, $e);
-
-                        throw $e;
-                    }
-
-                    $booking = $this->attachPaymentIntentToBooking($booking, $paymentIntentId);
-                }
 
                 // Record success metrics
                 $durationMs = (microtime(true) - $startTime) * 1000;
@@ -347,6 +333,7 @@ class CreateBookingService
             );
 
             $amount = $trustedAdditionalData['amount'] ?? $this->calculateAmount($room, $checkIn, $checkOut);
+            $paymentPolicy = $this->defaultPaymentPolicy();
 
             $booking = (new Booking)->fill([
                 'room_id' => $roomId,
@@ -360,81 +347,15 @@ class CreateBookingService
                 'status' => BookingStatus::PENDING,
                 'user_id' => $userId,
                 'amount' => $amount,
+                'payment_policy' => $paymentPolicy,
+                'payment_status' => $this->initialPaymentStatus($paymentPolicy),
+                'payment_currency' => strtolower((string) config('cashier.currency', 'vnd')),
                 ...$trustedAdditionalData,
             ]);
             $booking->save();
 
             // Step 5: Return booking (transaction auto-commit, lock released)
             return $booking->fresh();
-        });
-    }
-
-    /**
-     * Create the Stripe PaymentIntent after the booking transaction commits.
-     */
-    private function createPaymentIntentOutsideTransaction(Booking $booking): string
-    {
-        return $this->stripeService->createPaymentIntent($booking);
-    }
-
-    /**
-     * Attach Stripe's PaymentIntent to the still-pending booking with a guarded update.
-     */
-    private function attachPaymentIntentToBooking(Booking $booking, string $paymentIntentId): Booking
-    {
-        $updated = Booking::query()
-            ->whereKey($booking->id)
-            ->where('status', BookingStatus::PENDING->value)
-            ->whereNull('payment_intent_id')
-            ->update([
-                'payment_intent_id' => $paymentIntentId,
-                'updated_at' => now(),
-            ]);
-
-        if ($updated !== 1) {
-            throw new RuntimeException(
-                "Could not attach PaymentIntent to pending booking #{$booking->id}; reconciliation required."
-            );
-        }
-
-        return $booking->fresh();
-    }
-
-    /**
-     * Release inventory if Stripe PaymentIntent creation fails after local commit.
-     */
-    private function voidPendingBookingAfterPaymentIntentFailure(Booking $booking, Throwable $e): void
-    {
-        Log::error('Booking PaymentIntent creation failed; voiding pending booking', [
-            'booking_id' => $booking->id,
-            'room_id' => $booking->room_id,
-            'location_id' => $booking->location_id,
-            'user_id' => $booking->user_id,
-            'amount' => $booking->amount,
-            'exception' => class_basename($e),
-            'code' => $e->getCode(),
-        ]);
-
-        DB::transaction(function () use ($booking): void {
-            $locked = Booking::query()
-                ->whereKey($booking->id)
-                ->lockForUpdate()
-                ->first();
-
-            if ($locked === null) {
-                return;
-            }
-
-            if ($locked->status !== BookingStatus::PENDING || $locked->payment_intent_id !== null) {
-                return;
-            }
-
-            $locked = $locked->transitionTo(BookingStatus::CANCELLED);
-            $locked->forceFill([
-                'cancelled_at' => now(),
-                'cancelled_by' => null,
-                'cancellation_reason' => 'payment_intent_creation_failed',
-            ])->save();
         });
     }
 
@@ -472,6 +393,44 @@ class CreateBookingService
         $nights = $checkIn->diffInDays($checkOut);
 
         return (int) round(((float) $room->price) * $nights);
+    }
+
+    private function defaultPaymentPolicy(): PaymentPolicy
+    {
+        $configured = (string) config('booking.payment_policy', PaymentPolicy::PREPAID->value);
+        $policy = PaymentPolicy::tryFrom($configured) ?? PaymentPolicy::PREPAID;
+
+        // PAY-02 v1 guardrail: `authorize_then_capture` has no capture trigger
+        // yet — there is no StripeService::capturePaymentIntent and capture_due_at
+        // is never written or consumed. A booking originated under that policy
+        // would CONFIRM on authorization (paymentAllowsConfirmation accepts
+        // AUTHORIZED) and then have its uncaptured Stripe auth-hold expire
+        // (~7 days), leaving a confirmed-but-unpaid booking that silently gives
+        // away the room. Until the capture loop ships, refuse to originate new
+        // bookings under it so a BOOKING_PAYMENT_POLICY misconfiguration cannot
+        // leak revenue; fall back to prepaid (automatic capture). The webhook
+        // handler keeps its manual-capture branch for forward compatibility.
+        // See docs/FINDINGS_BACKLOG.md (PAY-02).
+        if ($policy === PaymentPolicy::AUTHORIZE_THEN_CAPTURE) {
+            Log::warning(
+                'CreateBookingService: booking.payment_policy "authorize_then_capture" is not supported in v1 (no capture path); falling back to prepaid.',
+                ['configured_policy' => $configured]
+            );
+
+            return PaymentPolicy::PREPAID;
+        }
+
+        return $policy;
+    }
+
+    private function initialPaymentStatus(PaymentPolicy $policy): PaymentStatus
+    {
+        return match ($policy) {
+            PaymentPolicy::PREPAID,
+            PaymentPolicy::AUTHORIZE_THEN_CAPTURE => PaymentStatus::REQUIRES_CONFIRMATION,
+            PaymentPolicy::PAY_AT_PROPERTY => PaymentStatus::OFFLINE_DUE,
+            PaymentPolicy::NOT_REQUIRED => PaymentStatus::NOT_REQUIRED,
+        };
     }
 
     /**

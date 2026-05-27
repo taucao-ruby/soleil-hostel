@@ -3,6 +3,8 @@
 namespace Tests\Feature\Payment;
 
 use App\Enums\BookingStatus;
+use App\Enums\PaymentPolicy;
+use App\Enums\PaymentStatus;
 use App\Http\Controllers\Payment\StripeWebhookController;
 use App\Models\Booking;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -33,9 +35,13 @@ class StripeWebhookHandlerTest extends TestCase
         $booking = Booking::factory()->create([
             'status' => BookingStatus::PENDING,
             'payment_intent_id' => 'pi_test_123',
+            'payment_policy' => PaymentPolicy::PREPAID,
+            'payment_status' => PaymentStatus::REQUIRES_PAYMENT_METHOD,
+            'payment_currency' => 'vnd',
+            'amount' => 50000,
         ]);
 
-        $payload = $this->makePaymentIntentPayload('pi_test_123');
+        $payload = $this->makePaymentIntentPayload('pi_test_123', $booking);
 
         $response = $this->callHandler('handlePaymentIntentSucceeded', $payload);
 
@@ -44,6 +50,8 @@ class StripeWebhookHandlerTest extends TestCase
 
         $booking->refresh();
         $this->assertEquals(BookingStatus::CONFIRMED, $booking->status);
+        $this->assertEquals(PaymentStatus::PAID, $booking->payment_status);
+        $this->assertNotNull($booking->paid_at);
     }
 
     public function test_payment_intent_succeeded_is_idempotent_for_confirmed_booking(): void
@@ -51,9 +59,13 @@ class StripeWebhookHandlerTest extends TestCase
         $booking = Booking::factory()->create([
             'status' => BookingStatus::CONFIRMED,
             'payment_intent_id' => 'pi_test_456',
+            'payment_policy' => PaymentPolicy::PREPAID,
+            'payment_status' => PaymentStatus::PAID,
+            'payment_currency' => 'vnd',
+            'amount' => 50000,
         ]);
 
-        $payload = $this->makePaymentIntentPayload('pi_test_456');
+        $payload = $this->makePaymentIntentPayload('pi_test_456', $booking);
 
         $response = $this->callHandler('handlePaymentIntentSucceeded', $payload);
 
@@ -62,6 +74,30 @@ class StripeWebhookHandlerTest extends TestCase
 
         $booking->refresh();
         $this->assertEquals(BookingStatus::CONFIRMED, $booking->status);
+        $this->assertEquals(PaymentStatus::PAID, $booking->payment_status);
+    }
+
+    public function test_payment_intent_succeeded_rejects_amount_mismatch(): void
+    {
+        $booking = Booking::factory()->create([
+            'status' => BookingStatus::PENDING,
+            'payment_intent_id' => 'pi_amount_mismatch',
+            'payment_policy' => PaymentPolicy::PREPAID,
+            'payment_status' => PaymentStatus::REQUIRES_PAYMENT_METHOD,
+            'payment_currency' => 'vnd',
+            'amount' => 50000,
+        ]);
+
+        $payload = $this->makePaymentIntentPayload('pi_amount_mismatch', $booking);
+        $payload['data']['object']['amount'] = 40000;
+
+        $response = $this->callHandler('handlePaymentIntentSucceeded', $payload);
+
+        $this->assertEquals(500, $response->getStatusCode());
+
+        $booking->refresh();
+        $this->assertEquals(BookingStatus::PENDING, $booking->status);
+        $this->assertEquals(PaymentStatus::REQUIRES_PAYMENT_METHOD, $booking->payment_status);
     }
 
     public function test_payment_intent_succeeded_handles_missing_booking(): void
@@ -205,13 +241,25 @@ class StripeWebhookHandlerTest extends TestCase
         $booking = Booking::factory()->create([
             'status' => BookingStatus::PENDING,
             'payment_intent_id' => 'pi_failed_test',
+            'payment_policy' => PaymentPolicy::PREPAID,
+            'payment_status' => PaymentStatus::REQUIRES_PAYMENT_METHOD,
+            'payment_currency' => 'vnd',
+            'amount' => 50000,
         ]);
 
         $payload = [
+            'id' => 'evt_pi_failed_test',
             'type' => 'payment_intent.payment_failed',
             'data' => [
                 'object' => [
                     'id' => 'pi_failed_test',
+                    'status' => 'requires_payment_method',
+                    'amount' => 50000,
+                    'currency' => 'vnd',
+                    'metadata' => [
+                        'booking_id' => (string) $booking->id,
+                        'user_id' => (string) $booking->user_id,
+                    ],
                     'last_payment_error' => [
                         'message' => 'Your card was declined.',
                     ],
@@ -226,6 +274,80 @@ class StripeWebhookHandlerTest extends TestCase
         // Booking should remain pending (customer can retry)
         $booking->refresh();
         $this->assertEquals(BookingStatus::PENDING, $booking->status);
+        $this->assertEquals(PaymentStatus::FAILED, $booking->payment_status);
+    }
+
+    public function test_payment_intent_canceled_releases_pending_payment_hold(): void
+    {
+        $booking = Booking::factory()->create([
+            'status' => BookingStatus::PENDING,
+            'payment_intent_id' => 'pi_canceled_test',
+            'payment_policy' => PaymentPolicy::PREPAID,
+            'payment_status' => PaymentStatus::REQUIRES_PAYMENT_METHOD,
+            'payment_currency' => 'vnd',
+            'amount' => 50000,
+        ]);
+
+        $payload = $this->makePaymentIntentPayload('pi_canceled_test', $booking);
+        $payload['id'] = 'evt_pi_canceled_test';
+        $payload['type'] = 'payment_intent.canceled';
+        $payload['data']['object']['status'] = 'canceled';
+
+        $response = $this->callHandler('handlePaymentIntentCanceled', $payload);
+
+        $this->assertEquals(200, $response->getStatusCode());
+
+        $booking->refresh();
+        $this->assertEquals(BookingStatus::CANCELLED, $booking->status);
+        $this->assertEquals(PaymentStatus::CANCELLED, $booking->payment_status);
+        $this->assertEquals('payment_intent_canceled', $booking->cancellation_reason);
+        $this->assertNotNull($booking->cancelled_at);
+    }
+
+    public function test_amount_capturable_updated_authorizes_only_manual_capture_bookings(): void
+    {
+        $manualBooking = Booking::factory()->create([
+            'status' => BookingStatus::PENDING,
+            'payment_intent_id' => 'pi_manual_auth',
+            'payment_policy' => PaymentPolicy::AUTHORIZE_THEN_CAPTURE,
+            'payment_status' => PaymentStatus::REQUIRES_ACTION,
+            'payment_currency' => 'vnd',
+            'amount' => 50000,
+        ]);
+        $prepaidBooking = Booking::factory()->create([
+            'status' => BookingStatus::PENDING,
+            'payment_intent_id' => 'pi_prepaid_auth_ignored',
+            'payment_policy' => PaymentPolicy::PREPAID,
+            'payment_status' => PaymentStatus::REQUIRES_ACTION,
+            'payment_currency' => 'vnd',
+            'amount' => 50000,
+        ]);
+
+        $manualPayload = $this->makePaymentIntentPayload('pi_manual_auth', $manualBooking);
+        $manualPayload['id'] = 'evt_pi_manual_auth';
+        $manualPayload['type'] = 'payment_intent.amount_capturable_updated';
+        $manualPayload['data']['object']['status'] = 'requires_capture';
+        $manualPayload['data']['object']['amount_capturable'] = 50000;
+
+        $prepaidPayload = $this->makePaymentIntentPayload('pi_prepaid_auth_ignored', $prepaidBooking);
+        $prepaidPayload['id'] = 'evt_pi_prepaid_auth_ignored';
+        $prepaidPayload['type'] = 'payment_intent.amount_capturable_updated';
+        $prepaidPayload['data']['object']['status'] = 'requires_capture';
+        $prepaidPayload['data']['object']['amount_capturable'] = 50000;
+
+        $manualResponse = $this->callHandler('handlePaymentIntentAmountCapturableUpdated', $manualPayload);
+        $prepaidResponse = $this->callHandler('handlePaymentIntentAmountCapturableUpdated', $prepaidPayload);
+
+        $this->assertEquals(200, $manualResponse->getStatusCode());
+        $this->assertEquals(200, $prepaidResponse->getStatusCode());
+
+        $manualBooking->refresh();
+        $prepaidBooking->refresh();
+
+        $this->assertEquals(PaymentStatus::AUTHORIZED, $manualBooking->payment_status);
+        $this->assertEquals(50000, $manualBooking->amount_capturable);
+        $this->assertNotNull($manualBooking->authorized_at);
+        $this->assertEquals(PaymentStatus::REQUIRES_ACTION, $prepaidBooking->payment_status);
     }
 
     // ========== Helper methods ==========
@@ -240,8 +362,11 @@ class StripeWebhookHandlerTest extends TestCase
         return $reflection->invoke($this->controller, $payload);
     }
 
-    private function makePaymentIntentPayload(string $paymentIntentId): array
+    private function makePaymentIntentPayload(string $paymentIntentId, ?Booking $booking = null): array
     {
+        $bookingId = $booking?->id ?? 999999;
+        $userId = $booking?->user_id ?? 999999;
+
         return [
             'id' => 'evt_'.$paymentIntentId,
             'type' => 'payment_intent.succeeded',
@@ -251,6 +376,12 @@ class StripeWebhookHandlerTest extends TestCase
                     'status' => 'succeeded',
                     'amount' => 50000,
                     'currency' => 'vnd',
+                    'amount_capturable' => 0,
+                    'amount_received' => 50000,
+                    'metadata' => [
+                        'booking_id' => (string) $bookingId,
+                        'user_id' => (string) $userId,
+                    ],
                 ],
             ],
         ];

@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Booking\CancellationPolicy;
 use App\Enums\BookingStatus;
 use App\Enums\DepositStatus;
+use App\Enums\PaymentPolicy;
+use App\Enums\PaymentStatus;
 use App\Events\BookingStatusChanged;
 use App\Exceptions\BookingTransitionException;
 use App\Support\HostelClock;
@@ -52,8 +54,15 @@ class Booking extends Model
         'updated_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'status' => BookingStatus::class,
+        'payment_policy' => PaymentPolicy::class,
+        'payment_status' => PaymentStatus::class,
         'number_of_guests' => 'integer',
         'amount' => 'integer',
+        'amount_capturable' => 'integer',
+        'amount_received' => 'integer',
+        'authorized_at' => 'datetime',
+        'paid_at' => 'datetime',
+        'capture_due_at' => 'datetime',
         'deposit_amount' => 'integer',
         'deposit_collected_at' => 'datetime',
         'deposit_status' => DepositStatus::class,
@@ -200,7 +209,24 @@ class Booking extends Model
     {
         return $this->payment_intent_id !== null
             && $this->refund_id === null
+            && $this->payment_status === PaymentStatus::PAID
             && $this->status->isCancellable();
+    }
+
+    public function paymentAllowsConfirmation(): bool
+    {
+        /** @var PaymentPolicy $paymentPolicy */
+        $paymentPolicy = $this->payment_policy;
+
+        return match ($paymentPolicy) {
+            PaymentPolicy::PREPAID => $this->payment_status === PaymentStatus::PAID,
+            PaymentPolicy::AUTHORIZE_THEN_CAPTURE => in_array($this->payment_status, [
+                PaymentStatus::AUTHORIZED,
+                PaymentStatus::PAID,
+            ], true),
+            PaymentPolicy::PAY_AT_PROPERTY => $this->payment_status === PaymentStatus::OFFLINE_DUE,
+            PaymentPolicy::NOT_REQUIRED => $this->payment_status === PaymentStatus::NOT_REQUIRED,
+        };
     }
 
     /**

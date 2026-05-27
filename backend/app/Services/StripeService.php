@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Enums\PaymentPolicy;
 use App\Models\Booking;
 use App\Services\Payment\PaymentIntentCancellationOutcome;
+use App\Services\Payment\PaymentIntentStartResult;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Stripe\Refund;
@@ -32,32 +34,47 @@ class StripeService
         private readonly StripeClient $stripeClient
     ) {}
 
-    public function createPaymentIntent(Booking $booking): string
+    public function createPaymentIntent(Booking $booking): PaymentIntentStartResult
     {
-        $amount = (int) $booking->amount;
-        $currency = (string) config('cashier.currency', 'vnd');
+        $amount = $this->expectedAmount($booking);
+        $currency = $this->expectedCurrency($booking);
+        $policy = $booking->payment_policy;
 
         if ($amount <= 0) {
             throw new RuntimeException('Booking amount must be greater than zero.');
+        }
+
+        if (! $policy->requiresStripePaymentIntent()) {
+            throw new RuntimeException('Booking payment policy does not require a Stripe PaymentIntent.');
         }
 
         $idempotencyKey = $this->paymentIntentIdempotencyKey($booking);
         $metadata = $this->paymentIntentMetadata($booking);
 
         if ($this->shouldUseTestingFake()) {
-            return 'pi_test_'.$booking->id.'_'.substr(hash('sha256', $idempotencyKey), 0, 12);
+            $id = 'pi_test_'.$booking->id.'_'.substr(hash('sha256', $idempotencyKey), 0, 12);
+
+            return new PaymentIntentStartResult(
+                id: $id,
+                clientSecret: $id.'_secret_test',
+                status: 'requires_payment_method',
+                amount: $amount,
+                currency: $currency,
+            );
         }
 
-        $paymentIntent = $this->stripeClient->paymentIntents->create(
-            [
-                'amount' => $amount,
-                'currency' => $currency,
-                'capture_method' => 'manual',
-                'automatic_payment_methods' => [
-                    'enabled' => true,
-                ],
-                'metadata' => $metadata,
+        $payload = [
+            'amount' => $amount,
+            'currency' => $currency,
+            'capture_method' => $policy === PaymentPolicy::AUTHORIZE_THEN_CAPTURE ? 'manual' : 'automatic',
+            'automatic_payment_methods' => [
+                'enabled' => true,
             ],
+            'metadata' => $metadata,
+        ];
+
+        $paymentIntent = $this->stripeClient->paymentIntents->create(
+            $payload,
             [
                 'idempotency_key' => $idempotencyKey,
             ],
@@ -70,7 +87,15 @@ class StripeService
             throw new RuntimeException('Stripe PaymentIntent response is missing an id.');
         }
 
-        return $paymentIntentId;
+        return new PaymentIntentStartResult(
+            id: $paymentIntentId,
+            clientSecret: $this->paymentIntentClientSecret($paymentIntent),
+            status: (string) data_get($paymentIntent, 'status', 'requires_payment_method'),
+            amount: (int) data_get($paymentIntent, 'amount', $amount),
+            currency: (string) data_get($paymentIntent, 'currency', $currency),
+            amountCapturable: (int) data_get($paymentIntent, 'amount_capturable', 0),
+            amountReceived: (int) data_get($paymentIntent, 'amount_received', 0),
+        );
     }
 
     public function paymentIntentIdempotencyKey(Booking $booking): string
@@ -79,7 +104,24 @@ class StripeService
             throw new RuntimeException('Booking must be persisted before creating a PaymentIntent.');
         }
 
-        return sprintf('booking_payment_intent_%d', (int) $booking->getKey());
+        return sprintf('booking:%d:payment_intent:create:v1', (int) $booking->getKey());
+    }
+
+    public function retrievePaymentIntent(string $paymentIntentId): mixed
+    {
+        if ($this->shouldUseTestingFake()) {
+            return (object) [
+                'id' => $paymentIntentId,
+                'status' => 'succeeded',
+                'amount' => 0,
+                'currency' => strtolower((string) config('cashier.currency', 'vnd')),
+                'metadata' => (object) [],
+                'amount_capturable' => 0,
+                'amount_received' => 0,
+            ];
+        }
+
+        return $this->stripeClient->paymentIntents->retrieve($paymentIntentId);
     }
 
     /**
@@ -291,9 +333,13 @@ class StripeService
      */
     private function paymentIntentMetadata(Booking $booking): array
     {
+        /** @var PaymentPolicy $paymentPolicy */
+        $paymentPolicy = $booking->payment_policy;
+
         $metadata = [
             'booking_id' => (string) $booking->id,
             'room_id' => (string) $booking->room_id,
+            'payment_policy' => $paymentPolicy->value,
         ];
 
         if ($booking->location_id !== null) {
@@ -305,6 +351,22 @@ class StripeService
         }
 
         return $metadata;
+    }
+
+    public function expectedAmount(Booking $booking): int
+    {
+        return (int) $booking->amount;
+    }
+
+    public function expectedCurrency(Booking $booking): string
+    {
+        $currency = (string) $booking->payment_currency;
+
+        if ($currency !== '') {
+            return strtolower($currency);
+        }
+
+        return strtolower((string) config('cashier.currency', 'vnd'));
     }
 
     /**
@@ -351,22 +413,32 @@ class StripeService
         }
     }
 
-    private function assertPaymentIntentMatchesBooking(
+    public function assertPaymentIntentMatchesBooking(
         mixed $paymentIntent,
         Booking $booking,
-        int $amount,
-        string $currency
+        ?int $amount = null,
+        ?string $currency = null
     ): void {
+        $amount ??= $this->expectedAmount($booking);
+        $currency ??= $this->expectedCurrency($booking);
+
         if ((int) data_get($paymentIntent, 'amount') !== $amount) {
             throw new RuntimeException("Stripe PaymentIntent amount mismatch for booking #{$booking->id}.");
         }
 
-        if ((string) data_get($paymentIntent, 'currency') !== $currency) {
+        if (strtolower((string) data_get($paymentIntent, 'currency')) !== strtolower($currency)) {
             throw new RuntimeException("Stripe PaymentIntent currency mismatch for booking #{$booking->id}.");
         }
 
         if ((string) data_get($paymentIntent, 'metadata.booking_id') !== (string) $booking->id) {
             throw new RuntimeException("Stripe PaymentIntent metadata mismatch for booking #{$booking->id}.");
         }
+    }
+
+    private function paymentIntentClientSecret(mixed $paymentIntent): ?string
+    {
+        $clientSecret = data_get($paymentIntent, 'client_secret');
+
+        return is_string($clientSecret) && $clientSecret !== '' ? $clientSecret : null;
     }
 }

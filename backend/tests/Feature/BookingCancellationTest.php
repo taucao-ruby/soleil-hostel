@@ -622,6 +622,7 @@ class BookingCancellationTest extends TestCase
             ->confirmed()
             ->create([
                 'check_in' => now()->addDays(5),
+                'check_out' => now()->addDays(7),
                 'payment_intent_id' => null, // No payment
                 'amount' => null,
             ]);

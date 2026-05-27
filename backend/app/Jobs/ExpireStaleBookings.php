@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Enums\BookingStatus;
+use App\Enums\PaymentStatus;
 use App\Events\BookingCancelled;
 use App\Models\Booking;
 use App\Models\PaymentCancellationTask;
@@ -97,6 +98,23 @@ final class ExpireStaleBookings implements ShouldQueue
 
         Booking::query()
             ->where('status', BookingStatus::PENDING)
+            // Expire pending holds whose payment never reached a committed
+            // state. This INCLUDES the offline policies (NOT_REQUIRED /
+            // OFFLINE_DUE): an abandoned pay-at-property or no-payment-required
+            // hold still blocks the room via ACTIVE_STATUSES and must TTL-expire
+            // exactly like an online hold. AUTHORIZED and PAID are deliberately
+            // excluded — those bookings are mid-confirmation (the payment/verify
+            // endpoint or the succeeded webhook will promote them to CONFIRMED)
+            // and must never be auto-cancelled out from under a settled payment.
+            ->whereIn('payment_status', [
+                PaymentStatus::NOT_REQUIRED->value,
+                PaymentStatus::OFFLINE_DUE->value,
+                PaymentStatus::REQUIRES_CONFIRMATION->value,
+                PaymentStatus::REQUIRES_PAYMENT_METHOD->value,
+                PaymentStatus::REQUIRES_ACTION->value,
+                PaymentStatus::PROCESSING->value,
+                PaymentStatus::FAILED->value,
+            ])
             ->where('created_at', '<', $threshold)
             ->orderBy('id')
             ->limit($batchSize)

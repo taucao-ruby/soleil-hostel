@@ -356,7 +356,7 @@ final class ReconcileStuckStripeWebhookEvents extends Command
         }
 
         try {
-            $outcome = $handler->applyToBooking($paymentIntentId);
+            $outcome = $handler->applyToBooking($paymentIntent);
         } catch (Throwable $e) {
             $event->markFailed($e);
 
@@ -396,7 +396,7 @@ final class ReconcileStuckStripeWebhookEvents extends Command
         $remoteAmount = (int) ($paymentIntent->amount ?? 0);
         $remoteCurrency = strtolower((string) ($paymentIntent->currency ?? ''));
         $localAmount = (int) $booking->amount;
-        $localCurrency = strtolower((string) config('cashier.currency', 'vnd'));
+        $localCurrency = strtolower((string) ($booking->payment_currency ?: config('cashier.currency', 'vnd')));
 
         if ($localAmount > 0 && $remoteAmount !== $localAmount) {
             $event->markFailed(sprintf(

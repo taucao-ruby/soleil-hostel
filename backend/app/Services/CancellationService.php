@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Database\TransactionMetrics;
 use App\Enums\BookingStatus;
+use App\Enums\PaymentStatus;
 use App\Events\BookingCancelled;
 use App\Exceptions\BookingCancellationException;
 use App\Exceptions\DepositTransitionException;
@@ -247,6 +248,7 @@ final class CancellationService
     {
         return $booking->payment_intent_id !== null
             && $booking->refund_id === null
+            && $booking->payment_status === PaymentStatus::PAID
             && $booking->status->isCancellable();
     }
 

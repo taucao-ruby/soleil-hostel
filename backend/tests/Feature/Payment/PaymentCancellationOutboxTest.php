@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Payment;
 
 use App\Enums\BookingStatus;
+use App\Enums\PaymentPolicy;
+use App\Enums\PaymentStatus;
 use App\Events\BookingCancelled;
 use App\Jobs\ExpireStaleBookings;
 use App\Jobs\ProcessPaymentCancellationOutbox;
@@ -53,6 +55,9 @@ final class PaymentCancellationOutboxTest extends TestCase
             ->pending()
             ->create([
                 'payment_intent_id' => $paymentIntentId,
+                'payment_policy' => PaymentPolicy::PREPAID,
+                'payment_status' => PaymentStatus::REQUIRES_PAYMENT_METHOD,
+                'payment_currency' => 'vnd',
                 'amount' => 300000,
                 'check_in' => Carbon::now()->addDays(5)->startOfDay(),
                 'check_out' => Carbon::now()->addDays(7)->startOfDay(),

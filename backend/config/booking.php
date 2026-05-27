@@ -29,6 +29,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Payment Policy
+    |--------------------------------------------------------------------------
+    |
+    | Default policy for new booking holds. `prepaid` is the v1 production
+    | policy: a booking stays pending until Stripe confirms automatic capture.
+    | `pay_at_property` is explicit offline payment and creates no PaymentIntent.
+    |
+    */
+
+    'payment_policy' => env('BOOKING_PAYMENT_POLICY', 'prepaid'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Pending Expiry Batch Size
     |--------------------------------------------------------------------------
     |

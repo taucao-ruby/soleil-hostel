@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Payment;
 
 use App\Enums\BookingStatus;
+use App\Enums\PaymentPolicy;
+use App\Enums\PaymentStatus;
 use App\Models\Booking;
 use App\Models\StripeWebhookEvent;
 use App\Services\Payment\PaymentIntentApplyOutcome;
 use App\Services\Payment\StripePaymentIntentSucceededHandler;
 use App\Services\Payment\StripeRefundEventRecorder;
+use App\Services\StripeService;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -107,7 +110,8 @@ class StripeWebhookController extends CashierWebhookController
     {
         $stripeEventId = $payload['id'] ?? null;
         $eventType = $payload['type'] ?? 'payment_intent.succeeded';
-        $paymentIntentId = $payload['data']['object']['id'] ?? null;
+        $paymentIntent = $payload['data']['object'] ?? [];
+        $paymentIntentId = $paymentIntent['id'] ?? null;
 
         if (! $stripeEventId || ! $paymentIntentId) {
             Log::warning('Stripe webhook: payment_intent.succeeded missing payment_intent_id');
@@ -139,7 +143,7 @@ class StripeWebhookController extends CashierWebhookController
 
         try {
             $outcome = app(StripePaymentIntentSucceededHandler::class)
-                ->applyToBooking($paymentIntentId);
+                ->applyToBooking($paymentIntent);
         } catch (\Throwable $e) {
             Log::error('Stripe webhook: failed to confirm booking', [
                 'payment_intent_id' => $paymentIntentId,
@@ -333,8 +337,9 @@ class StripeWebhookController extends CashierWebhookController
     {
         $stripeEventId = $payload['id'] ?? null;
         $eventType = $payload['type'] ?? 'payment_intent.payment_failed';
-        $paymentIntentId = $payload['data']['object']['id'] ?? null;
-        $failureMessage = $payload['data']['object']['last_payment_error']['message'] ?? 'Unknown';
+        $paymentIntent = $payload['data']['object'] ?? [];
+        $paymentIntentId = $paymentIntent['id'] ?? null;
+        $failureMessage = $paymentIntent['last_payment_error']['message'] ?? 'Unknown';
 
         if (! $stripeEventId) {
             // Malformed payload (no event id). Preserve the historical
@@ -371,17 +376,168 @@ class StripeWebhookController extends CashierWebhookController
             'stripe_event_id' => $stripeEventId,
         ]);
 
-        if ($paymentIntentId) {
-            $booking = Booking::where('payment_intent_id', $paymentIntentId)->first();
+        try {
+            if ($paymentIntentId) {
+                $booking = Booking::where('payment_intent_id', $paymentIntentId)->first();
 
-            if ($booking && $booking->status === BookingStatus::PENDING) {
-                Log::info('Stripe webhook: payment failed for pending booking', [
-                    'booking_id' => $booking->id,
-                ]);
+                if ($booking && $booking->status === BookingStatus::PENDING) {
+                    app(StripeService::class)->assertPaymentIntentMatchesBooking($paymentIntent, $booking);
+
+                    $booking->forceFill([
+                        'payment_status' => PaymentStatus::FAILED,
+                        'payment_failed_reason' => mb_substr((string) $failureMessage, 0, 1000),
+                        'amount_capturable' => (int) data_get($paymentIntent, 'amount_capturable', 0),
+                        'amount_received' => (int) data_get($paymentIntent, 'amount_received', 0),
+                    ])->save();
+
+                    Log::info('Stripe webhook: payment failed for pending booking', [
+                        'booking_id' => $booking->id,
+                    ]);
+                }
             }
+
+            $webhookEvent->markProcessed();
+        } catch (\Throwable $e) {
+            $webhookEvent->markFailed($e);
+
+            return response()->json(['handled' => false], 500);
         }
 
-        $webhookEvent->markProcessed();
+        return response()->json(['handled' => true]);
+    }
+
+    /**
+     * Handle payment_intent.canceled webhook.
+     */
+    protected function handlePaymentIntentCanceled(array $payload): JsonResponse
+    {
+        $stripeEventId = $payload['id'] ?? null;
+        $eventType = $payload['type'] ?? 'payment_intent.canceled';
+        $paymentIntent = $payload['data']['object'] ?? [];
+        $paymentIntentId = $paymentIntent['id'] ?? null;
+
+        if (! $stripeEventId || ! $paymentIntentId) {
+            Log::warning('Stripe webhook: payment_intent.canceled missing identifiers', [
+                'stripe_event_id' => $stripeEventId,
+                'payment_intent_id' => $paymentIntentId,
+            ]);
+
+            return response()->json(['handled' => false], 400);
+        }
+
+        try {
+            $webhookEvent = DB::transaction(fn () => StripeWebhookEvent::create([
+                'stripe_event_id' => $stripeEventId,
+                'type' => $eventType,
+                'status' => 'processing',
+                'payload' => $payload,
+            ]));
+        } catch (UniqueConstraintViolationException) {
+            return response()->json(['handled' => true]);
+        }
+
+        try {
+            DB::transaction(function () use ($paymentIntent, $paymentIntentId): void {
+                $booking = Booking::where('payment_intent_id', $paymentIntentId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($booking === null) {
+                    return;
+                }
+
+                app(StripeService::class)->assertPaymentIntentMatchesBooking($paymentIntent, $booking);
+
+                $updates = [
+                    'payment_status' => PaymentStatus::CANCELLED,
+                    'payment_failed_reason' => 'PaymentIntent canceled on Stripe',
+                    'amount_capturable' => (int) data_get($paymentIntent, 'amount_capturable', 0),
+                    'amount_received' => (int) data_get($paymentIntent, 'amount_received', 0),
+                ];
+
+                if ($booking->status === BookingStatus::PENDING) {
+                    $updates['status'] = BookingStatus::CANCELLED;
+                    $updates['cancellation_reason'] = 'payment_intent_canceled';
+                    $updates['cancelled_at'] = now();
+                }
+
+                $booking->forceFill($updates)->save();
+            });
+
+            $webhookEvent->markProcessed();
+        } catch (\Throwable $e) {
+            $webhookEvent->markFailed($e);
+
+            return response()->json(['handled' => false], 500);
+        }
+
+        return response()->json(['handled' => true]);
+    }
+
+    /**
+     * Handle payment_intent.amount_capturable_updated webhook.
+     *
+     * This only authorizes bookings that explicitly opted into manual capture.
+     * Soleil v1 defaults to prepaid automatic capture, so this path is a
+     * guarded compatibility hook rather than a new capture surface.
+     */
+    protected function handlePaymentIntentAmountCapturableUpdated(array $payload): JsonResponse
+    {
+        $stripeEventId = $payload['id'] ?? null;
+        $eventType = $payload['type'] ?? 'payment_intent.amount_capturable_updated';
+        $paymentIntent = $payload['data']['object'] ?? [];
+        $paymentIntentId = $paymentIntent['id'] ?? null;
+
+        if (! $stripeEventId || ! $paymentIntentId) {
+            Log::warning('Stripe webhook: amount_capturable_updated missing identifiers', [
+                'stripe_event_id' => $stripeEventId,
+                'payment_intent_id' => $paymentIntentId,
+            ]);
+
+            return response()->json(['handled' => false], 400);
+        }
+
+        try {
+            $webhookEvent = DB::transaction(fn () => StripeWebhookEvent::create([
+                'stripe_event_id' => $stripeEventId,
+                'type' => $eventType,
+                'status' => 'processing',
+                'payload' => $payload,
+            ]));
+        } catch (UniqueConstraintViolationException) {
+            return response()->json(['handled' => true]);
+        }
+
+        try {
+            $booking = Booking::where('payment_intent_id', $paymentIntentId)->first();
+
+            if ($booking !== null) {
+                app(StripeService::class)->assertPaymentIntentMatchesBooking($paymentIntent, $booking);
+
+                if ($booking->payment_policy === PaymentPolicy::AUTHORIZE_THEN_CAPTURE) {
+                    DB::transaction(function () use ($booking, $paymentIntent): void {
+                        $locked = Booking::query()
+                            ->whereKey($booking->id)
+                            ->lockForUpdate()
+                            ->firstOrFail();
+
+                        $locked->forceFill([
+                            'payment_status' => PaymentStatus::AUTHORIZED,
+                            'amount_capturable' => (int) data_get($paymentIntent, 'amount_capturable', 0),
+                            'amount_received' => (int) data_get($paymentIntent, 'amount_received', 0),
+                            'authorized_at' => $locked->authorized_at ?? now(),
+                            'payment_failed_reason' => null,
+                        ])->save();
+                    });
+                }
+            }
+
+            $webhookEvent->markProcessed();
+        } catch (\Throwable $e) {
+            $webhookEvent->markFailed($e);
+
+            throw $e;
+        }
 
         return response()->json(['handled' => true]);
     }

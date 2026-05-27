@@ -5,6 +5,7 @@ use App\Http\Controllers\AdminBookingController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\LocationController;
+use App\Http\Controllers\Payment\BookingPaymentController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\RoomController;
 use Illuminate\Support\Facades\Route;
@@ -47,6 +48,10 @@ Route::middleware(['check_token_valid', 'verified'])->group(function () {
     Route::put('/bookings/{booking}', [BookingController::class, 'update'])->name('v1.bookings.update')->middleware('throttle:10,1');
     Route::patch('/bookings/{booking}', [BookingController::class, 'update'])->name('v1.bookings.patch')->middleware('throttle:10,1');
     Route::delete('/bookings/{booking}', [BookingController::class, 'destroy'])->name('v1.bookings.destroy')->middleware('throttle:10,1');
+    Route::post('/bookings/{booking}/payment-intent', [BookingPaymentController::class, 'createPaymentIntent'])
+        ->name('v1.bookings.paymentIntent')->middleware('throttle:10,1');
+    Route::post('/bookings/{booking}/payment/verify', [BookingPaymentController::class, 'verify'])
+        ->name('v1.bookings.payment.verify')->middleware('throttle:10,1');
 
     // Booking status change endpoints
     Route::post('/bookings/{booking}/confirm', [BookingController::class, 'confirm'])

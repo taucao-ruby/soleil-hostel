@@ -33,12 +33,10 @@ final class BookingLocalDateTest extends TestCase
         $user = User::factory()->create();
         $room = Room::factory()->available()->ready()->create(['price' => 150000]);
 
-        $this->mock(StripeService::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('createPaymentIntent')
-                ->once()
-                ->andReturn('pi_date_01_today');
-        });
-
+        // PAY-02 decoupled PaymentIntent creation from booking store: the
+        // booking is created PENDING with no PaymentIntent, and the client
+        // starts payment afterwards via POST /bookings/{booking}/payment-intent.
+        // This test exercises hostel-local-date acceptance only.
         $response = $this->actingAs($user, 'sanctum')
             ->postJson('/api/v1/bookings', [
                 'room_id' => $room->id,
@@ -56,7 +54,7 @@ final class BookingLocalDateTest extends TestCase
             'guest_email' => 'local-today@example.com',
             'check_in' => '2026-05-26',
             'check_out' => '2026-05-27',
-            'payment_intent_id' => 'pi_date_01_today',
+            'payment_intent_id' => null,
         ]);
     }
 

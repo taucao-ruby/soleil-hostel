@@ -751,11 +751,19 @@ final class ReconcileStuckStripeWebhookEventsTest extends TestCase
         int $amount,
         string $currency,
     ): object {
+        $booking = Booking::where('payment_intent_id', $id)->first();
+
         return (object) [
             'id' => $id,
             'status' => $status,
             'amount' => $amount,
             'currency' => $currency,
+            'amount_capturable' => $status === 'requires_capture' ? $amount : 0,
+            'amount_received' => $status === 'succeeded' ? $amount : 0,
+            'metadata' => (object) [
+                'booking_id' => (string) $booking?->id,
+                'user_id' => (string) $booking?->user_id,
+            ],
         ];
     }
 }

@@ -3,6 +3,8 @@
 namespace Tests\Unit;
 
 use App\Enums\BookingStatus;
+use App\Enums\PaymentPolicy;
+use App\Enums\PaymentStatus;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
@@ -344,6 +346,55 @@ class CreateBookingServiceTest extends TestCase
         );
 
         $this->assertEquals(BookingStatus::CONFIRMED, $booking->status);
+    }
+
+    /**
+     * PAY-02 guardrail: `authorize_then_capture` has no capture path in v1, so
+     * CreateBookingService must NOT originate a booking under it — a misconfigured
+     * BOOKING_PAYMENT_POLICY must fall back to prepaid rather than leak revenue
+     * via confirmed-but-uncaptured holds.
+     */
+    public function test_service_downgrades_authorize_then_capture_to_prepaid(): void
+    {
+        config(['booking.payment_policy' => PaymentPolicy::AUTHORIZE_THEN_CAPTURE->value]);
+
+        $booking = $this->service->create(
+            roomId: $this->room->id,
+            checkIn: Carbon::tomorrow(),
+            checkOut: Carbon::tomorrow()->addDays(3),
+            guestName: 'Guard Guest',
+            guestEmail: 'guard@example.com',
+            userId: $this->user->id,
+        );
+
+        $this->assertSame(
+            PaymentPolicy::PREPAID,
+            $booking->payment_policy,
+            'authorize_then_capture must downgrade to prepaid until the capture loop ships'
+        );
+        $this->assertSame(PaymentStatus::REQUIRES_CONFIRMATION, $booking->payment_status);
+    }
+
+    /**
+     * PAY-02 guardrail must stay narrow: it only downgrades authorize_then_capture.
+     * A pay_at_property configuration is a distinct, fully supported policy and
+     * must be honoured (no PaymentIntent, offline payment due).
+     */
+    public function test_service_honours_pay_at_property_payment_policy(): void
+    {
+        config(['booking.payment_policy' => PaymentPolicy::PAY_AT_PROPERTY->value]);
+
+        $booking = $this->service->create(
+            roomId: $this->room->id,
+            checkIn: Carbon::tomorrow(),
+            checkOut: Carbon::tomorrow()->addDays(3),
+            guestName: 'Offline Guest',
+            guestEmail: 'offline@example.com',
+            userId: $this->user->id,
+        );
+
+        $this->assertSame(PaymentPolicy::PAY_AT_PROPERTY, $booking->payment_policy);
+        $this->assertSame(PaymentStatus::OFFLINE_DUE, $booking->payment_status);
     }
 
     /**

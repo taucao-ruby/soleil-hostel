@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Payment;
 
 use App\Enums\BookingStatus;
+use App\Enums\PaymentPolicy;
+use App\Enums\PaymentStatus;
 use App\Http\Controllers\Payment\StripeWebhookController;
 use App\Models\Booking;
 use App\Models\Room;
@@ -72,6 +74,10 @@ class StripeWebhookIdempotencyTest extends TestCase
             ->create([
                 'status' => BookingStatus::CONFIRMED,
                 'payment_intent_id' => 'pi_replay_test',
+                'payment_policy' => PaymentPolicy::PREPAID,
+                'payment_status' => PaymentStatus::PAID,
+                'payment_currency' => 'vnd',
+                'amount' => 50000,
             ]);
 
         StripeWebhookEvent::create([
@@ -117,6 +123,10 @@ class StripeWebhookIdempotencyTest extends TestCase
             ->create([
                 'status' => BookingStatus::PENDING,
                 'payment_intent_id' => 'pi_first_delivery',
+                'payment_policy' => PaymentPolicy::PREPAID,
+                'payment_status' => PaymentStatus::REQUIRES_PAYMENT_METHOD,
+                'payment_currency' => 'vnd',
+                'amount' => 50000,
             ]);
 
         $this->assertDatabaseMissing('stripe_webhook_events', [
@@ -150,6 +160,10 @@ class StripeWebhookIdempotencyTest extends TestCase
             ->create([
                 'status' => BookingStatus::PENDING,
                 'payment_intent_id' => 'pi_failure_test',
+                'payment_policy' => PaymentPolicy::PREPAID,
+                'payment_status' => PaymentStatus::REQUIRES_PAYMENT_METHOD,
+                'payment_currency' => 'vnd',
+                'amount' => 50000,
             ]);
 
         // Force confirmBooking to throw so the catch branch (markFailed + 500)
@@ -158,7 +172,7 @@ class StripeWebhookIdempotencyTest extends TestCase
         // — never 'processed'. A 'processed' marker on a failed mutation
         // would silently absorb every Stripe retry.
         $serviceMock = $this->mock(BookingService::class);
-        $serviceMock->shouldReceive('confirmBooking')
+        $serviceMock->shouldReceive('markPaidAndConfirm')
             ->once()
             ->andThrow(new \RuntimeException('simulated downstream failure'));
 
@@ -200,6 +214,10 @@ class StripeWebhookIdempotencyTest extends TestCase
             ->create([
                 'status' => BookingStatus::PENDING,
                 'payment_intent_id' => 'pi_terminal_test',
+                'payment_policy' => PaymentPolicy::PREPAID,
+                'payment_status' => PaymentStatus::REQUIRES_PAYMENT_METHOD,
+                'payment_currency' => 'vnd',
+                'amount' => 50000,
             ]);
 
         StripeWebhookEvent::create([
@@ -247,6 +265,10 @@ class StripeWebhookIdempotencyTest extends TestCase
             ->create([
                 'status' => BookingStatus::PENDING,
                 'payment_intent_id' => 'pi_failed_replay',
+                'payment_policy' => PaymentPolicy::PREPAID,
+                'payment_status' => PaymentStatus::REQUIRES_PAYMENT_METHOD,
+                'payment_currency' => 'vnd',
+                'amount' => 50000,
             ]);
 
         $payload = $this->makePaymentFailedPayload(
@@ -266,9 +288,10 @@ class StripeWebhookIdempotencyTest extends TestCase
         $this->assertSame('processed', $events->first()->status);
         $this->assertNotNull($events->first()->processed_at);
 
-        // Booking state was never touched — the handler is log-only today.
+        // Booking stays pending while payment status records the failed attempt.
         $booking->refresh();
         $this->assertSame(BookingStatus::PENDING, $booking->status);
+        $this->assertSame(PaymentStatus::FAILED, $booking->payment_status);
 
         // Second delivery (identical payload): short-circuits at the UNIQUE
         // constraint. No second ledger row, no booking mutation, no
@@ -287,8 +310,9 @@ class StripeWebhookIdempotencyTest extends TestCase
         $this->assertSame(
             BookingStatus::PENDING,
             $booking->status,
-            'payment_failed must not mutate booking state on first OR duplicate delivery',
+            'payment_failed must not confirm booking state on first OR duplicate delivery',
         );
+        $this->assertSame(PaymentStatus::FAILED, $booking->payment_status);
     }
 
     public function test_payment_intent_payment_failed_without_event_id_short_circuits_2xx(): void
@@ -476,6 +500,8 @@ class StripeWebhookIdempotencyTest extends TestCase
 
     private function makePaymentIntentPayload(string $stripeEventId, string $paymentIntentId): array
     {
+        $booking = Booking::where('payment_intent_id', $paymentIntentId)->first();
+
         return [
             'id' => $stripeEventId,
             'type' => 'payment_intent.succeeded',
@@ -485,6 +511,12 @@ class StripeWebhookIdempotencyTest extends TestCase
                     'status' => 'succeeded',
                     'amount' => 50000,
                     'currency' => 'vnd',
+                    'amount_capturable' => 0,
+                    'amount_received' => 50000,
+                    'metadata' => [
+                        'booking_id' => (string) $booking?->id,
+                        'user_id' => (string) $booking?->user_id,
+                    ],
                 ],
             ],
         ];
@@ -495,12 +527,21 @@ class StripeWebhookIdempotencyTest extends TestCase
         string $paymentIntentId,
         string $failureMessage,
     ): array {
+        $booking = Booking::where('payment_intent_id', $paymentIntentId)->first();
+
         return [
             'id' => $stripeEventId,
             'type' => 'payment_intent.payment_failed',
             'data' => [
                 'object' => [
                     'id' => $paymentIntentId,
+                    'status' => 'requires_payment_method',
+                    'amount' => 50000,
+                    'currency' => 'vnd',
+                    'metadata' => [
+                        'booking_id' => (string) $booking?->id,
+                        'user_id' => (string) $booking?->user_id,
+                    ],
                     'last_payment_error' => [
                         'message' => $failureMessage,
                     ],

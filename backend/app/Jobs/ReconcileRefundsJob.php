@@ -8,7 +8,9 @@ use App\Enums\BookingStatus;
 use App\Events\BookingCancelled;
 use App\Models\Booking;
 use App\Models\User;
+use App\Services\Payment\ExistingRefundMatch;
 use App\Services\Payment\StripeRefundEventRecorder;
+use App\Services\StripeService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -60,9 +62,21 @@ final class ReconcileRefundsJob implements ShouldQueue
      */
     private ?StripeRefundEventRecorder $refundLedger = null;
 
+    /**
+     * Lazily-resolved Stripe service. Like the recorder, kept out of the
+     * constructor so the job stays queue-serializable; it owns the refund-create
+     * contract (stable idempotency key + metadata) for the retry path (PAY-01).
+     */
+    private ?StripeService $stripeService = null;
+
     private function refundLedger(): StripeRefundEventRecorder
     {
         return $this->refundLedger ??= app(StripeRefundEventRecorder::class);
+    }
+
+    private function stripeService(): StripeService
+    {
+        return $this->stripeService ??= app(StripeService::class);
     }
 
     /**
@@ -104,14 +118,18 @@ final class ReconcileRefundsJob implements ShouldQueue
     private function retryFailedRefunds(int $batchSize): void
     {
         $maxAttempts = config('booking.reconciliation.max_attempts', 5);
+        $retryWaitMinutes = 15;
 
+        // chunkById (not chunk): the claim below mutates updated_at, which is
+        // part of the chunk() WHERE clause; offset paging would then skip rows.
+        // Keying pages by id is immune to that mutation.
         Booking::query()
             ->with('user')
             ->where('status', BookingStatus::REFUND_FAILED)
-            ->where('updated_at', '<', now()->subMinutes(15)) // Wait before retry
+            ->where('updated_at', '<', now()->subMinutes($retryWaitMinutes)) // Wait before retry
             ->whereNotNull('payment_intent_id')
             ->whereNull('refund_id') // No successful refund yet
-            ->chunk($batchSize, function ($bookings) use ($maxAttempts) {
+            ->chunkById($batchSize, function ($bookings) use ($maxAttempts, $retryWaitMinutes) {
                 foreach ($bookings as $booking) {
                     // Track retry count in refund_error field
                     $retryCount = $this->extractRetryCount($booking->refund_error);
@@ -125,9 +143,49 @@ final class ReconcileRefundsJob implements ShouldQueue
                         continue;
                     }
 
-                    $this->retryRefund($booking, $retryCount + 1);
+                    // PAY-01 concurrency claim: atomically lease this row so two
+                    // workers cannot both issue a refund for the same booking.
+                    // The claim bumps updated_at — a racing worker's identical
+                    // claim then matches zero rows — and a crashed claim is
+                    // re-leased once it ages past the wait window again (the
+                    // existing retry window doubles as the reaper). No row lock
+                    // is held across the Stripe HTTP call below.
+                    if (! $this->claimFailedRefund($booking, $retryWaitMinutes)) {
+                        continue;
+                    }
+
+                    $fresh = $booking->fresh();
+                    if (! $fresh instanceof Booking) {
+                        continue;
+                    }
+
+                    $this->retryRefund($fresh, $retryCount + 1);
                 }
             });
+    }
+
+    /**
+     * Atomically lease a failed-refund row for retry (PAY-01 concurrency guard).
+     *
+     * Compare-and-swap on updated_at: the conditional UPDATE only matches while
+     * the row is still past the retry window and stamps updated_at = now().
+     * PostgreSQL serializes concurrent UPDATEs on the row and re-checks the
+     * WHERE against the committed value, so a second worker matches zero rows.
+     * Status is intentionally left unchanged (no spurious BookingStatusChanged),
+     * and no row lock is held while the caller then talks to Stripe.
+     *
+     * @return bool true if this worker won the claim
+     */
+    private function claimFailedRefund(Booking $booking, int $retryWaitMinutes): bool
+    {
+        $affected = Booking::query()
+            ->whereKey($booking->getKey())
+            ->where('status', BookingStatus::REFUND_FAILED)
+            ->whereNull('refund_id')
+            ->where('updated_at', '<', now()->subMinutes($retryWaitMinutes))
+            ->update(['updated_at' => now()]);
+
+        return $affected === 1;
     }
 
     /**
@@ -385,6 +443,16 @@ final class ReconcileRefundsJob implements ShouldQueue
                 return;
             }
 
+            $stripe = $this->resolveStripeClientFor($booking);
+            if ($stripe === null) {
+                // No Stripe client available — skip; do NOT throw.
+                Log::warning('ReconcileRefunds: no stripe client for booking, skipping retry', [
+                    'booking_id' => $booking->id,
+                ]);
+
+                return;
+            }
+
             $recipientEmail = $this->resolveRecipientEmail($booking);
             if ($recipientEmail === null) {
                 Log::warning('ReconcileRefunds: no email for booking; refund will be issued without notification', [
@@ -393,15 +461,30 @@ final class ReconcileRefundsJob implements ShouldQueue
                 ]);
             }
 
-            $refund = $this->issueStripeRefund($booking, $refundAmount);
-            if ($refund === null) {
-                // No Stripe client available — skip; do NOT throw.
-                Log::warning('ReconcileRefunds: no stripe client for booking, skipping retry', [
-                    'booking_id' => $booking->id,
-                ]);
+            // PAY-01 pre-check: never create a second Stripe refund if one
+            // already exists for this booking's payment_intent — a prior attempt
+            // that timed out after Stripe accepted it, the live cancellation
+            // path, or a concurrent worker. Mirrors reconcilePendingRefunds'
+            // discovery, run *before* any create.
+            $match = $this->findExistingStripeRefundForBooking($booking, $stripe, $refundAmount);
+
+            if ($match->ambiguous) {
+                $this->markRefundAmbiguous($booking, $attemptNumber, $match->candidateRefundIds);
 
                 return;
             }
+
+            if ($match->refund instanceof \Stripe\Refund) {
+                $this->syncExistingRefund($booking, $match->refund);
+
+                return;
+            }
+
+            // No existing refund -> issue one through the centralized service so
+            // the create always carries a stable idempotency key + reconcilable
+            // metadata (PAY-01). The key is derived from the durable booking +
+            // payment_intent, so this and any retry use the SAME key.
+            $refund = $this->stripeService()->createReconciliationRefund($stripe, $booking, $refundAmount);
 
             try {
                 DB::transaction(function () use ($booking, $refund, $refundAmount) {
@@ -485,32 +568,186 @@ final class ReconcileRefundsJob implements ShouldQueue
     }
 
     /**
-     * Issue a Stripe refund, falling back to the application-level Cashier
-     * client when the booking has no associated user (CONC-006).
+     * Pre-check: find an existing Stripe refund on this booking's payment_intent
+     * before issuing a new one (PAY-01).
+     *
+     * Retrieves the PaymentIntent with its charge's refunds expanded — the same
+     * shape reconcilePendingRefunds already uses — and classifies candidates:
+     *   - identity match: metadata.soleil_refund_event_id == our idempotency key
+     *     (a refund a prior reconciler attempt issued).
+     *   - fallback match: amount + currency equal and booking_id metadata, when
+     *     present, equals this booking (covers the live cancellation paths,
+     *     which carry booking_id but not soleil_refund_event_id, and Cashier
+     *     refunds, which carry no metadata at all).
+     * Only refunds in a usable state (pending / requires_action / succeeded)
+     * block a fresh attempt; failed/canceled refunds do not. Exactly one match
+     * -> sync it; more than one -> ambiguous (manual reconciliation); none ->
+     * safe to create.
      */
-    private function issueStripeRefund(Booking $booking, int $refundAmount): ?\Stripe\Refund
-    {
-        $user = $booking->user;
-        if ($user instanceof User) {
-            return $user->refund(
-                $booking->payment_intent_id,
-                ['amount' => $refundAmount],
+    private function findExistingStripeRefundForBooking(
+        Booking $booking,
+        \Stripe\StripeClient $stripe,
+        int $expectedAmount,
+    ): ExistingRefundMatch {
+        $paymentIntent = $stripe->paymentIntents->retrieve(
+            $booking->payment_intent_id,
+            ['expand' => ['latest_charge.refunds']],
+        );
+
+        $charge = $paymentIntent->latest_charge;
+        if (! $charge instanceof \Stripe\Charge) {
+            return ExistingRefundMatch::none();
+        }
+
+        $refunds = $charge->refunds;
+        if (! $refunds instanceof \Stripe\Collection || empty($refunds->data)) {
+            return ExistingRefundMatch::none();
+        }
+
+        $expectedKey = $this->stripeService()->bookingRefundIdempotencyKey($booking);
+        // A refund is always in its charge's currency, so validate candidates
+        // against the charge (when Stripe exposes it) rather than a config value
+        // that can diverge from the booking's actual settlement currency. If the
+        // charge omits a currency, fall back to amount + booking_id alone rather
+        // than rejecting an otherwise-valid match.
+        $chargeCurrency = strtolower((string) data_get($charge, 'currency', ''));
+
+        $byIdentity = [];
+        $byAmount = [];
+
+        foreach ($refunds->data as $candidate) {
+            if (! $candidate instanceof \Stripe\Refund) {
+                continue;
+            }
+
+            if (! in_array((string) $candidate->status, ['pending', 'requires_action', 'succeeded'], true)) {
+                continue;
+            }
+
+            $metaEventId = (string) data_get($candidate, 'metadata.soleil_refund_event_id', '');
+            if ($metaEventId !== '' && $metaEventId === $expectedKey) {
+                $byIdentity[] = $candidate;
+
+                continue;
+            }
+
+            $metaBookingId = (string) data_get($candidate, 'metadata.booking_id', '');
+            $sameBooking = $metaBookingId === '' || $metaBookingId === (string) $booking->id;
+            $sameAmount = (int) $candidate->amount === $expectedAmount;
+            $sameCurrency = $chargeCurrency === ''
+                || strtolower((string) $candidate->currency) === $chargeCurrency;
+
+            if ($sameBooking && $sameAmount && $sameCurrency) {
+                $byAmount[] = $candidate;
+            }
+        }
+
+        // An explicit identity match is authoritative; fall back to amount only
+        // when no refund carries our identity stamp.
+        $matches = $byIdentity !== [] ? $byIdentity : $byAmount;
+
+        if (count($matches) === 1) {
+            return ExistingRefundMatch::match($matches[0]);
+        }
+
+        if (count($matches) > 1) {
+            return ExistingRefundMatch::ambiguous(
+                array_map(static fn (\Stripe\Refund $r): string => (string) $r->id, $matches),
             );
         }
 
-        $stripe = $this->resolveStripeClientFor($booking);
-        if ($stripe === null) {
-            return null;
+        return ExistingRefundMatch::none();
+    }
+
+    /**
+     * Sync local state from a pre-existing Stripe refund instead of creating a
+     * duplicate (PAY-01).
+     *
+     * succeeded -> record the ledger row and finalize the booking (same shape as
+     * checkPaymentIntentRefunds). pending / requires_action -> adopt the refund
+     * id and move to refund_pending so reconcilePendingRefunds finalizes it once
+     * Stripe reaches a terminal state; the ledger write is deferred to that
+     * terminal pass (mirrors verifyExistingRefund, which never records a pending
+     * refund).
+     */
+    private function syncExistingRefund(Booking $booking, \Stripe\Refund $refund): void
+    {
+        if ((string) $refund->status === 'succeeded') {
+            try {
+                DB::transaction(function () use ($booking, $refund) {
+                    $this->refundLedger()->record(
+                        $booking,
+                        (string) $refund->id,
+                        (int) $refund->amount,
+                        (string) $refund->currency,
+                        StripeRefundEventRecorder::reconcileIssueEventKey((string) $refund->id),
+                    );
+
+                    $transitioned = $booking->transitionTo(BookingStatus::CANCELLED);
+                    $transitioned->forceFill([
+                        'refund_id' => $refund->id,
+                        'refund_status' => 'succeeded',
+                        'refund_amount' => $refund->amount,
+                        'refund_error' => null,
+                    ])->save();
+
+                    event(new BookingCancelled($transitioned));
+                });
+            } catch (UniqueConstraintViolationException) {
+                Log::info('Reconcile: pre-existing refund already in ledger; webhook won the race', [
+                    'booking_id' => $booking->id,
+                    'refund_id' => $refund->id,
+                ]);
+
+                return;
+            }
+
+            Log::info('ReconcileRefunds: synced pre-existing succeeded refund, skipped duplicate create', [
+                'booking_id' => $booking->id,
+                'refund_id' => $refund->id,
+            ]);
+
+            return;
         }
 
-        return $stripe->refunds->create([
-            'payment_intent' => $booking->payment_intent_id,
-            'amount' => $refundAmount,
-            'metadata' => [
-                'booking_id' => (string) $booking->id,
-                'reason' => 'reconcile_orphan_user',
-                'kind' => 'reconcile_refund',
-            ],
+        // pending / requires_action: hand off to the pending reconciler.
+        $transitioned = $booking->transitionTo(BookingStatus::REFUND_PENDING);
+        $transitioned->forceFill([
+            'refund_id' => $refund->id,
+            'refund_status' => (string) $refund->status,
+        ])->save();
+
+        Log::info('ReconcileRefunds: adopted pre-existing in-flight refund, deferred to pending reconciler', [
+            'booking_id' => $booking->id,
+            'refund_id' => $refund->id,
+            'refund_status' => $refund->status,
         ]);
+    }
+
+    /**
+     * Record an ambiguous pre-check outcome without creating a refund (PAY-01).
+     *
+     * The booking stays REFUND_FAILED so an operator can reconcile manually; the
+     * attempt marker advances so the row eventually ages out of the retry set
+     * via the max-attempts cap instead of re-warning indefinitely.
+     *
+     * @param  list<string>  $candidateRefundIds
+     */
+    private function markRefundAmbiguous(Booking $booking, int $attemptNumber, array $candidateRefundIds): void
+    {
+        Log::warning('ReconcileRefunds: ambiguous existing Stripe refunds; skipping create, manual reconciliation required', [
+            'booking_id' => $booking->id,
+            'payment_intent_id' => $booking->payment_intent_id,
+            'candidate_refund_ids' => $candidateRefundIds,
+        ]);
+
+        $booking->forceFill([
+            'refund_status' => 'failed',
+            'refund_error' => sprintf(
+                '[Attempt %d] Ambiguous existing Stripe refunds; manual reconciliation required. Candidates: %s',
+                $attemptNumber,
+                implode(', ', $candidateRefundIds),
+            ),
+        ])->save();
     }
 }

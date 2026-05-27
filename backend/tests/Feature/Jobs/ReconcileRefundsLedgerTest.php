@@ -165,6 +165,9 @@ final class ReconcileRefundsLedgerTest extends TestCase
         $this->assertGreaterThan(0, $expectedAmount);
 
         $this->installStripeHttp([
+            // PAY-01: the issue path now pre-checks for an existing refund (GET
+            // payment_intent) before creating one. No refund exists yet here.
+            'payment_intent' => $this->paymentIntentJsonWithoutRefunds('pi_issue'),
             'create_refund' => $this->refundJson('re_issued', 'succeeded', $expectedAmount),
         ]);
 
@@ -346,6 +349,30 @@ final class ReconcileRefundsLedgerTest extends TestCase
                     'has_more' => false,
                     'url' => '/v1/charges/ch_'.$id.'/refunds',
                     'data' => [$latestRefund],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * A PaymentIntent whose charge has no refunds yet — the PAY-01 pre-check
+     * shape for "nothing exists, safe to create".
+     *
+     * @return array<string, mixed>
+     */
+    private function paymentIntentJsonWithoutRefunds(string $id): array
+    {
+        return [
+            'id' => $id,
+            'object' => 'payment_intent',
+            'latest_charge' => [
+                'id' => 'ch_'.$id,
+                'object' => 'charge',
+                'refunds' => [
+                    'object' => 'list',
+                    'has_more' => false,
+                    'url' => '/v1/charges/ch_'.$id.'/refunds',
+                    'data' => [],
                 ],
             ],
         ];

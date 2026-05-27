@@ -8,6 +8,7 @@ use App\Models\Booking;
 use App\Services\Payment\PaymentIntentCancellationOutcome;
 use Illuminate\Support\Str;
 use RuntimeException;
+use Stripe\Refund;
 use Stripe\StripeClient;
 
 class StripeService
@@ -228,6 +229,45 @@ class StripeService
         );
     }
 
+    /**
+     * Issue (or idempotently replay) the single reconciliation refund for a
+     * booking (PAY-01).
+     *
+     * Returns the full Stripe Refund so the caller can persist its id/currency
+     * into the refund ledger. The idempotency key is derived from the durable
+     * booking + payment_intent (bookingRefundIdempotencyKey) — NOT the job
+     * attempt — so any number of reconciler retries, queue redeliveries,
+     * timeouts, or concurrent workers collapse to AT MOST ONE Stripe refund.
+     * It is identical to createBookingRefund's key, so a refund the live
+     * cancellation no-user path already issued is deduplicated by Stripe rather
+     * than duplicated here.
+     *
+     * The caller passes the Stripe client it resolved for the booking so the
+     * CONC-006 orphaned-user fallback (user->stripe() vs application client) is
+     * preserved; this class never decides which client a reconciler refund uses.
+     *
+     * @param  StripeClient  $stripe  client resolved by the caller for this booking
+     * @param  int  $amount  refund amount in minor units (must be > 0)
+     */
+    public function createReconciliationRefund(StripeClient $stripe, Booking $booking, int $amount): Refund
+    {
+        if ($amount <= 0) {
+            throw new RuntimeException('Refund amount must be greater than zero.');
+        }
+
+        $paymentIntentId = $this->refundPaymentIntentId($booking);
+        $idempotencyKey = $this->bookingRefundIdempotencyKey($booking);
+
+        return $stripe->refunds->create(
+            [
+                'payment_intent' => $paymentIntentId,
+                'amount' => $amount,
+                'metadata' => $this->reconciliationRefundMetadata($booking, $paymentIntentId, $idempotencyKey),
+            ],
+            ['idempotency_key' => $idempotencyKey],
+        );
+    }
+
     private function shouldUseTestingFake(): bool
     {
         return app()->environment('testing') && blank(config('cashier.secret'));
@@ -265,6 +305,25 @@ class StripeService
         }
 
         return $metadata;
+    }
+
+    /**
+     * Non-PII metadata stamped on a reconciliation refund so a remote Stripe
+     * refund can be reconciled back to the local booking/logical refund event.
+     * soleil_refund_event_id carries the stable idempotency key, which the
+     * reconciler's pre-check matches against (PAY-01).
+     *
+     * @return array<string, string>
+     */
+    private function reconciliationRefundMetadata(Booking $booking, string $paymentIntentId, string $idempotencyKey): array
+    {
+        return [
+            'booking_id' => (string) $booking->id,
+            'soleil_refund_event_id' => $idempotencyKey,
+            'payment_intent_id' => $paymentIntentId,
+            'kind' => 'reconcile_refund',
+            'source' => 'reconcile_refunds_job',
+        ];
     }
 
     /**

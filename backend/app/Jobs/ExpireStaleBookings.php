@@ -7,8 +7,8 @@ namespace App\Jobs;
 use App\Enums\BookingStatus;
 use App\Events\BookingCancelled;
 use App\Models\Booking;
+use App\Models\PaymentCancellationTask;
 use App\Services\FeatureFlag;
-use App\Services\StripeService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -42,6 +42,13 @@ use Illuminate\Support\Facades\Log;
  * - The transaction re-reads the status under lock; if a concurrent confirm()
  *   promoted the booking to CONFIRMED between chunk fetch and lock acquire,
  *   the expire is skipped. This avoids racing with BookingController::confirm.
+ * - PAY-03: NO external I/O happens inside this transaction. Cancelling the
+ *   Stripe PaymentIntent used to run under the booking row lock, so a Stripe
+ *   hang could hold the lock for the full HTTP timeout and stall a concurrent
+ *   CreateBookingService overlap-lock for the same room. The cancellation is
+ *   now recorded as a durable payment_cancellation_tasks row (atomic with the
+ *   CANCELLED transition) and performed later, off the lock, by
+ *   ProcessPaymentCancellationOutbox.
  *
  * Scheduled via routes/console.php every 5 minutes.
  */
@@ -63,7 +70,7 @@ final class ExpireStaleBookings implements ShouldQueue
      */
     public const EXPIRED_REASON = 'expired';
 
-    public function handle(?StripeService $stripeService = null): void
+    public function handle(): void
     {
         // Batch 4 / 3E: Redis-backed kill switch. Defaults to ON so existing
         // schedulers continue to run; flip OFF via `feature:toggle booking.expire_pending off`
@@ -87,7 +94,6 @@ final class ExpireStaleBookings implements ShouldQueue
 
         $threshold = now()->subMinutes($ttlMinutes);
         $expiredCount = 0;
-        $stripeService ??= app(StripeService::class);
 
         Booking::query()
             ->where('status', BookingStatus::PENDING)
@@ -95,8 +101,8 @@ final class ExpireStaleBookings implements ShouldQueue
             ->orderBy('id')
             ->limit($batchSize)
             ->pluck('id')
-            ->each(function (int $bookingId) use (&$expiredCount, $stripeService): void {
-                if ($this->expireOne($bookingId, $stripeService)) {
+            ->each(function (int $bookingId) use (&$expiredCount): void {
+                if ($this->expireOne($bookingId)) {
                     $expiredCount++;
                 }
             });
@@ -114,10 +120,17 @@ final class ExpireStaleBookings implements ShouldQueue
      *
      * Returns true if the booking was transitioned to CANCELLED, false if it
      * was no longer eligible (concurrent confirm/cancel raced ahead).
+     *
+     * PAY-03: this transaction performs ONLY local DB work — lock, re-validate,
+     * transition, audit, and (if a PaymentIntent exists) enqueue a durable
+     * payment_cancellation_tasks row. No Stripe/network call runs here, so the
+     * booking row lock is held for microseconds and can never be stalled by
+     * Stripe latency. The actual PaymentIntent cancel happens off the lock in
+     * ProcessPaymentCancellationOutbox.
      */
-    private function expireOne(int $bookingId, StripeService $stripeService): bool
+    private function expireOne(int $bookingId): bool
     {
-        return DB::transaction(function () use ($bookingId, $stripeService): bool {
+        return DB::transaction(function () use ($bookingId): bool {
             $booking = Booking::query()
                 ->whereKey($bookingId)
                 ->lockForUpdate()
@@ -133,10 +146,6 @@ final class ExpireStaleBookings implements ShouldQueue
                 return false;
             }
 
-            if ($booking->payment_intent_id !== null) {
-                $stripeService->cancelPaymentIntent($booking->payment_intent_id);
-            }
-
             $booking = $booking->transitionTo(BookingStatus::CANCELLED);
             $booking->forceFill([
                 'cancelled_at' => now(),
@@ -144,9 +153,40 @@ final class ExpireStaleBookings implements ShouldQueue
                 'cancellation_reason' => self::EXPIRED_REASON,
             ])->save();
 
+            $this->enqueuePaymentIntentCancellation($booking);
+
             event(new BookingCancelled($booking));
 
             return true;
         });
+    }
+
+    /**
+     * Record a durable intent to cancel the booking's Stripe PaymentIntent.
+     *
+     * Runs inside the expiry transaction so the task and the CANCELLED
+     * transition commit atomically — there is no window where the booking is
+     * cancelled but the cancellation intent is lost. firstOrCreate keys on the
+     * table's UNIQUE (booking_id, payment_intent_id, action), so repeated
+     * expiry runs (or a re-fired job) never enqueue duplicate Stripe work.
+     */
+    private function enqueuePaymentIntentCancellation(Booking $booking): void
+    {
+        if ($booking->payment_intent_id === null) {
+            return;
+        }
+
+        PaymentCancellationTask::query()->firstOrCreate(
+            [
+                'booking_id' => $booking->id,
+                'payment_intent_id' => $booking->payment_intent_id,
+                'action' => PaymentCancellationTask::ACTION_CANCEL,
+            ],
+            [
+                'status' => PaymentCancellationTask::STATUS_PENDING,
+                'attempts' => 0,
+                'available_at' => now(),
+            ],
+        );
     }
 }

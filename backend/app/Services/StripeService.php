@@ -5,12 +5,28 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Booking;
+use App\Services\Payment\PaymentIntentCancellationOutcome;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Stripe\StripeClient;
 
 class StripeService
 {
+    /**
+     * PaymentIntent statuses from which a cancel() is valid and safe. Notably
+     * excludes 'succeeded' (money moved — not cancellable) and 'processing'
+     * (settling toward success; leave it for the webhook/reconciliation path).
+     * 'requires_capture' IS included: that is an authorized-but-uncaptured hold,
+     * and cancelling it releases the customer's funds — the main reason expiry
+     * must cancel reliably.
+     */
+    private const CANCELLABLE_PAYMENT_INTENT_STATUSES = [
+        'requires_payment_method',
+        'requires_confirmation',
+        'requires_action',
+        'requires_capture',
+    ];
+
     public function __construct(
         private readonly StripeClient $stripeClient
     ) {}
@@ -65,13 +81,62 @@ class StripeService
         return sprintf('booking_payment_intent_%d', (int) $booking->getKey());
     }
 
-    public function cancelPaymentIntent(string $paymentIntentId): void
+    /**
+     * Cancel the PaymentIntent backing an expired booking (PAY-03).
+     *
+     * MUST be called outside any booking/room DB lock — it performs Stripe
+     * network I/O. The drainer (ProcessPaymentCancellationOutbox) owns that
+     * boundary; this method never opens a transaction.
+     *
+     * Behavior:
+     * - Retrieves the PaymentIntent (source of truth) and verifies it still
+     *   belongs to this booking before mutating anything.
+     * - Already canceled -> idempotent success.
+     * - Cancellable state -> cancel with the caller's stable idempotency key.
+     * - succeeded / non-cancellable -> NotCancellable (operator review; we do
+     *   NOT force a cancel that Stripe would reject and we never resurrect the
+     *   booking).
+     *
+     * Transient failures (ApiConnection / RateLimit / 5xx / timeout) propagate
+     * as Stripe exceptions so the worker retries with backoff.
+     *
+     * @param  string  $idempotencyKey  stable per-booking key, e.g. PaymentCancellationTask::idempotencyKey()
+     */
+    public function cancelPaymentIntentForBooking(Booking $booking, string $idempotencyKey): PaymentIntentCancellationOutcome
     {
-        if ($this->shouldUseTestingFake()) {
-            return;
+        $paymentIntentId = $booking->payment_intent_id;
+
+        if (! is_string($paymentIntentId) || $paymentIntentId === '') {
+            throw new RuntimeException(
+                "Booking #{$booking->id} has no payment_intent_id to cancel.",
+            );
         }
 
-        $this->stripeClient->paymentIntents->cancel($paymentIntentId);
+        if ($this->shouldUseTestingFake()) {
+            return PaymentIntentCancellationOutcome::Canceled;
+        }
+
+        $paymentIntent = $this->stripeClient->paymentIntents->retrieve($paymentIntentId);
+
+        $this->assertPaymentIntentOwnedByBooking($paymentIntent, $paymentIntentId, $booking);
+
+        $status = (string) data_get($paymentIntent, 'status', '');
+
+        if ($status === 'canceled') {
+            return PaymentIntentCancellationOutcome::AlreadyCanceled;
+        }
+
+        if (! in_array($status, self::CANCELLABLE_PAYMENT_INTENT_STATUSES, true)) {
+            return PaymentIntentCancellationOutcome::NotCancellable;
+        }
+
+        $this->stripeClient->paymentIntents->cancel(
+            $paymentIntentId,
+            [],
+            ['idempotency_key' => $idempotencyKey],
+        );
+
+        return PaymentIntentCancellationOutcome::Canceled;
     }
 
     /**
@@ -200,6 +265,31 @@ class StripeService
         }
 
         return $metadata;
+    }
+
+    /**
+     * Defense in depth: never cancel a PaymentIntent that no longer belongs to
+     * this booking. The booking_id is stamped into PaymentIntent metadata at
+     * creation time (paymentIntentMetadata); if Stripe returns a different
+     * owner the local payment_intent_id has drifted and cancelling would be a
+     * cross-booking side effect. A missing metadata.booking_id (older intents)
+     * is tolerated — we only reject an explicit mismatch.
+     */
+    private function assertPaymentIntentOwnedByBooking(
+        mixed $paymentIntent,
+        string $paymentIntentId,
+        Booking $booking,
+    ): void {
+        $metadataBookingId = (string) data_get($paymentIntent, 'metadata.booking_id', '');
+
+        if ($metadataBookingId !== '' && $metadataBookingId !== (string) $booking->id) {
+            throw new RuntimeException(sprintf(
+                'PaymentIntent %s metadata booking_id (%s) does not match booking #%d; refusing to cancel.',
+                $paymentIntentId,
+                $metadataBookingId,
+                $booking->id,
+            ));
+        }
     }
 
     private function assertPaymentIntentMatchesBooking(

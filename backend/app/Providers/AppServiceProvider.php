@@ -69,10 +69,34 @@ class AppServiceProvider extends ServiceProvider
             $config = $params['config'] ?? [
                 'api_key' => $secret === '' ? null : $secret,
                 'stripe_version' => \Laravel\Cashier\Cashier::STRIPE_VERSION,
+                // PAY-03: bound per-request retries. Connect/read timeouts are set
+                // on the shared HTTP client in configureStripeHttpClient().
+                'max_network_retries' => (int) config('services.stripe.max_network_retries', 2),
             ];
 
             return new \Stripe\StripeClient($config);
         });
+    }
+
+    /**
+     * Apply bounded timeouts + retries to the Stripe HTTP client (PAY-03).
+     *
+     * The Stripe SDK default curl timeouts are 30s connect / 80s read with 0
+     * retries. StripeClient routes every request through ApiRequestor, which
+     * falls back to the shared CurlClient singleton, so configuring that
+     * singleton bounds every Stripe call this app makes. This is a backstop:
+     * payment cancellation already runs strictly outside booking/room locks,
+     * but no Stripe call should ever pin a worker for over a minute.
+     */
+    private function configureStripeHttpClient(): void
+    {
+        \Stripe\Stripe::setMaxNetworkRetries((int) config('services.stripe.max_network_retries', 2));
+
+        $curl = \Stripe\HttpClient\CurlClient::instance();
+        $curl->setConnectTimeout((int) config('services.stripe.connect_timeout', 2));
+        $curl->setTimeout((int) config('services.stripe.read_timeout', 5));
+
+        \Stripe\ApiRequestor::setHttpClient($curl);
     }
 
     /**
@@ -82,6 +106,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->assertProductionSecureCookieConfiguration();
         $this->assertRedisAuthenticationConfiguration();
+        $this->configureStripeHttpClient();
 
         // Register BookingObserver for automatic location_id population
         Booking::observe(BookingObserver::class);

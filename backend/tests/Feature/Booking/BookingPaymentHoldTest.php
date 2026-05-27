@@ -7,8 +7,10 @@ namespace Tests\Feature\Booking;
 use App\Enums\BookingStatus;
 use App\Jobs\ExpireStaleBookings;
 use App\Models\Booking;
+use App\Models\PaymentCancellationTask;
 use App\Models\Room;
 use App\Models\User;
+use App\Services\Payment\PaymentIntentCancellationOutcome;
 use App\Services\StripeService;
 use Carbon\Carbon;
 use Exception;
@@ -248,7 +250,138 @@ final class BookingPaymentHoldTest extends TestCase
         $this->assertSame((string) $booking->user_id, $capture->payload['metadata']['user_id']);
     }
 
-    public function test_expire_stale_bookings_cancels_payment_intent_before_expiring_booking(): void
+    /**
+     * StripeService boundary (PAY-03): a cancellable PaymentIntent is canceled
+     * with the caller's stable idempotency key, and the booking-id ownership is
+     * verified against PaymentIntent metadata first.
+     */
+    public function test_cancel_payment_intent_for_booking_passes_idempotency_key_for_cancellable_intent(): void
+    {
+        config()->set('cashier.secret', 'sk_test_local');
+
+        $user = User::factory()->create();
+        $room = Room::factory()->available()->ready()->create(['price' => 150000]);
+        $booking = Booking::factory()
+            ->for($user)
+            ->for($room)
+            ->cancelled()
+            ->create(['payment_intent_id' => 'pi_cancellable', 'amount' => 300000]);
+
+        $fakeStripe = $this->fakeStripeClientReturning('requires_capture', (string) $booking->id);
+        $this->app->instance(\Stripe\StripeClient::class, $fakeStripe);
+
+        $outcome = app(StripeService::class)->cancelPaymentIntentForBooking(
+            $booking,
+            'booking:'.$booking->id.':payment_intent_cancel:v1',
+        );
+
+        $this->assertSame(PaymentIntentCancellationOutcome::Canceled, $outcome);
+        $this->assertSame(1, $fakeStripe->cancelCount);
+        $this->assertSame('pi_cancellable', $fakeStripe->canceledId);
+        $this->assertSame(
+            'booking:'.$booking->id.':payment_intent_cancel:v1',
+            $fakeStripe->cancelOpts['idempotency_key'] ?? null,
+        );
+    }
+
+    public function test_cancel_payment_intent_for_booking_is_idempotent_when_already_canceled(): void
+    {
+        config()->set('cashier.secret', 'sk_test_local');
+
+        $booking = Booking::factory()
+            ->for(User::factory())
+            ->for(Room::factory()->available()->ready())
+            ->cancelled()
+            ->create(['payment_intent_id' => 'pi_already', 'amount' => 300000]);
+
+        $fakeStripe = $this->fakeStripeClientReturning('canceled', (string) $booking->id);
+        $this->app->instance(\Stripe\StripeClient::class, $fakeStripe);
+
+        $outcome = app(StripeService::class)->cancelPaymentIntentForBooking($booking, 'k');
+
+        $this->assertSame(PaymentIntentCancellationOutcome::AlreadyCanceled, $outcome);
+        $this->assertSame(0, $fakeStripe->cancelCount, 'Already-canceled intent must not be re-canceled');
+    }
+
+    public function test_cancel_payment_intent_for_booking_reports_not_cancellable_for_succeeded_intent(): void
+    {
+        config()->set('cashier.secret', 'sk_test_local');
+
+        $booking = Booking::factory()
+            ->for(User::factory())
+            ->for(Room::factory()->available()->ready())
+            ->cancelled()
+            ->create(['payment_intent_id' => 'pi_succeeded', 'amount' => 300000]);
+
+        $fakeStripe = $this->fakeStripeClientReturning('succeeded', (string) $booking->id);
+        $this->app->instance(\Stripe\StripeClient::class, $fakeStripe);
+
+        $outcome = app(StripeService::class)->cancelPaymentIntentForBooking($booking, 'k');
+
+        $this->assertSame(PaymentIntentCancellationOutcome::NotCancellable, $outcome);
+        $this->assertSame(0, $fakeStripe->cancelCount, 'A succeeded intent must never be canceled');
+    }
+
+    /**
+     * Fake StripeClient whose paymentIntents->retrieve() returns a given status
+     * + booking-id metadata, and whose cancel() records its id/options.
+     */
+    private function fakeStripeClientReturning(string $status, string $metadataBookingId): \Stripe\StripeClient
+    {
+        return new class($status, $metadataBookingId) extends \Stripe\StripeClient
+        {
+            public object $paymentIntents;
+
+            public int $cancelCount = 0;
+
+            public ?string $canceledId = null;
+
+            public ?array $cancelOpts = null;
+
+            public function __construct(string $status, string $metadataBookingId)
+            {
+                $outer = $this;
+                $this->paymentIntents = new class($outer, $status, $metadataBookingId)
+                {
+                    public function __construct(
+                        private object $outer,
+                        private string $status,
+                        private string $metadataBookingId,
+                    ) {}
+
+                    public function retrieve($id, $params = null, $opts = null): object
+                    {
+                        return (object) [
+                            'id' => $id,
+                            'status' => $this->status,
+                            'metadata' => (object) ['booking_id' => $this->metadataBookingId],
+                        ];
+                    }
+
+                    /**
+                     * @param  array<string, mixed>|null  $params
+                     * @param  array<string, mixed>|null  $opts
+                     */
+                    public function cancel($id, $params = null, $opts = null): object
+                    {
+                        $this->outer->cancelCount++;
+                        $this->outer->canceledId = $id;
+                        $this->outer->cancelOpts = $opts;
+
+                        return (object) ['id' => $id, 'status' => 'canceled'];
+                    }
+                };
+            }
+        };
+    }
+
+    /**
+     * PAY-03 transaction-boundary regression: ExpireStaleBookings must NOT make
+     * any Stripe call while expiring a booking (that would run under the
+     * booking row lock). It records a durable payment_cancellation_tasks row
+     * instead; the Stripe cancel happens later in ProcessPaymentCancellationOutbox.
+     */
+    public function test_expire_stale_bookings_records_cancellation_task_without_calling_stripe(): void
     {
         config()->set('booking.pending_ttl_minutes', 30);
 
@@ -269,10 +402,10 @@ final class BookingPaymentHoldTest extends TestCase
             'updated_at' => $past,
         ]);
 
+        // The expiry path must touch neither Stripe entrypoint.
         $this->mock(StripeService::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('cancelPaymentIntent')
-                ->once()
-                ->with('pi_expire_test_123');
+            $mock->shouldNotReceive('cancelPaymentIntentForBooking');
+            $mock->shouldNotReceive('cancelPaymentIntent');
         });
 
         (new ExpireStaleBookings)->handle();
@@ -281,5 +414,43 @@ final class BookingPaymentHoldTest extends TestCase
 
         $this->assertSame(BookingStatus::CANCELLED, $booking->status);
         $this->assertSame(ExpireStaleBookings::EXPIRED_REASON, $booking->cancellation_reason);
+
+        // A durable cancellation task is enqueued for the offline drainer.
+        $task = PaymentCancellationTask::query()
+            ->where('booking_id', $booking->id)
+            ->sole();
+        $this->assertSame('pi_expire_test_123', $task->payment_intent_id);
+        $this->assertSame(PaymentCancellationTask::ACTION_CANCEL, $task->action);
+        $this->assertSame(PaymentCancellationTask::STATUS_PENDING, $task->status);
+        $this->assertSame(0, $task->attempts);
+    }
+
+    public function test_expire_stale_bookings_without_payment_intent_creates_no_task(): void
+    {
+        config()->set('booking.pending_ttl_minutes', 30);
+
+        $booking = Booking::factory()
+            ->for(User::factory())
+            ->for(Room::factory()->available()->ready())
+            ->pending()
+            ->create([
+                'payment_intent_id' => null,
+                'amount' => 300000,
+                'check_in' => Carbon::now()->addDays(5)->startOfDay(),
+                'check_out' => Carbon::now()->addDays(7)->startOfDay(),
+            ]);
+
+        $past = Carbon::now()->subMinutes(45);
+        Booking::query()->whereKey($booking->id)->update([
+            'created_at' => $past,
+            'updated_at' => $past,
+        ]);
+
+        (new ExpireStaleBookings)->handle();
+
+        $booking->refresh();
+
+        $this->assertSame(BookingStatus::CANCELLED, $booking->status);
+        $this->assertSame(0, PaymentCancellationTask::query()->where('booking_id', $booking->id)->count());
     }
 }

@@ -208,6 +208,33 @@ return [
 
         'webhook_backlog_alert_multiplier' => env('BOOKING_WEBHOOK_BACKLOG_ALERT_MULTIPLIER', 2),
 
+        /*
+        |--------------------------------------------------------------------------
+        | Stripe PaymentIntent Cancellation Outbox (PAY-03)
+        |--------------------------------------------------------------------------
+        |
+        | ExpireStaleBookings records a durable payment_cancellation_tasks row
+        | inside its expiry transaction and ProcessPaymentCancellationOutbox
+        | drains it off the booking lock. These tune that drainer:
+        |
+        | - batch_size               : tasks claimed per run.
+        | - max_attempts             : claims before a task is failed permanently
+        |                              and surfaced for operator review.
+        | - stale_processing_minutes : how long a 'processing' row may sit before
+        |                              a crashed worker is assumed and it is re-claimed.
+        | - initial_backoff_seconds  : first transient-retry delay (doubles per attempt).
+        | - max_backoff_seconds      : cap on the exponential backoff.
+        |
+        */
+
+        'payment_cancellation' => [
+            'batch_size' => (int) env('BOOKING_PAYMENT_CANCEL_BATCH_SIZE', 50),
+            'max_attempts' => (int) env('BOOKING_PAYMENT_CANCEL_MAX_ATTEMPTS', 10),
+            'stale_processing_minutes' => (int) env('BOOKING_PAYMENT_CANCEL_STALE_MINUTES', 5),
+            'initial_backoff_seconds' => (int) env('BOOKING_PAYMENT_CANCEL_INITIAL_BACKOFF', 60),
+            'max_backoff_seconds' => (int) env('BOOKING_PAYMENT_CANCEL_MAX_BACKOFF', 3600),
+        ],
+
     ],
 
     /*

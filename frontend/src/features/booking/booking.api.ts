@@ -6,6 +6,8 @@ import type {
   BookingDetailRaw,
   BookingDetailResponse,
   BookingFormData,
+  BookingPaymentIntentResponse,
+  BookingPaymentVerifyResponse,
   BookingResponse,
   BookingsListResponse,
   CancelBookingResponse,
@@ -29,6 +31,10 @@ type BookingDetailResponsePayload = Omit<BookingDetailResponse, 'data'> & {
   data: UnvalidatedBooking<BookingDetailRaw>
 }
 
+type BookingPaymentVerifyResponsePayload = Omit<BookingPaymentVerifyResponse, 'data'> & {
+  data: UnvalidatedBooking<BookingDetailRaw>
+}
+
 /**
  * Booking API Service
  *
@@ -43,6 +49,22 @@ type BookingDetailResponsePayload = Omit<BookingDetailResponse, 'data'> & {
  */
 export async function createBooking(data: BookingFormData): Promise<Booking> {
   const response = await api.post<BookingResponsePayload>('/v1/bookings', data)
+  return parseBookingStatusPayload(response.data.data)
+}
+
+export async function createBookingPaymentIntent(
+  bookingId: number
+): Promise<BookingPaymentIntentResponse['data']> {
+  const response = await api.post<BookingPaymentIntentResponse>(
+    `/v1/bookings/${bookingId}/payment-intent`
+  )
+  return response.data.data
+}
+
+export async function verifyBookingPayment(bookingId: number): Promise<BookingDetailRaw> {
+  const response = await api.post<BookingPaymentVerifyResponsePayload>(
+    `/v1/bookings/${bookingId}/payment/verify`
+  )
   return parseBookingStatusPayload(response.data.data)
 }
 

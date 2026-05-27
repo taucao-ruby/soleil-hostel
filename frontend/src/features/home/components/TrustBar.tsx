@@ -10,7 +10,7 @@ import React from 'react'
 const SIGNALS = [
   { icon: '✓', label: 'Xác nhận ngay' },
   { icon: '⭐', label: '4.9 / 5 từ 820 đánh giá' },
-  { icon: '🔒', label: 'Không cần thẻ tín dụng' },
+  { icon: '🔒', label: 'Thanh toán bảo mật' },
   { icon: '↩', label: 'Hủy miễn phí 24h' },
 ] as const
 

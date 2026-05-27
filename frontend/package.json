@@ -19,6 +19,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@stripe/react-stripe-js": "^6.4.0",
+    "@stripe/stripe-js": "^9.7.0",
     "axios": "^1.16.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

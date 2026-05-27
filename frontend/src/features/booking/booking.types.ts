@@ -4,7 +4,13 @@
  * TypeScript interfaces for booking-related data
  */
 
-import type { Booking, BookingApiRaw, BookingDetailRaw } from '@/shared/types/booking.types'
+import type {
+  Booking,
+  BookingApiRaw,
+  BookingDetailRaw,
+  PaymentPolicy,
+  PaymentStatus,
+} from '@/shared/types/booking.types'
 
 export interface BookingFormData {
   room_id: number
@@ -35,7 +41,24 @@ export type {
   BookingDetailRaw,
   BookingDetailRoom,
   BookingStatus,
+  PaymentPolicy,
+  PaymentStatus,
 } from '@/shared/types/booking.types'
+
+export interface BookingPaymentIntentResponse {
+  success: boolean
+  data: {
+    client_secret: string | null
+    payment_policy: PaymentPolicy
+    payment_status: PaymentStatus
+  }
+}
+
+export interface BookingPaymentVerifyResponse {
+  success: boolean
+  message?: string
+  data: BookingDetailRaw
+}
 
 export interface BookingsListResponse {
   success: boolean

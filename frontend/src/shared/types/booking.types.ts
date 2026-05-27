@@ -14,6 +14,33 @@ export const BOOKING_STATUSES = [
 
 export type BookingStatus = (typeof BOOKING_STATUSES)[number]
 
+export const PAYMENT_POLICIES = [
+  'prepaid',
+  'authorize_then_capture',
+  'pay_at_property',
+  'not_required',
+] as const
+
+export type PaymentPolicy = (typeof PAYMENT_POLICIES)[number]
+
+export const PAYMENT_STATUSES = [
+  'not_required',
+  'offline_due',
+  'requires_confirmation',
+  'requires_payment_method',
+  'requires_action',
+  'processing',
+  'authorized',
+  'paid',
+  'failed',
+  'cancelled',
+  'capture_failed',
+  'refunded',
+  'partially_refunded',
+] as const
+
+export type PaymentStatus = (typeof PAYMENT_STATUSES)[number]
+
 export const CANCELLABLE_BOOKING_STATUSES = [
   'pending',
   'confirmed',
@@ -66,6 +93,13 @@ export interface BookingApiRaw {
   nights: number
   amount?: number
   amount_formatted?: string
+  payment_policy: PaymentPolicy
+  payment_status: PaymentStatus
+  payment_currency?: string
+  amount_capturable?: number
+  amount_received?: number
+  authorized_at?: string | null
+  paid_at?: string | null
   room?: BookingRoomSummary
   refund_amount?: number
   refund_amount_formatted?: string

@@ -239,6 +239,9 @@ final class ProcessPaymentCancellationOutbox implements ShouldQueue
         };
     }
 
+    /**
+     * @return 'succeeded'
+     */
     private function succeed(PaymentCancellationTask $task, PaymentIntentCancellationOutcome $outcome): string
     {
         $task->markSucceeded();
@@ -256,6 +259,8 @@ final class ProcessPaymentCancellationOutbox implements ShouldQueue
     /**
      * Transient failure: back off and leave the row claimable for the next run,
      * unless the attempt budget is now spent (then fail permanently).
+     *
+     * @return 'retrying'|'failed_permanent'
      */
     private function retryOrExhaust(PaymentCancellationTask $task, Throwable $e, string $code, int $maxAttempts): string
     {
@@ -278,6 +283,9 @@ final class ProcessPaymentCancellationOutbox implements ShouldQueue
         return 'retrying';
     }
 
+    /**
+     * @return 'failed_permanent'
+     */
     private function failPermanent(PaymentCancellationTask $task, Throwable|string $error, string $code): string
     {
         $task->markFailedPermanent($error, $code);

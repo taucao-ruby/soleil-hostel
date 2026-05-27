@@ -74,6 +74,10 @@ final class PaymentCancellationTask extends Model
 
     /**
      * @return BelongsTo<Booking, $this>
+     *
+     * @phpstan-return BelongsTo<Booking, $this>
+     *
+     * @psalm-return BelongsTo<Booking, static>
      */
     public function booking(): BelongsTo
     {

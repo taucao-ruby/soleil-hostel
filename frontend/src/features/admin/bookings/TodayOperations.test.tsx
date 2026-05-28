@@ -52,6 +52,8 @@ const arrival: BookingDetailRaw = {
   nights: 1,
   amount: 900000,
   amount_formatted: '900.000₫',
+  payment_policy: 'prepaid',
+  payment_status: 'paid',
   room: {
     id: 7,
     name: 'Superior 7',

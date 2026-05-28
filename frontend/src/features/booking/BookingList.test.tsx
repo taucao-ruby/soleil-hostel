@@ -36,6 +36,8 @@ const booking: BookingApiRaw = {
   nights: 2,
   amount: 1800000,
   amount_formatted: '1.800.000₫',
+  payment_policy: 'prepaid',
+  payment_status: 'paid',
   created_at: '2026-04-01T08:00:00Z',
   updated_at: '2026-04-01T08:00:00Z',
 }

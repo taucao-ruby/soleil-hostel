@@ -130,8 +130,7 @@ final class BookingStateMachineInvariantTest extends TestCase
                 Booking $booking,
                 int $amountReceived,
                 int $amountCapturable = 0,
-            ): Booking
-            {
+            ): Booking {
                 throw new \RuntimeException('forced confirmation failure');
             }
         });

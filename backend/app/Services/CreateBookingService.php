@@ -449,7 +449,36 @@ class CreateBookingService
         $this->validateDates($checkIn, $checkOut, true, $request);
 
         return DB::transaction(function () use ($booking, $checkIn, $checkOut, $additionalData) {
+            $datesChanged = ! $checkIn->isSameDay($booking->check_in)
+                || ! $checkOut->isSameDay($booking->check_out);
+
+            if ($datesChanged) {
+                // SH-01: money-final (paid or confirmed) bookings are date-immutable
+                // in Phase 0 — re-pricing a captured payment is out of scope, so the
+                // guest must cancel + rebook. Defense in depth behind
+                // UpdateBookingRequest; also guards non-HTTP callers.
+                if ($booking->isMoneyFinal()) {
+                    throw new RuntimeException(
+                        'Không thể đổi ngày cho booking đã thanh toán hoặc đã xác nhận. Vui lòng hủy và đặt lại.'
+                    );
+                }
+
+                // SH-01: a pending booking that already has a Stripe PaymentIntent
+                // cannot be re-priced in place — Phase 0 has no PI top-up/amount-sync
+                // path and Stripe I/O must not run under the row lock acquired below.
+                // Require checkout restart so the intent can never go stale (its
+                // amount would no longer match and assertPaymentIntentMatchesBooking
+                // would block payment).
+                if (filled($booking->payment_intent_id)) {
+                    throw new RuntimeException(
+                        'Không thể đổi ngày khi đã khởi tạo thanh toán. Vui lòng hủy và đặt lại.'
+                    );
+                }
+            }
+
             // Acquire lock on overlapping bookings (excluding the current booking)
+            // so a date change can never create a double-booking. Half-open
+            // interval [check_in, check_out).
             $conflicts = Booking::query()
                 ->overlappingBookings($booking->room_id, $checkIn, $checkOut, $booking->id)
                 ->withLock()
@@ -461,11 +490,29 @@ class CreateBookingService
                 );
             }
 
-            $booking->update([
+            $booking->fill([
                 'check_in' => $checkIn,
                 'check_out' => $checkOut,
                 ...$additionalData,
             ]);
+
+            // SH-01: re-price a pending booking server-side whenever the stay
+            // length changes, using the same canonical formula as create(), so a
+            // date edit can never leave a stale (under- or over-priced) amount.
+            // amount is not mass-assignable (server-controlled) — set via forceFill.
+            if ($datesChanged) {
+                $booking->loadMissing('room');
+                $room = $booking->room;
+                if (! $room instanceof Room) {
+                    throw new RuntimeException("Booking #{$booking->id} is missing its room; cannot re-price.");
+                }
+
+                $booking->forceFill([
+                    'amount' => $this->calculateAmount($room, $checkIn, $checkOut),
+                ]);
+            }
+
+            $booking->save();
 
             return $booking;
         });

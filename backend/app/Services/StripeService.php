@@ -227,9 +227,19 @@ class StripeService
     }
 
     /**
-     * Create a booking-level cancellation refund when no Cashier billable user exists.
+     * Create the single idempotent booking-cancellation refund (SH-02 / F-76).
+     *
+     * The idempotency key is bookingRefundIdempotencyKey($booking) — a pure
+     * function of (booking, payment_intent) shared with createReconciliationRefund
+     * — so the synchronous cancellation path, the reconciler, and any retry after
+     * an accepted-but-timed-out refund all collapse to AT MOST ONE Stripe refund.
+     *
+     * $client lets the caller thread the Stripe client it resolved for the
+     * booking (e.g. $user->stripe()) so the CONC-006 account choice is preserved;
+     * it defaults to the application client for the orphaned-user fallback. Adding
+     * it is backward compatible — existing positional callers are unaffected.
      */
-    public function createBookingRefund(Booking $booking, int $amount): string
+    public function createBookingRefund(Booking $booking, int $amount, ?StripeClient $client = null): string
     {
         if ($amount <= 0) {
             throw new RuntimeException('Refund amount must be greater than zero.');
@@ -242,7 +252,9 @@ class StripeService
             return 're_test_booking_'.$booking->id.'_'.substr(hash('sha256', $idempotencyKey), 0, 12);
         }
 
-        $refund = $this->stripeClient->refunds->create(
+        $stripe = $client ?? $this->stripeClient;
+
+        $refund = $stripe->refunds->create(
             [
                 'payment_intent' => $paymentIntentId,
                 'amount' => $amount,

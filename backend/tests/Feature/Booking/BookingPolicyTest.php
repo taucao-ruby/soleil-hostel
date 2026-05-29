@@ -123,13 +123,14 @@ class BookingPolicyTest extends TestCase
      */
     public function test_owner_can_update_own_booking(): void
     {
-        $newCheckIn = Carbon::now()->addDays(10)->startOfDay();
-        $newCheckOut = $newCheckIn->clone()->addDays(2);
-
+        // SH-01: this fixture booking is CONFIRMED (money-final), so its dates are
+        // immutable — the owner may still update guest contact info by resending
+        // the existing dates unchanged. Owner date changes on PENDING bookings are
+        // covered in BookingUpdateTest.
         $response = $this->actingAs($this->owner, 'sanctum')
             ->putJson("/api/bookings/{$this->booking->id}", [
-                'check_in' => $newCheckIn->toDateString(),
-                'check_out' => $newCheckOut->toDateString(),
+                'check_in' => $this->booking->check_in->toDateString(),
+                'check_out' => $this->booking->check_out->toDateString(),
                 'guest_name' => 'Updated Guest Name',
                 'guest_email' => 'updated@example.com',
             ]);
@@ -150,6 +151,10 @@ class BookingPolicyTest extends TestCase
      */
     public function test_non_owner_cannot_update_other_booking(): void
     {
+        // SH-01 regression guard: the money-final date prohibition must NOT
+        // pre-empt authorization. A non-owner editing this CONFIRMED booking gets
+        // a clean 403 (not a 422 leaking that the booking is paid/confirmed),
+        // because the request-layer prohibition is gated on can('update').
         $response = $this->actingAs($this->otherUser, 'sanctum')
             ->putJson("/api/bookings/{$this->booking->id}", [
                 'check_in' => Carbon::now()->addDays(10)->toDateString(),

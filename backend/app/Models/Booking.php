@@ -202,6 +202,35 @@ class Booking extends Model
 
     // ===== PAYMENT / REFUND METHODS =====
 
+    public function isPending(): bool
+    {
+        return $this->status === BookingStatus::PENDING;
+    }
+
+    public function isConfirmed(): bool
+    {
+        return $this->status === BookingStatus::CONFIRMED;
+    }
+
+    public function isPaid(): bool
+    {
+        return $this->payment_status === PaymentStatus::PAID;
+    }
+
+    /**
+     * "Money-final" = the booking is confirmed or fully paid.
+     *
+     * Phase 0 (SH-01) treats money-final bookings as date-immutable: re-pricing
+     * a stay whose payment has already been captured/committed would desync the
+     * charged amount, so guests must cancel + rebook instead. Enforced at both
+     * UpdateBookingRequest (request layer) and CreateBookingService::update
+     * (service layer, defense in depth).
+     */
+    public function isMoneyFinal(): bool
+    {
+        return $this->isConfirmed() || $this->isPaid();
+    }
+
     /**
      * Check if booking has a refundable payment.
      */

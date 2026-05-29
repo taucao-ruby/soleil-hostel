@@ -643,7 +643,17 @@ class BookingCancellationTest extends TestCase
         Event::assertDispatched(BookingCancelled::class);
     }
 
-    public function test_refund_with_user_keeps_cashier_refund_path(): void
+    /**
+     * SH-02 / F-76 (Test A): the billable-user refund branch must go through the
+     * idempotent StripeService::createBookingRefund — NOT the old keyless Cashier
+     * $user->refund() call. The Stripe refund create must therefore carry the
+     * stable Idempotency-Key + reconcilable metadata, so an accepted-but-timed-out
+     * refund is de-duplicated on retry instead of refunding the customer twice.
+     *
+     * (Previously this test asserted the vulnerable behavior: an empty options
+     * array, i.e. no idempotency key. That keyless path is the bug F-76 fixes.)
+     */
+    public function test_user_refund_uses_idempotent_booking_refund_path(): void
     {
         Event::fake([BookingCancelled::class]);
         config()->set('cashier.secret', 'sk_test_local');
@@ -667,11 +677,120 @@ class BookingCancellationTest extends TestCase
         $this->assertSame(BookingStatus::CANCELLED, $cancelled->status);
         $this->assertSame('re_user_refund', $cancelled->refund_id);
         $this->assertSame(1, $capture->calls);
-        $this->assertSame([
-            'payment_intent' => 'pi_user_refund',
-            'amount' => 10_000,
-        ], $capture->payload);
-        $this->assertSame([], $capture->options);
+
+        // payment_intent + amount are still passed...
+        $this->assertSame('pi_user_refund', $capture->payload['payment_intent']);
+        $this->assertSame(10_000, $capture->payload['amount']);
+        // ...now WITH reconcilable metadata...
+        $this->assertSame((string) $booking->id, $capture->payload['metadata']['booking_id']);
+        $this->assertSame('booking_cancellation_refund', $capture->payload['metadata']['kind']);
+        $this->assertSame('cancellation_service', $capture->payload['metadata']['source']);
+        // ...and the stable per-booking idempotency key (the keyless path is gone).
+        $this->assertSame(
+            "booking:{$booking->id}:refund:pi_user_refund",
+            $capture->options['idempotency_key']
+        );
+    }
+
+    /**
+     * SH-02 / F-76 (Test A, CONC-006): the user branch must hand createBookingRefund
+     * the Stripe client it resolved from $user->stripe(), preserving the account
+     * choice the old Cashier path relied on. The orphaned-user branch passes null
+     * so the service falls back to the application client.
+     */
+    public function test_user_refund_threads_user_resolved_stripe_client(): void
+    {
+        Event::fake([BookingCancelled::class]);
+        config()->set('cashier.secret', 'sk_test_local');
+
+        // Bind a known StripeClient so $user->stripe() is a deterministic instance.
+        $userClient = new \Stripe\StripeClient(['api_key' => 'sk_test_local']);
+        $this->app->bind(\Stripe\StripeClient::class, static fn () => $userClient);
+
+        $captured = (object) ['client' => 'unset', 'amount' => null, 'bookingId' => null];
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($captured): void {
+            $mock->shouldReceive('createBookingRefund')
+                ->once()
+                ->andReturnUsing(function (Booking $b, int $amount, ?\Stripe\StripeClient $client) use ($captured): string {
+                    $captured->client = $client;
+                    $captured->amount = $amount;
+                    $captured->bookingId = $b->id;
+
+                    return 're_user_client';
+                });
+        });
+
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($this->room)
+            ->confirmed()
+            ->create([
+                'check_in' => now()->addDays(10)->startOfDay(),
+                'check_out' => now()->addDays(12)->startOfDay(),
+                'amount' => 10_000,
+                'payment_intent_id' => 'pi_user_client',
+            ]);
+
+        $cancelled = app(CancellationService::class)->cancel($booking->fresh(), $this->user);
+
+        $this->assertSame('re_user_client', $cancelled->refund_id);
+        $this->assertSame($booking->id, $captured->bookingId);
+        $this->assertSame(10_000, $captured->amount);
+        $this->assertInstanceOf(\Stripe\StripeClient::class, $captured->client);
+        $this->assertSame($userClient, $captured->client, 'cancellation must thread $user->stripe() (CONC-006)');
+    }
+
+    /**
+     * SH-02 / F-76 (Test B): the timeout-then-retry double-refund regression.
+     *
+     * Models "Stripe accepted the refund, then the HTTP response timed out": the
+     * first refunds->create records the request and throws ApiConnectionException
+     * -> booking becomes REFUND_FAILED. The retry issues a second PHYSICAL
+     * refunds->create, but it carries the SAME idempotency key as the first, so
+     * Stripe collapses both to exactly ONE logical refund. The customer is
+     * refunded once, never twice.
+     */
+    public function test_refund_timeout_then_retry_issues_single_logical_refund(): void
+    {
+        Event::fake([BookingCancelled::class]);
+        config()->set('cashier.secret', 'sk_test_local');
+
+        $capture = $this->recordingStripeRefundClient('re_retry_once', failFirst: 1);
+
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($this->room)
+            ->confirmed()
+            ->create([
+                'check_in' => now()->addDays(10)->startOfDay(),
+                'check_out' => now()->addDays(12)->startOfDay(),
+                'amount' => 10_000,
+                'payment_intent_id' => 'pi_retry_once',
+            ]);
+
+        $expectedKey = app(StripeService::class)->bookingRefundIdempotencyKey($booking->fresh());
+        $service = app(CancellationService::class);
+
+        // First attempt: refund accepted by Stripe but the call throws -> REFUND_FAILED.
+        try {
+            $service->cancel($booking->fresh(), $this->user);
+            $this->fail('expected the simulated refund timeout to surface as RefundFailedException');
+        } catch (RefundFailedException) {
+            // expected
+        }
+
+        $this->assertSame(BookingStatus::REFUND_FAILED, $booking->fresh()->status);
+
+        // Retry: succeeds and finalizes the cancellation.
+        $cancelled = $service->cancel($booking->fresh(), $this->user);
+        $this->assertSame(BookingStatus::CANCELLED, $cancelled->status);
+        $this->assertSame('re_retry_once', $cancelled->refund_id);
+
+        // Two physical attempts, identical idempotency key => one logical refund.
+        $this->assertCount(2, $capture->calls);
+        $this->assertSame($expectedKey, $capture->calls[0]['options']['idempotency_key'] ?? null);
+        $this->assertSame($expectedKey, $capture->calls[1]['options']['idempotency_key'] ?? null);
+        $this->assertSame("booking:{$booking->id}:refund:pi_retry_once", $expectedKey);
     }
 
     public function test_refund_with_null_user_uses_stripe_payment_intent_fallback(): void
@@ -995,6 +1114,60 @@ class BookingCancellationTest extends TestCase
                         return (object) [
                             'id' => $this->refundId,
                         ];
+                    }
+                };
+            }
+        };
+
+        $this->app->bind(\Stripe\StripeClient::class, static fn () => $fakeStripe);
+
+        return $capture;
+    }
+
+    /**
+     * Like fakeStripeRefundClient, but records EVERY refunds->create call (payload
+     * + options) and throws a Stripe network error on the first $failFirst calls
+     * — modelling "Stripe accepted the refund, then the HTTP response timed out".
+     *
+     * @return object{calls: list<array{payload: array<string, mixed>, options: array<string, mixed>}>}
+     */
+    private function recordingStripeRefundClient(string $refundId, int $failFirst = 0): object
+    {
+        $capture = (object) [
+            'calls' => [],
+            'failuresRemaining' => $failFirst,
+        ];
+
+        $fakeStripe = new class($capture, $refundId) extends \Stripe\StripeClient
+        {
+            public object $refunds;
+
+            public function __construct(object $capture, string $refundId)
+            {
+                $this->refunds = new class($capture, $refundId)
+                {
+                    public function __construct(
+                        private object $capture,
+                        private string $refundId,
+                    ) {}
+
+                    /**
+                     * @param  array<string, mixed>  $payload
+                     * @param  array<string, mixed>  $options
+                     */
+                    public function create(array $payload, array $options = []): object
+                    {
+                        $this->capture->calls[] = ['payload' => $payload, 'options' => $options];
+
+                        if ($this->capture->failuresRemaining > 0) {
+                            $this->capture->failuresRemaining--;
+
+                            throw new \Stripe\Exception\ApiConnectionException(
+                                'Simulated network timeout after Stripe accepted the refund'
+                            );
+                        }
+
+                        return (object) ['id' => $this->refundId];
                     }
                 };
             }

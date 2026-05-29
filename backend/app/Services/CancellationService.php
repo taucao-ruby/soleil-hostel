@@ -263,7 +263,10 @@ final class CancellationService
      * Idempotency:
      * - The booking is moved to refund_pending under a row lock before this method runs.
      * - Concurrent or replayed cancellation attempts re-check that state and do not call Stripe.
-     * - Null-user fallback uses a stable Stripe idempotency key in StripeService.
+     * - Both the billable-user and orphaned-user paths issue the refund through
+     *   StripeService::createBookingRefund, whose idempotency key is a pure
+     *   function of (booking, payment_intent). A refund accepted by Stripe but
+     *   lost to a timeout is therefore de-duplicated on retry (SH-02 / F-76).
      * - Stripe refund webhook replays are persisted in stripe_refund_events.
      *
      * @throws RefundFailedException If Stripe refund fails
@@ -278,15 +281,28 @@ final class CancellationService
         }
 
         try {
-            $paymentIntentId = $this->refundPaymentIntentId($booking);
-            $user = $booking->user;
+            // Fail fast with the stable domain message when there is no
+            // PaymentIntent to refund. createBookingRefund re-validates this
+            // internally, but this preserves the existing error and short-circuits
+            // before a Stripe client is resolved.
+            $this->refundPaymentIntentId($booking);
 
-            $refundId = $user instanceof User
-                ? $user->refund($paymentIntentId, ['amount' => $refundAmount])->id
-                : $this->stripeService->createBookingRefund($booking, $refundAmount);
-            // TODO: Add Cashier exception handling when payment integration is implemented
-            // } catch (\Laravel\Cashier\Exceptions\IncompletePayment $e) {
-            //     return $this->handleRefundFailure($booking, $e);
+            // SH-02 / F-76: route BOTH the billable-user and orphaned-user paths
+            // through the single idempotent createBookingRefund. The refund is
+            // keyed by bookingRefundIdempotencyKey($booking) — identical to the
+            // reconciler's key — so a refund Stripe accepted but lost to an HTTP
+            // timeout is de-duplicated by Stripe on retry instead of refunding the
+            // customer twice. Passing the resolved $user->stripe() client preserves
+            // the CONC-006 account choice that the previous keyless Cashier
+            // $user->refund() call relied on.
+            $user = $booking->user;
+            $stripeClient = $user instanceof User ? $user->stripe() : null;
+
+            $refundId = $this->stripeService->createBookingRefund(
+                $booking,
+                $refundAmount,
+                $stripeClient,
+            );
         } catch (ApiErrorException|RuntimeException $e) {
             /** @var \Throwable $e */
             return $this->handleRefundFailure($booking, $e);

@@ -326,7 +326,16 @@ final class CancellationService
         );
     }
 
-    private function refundPaymentIntentId(Booking $booking): string
+    /**
+     * Guard that the booking has a Stripe PaymentIntent before refunding.
+     *
+     * Fail-fast assertion only; the resolved id is not consumed here because
+     * StripeService::createBookingRefund re-derives and re-validates it from
+     * the booking (SH-02 / F-76). See the call site in processRefund().
+     *
+     * @throws RuntimeException When the booking has no PaymentIntent to refund.
+     */
+    private function refundPaymentIntentId(Booking $booking): void
     {
         $paymentIntentId = $booking->payment_intent_id;
 
@@ -335,8 +344,6 @@ final class CancellationService
                 "Booking #{$booking->id} has no Stripe PaymentIntent to refund.",
             );
         }
-
-        return $paymentIntentId;
     }
 
     /**

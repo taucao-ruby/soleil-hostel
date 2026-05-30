@@ -58,7 +58,7 @@ jobs:
         with:
           php-version: ${{ env.PHP_VERSION }}
           extensions: redis,pdo_pgsql,gd,bcmath,ctype,json,mbstring,openssl,tokenizer,xml
-          tools: composer,phpstan
+          tools: composer
           coverage: xdebug
       - name: Composer cache
         uses: actions/cache@v4
@@ -424,7 +424,6 @@ jobs:
         with:
           php-version: ${{ env.PHP_VERSION }}
           extensions: redis,pdo_pgsql
-          tools: phpstan
       - name: Restore vendor
         id: restore-vendor
         uses: actions/cache/restore@v4
@@ -437,7 +436,11 @@ jobs:
         run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
       - name: PHPStan analysis (Level 5)
         working-directory: ./backend
-        run: phpstan analyse --error-format=github
+        # Use the lockfile-pinned analyzer (vendor/bin/phpstan), NOT a global
+        # `phpstan` from setup-php `tools:` — the global binary floats to the
+        # latest release and drifts out of sync with the locked larastan
+        # extension, causing FunctionCallParametersCheck arity crashes.
+        run: php -d opcache.enable_cli=0 vendor/bin/phpstan analyse --error-format=github
 
   # ========== STATIC ANALYSIS: Psalm ==========
   psalm:

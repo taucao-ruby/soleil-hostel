@@ -7,6 +7,9 @@ use App\Enums\PaymentPolicy;
 use App\Enums\PaymentStatus;
 use App\Http\Controllers\Payment\StripeWebhookController;
 use App\Models\Booking;
+use App\Models\StripeRefundEvent;
+use App\Models\StripeWebhookEvent;
+use App\Services\Payment\StripeRefundEventRecorder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -232,6 +235,185 @@ class StripeWebhookHandlerTest extends TestCase
 
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertTrue($response->getData(true)['handled']);
+    }
+
+    // ========== charge.refunded — SH-04 hardening ==========
+
+    /**
+     * SH-04: charge.refunded now follows the same INSERT-first stripe_webhook_events
+     * claim as handlePaymentIntentSucceeded — it records the event, writes the refund
+     * ledger row, transitions the booking, and marks the event processed.
+     */
+    public function test_charge_refunded_claims_webhook_event_and_marks_it_processed(): void
+    {
+        $booking = Booking::factory()->create([
+            'status' => BookingStatus::REFUND_PENDING,
+            'payment_intent_id' => 'pi_refund_claim',
+            'payment_currency' => 'vnd',
+            'amount' => 50000,
+        ]);
+
+        $payload = $this->makeChargeRefundedPayload(
+            'ch_claim',
+            'pi_refund_claim',
+            're_claim',
+            'succeeded',
+            50000
+        );
+
+        $response = $this->callHandler('handleChargeRefunded', $payload);
+
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertTrue($response->getData(true)['handled']);
+
+        // Insert-first webhook-event row, marked processed only after success.
+        $this->assertDatabaseHas('stripe_webhook_events', [
+            'stripe_event_id' => 'evt_re_claim',
+            'type' => 'charge.refunded',
+            'status' => 'processed',
+        ]);
+        // Refund ledger row written.
+        $this->assertDatabaseHas('stripe_refund_events', [
+            'stripe_refund_id' => 're_claim',
+            'booking_id' => $booking->id,
+            'amount_refunded' => 50000,
+        ]);
+
+        $booking->refresh();
+        $this->assertEquals(BookingStatus::CANCELLED, $booking->status);
+    }
+
+    /**
+     * SH-04: duplicate delivery of the same charge.refunded event is deduped at the
+     * stripe_webhook_events.stripe_event_id claim — exactly one event row, one ledger
+     * row, one transition.
+     */
+    public function test_charge_refunded_duplicate_event_is_idempotent(): void
+    {
+        $booking = Booking::factory()->create([
+            'status' => BookingStatus::REFUND_PENDING,
+            'payment_intent_id' => 'pi_refund_dup',
+            'payment_currency' => 'vnd',
+            'amount' => 50000,
+        ]);
+
+        $payload = $this->makeChargeRefundedPayload(
+            'ch_dup',
+            'pi_refund_dup',
+            're_dup',
+            'succeeded',
+            50000
+        );
+
+        $first = $this->callHandler('handleChargeRefunded', $payload);
+        $second = $this->callHandler('handleChargeRefunded', $payload);
+
+        $this->assertEquals(200, $first->getStatusCode());
+        $this->assertEquals(200, $second->getStatusCode());
+
+        $this->assertEquals(1, StripeWebhookEvent::where('stripe_event_id', 'evt_re_dup')->count());
+        $this->assertEquals(1, StripeRefundEvent::where('stripe_refund_id', 're_dup')->count());
+
+        $booking->refresh();
+        $this->assertEquals(BookingStatus::CANCELLED, $booking->status);
+    }
+
+    /**
+     * SH-04: an unexpected (non-unique) processing failure must NOT be swallowed
+     * into a 200. The handler marks the event failed and returns 500 so Stripe
+     * retries, and the booking is left untouched (transaction rolled back).
+     */
+    public function test_charge_refunded_returns_500_and_marks_event_failed_on_processing_error(): void
+    {
+        $booking = Booking::factory()->create([
+            'status' => BookingStatus::REFUND_PENDING,
+            'payment_intent_id' => 'pi_refund_boom',
+            'payment_currency' => 'vnd',
+            'amount' => 50000,
+        ]);
+
+        // Force an unexpected failure during the ledger write. The handler
+        // resolves the recorder via app(StripeRefundEventRecorder::class); the real
+        // recorder is final, so bind a duck-typed stand-in rather than a Mockery
+        // subclass.
+        $this->app->instance(StripeRefundEventRecorder::class, new class
+        {
+            public function record(mixed ...$args): never
+            {
+                throw new \RuntimeException('simulated ledger write failure');
+            }
+        });
+
+        $payload = $this->makeChargeRefundedPayload(
+            'ch_boom',
+            'pi_refund_boom',
+            're_boom',
+            'succeeded',
+            50000
+        );
+
+        $response = $this->callHandler('handleChargeRefunded', $payload);
+
+        $this->assertEquals(500, $response->getStatusCode());
+        $this->assertFalse($response->getData(true)['handled']);
+
+        $this->assertDatabaseHas('stripe_webhook_events', [
+            'stripe_event_id' => 'evt_re_boom',
+            'status' => 'failed',
+        ]);
+
+        // Booking untouched: the business transaction rolled back.
+        $booking->refresh();
+        $this->assertEquals(BookingStatus::REFUND_PENDING, $booking->status);
+        $this->assertNull($booking->refund_id);
+        $this->assertDatabaseMissing('stripe_refund_events', [
+            'stripe_refund_id' => 're_boom',
+        ]);
+    }
+
+    /**
+     * SH-04: a non-succeeded refund for a still-CONFIRMED booking would map to the
+     * illegal CONFIRMED -> REFUND_FAILED transition. The handler must guard it: ack
+     * 200 (permanent state, no retry storm), record the invalid state on the event,
+     * and leave the booking unmutated with no ledger row.
+     */
+    public function test_charge_refunded_guards_illegal_confirmed_to_refund_failed_transition(): void
+    {
+        $booking = Booking::factory()->create([
+            'status' => BookingStatus::CONFIRMED,
+            'payment_intent_id' => 'pi_confirmed_badrefund',
+            'payment_currency' => 'vnd',
+            'amount' => 50000,
+        ]);
+
+        $payload = $this->makeChargeRefundedPayload(
+            'ch_badrefund',
+            'pi_confirmed_badrefund',
+            're_badrefund',
+            'failed',
+            50000
+        );
+
+        $response = $this->callHandler('handleChargeRefunded', $payload);
+
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertTrue($response->getData(true)['handled']);
+
+        // Booking is NOT mutated into REFUND_FAILED.
+        $booking->refresh();
+        $this->assertEquals(BookingStatus::CONFIRMED, $booking->status);
+        $this->assertNull($booking->refund_id);
+        $this->assertNull($booking->refund_status);
+
+        // Invalid state recorded on the webhook event, not the booking; no ledger
+        // row for the ignored refund.
+        $this->assertDatabaseHas('stripe_webhook_events', [
+            'stripe_event_id' => 'evt_re_badrefund',
+            'status' => 'failed',
+        ]);
+        $this->assertDatabaseMissing('stripe_refund_events', [
+            'stripe_refund_id' => 're_badrefund',
+        ]);
     }
 
     // ========== payment_intent.payment_failed ==========

@@ -8,9 +8,11 @@ use App\Enums\BookingStatus;
 use App\Enums\UserRole;
 use App\Events\BookingCancelled;
 use App\Exceptions\RefundFailedException;
+use App\Http\Controllers\Payment\StripeWebhookController;
 use App\Jobs\ProcessDepositRefund;
 use App\Models\Booking;
 use App\Models\Room;
+use App\Models\StripeRefundEvent;
 use App\Models\User;
 use App\Services\CancellationService;
 use App\Services\StripeService;
@@ -867,6 +869,112 @@ class BookingCancellationTest extends TestCase
         $this->assertSame(BookingStatus::REFUND_FAILED, $booking->status);
         $this->assertSame('failed', $booking->refund_status);
         $this->assertStringContainsString('no Stripe PaymentIntent', (string) $booking->refund_error);
+    }
+
+    // ===== SH-03 / F-74: SYNCHRONOUS REFUND LEDGER =====
+
+    /**
+     * SH-03 / F-74: a successful cancel-with-refund writes the authoritative
+     * stripe_refund_events ledger row inside finalizeCancellation's transaction —
+     * immediately, with NO charge.refunded webhook delivered. Closes the gap where a
+     * missed webhook left a terminal CANCELLED booking carrying a refund_id but no
+     * ledger row (which neither reconciler query revisits).
+     */
+    public function test_sync_cancellation_writes_refund_ledger_row_without_webhook(): void
+    {
+        Event::fake([BookingCancelled::class]);
+        config()->set('cashier.secret', 'sk_test_local');
+        $this->travelTo(now()->startOfDay()->addHours(12));
+
+        $this->fakeStripeRefundClient('re_sync_ledger');
+
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($this->room)
+            ->confirmed()
+            ->create([
+                'check_in' => now()->addDays(3)->startOfDay(), // > 48h => full refund
+                'check_out' => now()->addDays(5)->startOfDay(),
+                'amount' => 10_000,
+                'payment_intent_id' => 'pi_sync_ledger',
+                'payment_currency' => 'vnd',
+            ]);
+
+        $cancelled = app(CancellationService::class)->cancel($booking->fresh(), $this->user);
+
+        $this->assertSame(BookingStatus::CANCELLED, $cancelled->status);
+        $this->assertSame('re_sync_ledger', $cancelled->refund_id);
+
+        // The ledger row exists with no webhook involved.
+        $this->assertSame(
+            1,
+            StripeRefundEvent::where('stripe_refund_id', 're_sync_ledger')->count()
+        );
+        $this->assertDatabaseHas('stripe_refund_events', [
+            'stripe_refund_id' => 're_sync_ledger',
+            'stripe_event_id' => 'cancellation:refund:re_sync_ledger',
+            'booking_id' => $booking->id,
+            'amount_refunded' => 10_000,
+            'currency' => 'vnd',
+        ]);
+    }
+
+    /**
+     * SH-03 / F-74 convergence: when a late charge.refunded webhook arrives for a
+     * refund the synchronous path already recorded, the UNIQUE(stripe_refund_id)
+     * guard keeps the ledger at exactly one row — no duplicate, no error, the
+     * booking stays CANCELLED.
+     */
+    public function test_sync_cancellation_then_late_webhook_does_not_duplicate_ledger_row(): void
+    {
+        Event::fake([BookingCancelled::class]);
+        config()->set('cashier.secret', 'sk_test_local');
+        $this->travelTo(now()->startOfDay()->addHours(12));
+
+        $this->fakeStripeRefundClient('re_converge');
+
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($this->room)
+            ->confirmed()
+            ->create([
+                'check_in' => now()->addDays(3)->startOfDay(),
+                'check_out' => now()->addDays(5)->startOfDay(),
+                'amount' => 10_000,
+                'payment_intent_id' => 'pi_converge',
+                'payment_currency' => 'vnd',
+            ]);
+
+        // Synchronous cancel: writes the ledger row + finalizes to CANCELLED.
+        app(CancellationService::class)->cancel($booking->fresh(), $this->user);
+        $this->assertSame(1, StripeRefundEvent::where('stripe_refund_id', 're_converge')->count());
+
+        // A late charge.refunded webhook for the SAME refund must be a ledger no-op.
+        $payload = [
+            'id' => 'evt_converge_webhook',
+            'type' => 'charge.refunded',
+            'data' => [
+                'object' => [
+                    'id' => 'ch_converge',
+                    'payment_intent' => 'pi_converge',
+                    'amount_refunded' => 10_000,
+                    'currency' => 'vnd',
+                    'refunds' => [
+                        'data' => [
+                            ['id' => 're_converge', 'status' => 'succeeded', 'amount' => 10_000],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $controller = new StripeWebhookController;
+        $response = (new \ReflectionMethod($controller, 'handleChargeRefunded'))
+            ->invoke($controller, $payload);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame(1, StripeRefundEvent::where('stripe_refund_id', 're_converge')->count());
+        $this->assertSame(BookingStatus::CANCELLED, $booking->fresh()->status);
     }
 
     // ===== AUDIT TRAIL TESTS =====

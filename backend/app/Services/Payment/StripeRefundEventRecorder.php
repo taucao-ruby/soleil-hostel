@@ -72,6 +72,16 @@ final class StripeRefundEventRecorder
     }
 
     /**
+     * Deterministic synthetic event key for a refund recorded synchronously by
+     * CancellationService::finalizeCancellation on the cancel-with-refund happy
+     * path (no originating Stripe webhook event exists yet). SH-03 / F-74.
+     */
+    public static function cancellationEventKey(string $refundId): string
+    {
+        return 'cancellation:refund:'.$refundId;
+    }
+
+    /**
      * Deterministic synthetic event key for a refund discovered by reconciliation
      * (no originating Stripe webhook event exists).
      */

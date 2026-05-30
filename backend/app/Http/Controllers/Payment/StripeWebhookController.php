@@ -189,6 +189,7 @@ class StripeWebhookController extends CashierWebhookController
     protected function handleChargeRefunded(array $payload): JsonResponse
     {
         $stripeEventId = $payload['id'] ?? null;
+        $eventType = $payload['type'] ?? 'charge.refunded';
         $chargeObject = $payload['data']['object'] ?? [];
         $chargeId = $chargeObject['id'] ?? null;
         $paymentIntentId = $chargeObject['payment_intent'] ?? null;
@@ -203,12 +204,9 @@ class StripeWebhookController extends CashierWebhookController
             return response()->json(['handled' => false], 400);
         }
 
-        Log::info('Stripe webhook: charge.refunded', [
-            'charge_id' => $chargeId,
-            'payment_intent_id' => $paymentIntentId,
-        ]);
-
-        // Extract refund details from the charge's refunds list
+        // Extract refund details from the charge's refunds list. Validate the
+        // payload shape BEFORE claiming the webhook event, so a malformed event
+        // returns 400 without leaving a dangling 'processing' row.
         $refunds = $chargeObject['refunds']['data'] ?? [];
         $latestRefund = $refunds[0] ?? null;
 
@@ -236,6 +234,27 @@ class StripeWebhookController extends CashierWebhookController
             return response()->json(['handled' => false], 400);
         }
 
+        // BL-3 idempotency: INSERT-first claim on stripe_webhook_events.stripe_event_id,
+        // identical to handlePaymentIntentSucceeded. A duplicate delivery throws here
+        // and short-circuits to 200 (already processed) before any side effect runs.
+        // The stripe_refund_events.stripe_refund_id UNIQUE is retained underneath as
+        // the cross-source ledger dedup (synchronous cancellation / reconciler).
+        try {
+            $webhookEvent = DB::transaction(fn () => StripeWebhookEvent::create([
+                'stripe_event_id' => $stripeEventId,
+                'type' => $eventType,
+                'status' => 'processing',
+                'payload' => $payload,
+            ]));
+        } catch (UniqueConstraintViolationException) {
+            return response()->json(['handled' => true], 200);
+        }
+
+        Log::info('Stripe webhook: charge.refunded', [
+            'charge_id' => $chargeId,
+            'payment_intent_id' => $paymentIntentId,
+        ]);
+
         try {
             $result = DB::transaction(function () use (
                 $paymentIntentId,
@@ -253,6 +272,33 @@ class StripeWebhookController extends CashierWebhookController
                     return ['status' => 'missing_booking'];
                 }
 
+                $targetStatus = $refundStatus === 'succeeded'
+                    ? BookingStatus::CANCELLED
+                    : BookingStatus::REFUND_FAILED;
+
+                // Explicitly guard illegal state-machine transitions. A
+                // charge.refunded carrying a non-succeeded refund for a booking
+                // that never entered the refund flow (e.g. a still-CONFIRMED
+                // booking, or an already-terminal CANCELLED one) would otherwise
+                // attempt the forbidden CONFIRMED/CANCELLED -> REFUND_FAILED
+                // transition, which transitionTo() throws on. We must NOT let that
+                // throw fall through to a catch-all that 500s a *permanent*
+                // business-state error into an endless Stripe retry, nor mutate
+                // the booking. Report it as an invalid state; the caller acks 200
+                // and leaves the booking untouched.
+                if ($booking->status !== $targetStatus
+                    && ! $booking->status->canTransitionTo($targetStatus)) {
+                    return [
+                        'status' => 'invalid_transition',
+                        'booking_id' => $booking->id,
+                        'from' => $booking->status->value,
+                        'to' => $targetStatus->value,
+                    ];
+                }
+
+                // Ledger first (authoritative refund history). UNIQUE(stripe_refund_id)
+                // dedups against the synchronous cancellation path and the reconciler;
+                // a duplicate throws UniqueConstraintViolationException, caught below.
                 app(StripeRefundEventRecorder::class)->record(
                     $booking,
                     (string) $refundId,
@@ -261,12 +307,8 @@ class StripeWebhookController extends CashierWebhookController
                     (string) $stripeEventId,
                 );
 
-                $newStatus = $refundStatus === 'succeeded'
-                    ? BookingStatus::CANCELLED
-                    : BookingStatus::REFUND_FAILED;
-
-                if ($booking->status !== $newStatus) {
-                    $booking = $booking->transitionTo($newStatus);
+                if ($booking->status !== $targetStatus) {
+                    $booking = $booking->transitionTo($targetStatus);
                 }
 
                 // bookings.refund_id is a latest-refund pointer for operational
@@ -290,33 +332,77 @@ class StripeWebhookController extends CashierWebhookController
                     'booking_id' => $booking->id,
                 ];
             });
-
-            if ($result['status'] === 'missing_booking') {
-                Log::warning('Stripe webhook: no booking found for payment_intent', [
-                    'payment_intent_id' => $paymentIntentId,
-                ]);
-
-                return response()->json(['handled' => true]);
-            }
-
-            Log::info('Stripe webhook: booking refund status updated', [
-                'booking_id' => $result['booking_id'],
-                'refund_id' => $refundId,
-                'refund_status' => $refundStatus,
-                'refund_amount' => $refundAmount,
-            ]);
         } catch (UniqueConstraintViolationException) {
-            Log::info('Stripe webhook: refund event replay skipped', [
+            // The refund is already in the ledger: the synchronous cancellation
+            // path or the reconciler won the race and owns the booking projection.
+            // Idempotent replay — ack and mark the event processed.
+            Log::info('Stripe webhook: refund event replay skipped (already in ledger)', [
                 'stripe_event_id' => $stripeEventId,
                 'refund_id' => $refundId,
             ]);
+
+            $webhookEvent->markProcessed();
+
+            return response()->json(['handled' => true]);
         } catch (\Throwable $e) {
+            // Unexpected DB/runtime failure: DO NOT swallow into a 200. Mark the
+            // event failed and return 500 so Stripe retries and the row surfaces
+            // to operators. The booking (if any) is left untouched — the
+            // transaction rolled back — and ReconcileRefundsJob remains the
+            // durable recovery path for the refund projection + ledger.
             Log::error('Stripe webhook: failed to update refund status', [
                 'payment_intent_id' => $paymentIntentId,
                 'refund_id' => $refundId,
                 'error' => $e->getMessage(),
             ]);
+
+            $webhookEvent->markFailed($e);
+
+            return response()->json(['handled' => false], 500);
         }
+
+        if ($result['status'] === 'missing_booking') {
+            Log::warning('Stripe webhook: no booking found for payment_intent', [
+                'payment_intent_id' => $paymentIntentId,
+            ]);
+
+            $webhookEvent->markProcessed();
+
+            return response()->json(['handled' => true]);
+        }
+
+        if ($result['status'] === 'invalid_transition') {
+            // Permanent business-state error: a retry never makes an illegal
+            // transition legal, so mark the event failed (terminal — charge.refunded
+            // is not a reconcilable webhook type) for operator visibility and ack
+            // 200 to stop the retry storm. The booking is NOT mutated.
+            Log::warning('Stripe webhook: charge.refunded illegal state transition ignored', [
+                'stripe_event_id' => $stripeEventId,
+                'booking_id' => $result['booking_id'],
+                'from' => $result['from'],
+                'to' => $result['to'],
+                'refund_id' => $refundId,
+                'refund_status' => $refundStatus,
+            ]);
+
+            $webhookEvent->markFailed(sprintf(
+                'Illegal booking transition %s -> %s ignored for refund %s (charge.refunded)',
+                $result['from'],
+                $result['to'],
+                $refundId,
+            ));
+
+            return response()->json(['handled' => true]);
+        }
+
+        Log::info('Stripe webhook: booking refund status updated', [
+            'booking_id' => $result['booking_id'],
+            'refund_id' => $refundId,
+            'refund_status' => $refundStatus,
+            'refund_amount' => $refundAmount,
+        ]);
+
+        $webhookEvent->markProcessed();
 
         return response()->json(['handled' => true]);
     }

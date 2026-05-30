@@ -14,6 +14,8 @@ use App\Exceptions\RefundFailedException;
 use App\Jobs\ProcessDepositRefund;
 use App\Models\Booking;
 use App\Models\User;
+use App\Services\Payment\StripeRefundEventRecorder;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -48,7 +50,8 @@ use Stripe\Exception\ApiErrorException;
 final class CancellationService
 {
     public function __construct(
-        private readonly StripeService $stripeService
+        private readonly StripeService $stripeService,
+        private readonly StripeRefundEventRecorder $refundLedger,
     ) {}
 
     /**
@@ -366,37 +369,92 @@ final class CancellationService
         int $refundAmount,
         ?User $actor = null
     ): Booking {
-        return DB::transaction(function () use ($booking, $refundId, $refundAmount, $actor) {
-            // Re-acquire pessimistic lock and reload the row inside this
-            // transaction. Mirrors transitionToRefundPending so the lock
-            // pattern is consistent at every cancellation boundary.
-            $locked = Booking::query()
-                ->whereKey($booking->getKey())
-                ->lockForUpdate()
-                ->firstOrFail();
+        try {
+            return DB::transaction(function () use ($booking, $refundId, $refundAmount, $actor) {
+                // Re-acquire pessimistic lock and reload the row inside this
+                // transaction. Mirrors transitionToRefundPending so the lock
+                // pattern is consistent at every cancellation boundary.
+                $locked = Booking::query()
+                    ->whereKey($booking->getKey())
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
-            // Idempotent no-op when another path already terminated the
-            // booking during the Stripe round-trip. The Stripe refund (if
-            // one was just issued by this caller) is reconciled out-of-band
-            // via ReconcileRefundsJob; we deliberately do not overwrite the
-            // audit columns set by the racing path.
-            if ($locked->status === BookingStatus::CANCELLED) {
-                return $locked;
-            }
+                // Idempotent no-op when another path already terminated the
+                // booking during the Stripe round-trip. The Stripe refund (if
+                // one was just issued by this caller) is reconciled out-of-band
+                // via ReconcileRefundsJob; we deliberately do not overwrite the
+                // audit columns set by the racing path.
+                if ($locked->status === BookingStatus::CANCELLED) {
+                    return $locked;
+                }
 
-            $locked = $locked->transitionTo(BookingStatus::CANCELLED, $actor);
-            $locked->forceFill([
+                // SH-03 / F-74: write the authoritative refund ledger row here, on
+                // the synchronous happy path, transactionally coupled with the
+                // booking refund projection below — instead of relying solely on the
+                // charge.refunded webhook, which may be delayed or lost. Without this
+                // the booking would go terminal CANCELLED carrying a refund_id but no
+                // stripe_refund_events row, which neither reconciler query revisits,
+                // permanently skewing refund history / total-refunded reporting.
+                // Mirrors ReconcileRefundsJob: record() runs first, inside the same
+                // transaction, and UNIQUE(stripe_refund_id) is the dedup point
+                // against a racing webhook/reconciler (caught below). Skipped when
+                // refundId is null (cancel-without-refund: no Stripe refund exists).
+                if ($refundId !== null) {
+                    $this->refundLedger->record(
+                        $locked,
+                        $refundId,
+                        $refundAmount,
+                        $this->refundCurrency($locked),
+                        StripeRefundEventRecorder::cancellationEventKey($refundId),
+                    );
+                }
+
+                $locked = $locked->transitionTo(BookingStatus::CANCELLED, $actor);
+                $locked->forceFill([
+                    'refund_id' => $refundId,
+                    'refund_status' => $refundId ? 'succeeded' : null,
+                    'refund_amount' => $refundAmount ?: null,
+                    'refund_error' => null,
+                ])->save();
+
+                // Dispatch event (notification listener will pick this up)
+                event(new BookingCancelled($locked, $actor));
+
+                return $locked->fresh();
+            });
+        } catch (UniqueConstraintViolationException) {
+            // A racing charge.refunded webhook (or ReconcileRefundsJob) already
+            // recorded this refund in the ledger and finalized the booking. Treat
+            // as an idempotent convergence: the ledger holds exactly one row and
+            // the booking projection is owned by the path that won the race. In
+            // practice unreachable — the locked re-read above early-returns on a
+            // CANCELLED booking before record() runs — but we honor the recorder's
+            // documented "catch the violation outside the transaction" contract so
+            // an audit-ledger dedup can never surface as a 500 to the canceller.
+            Log::info('Cancellation finalize: refund already in ledger; converged with webhook/reconciler', [
+                'booking_id' => $booking->id,
                 'refund_id' => $refundId,
-                'refund_status' => $refundId ? 'succeeded' : null,
-                'refund_amount' => $refundAmount ?: null,
-                'refund_error' => null,
-            ])->save();
+            ]);
 
-            // Dispatch event (notification listener will pick this up)
-            event(new BookingCancelled($locked, $actor));
+            return $booking->fresh() ?? $booking;
+        }
+    }
 
-            return $locked->fresh();
-        });
+    /**
+     * Settlement currency for the synchronous refund ledger row (SH-03 / F-74).
+     *
+     * Mirrors StripeService::expectedCurrency: the booking's stored
+     * payment_currency, falling back to the configured Cashier currency. The
+     * ledger column records the currency the refund was actually issued in.
+     */
+    private function refundCurrency(Booking $booking): string
+    {
+        $currency = (string) $booking->payment_currency;
+        if ($currency !== '') {
+            return strtolower($currency);
+        }
+
+        return strtolower((string) config('cashier.currency', 'vnd'));
     }
 
     /**

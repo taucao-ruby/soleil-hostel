@@ -212,6 +212,14 @@ components:
         payment_intent_id:
           type: string
           nullable: true
+        payment_policy:
+          type: string
+          enum: [prepaid, authorize_then_capture, pay_at_property, not_required]
+          example: "prepaid"
+        payment_status:
+          type: string
+          enum: [not_required, offline_due, requires_confirmation, requires_payment_method, requires_action, processing, authorized, paid, failed, cancelled, capture_failed, refunded, partially_refunded]
+          example: "paid"
         refund_status:
           type: string
           nullable: true

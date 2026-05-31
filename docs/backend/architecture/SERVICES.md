@@ -20,7 +20,7 @@ The Soleil Hostel backend uses a **Service Layer** to encapsulate business logic
 | --------------------------------------------------- | --------------------------------- | ------------------------------------ |
 | [BookingService](#bookingservice)                   | Booking lifecycle management      | Cache, notifications, rate limiting  |
 | [CreateBookingService](#createbookingservice)       | New booking creation              | Pessimistic locking, deadlock retry  |
-| [CancellationService](#cancellationservice)         | Booking cancellation & refunds    | Two-phase commit, Stripe integration |
+| [CancellationService](#cancellationservice)         | Booking cancellation & refunds    | 3-phase: lock → Stripe refund → deposit FSM |
 | [RoomService](#roomservice)                         | Room CRUD operations              | Optimistic locking, cache tags       |
 | [RoomAvailabilityService](#roomavailabilityservice) | Room availability queries         | Cached availability checks           |
 | [RoomAvailabilityCache](#roomavailabilitycache)     | Cache management for availability | Tag-based invalidation               |
@@ -119,38 +119,51 @@ Handles booking cancellations with optional refund processing via Stripe.
 ### Key Methods
 
 ```php
-// Cancel a booking with optional refund
+// Cancel a booking with optional refund (3-phase)
 public function cancel(Booking $booking, User $actor): Booking
 
-// Validate cancellation eligibility
-public function validateCancellation(Booking $booking, User $actor): void
+// Validate cancellation eligibility (ownership + status + started guard)
+private function validateCancellation(Booking $booking, User $actor): void
 
-// Process refund (Stripe integration)
-private function processRefund(Booking $booking): RefundResult
+// Phase 2: issue the refund via StripeService, OUTSIDE the transaction
+private function processRefund(Booking $booking, User $actor): Booking
+
+// Admin path: cancel without refund, always forfeits a held deposit
+public function forceCancel(Booking $booking, User $actor, string $reason): Booking
 ```
 
 ### Cancellation Flow
 
 ```
+0. Idempotency (BL-6): already-cancelled → return fresh row, no side effects
+
 1. Validate cancellation eligibility
-   ├── Check booking status (pending/confirmed only)
-   ├── Check if booking has started (unless admin)
-   └── Check authorization (owner or admin)
+   ├── Check authorization (owner or admin)
+   ├── Check status isCancellable (pending / confirmed / refund_failed)
+   └── Check if booking has started (unless admin or config-allowed)
 
-2. Lock booking and transition to refund_pending
+2. Lock + transition → refund_pending (if refundable) else cancelled
 
-3. Process refund via Stripe (outside transaction)
+3. Process refund via StripeService (OUTSIDE transaction; stable idempotency key SH-02)
 
-4. Finalize cancellation
-   ├── Success: status = cancelled, refund_status = refunded
-   └── Failure: status = cancelled, refund_status = refund_failed
+4. Finalize (re-lock + ledger-first write SH-03)
+   ├── Success: status = cancelled, refund_status = succeeded
+   └── Failure: status = refund_failed, refund_status = failed (retried by ReconcileRefundsJob)
 
-5. Dispatch BookingCancelled event → notification
+5. Phase 3 — deposit FSM transition (CONC-005); async ProcessDepositRefund if due
+
+6. Dispatch BookingCancelled event → notification
 ```
 
 ### Idempotency
 
-Already-cancelled bookings return immediately without error (idempotent).
+Already-cancelled bookings return immediately without error (BL-6, idempotent).
+Refund idempotency is layered: a stable per-booking Stripe key (SH-02), the
+`stripe_refund_events` UNIQUE ledger fence (PAY-04), and webhook-event dedup (BL-3).
+
+> Full as-built design — custom fail-closed webhook, reconciler, and the complete
+> idempotency stack — in
+> [`BOOKING_CANCELLATION_REFUND_ARCHITECTURE.md`](BOOKING_CANCELLATION_REFUND_ARCHITECTURE.md).
 
 ---
 

@@ -43,6 +43,8 @@ Booking business dates are evaluated in hostel-local civil time (`Asia/Ho_Chi_Mi
 
 On `bookings` table: `amount`, `payment_intent_id`, `refund_id`, `refund_status`, `refund_amount`, `refund_error`.
 
+Payment-state columns: `payment_policy` (`PaymentPolicy`: `prepaid` | `authorize_then_capture` | `pay_at_property` | `not_required`) and `payment_status` (`PaymentStatus`, 13 states), plus capture tracking `amount_capturable`, `amount_received`, `authorized_at`, `paid_at`, `capture_due_at`. Confirmation is gated by `Booking::paymentAllowsConfirmation()`. `refund_status` is the **closed** `RefundStatus` projection `{pending, succeeded, failed}` — a plain string (intentionally not enum-cast); raw Stripe statuses are normalized via `RefundStatus::tryFromStripe()` (fails closed). FSM detail: `docs/backend/features/BOOKING.md` §Payment State Machine.
+
 Deposit lifecycle also lives on `bookings`: `deposit_amount`, `deposit_collected_at`, `deposit_status`.
 `deposit_amount` is operational liability tracking only and is **not** recognized revenue at collection time.
 

@@ -2,7 +2,7 @@
 
 > Double-booking prevention with pessimistic locking, PostgreSQL exclusion constraint, deposit FSM, immutable cancellation actor snapshot, and stay-cancellation propagation
 >
-> **Last Updated:** May 8, 2026
+> **Last Updated:** May 31, 2026
 
 ## Overview
 
@@ -26,6 +26,8 @@ The booking system uses **pessimistic locking** (`SELECT FOR UPDATE`) inside a D
 | Refund idempotency         | Durable `stripe_refund_events.stripe_refund_id` UNIQUE — DB INSERT before booking lookup eliminates the application-layer TOCTOU window (`abc3959`); supersedes the in-memory `IdempotencyGuard` |
 | XSS Protection             | HTML Purifier auto-sanitises `guest_name`                                   |
 | Admin Restore              | Admins can restore soft-deleted bookings (transaction + `FOR UPDATE`, TOCTOU-safe — Mar 29)  |
+| Payment FSM (May) | `payment_policy` (4 policies) × `payment_status` (13 states); `paymentAllowsConfirmation()` gates confirm; default `prepaid` (`config/booking.php`). See [Payment State Machine](#payment-state-machine-paymentpolicy--paymentstatus). |
+| Date immutability (SH-01) | Money-final bookings (`confirmed`/`paid`) are date-locked; edits must cancel + rebook. `isMoneyFinal()`, enforced at `UpdateBookingRequest` + `CreateBookingService::update`. |
 
 ---
 
@@ -163,39 +165,49 @@ enum BookingStatus: string
 ```php
 class Booking extends Model
 {
-    use SoftDeletes, Purifiable;
+    use HasFactory, Purifiable, SoftDeletes;
+
+    /**
+     * Mass-assignable attributes — restricted to user-supplied booking input only (A-1).
+     *
+     * State-machine columns (`status`), authorship (`user_id`, `deleted_by`),
+     * payment/deposit/refund state, and cancellation-audit fields are
+     * intentionally NOT fillable. They are written via `forceFill` /
+     * `Booking::transitionTo` from trusted service layers (CreateBookingService,
+     * CancellationService, ReconcileRefundsJob, ExpireStaleBookings) so a future
+     * controller cannot promote a booking by spreading $request input into
+     * Booking::create / ->update / ->fill.
+     */
+    protected $fillable = [
+        'room_id', 'check_in', 'check_out',
+        'guest_name', 'guest_email',
+        'number_of_guests', 'special_requests',
+    ];
 
     protected $casts = [
-        'status' => BookingStatus::class,  // Enum casting
         'check_in' => 'date',
         'check_out' => 'date',
+        'status' => BookingStatus::class,
+        'payment_policy' => PaymentPolicy::class,
+        'payment_status' => PaymentStatus::class,
+        'deposit_status' => DepositStatus::class,
+        'amount' => 'integer',
+        'amount_capturable' => 'integer',
+        'amount_received' => 'integer',
+        'deposit_amount' => 'integer',
+        'refund_amount' => 'integer',
+        'authorized_at' => 'datetime',
+        'paid_at' => 'datetime',
+        'capture_due_at' => 'datetime',
+        'deposit_collected_at' => 'datetime',
+        'cancelled_at' => 'datetime',
+        // NOTE: refund_status is a plain string projection of RefundStatus
+        // values — intentionally NOT enum-cast (see "Refund Status Projection").
     ];
-
-    protected $fillable = [
-        'room_id', 'location_id', 'check_in', 'check_out',
-        'guest_name', 'guest_email', 'status',
-        'user_id', 'deleted_by',
-        // Payment + refund fields
-        'payment_intent_id', 'amount', 'refund_id',
-        'refund_status', 'refund_amount', 'refund_error',
-        // Deposit lifecycle (CONC-005/006)
-        'deposit_amount', 'deposit_collected_at', 'deposit_status',
-        // Cancellation + immutable actor snapshot (May 1, 048e40b)
-        'cancelled_at', 'cancelled_by',
-        'cancelled_by_email', 'cancelled_by_role', 'cancelled_by_display',
-        'cancellation_reason',
-    ];
-
-    // Legacy constants (deprecated - use BookingStatus enum)
-    /** @deprecated Use BookingStatus::PENDING */
-    public const STATUS_PENDING = 'pending';
-    /** @deprecated Use BookingStatus::CONFIRMED */
-    public const STATUS_CONFIRMED = 'confirmed';
-    /** @deprecated Use BookingStatus::CANCELLED */
-    public const STATUS_CANCELLED = 'cancelled';
 
     // XSS Protection: auto-purify guest_name
-    public function getPurifiableFields() {
+    public function getPurifiableFields(): array
+    {
         return ['guest_name'];
     }
 }
@@ -346,6 +358,69 @@ Authorization: Bearer <token>
 ```
 
 ---
+
+## Payment State Machine (PaymentPolicy × PaymentStatus)
+
+A booking carries two payment dimensions, both enum-cast on the model: **how**
+payment is collected (`payment_policy`) and **where** the money currently is
+(`payment_status`).
+
+### `PaymentPolicy` (`app/Enums/PaymentPolicy.php`)
+
+| Policy | Stripe PaymentIntent? | Notes |
+| --- | :---: | --- |
+| `prepaid` | ✅ | **v1 default** (`config/booking.php` → `booking.payment_policy`). Booking stays `pending` until Stripe confirms automatic capture. |
+| `authorize_then_capture` | ✅ | Manual-capture hold; authorized first, captured later. |
+| `pay_at_property` | ❌ | Offline payment; no PaymentIntent created. |
+| `not_required` | ❌ | No payment needed. |
+
+`PaymentPolicy::requiresStripePaymentIntent()` is true only for `prepaid` and
+`authorize_then_capture`.
+
+### `PaymentStatus` (`app/Enums/PaymentStatus.php`) — 13 states
+
+Mirrors the Stripe PaymentIntent lifecycle plus terminal money states:
+`not_required`, `offline_due`, `requires_confirmation`, `requires_payment_method`,
+`requires_action`, `processing`, `authorized`, `paid`, `failed`, `cancelled`,
+`capture_failed`, `refunded`, `partially_refunded`. Raw Stripe PI statuses map via
+`PaymentStatus::fromStripePaymentIntentStatus()` (e.g. `requires_capture →
+authorized`, `succeeded → paid`, `canceled → cancelled`).
+
+### Confirmation gate
+
+`Booking::paymentAllowsConfirmation()` decides whether a booking may leave
+`pending`, per policy:
+
+| Policy | Confirmable when `payment_status` is |
+| --- | --- |
+| `prepaid` | `paid` |
+| `authorize_then_capture` | `authorized` or `paid` |
+| `pay_at_property` | `offline_due` |
+| `not_required` | `not_required` |
+
+## Refund Status Projection (`RefundStatus`)
+
+`bookings.refund_status` is a **closed 3-state string projection** — `pending`,
+`succeeded`, `failed` (`app/Enums/RefundStatus.php`). It is intentionally **not**
+enum-cast on the model (persisted as the raw `->value`) and also backs the
+published OpenAPI `Booking.refund_status` enum (locked by `OpenApiEnumContractTest`).
+Stripe's wider refund statuses are normalized via `RefundStatus::tryFromStripe()`,
+which **fails closed** — an unrecognized status is never persisted.
+
+> Full cancellation/refund execution, idempotency, and reconciliation live in
+> [`architecture/BOOKING_CANCELLATION_REFUND_ARCHITECTURE.md`](../architecture/BOOKING_CANCELLATION_REFUND_ARCHITECTURE.md).
+> Refund **history** lives in the `stripe_refund_events` ledger; `bookings.refund_id`
+> is only a latest-pointer — see [`ARCHITECTURE_FACTS.md`](../../agents/ARCHITECTURE_FACTS.md).
+
+## Date Immutability for Money-Final Bookings (SH-01)
+
+A **money-final** booking — `Booking::isMoneyFinal()` = `confirmed` **or** `paid` —
+is **date-immutable**: re-pricing a stay whose payment is already committed would
+desync the charged amount. Editing `check_in` / `check_out` on such a booking is
+rejected; guests must **cancel + rebook**. Enforced defense-in-depth at
+`UpdateBookingRequest` (request layer) and `CreateBookingService::update` (service
+layer). Booking date windows are evaluated in **hostel-local civil time**
+(`Asia/Ho_Chi_Minh`) via `HostelClock`, not UTC.
 
 ## Deposit Lifecycle (CONC-005/006)
 

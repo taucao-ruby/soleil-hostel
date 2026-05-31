@@ -69,6 +69,7 @@ Other framework tables exist (`sessions`, `cache`, `cache_locks`, `jobs`, `job_b
   - [APP] compare-and-swap update semantics are required to enforce optimistic lock behavior.
 - Payment/refund/cancellation audit:
   - [DB] `amount`, `payment_intent_id`, `refund_id`, `refund_status`, `refund_amount`, `refund_error`.
+  - [DB] payment state (`2026_05_27_000002`): `payment_policy` VARCHAR(32) — `CHECK chk_bookings_payment_policy IN ('prepaid','authorize_then_capture','pay_at_property','not_required')`; `payment_status` VARCHAR(32) — `CHECK chk_bookings_payment_status IN ('not_required','offline_due','requires_confirmation','requires_payment_method','requires_action','processing','authorized','paid','failed','cancelled','capture_failed','refunded','partially_refunded')`; plus capture tracking `amount_capturable`, `amount_received`, `authorized_at`, `paid_at`, `capture_due_at`. App enums `App\Enums\PaymentPolicy` / `App\Enums\PaymentStatus`; `refund_status` is the closed `RefundStatus` projection (plain string, not enum-cast).
   - [DB] `deposit_amount`, `deposit_collected_at`, `deposit_status`.
   - [DB] cancellation fields: `cancelled_at`, `cancelled_by` (FK `users.id` SET NULL).
   - [DB] **immutable cancellation actor snapshot** (added 2026-05-01, `2026_05_01_000002`): `cancelled_by_email` (255), `cancelled_by_role` (50), `cancelled_by_display` (255). Populated synchronously by `CancellationService` so the cancellation row attribution survives user deletion.
@@ -169,6 +170,8 @@ Bookings: payment/refund/cancellation
 
 - `idx_bookings_refund_status` on `(refund_status)`.
 - `idx_bookings_payment_intent` on `(payment_intent_id)`.
+- `idx_bookings_payment_status` on `(payment_status)`.
+- `idx_bookings_payment_policy_status` on `(payment_policy, payment_status)`.
 - `idx_bookings_cancellation` on `(status, cancelled_at)`.
 - `idx_bookings_deposit_status_check_in` on `(deposit_status, check_in)`.
 

@@ -234,6 +234,15 @@ class BookingConfirmedNotification extends Notification implements ShouldQueue
 
 **File:** `app/Services/BookingService.php`
 
+> **As-built note (May 2026):** the snippet below illustrates the *notification
+> dispatch* pattern only. Real confirmation does **not** call
+> `$booking->update(['status' => …])` directly — every status change goes through
+> `Booking::transitionTo()` (row-locked, validates the state machine), the confirm
+> path is gated by `Booking::paymentAllowsConfirmation()`, and for prepaid bookings
+> it is driven by `StripeWebhookController::handlePaymentIntentSucceeded`. See
+> [`features/BOOKING.md`](features/BOOKING.md) §Payment State Machine and
+> [`architecture/BOOKING_CANCELLATION_REFUND_ARCHITECTURE.md`](architecture/BOOKING_CANCELLATION_REFUND_ARCHITECTURE.md).
+
 ```php
 public function confirmBooking(Booking $booking): Booking
 {

@@ -2,7 +2,7 @@
 
 > Background job processing for high-load scenarios
 >
-> **Last Updated:** May 8, 2026
+> **Last Updated:** May 31, 2026
 
 ## Overview
 
@@ -217,34 +217,43 @@ SELECT * FROM failed_jobs ORDER BY failed_at DESC;
 
 ## ReconcileRefundsJob
 
-Background reconciliation for any booking stuck in `refund_pending` whose Stripe-side state may have advanced. The job has been hardened across May 2026:
+Scheduled **every 5 minutes** (`reconcile-refunds`, `withoutOverlapping`,
+`onOneServer` — `routes/console.php`; `tries = 3`, `backoff = [60, 300, 900]`).
+Dispatched with **no constructor args** — it sweeps *all* eligible bookings in
+chunks, it is **not** a per-booking job. Two passes:
+
+1. **`reconcilePendingRefunds()`** — bookings in `refund_pending` older than
+   `booking.reconciliation.stale_threshold_minutes` (default 5). Reads the real
+   refund status from Stripe (PaymentIntent → `latest_charge.refunds`) and
+   finalizes: `succeeded → cancelled`, `failed → refund_failed`, `pending → leave`.
+2. **`retryFailedRefunds()`** — `refund_failed` bookings with no `refund_id`,
+   capped at `booking.reconciliation.max_attempts` (default 5). **PAY-01**: an
+   atomic compare-and-swap claim on `updated_at` leases the row (no double-refund
+   under concurrency) and a pre-check discovers any existing Stripe refund before
+   issuing a new one (ambiguous matches → flagged for manual review).
+
+Hardening / invariants:
 
 - `2e120c0` (Apr 26) — guard `null` booking after `fresh()` (concurrent force-delete window).
-- `1441edb` (May 6) — Stripe charge type guard: payload from the API may be `null`, `Stripe\Charge`, or `Stripe\StripeObject` depending on expansion; the type narrow runs before any property read so a missing-charge payload no longer throws `Error: Cannot read property 'amount_refunded' of null`.
-- Refund mutation is mediated through the durable `stripe_refund_events` UNIQUE replay fence (`abc3959`); `INSERT` precedes booking lookup so concurrent webhook + reconciliation deliveries are serialised at the storage layer.
+- Stripe charge-shape guard: the expanded payload may be `null` / `Stripe\Charge` / `Stripe\StripeObject`; the type narrow runs before any property read.
+- Refund writes go through `StripeRefundEventRecorder::record()`; the
+  `stripe_refund_events.stripe_refund_id` UNIQUE fence (`abc3959`) serialises
+  concurrent webhook + reconciler deliveries at the storage layer (PAY-04).
+- Null-user safe (CONC-006): a deleted guest (`user_id = NULL`) falls back to the
+  application-level `Cashier::stripe()` client.
 
-```php
-// App\Jobs\ReconcileRefundsJob (excerpt)
-public function handle(StripeClient $stripe): void
-{
-    $booking = Booking::query()->whereKey($this->bookingId)->lockForUpdate()->first();
-    if ($booking === null || $booking->refund_id === null) {
-        return; // booking force-deleted between dispatch and handle; nothing to reconcile
-    }
+> Full design (state machine, webhook, complete idempotency stack) lives in
+> [`BOOKING_CANCELLATION_REFUND_ARCHITECTURE.md`](BOOKING_CANCELLATION_REFUND_ARCHITECTURE.md).
 
-    $charge = $stripe->charges->retrieve($booking->charge_id, ['expand' => ['refunds']]);
+---
 
-    if (! $charge instanceof Charge) {
-        // Stripe returned an unexpected payload shape; bail loudly.
-        Log::warning('ReconcileRefundsJob: non-Charge payload', ['booking_id' => $booking->id]);
-        return;
-    }
+## Other Booking Jobs
 
-    // INSERT into stripe_refund_events (UNIQUE on stripe_refund_id) BEFORE applying mutation.
-    $this->refundEventLedger->record($charge);
-    $this->bookingRefundService->reconcile($booking, $charge);
-}
-```
+| Job / command | Trigger | Purpose |
+| --- | --- | --- |
+| `ExpireStaleBookings` | every 5 min (`expire-stale-bookings`) | Auto-cancels unconfirmed `pending` bookings past TTL (`booking.pending_ttl_minutes`, default 30) so the held room frees up; records a PaymentIntent-cancellation outbox row in the same transaction (PAY-03). |
+| `ProcessPaymentCancellationOutbox` | every 5 min (`process-payment-cancellation-outbox`) | Drains the Stripe PaymentIntent cancellation outbox **off** the booking lock, with bounded retry/backoff (PAY-03). |
+| `ProcessDepositRefund` | dispatched on cancel | Issues the Stripe deposit refund asynchronously when the deposit FSM transitions to a refunding state (CONC-005). |
 
 ---
 

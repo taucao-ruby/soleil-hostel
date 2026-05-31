@@ -258,6 +258,68 @@ function updateWithRetry(Room $room, array $data, int $maxAttempts = 3): Room
 | GET    | `/api/v1/rooms/{id}` | View room           |
 | PUT    | `/api/v1/rooms/{id}` | Update room (Admin) |
 | DELETE | `/api/v1/rooms/{id}` | Delete room (Admin) |
+| PATCH | `/api/v1/rooms/{id}/readiness` | Update operational readiness (Moderator+) |
+
+---
+
+## Room Readiness (Operational State)
+
+> `readiness_status` is the **canonical physical room state**, distinct from the
+> deprecated `rooms.status` availability field. See [`DB_FACTS.md`](../../DB_FACTS.md)
+> (canonical readiness, migration `2026_03_23_000001`) and the four-layer
+> operational model in [`ARCHITECTURE_FACTS.md`](../../agents/ARCHITECTURE_FACTS.md).
+
+Front-desk operators transition a room through its housekeeping/occupancy
+lifecycle via a dedicated endpoint that is **separate from admin-only room CRUD**.
+
+### States — `RoomReadinessStatus` (`app/Enums/RoomReadinessStatus.php`)
+
+| Value | Meaning |
+| --- | --- |
+| `ready` | Clean and available to assign |
+| `occupied` | A guest is currently in-house |
+| `dirty` | Vacated, awaiting housekeeping |
+| `cleaning` | Housekeeping in progress |
+| `inspected` | Cleaned and inspected, pending return to `ready` |
+| `out_of_service` | Maintenance / blocked from assignment |
+
+Enforced at the DB layer by `CHECK (readiness_status IN (...))`
+(`chk_rooms_readiness_status`).
+
+### Endpoint
+
+```http
+PATCH /api/v1/rooms/{room}/readiness
+Content-Type: application/json
+
+{
+  "readiness_status": "cleaning",
+  "lock_version": 5
+}
+```
+
+- **Handler:** `RoomController::updateReadiness` (route `v1.rooms.readiness`).
+- **Request:** `UpdateRoomReadinessRequest` — `readiness_status` is `required` and
+  validated against the `RoomReadinessStatus` enum; `lock_version` is optional.
+- **Write path:** reuses `RoomService::updateWithOptimisticLock`, so readiness
+  transitions share the same **409 Conflict** optimistic-lock semantics as room
+  updates and keep audit columns consistent. `AdminAuditService` logs
+  `room.readiness.update`.
+
+### Authorization (moderator + admin)
+
+| Role | Allowed |
+| --- | --- |
+| Guest / User | ❌ (401 / 403) |
+| Moderator | ✅ |
+| Admin | ✅ |
+
+Enforced defense-in-depth: route middleware `role:moderator` (`routes/api/v1.php:45`)
+**and** `RoomPolicy::updateReadiness` (`isModerator()` → moderator or admin). This
+is intentionally broader than the admin-only room CUD because readiness is an
+operational front-desk transition (check-in / housekeeping), not inventory
+management. Source of truth: [`PERMISSION_MATRIX.md`](../../PERMISSION_MATRIX.md)
+row **A4b**. SH-10 / F-63.
 
 ---
 

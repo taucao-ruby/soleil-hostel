@@ -1,893 +1,395 @@
 # 📋 Booking Cancellation & Refund Architecture
 
-> Principal-level production design for Laravel 12.46+ with Cashier (Stripe)
+> **As-built reference** for Soleil Hostel on Laravel 12 + Cashier (Stripe).
+> **Last Updated:** May 31, 2026
+>
+> This is the single canonical cancellation/refund design document. The former
+> `docs/backend/BOOKING_CANCELLATION_FLOW.md` is now a redirect stub pointing here.
 
 ---
 
-## High-Level Summary
+## Scope & canonical sources
 
-1. **Dedicated Endpoint**: `POST /bookings/{id}/cancel` — never embed cancellation in PATCH/PUT updates
-2. **State Machine**: `pending → confirmed → cancelled`; invariant: `refunded ⟹ cancelled`
-3. **Refund via Cashier**: Native `$charge->refund()` — no custom gateway calls
-4. **Atomic DB, Eventually Consistent Refund**: Status update is transactional; refund is external (Stripe API) — cannot be in same ACID transaction
-5. **Idempotency**: Booking ID + status check guards; Stripe's idempotency keys for refunds
-6. **Failure Recovery**: Refund failure → booking stays `cancellation_pending`, compensation job retries
-7. **Async Notifications**: Queued with `afterCommit()`, exponential backoff, dead-letter logging
-8. **Observability**: Structured logs (level: info/warning/error), metrics (refund success rate), alerts (refund failure threshold)
-9. **Multi-Tenant Safe**: All queries scoped by `user_id` or `tenant_id`; refunds scoped to owning payment
-10. **Extensible**: Cancellation fees, partial refunds, multi-gateway all additive — core flow unchanged
+This document describes how a booking is cancelled and how its payment is
+refunded **as the code actually does it today**. Where a fact is owned by a
+higher layer, defer to it rather than restating:
+
+- Column semantics & invariants: [`docs/agents/ARCHITECTURE_FACTS.md`](../../agents/ARCHITECTURE_FACTS.md) (especially *§bookings.refund_id semantics*)
+- Schema / constraints / indexes: [`docs/DB_FACTS.md`](../../DB_FACTS.md)
+- Booking feature overview & double-booking prevention: [`docs/backend/features/BOOKING.md`](../features/BOOKING.md)
+- Stuck-webhook reaper: [`docs/backend/STRIPE_WEBHOOK_RECONCILIATION.md`](../STRIPE_WEBHOOK_RECONCILIATION.md)
 
 ---
 
-## 1. Laravel Provides vs. You Configure vs. Do Not Touch
+## 1. High-level model
 
-### Out-of-the-Box (Laravel Native)
+Cancellation is **synchronous on the happy path, durable underneath**:
 
-| Capability        | Provider                             | Notes                                     |
-| ----------------- | ------------------------------------ | ----------------------------------------- |
-| Refund issuance   | `Laravel\Cashier\Charge::refund()`   | Wraps Stripe API                          |
-| Idempotency       | Stripe SDK (via Cashier)             | Requires explicit `idempotencyKey` option |
-| DB transactions   | `DB::transaction()`                  | ACID for local state                      |
-| Route middleware  | `auth:sanctum`, `can:cancel,booking` | Policy-based authorization                |
-| Queue dispatching | `ShouldQueue`, `afterCommit()`       | Async notifications                       |
-| Rate limiting     | `RateLimiter::for()`                 | Per-user throttling                       |
+1. The cancel request transitions the booking under a row lock, then issues the
+   Stripe refund **outside** the transaction (network I/O must not hold locks).
+2. The refund is recorded in an **authoritative ledger** (`stripe_refund_events`)
+   transactionally coupled with the booking's refund projection.
+3. If the process dies mid-flight, or Stripe is slow, or a webhook is lost, the
+   **`ReconcileRefundsJob` scheduler** converges the state every 5 minutes.
 
-### You Must Configure
+Every write path is idempotent. A refund that Stripe accepted but that was lost
+to a timeout is **never** issued twice (stable idempotency keys + a pre-check),
+and a refund observed by two sources (live cancel, webhook, reconciler) produces
+exactly **one** ledger row (UNIQUE replay guard).
 
-| Item          | Location                               | Notes                             |
-| ------------- | -------------------------------------- | --------------------------------- |
-| Stripe keys   | `.env` → `STRIPE_KEY`, `STRIPE_SECRET` | Never commit secrets              |
-| Cashier setup | `config/cashier.php`                   | Currency, webhook secret          |
-| Refund policy | `App\Services\RefundPolicyService`     | Business logic: window, partial % |
-| Queue worker  | Supervisor / Horizon                   | `notifications` queue             |
-| Webhook route | `routes/api.php`                       | `POST /stripe/webhook`            |
+There is **no** `RefundPolicyService`, no `ProcessRefundJob`, and the webhook is
+**not** handled by `Cashier::handleWebhook()` — see §10 for what replaced the
+original design draft.
 
-### DO NOT Customize (Security/Resilience)
+### Component map
 
-| Component                      | Reason                                                   |
-| ------------------------------ | -------------------------------------------------------- |
-| Cashier's `refund()` internals | Handles Stripe error normalization, retries, logging     |
-| Stripe idempotency mechanism   | Attempting custom idempotency breaks Stripe's guarantees |
-| Sanctum token validation       | Custom token logic introduces auth bypass vectors        |
-| Webhook signature verification | `Cashier::handleWebhook()` verifies `Stripe-Signature`   |
-
----
-
-## 2. State Model & Invariants (MANDATORY)
-
-### Booking State Machine
-
-```
-┌─────────────┐     confirm()     ┌─────────────┐
-│   PENDING   │ ─────────────────▶│  CONFIRMED  │
-└─────────────┘                   └──────┬──────┘
-                                         │
-                                   cancel()
-                                         │
-                                         ▼
-                             ┌───────────────────────┐
-                             │   REFUND_PENDING      │  ← (intermediate state)
-                             └───────────┬───────────┘
-                                         │
-                         ┌───────────────┴───────────────┐
-                         │                               │
-                   refund succeeds                 refund fails
-                         │                               │
-                         ▼                               ▼
-                  ┌────────────┐                ┌─────────────────┐
-                  │  CANCELLED │                │  REFUND_FAILED  │
-                  │ (refunded) │                │ (needs manual)  │
-                  └────────────┘                └─────────────────┘
-```
-
-> **Note:** The enum uses `REFUND_PENDING` (not `cancellation_pending`) as the intermediate state name.
-> See `App\Enums\BookingStatus` for the authoritative status definitions.
-
-### Allowed Transitions (Exhaustive)
-
-| From             | To               | Trigger                              | Transactional? |
-| ---------------- | ---------------- | ------------------------------------ | -------------- |
-| `PENDING`        | `CONFIRMED`      | Admin confirmation                   | Yes            |
-| `PENDING`        | `CANCELLED`      | User/admin cancellation (no payment) | Yes            |
-| `PENDING`        | `REFUND_PENDING` | Cancellation with refund             | Yes            |
-| `CONFIRMED`      | `REFUND_PENDING` | Cancellation initiated               | Yes            |
-| `CONFIRMED`      | `CANCELLED`      | Cancel without refund                | Yes            |
-| `REFUND_PENDING` | `CANCELLED`      | Refund succeeds                      | Yes (via job)  |
-| `REFUND_PENDING` | `REFUND_FAILED`  | Refund exhausts retries              | Yes (via job)  |
-| `REFUND_FAILED`  | `REFUND_PENDING` | Retry refund                         | Yes            |
-| `REFUND_FAILED`  | `CANCELLED`      | Manual admin resolution              | Yes            |
-
-### BookingStatus Enum
-
-```php
-// app/Enums/BookingStatus.php
-
-enum BookingStatus: string
-{
-    case PENDING = 'pending';
-    case CONFIRMED = 'confirmed';
-    case REFUND_PENDING = 'refund_pending';
-    case CANCELLED = 'cancelled';
-    case REFUND_FAILED = 'refund_failed';
-
-    public function isCancellable(): bool;         // PENDING, CONFIRMED, REFUND_FAILED
-    public function isTerminal(): bool;            // CANCELLED only
-    public function isRefundInProgress(): bool;    // REFUND_PENDING only
-    public function canTransitionTo(self $target): bool;
-}
-```
-
-### Invariants (MUST NEVER Violate)
-
-```php
-// app/Models/Booking.php
-
-public function isRefunded(): bool
-{
-    return $this->refund_id !== null && $this->refund_status === 'succeeded';
-}
-
-// INVARIANT: refunded ⟹ cancelled
-public static function bootBooking(): void
-{
-    static::saving(function (Booking $booking) {
-        if ($booking->isRefunded() && $booking->status !== BookingStatus::CANCELLED) {
-            throw new InvariantViolationException(
-                "Invariant violation: refunded booking must be cancelled"
-            );
-        }
-    });
-}
-```
-
-### Why Intermediate State `REFUND_PENDING`?
-
-1. **Refund is external**: Stripe API call cannot be in DB transaction
-2. **User visibility**: Shows "refund in progress" vs ambiguous state
-3. **Retry-safe**: Job can retry without re-triggering duplicate refunds
-4. **Audit trail**: Clear indication of where failure occurred
+| Concern | Class | Path |
+| --- | --- | --- |
+| Cancellation orchestration | `CancellationService` | `app/Services/CancellationService.php` |
+| Refund / PI Stripe calls | `StripeService` | `app/Services/StripeService.php` |
+| Authoritative refund ledger writer | `StripeRefundEventRecorder` | `app/Services/Payment/StripeRefundEventRecorder.php` |
+| Webhook ingestion (custom, fail-closed) | `StripeWebhookController` | `app/Http/Controllers/Payment/StripeWebhookController.php` |
+| Orphaned-state recovery | `ReconcileRefundsJob` | `app/Jobs/ReconcileRefundsJob.php` |
+| PI cancellation outbox (PAY-03) | `ProcessPaymentCancellationOutbox` | `app/Jobs/ProcessPaymentCancellationOutbox.php` |
+| Deposit refund (async) | `ProcessDepositRefund` | `app/Jobs/ProcessDepositRefund.php` |
+| Booking status machine | `BookingStatus` | `app/Enums/BookingStatus.php` |
+| Refund status projection | `RefundStatus` | `app/Enums/RefundStatus.php` |
 
 ---
 
-## 3. Full Lifecycle Flow
+## 2. Booking state machine
 
-### Sequence Diagram: Success Path
+`BookingStatus` (`app/Enums/BookingStatus.php`) is a 5-state machine. The only
+legal mutation is `Booking::transitionTo()` (`app/Models/Booking.php:338`), which
+takes a row lock, validates `canTransitionTo()`, and fires `BookingStatusChanged`.
+Direct `UPDATE bookings SET status = …` is forbidden.
 
-```
-User                Controller              CancellationService      Stripe/Cashier          Queue
- │                      │                        │                        │                    │
- ├─ POST /cancel ──────▶│                        │                        │                    │
- │                      ├── authorize(cancel) ──▶│                        │                    │
- │                      │                        │                        │                    │
- │                      ├── DB::transaction ────▶│                        │                    │
- │                      │   status → REFUND_PENDING                       │                    │
- │                      │◀─ commit ──────────────┤                        │                    │
- │                      │                        │                        │                    │
- │                      │                        ├── processRefund() ────▶│                    │
- │                      │                        │◀── RefundResult ───────┤                    │
- │                      │                        │                        │                    │
- │                      │                        ├── DB::transaction      │                    │
- │                      │                        │   status → CANCELLED   │                    │
- │                      │◀──────────────────────┤                        │                    │
- │◀─ 200 OK ────────────┤                        │                        │                    │
- │   {status: "cancelled"}                       │                        │                    │
- │                      │                        │                        │                    │
- │                      │                        ├── event(BookingCancelled) ────────────────▶│      │                    │
- │                      │                        │   status → cancelled   │                    │
- │                      │                        │   refund_id = xyz      │                    │
- │                      │                        │                        │                    │
- │                      │                        ├── notify(BookingCancelled) ───────────────▶│
- │                      │                        │                        │                    │
-```
+| State | Value | Meaning |
+| --- | --- | --- |
+| `PENDING` | `pending` | Created, not yet confirmed (holds the room) |
+| `CONFIRMED` | `confirmed` | Payment confirmed (holds the room) |
+| `REFUND_PENDING` | `refund_pending` | Cancelled, refund in flight |
+| `CANCELLED` | `cancelled` | Terminal — refunded (or no refund due) |
+| `REFUND_FAILED` | `refund_failed` | Refund failed; retryable by the reconciler |
 
-### Sequence Diagram: Refund Failure Path
+`ACTIVE_STATUSES = [pending, confirmed]` — only these block overlap (the
+half-open `[check_in, check_out)` exclusion constraint filters to them).
 
-```
-Queue Worker          ProcessRefundJob         Stripe/Cashier          BookingService
-     │                      │                        │                        │
-     ├── process() ────────▶│                        │                        │
-     │                      ├── $charge->refund() ──▶│                        │
-     │                      │◀── StripeException ────┤                        │
-     │                      │                        │                        │
-     │                      ├── Log::warning(...)    │                        │
-     │                      │                        │                        │
-     │                      ├── retry (attempt 2/3)  │                        │
-     │                      │       ...              │                        │
-     │                      ├── all retries failed   │                        │
-     │                      │                        │                        │
-     │                      ├── failed() ───────────────────────────────────▶│
-     │                      │                        │   status → refund_failed
-     │                      │                        │   Log::error(...)      │
-     │                      │                        │   Alert::refundFailed()│
-     │                      │                        │                        │
-```
+### Allowed transitions (exhaustive)
+
+`BookingStatus::canTransitionTo()` (`app/Enums/BookingStatus.php:72`):
+
+| From → To | `CONFIRMED` | `REFUND_PENDING` | `CANCELLED` | `REFUND_FAILED` |
+| --- | :---: | :---: | :---: | :---: |
+| `PENDING` | ✅ | ✅ | ✅ | — |
+| `CONFIRMED` | — | ✅ | ✅ | — |
+| `REFUND_PENDING` | — | — | ✅ | ✅ |
+| `CANCELLED` | — | — | — | — |
+| `REFUND_FAILED` | — | ✅ (retry) | ✅ (force) | — |
+
+`CANCELLED` is terminal. `isCancellable()` is true for `PENDING`, `CONFIRMED`,
+and `REFUND_FAILED` (retry after failure).
 
 ---
 
-## 4. Implementation (Step-by-Step)
+## 3. Refund status projection (`RefundStatus`)
 
-### 4.1 Update Booking Model: Add Refund Tracking
+`bookings.refund_status` is a **closed 3-state string projection** — `pending`,
+`succeeded`, `failed` (`app/Enums/RefundStatus.php`). It is intentionally **not**
+an enum cast on the model; it is persisted as the `->value` string and also backs
+the published OpenAPI `Booking.refund_status` enum (locked by
+`OpenApiEnumContractTest`).
 
-**File:** `app/Models/Booking.php`
+Stripe emits a wider set (`pending`, `requires_action`, `succeeded`, `failed`,
+`canceled`). Those raw values **must** be normalized via
+`RefundStatus::tryFromStripe()` (`app/Enums/RefundStatus.php:50`) before they
+touch the column. Callers **fail closed** on `null`:
 
-```php
-// Add to $fillable array
-protected $fillable = [
-    // ... existing fields
-    'payment_id',          // Stripe PaymentIntent ID
-    'refund_id',           // Stripe Refund ID (null until refunded)
-    'refund_status',       // 'pending', 'succeeded', 'failed'
-    'refund_amount',       // Amount refunded (cents)
-    'cancelled_at',        // Timestamp of cancellation
-    'cancelled_by',        // User ID who cancelled
-];
+| Stripe status | Internal |
+| --- | --- |
+| `pending`, `requires_action` | `pending` |
+| `succeeded` | `succeeded` |
+| `failed`, `canceled` | `failed` |
+| anything else | `null` → reject, never persist |
 
-// Add constants
-public const STATUS_CANCELLATION_PENDING = 'cancellation_pending';
-public const STATUS_REFUND_FAILED = 'refund_failed';
+### Latest-pointer vs ledger (do not confuse)
 
-public const REFUNDABLE_STATUSES = ['confirmed'];
-```
+Per [`ARCHITECTURE_FACTS.md` §bookings.refund_id semantics](../../agents/ARCHITECTURE_FACTS.md):
 
-**Rationale:** Explicit refund tracking columns enable idempotency checks and audit trail without querying Stripe.
-
----
-
-### 4.2 Migration: Add Refund Columns
-
-**File:** `database/migrations/2026_01_10_add_refund_columns_to_bookings.php`
-
-```php
-public function up(): void
-{
-    Schema::table('bookings', function (Blueprint $table) {
-        $table->string('payment_id')->nullable()->after('status');
-        $table->string('refund_id')->nullable()->after('payment_id');
-        $table->string('refund_status')->nullable()->after('refund_id');
-        $table->unsignedBigInteger('refund_amount')->nullable()->after('refund_status');
-        $table->timestamp('cancelled_at')->nullable()->after('refund_amount');
-        $table->foreignId('cancelled_by')->nullable()->constrained('users')->nullOnDelete();
-
-        $table->index(['status', 'refund_status']); // For monitoring queries
-    });
-}
-```
-
-**Rationale:** `refund_status` stored locally avoids Stripe API calls for status checks; index supports refund monitoring dashboards.
+- **`bookings.refund_id`** — latest Stripe refund pointer for operational lookup.
+  Overwritten by each subsequent refund under partial refunds. **Not** a ledger.
+- **`stripe_refund_events`** — the authoritative refund history ledger. UNIQUE on
+  `stripe_refund_id` is the durable replay guard. Refund history, total-refunded,
+  full-refund detection, and reconciliation MUST read from this table.
 
 ---
 
-### 4.3 Refund Policy Service
+## 4. Cancellation lifecycle
 
-**File:** `app/Services/RefundPolicyService.php`
+Entry point: `POST /api/v1/bookings/{booking}/cancel` →
+`BookingController::cancel` (route `v1.bookings.cancel`, `throttle:10,1`,
+`routes/api/v1.php:66`). Authorization is `Gate::authorize('cancel', $booking)`
+via `BookingPolicy::cancel`, with a service-layer ownership re-check as
+defense-in-depth (§8).
 
-```php
-<?php
+`CancellationService::cancel()` (`app/Services/CancellationService.php:67`) runs
+in three phases:
 
-namespace App\Services;
-
-use App\Models\Booking;
-use Carbon\Carbon;
-
-class RefundPolicyService
-{
-    // Business rules: configurable via config/booking.php
-    private const FULL_REFUND_HOURS = 48;      // 48h before check-in
-    private const PARTIAL_REFUND_HOURS = 24;   // 24h before check-in
-    private const PARTIAL_REFUND_PERCENT = 50;
-
-    public function isRefundable(Booking $booking): bool
-    {
-        if (!in_array($booking->status, Booking::REFUNDABLE_STATUSES)) {
-            return false;
-        }
-
-        if (!$booking->payment_id) {
-            return false; // No payment to refund
-        }
-
-        return $booking->check_in->isFuture();
-    }
-
-    public function calculateRefundAmount(Booking $booking): int
-    {
-        $hoursUntilCheckIn = now()->diffInHours($booking->check_in, false);
-
-        if ($hoursUntilCheckIn >= self::FULL_REFUND_HOURS) {
-            return $booking->amount; // Full refund (amount in cents)
-        }
-
-        if ($hoursUntilCheckIn >= self::PARTIAL_REFUND_HOURS) {
-            return (int) ($booking->amount * self::PARTIAL_REFUND_PERCENT / 100);
-        }
-
-        return 0; // No refund within 24h
-    }
-
-    public function getRefundDenialReason(Booking $booking): ?string
-    {
-        if ($booking->status === Booking::STATUS_CANCELLED) {
-            return 'Booking is already cancelled';
-        }
-
-        if (!$booking->payment_id) {
-            return 'No payment associated with this booking';
-        }
-
-        if ($booking->check_in->isPast()) {
-            return 'Cannot refund past bookings';
-        }
-
-        return null;
-    }
-}
+```
+cancel(Booking, User actor)
+│
+├─ 0. Idempotency (BL-6): status == CANCELLED → log + return fresh(), no-op.
+│      No event, no Stripe, no deposit mutation, no audit overwrite.
+│
+├─ 1. validateCancellation()                        :184
+│      ownership (admin|owner) · isCancellable() · isStarted() guard
+│
+├─ 2. transitionToRefundPending()  [DB::transaction + lockForUpdate]   :206
+│      re-read under lock → REFUND_PENDING if isRefundable(), else CANCELLED
+│      write cancelled_at + immutable actor snapshot
+│      not-refundable → dispatch BookingCancelled now
+│
+├─ 3. processRefund()  [OUTSIDE transaction — Stripe I/O]              :277
+│      amount = Booking::calculateRefundAmount()
+│      StripeService::createBookingRefund(booking, amount, client)   (SH-02)
+│      success → finalizeCancellation()                               :373
+│      failure → handleRefundFailure() → REFUND_FAILED + throw        :472
+│
+└─ 4. transitionDepositForCancellation()  (CONC-005)                  :122
+       Deposit::transitionTo() writes deposit_events;
+       refundPercent>0 → dispatch ProcessDepositRefund (async)
 ```
 
-**Rationale:** Policy logic isolated for testability and business rule changes without touching cancellation flow.
+`finalizeCancellation()` (`:373`, **F-33**) re-acquires the row lock and re-reads
+fresh (the Stripe call ran lock-free, so an out-of-band path may have moved the
+row). It then, **inside one transaction**:
+
+1. Writes the ledger row first via `StripeRefundEventRecorder::record()` (only
+   when a refund was issued) — **SH-03 / F-74**.
+2. `transitionTo(CANCELLED)` and projects `refund_id`, `refund_status='succeeded'`,
+   `refund_amount`, `refund_error=null`.
+3. Dispatches `BookingCancelled`.
+
+If a racing webhook/reconciler already recorded the refund, the ledger INSERT
+throws `UniqueConstraintViolationException`, caught **outside** the transaction
+and treated as idempotent convergence (`:432`).
+
+`isRefundable()` (`:250`) = `payment_intent_id !== null && refund_id === null &&
+payment_status === PAID && status->isCancellable()`.
+
+`forceCancel()` (`:496`) is the admin path: straight to `CANCELLED`, always
+forfeits a held deposit (policy bypassed at the booking layer, but the deposit
+FSM must still leave `collected`).
 
 ---
 
-### 4.4 Updated BookingService: Cancellation with Refund
+## 5. Refund execution & idempotency
 
-**File:** `app/Services/BookingService.php` (add/modify methods)
+Refunds are issued through `StripeService`, **not** Cashier's `$user->refund()`.
+Both the live cancellation path and the reconciler call the same centralized
+methods so the idempotency key is identical across them:
 
-```php
-use App\Jobs\ProcessRefundJob;
-use App\Exceptions\RefundNotAllowedException;
+- `StripeService::createBookingRefund()` — live cancellation (SH-02 / F-76).
+- `StripeService::createReconciliationRefund()` — reconciler retry (PAY-01).
 
-/**
- * Initiate cancellation with refund.
- *
- * ATOMICITY BOUNDARY:
- * - DB status update: TRANSACTIONAL (immediate consistency)
- * - Stripe refund: NOT in transaction (external API, eventually consistent)
- * - Notification: QUEUED after commit
- *
- * WHY NOT WRAP REFUND IN TRANSACTION?
- * - Stripe API is external; DB transaction cannot rollback Stripe operations
- * - If refund succeeds but commit fails → money refunded, booking not updated → BAD
- * - Solution: Update status FIRST, then attempt refund async
- */
-public function initiateCancellation(
-    Booking $booking,
-    ?int $cancelledByUserId = null
-): Booking {
-    // Idempotency: already in cancellation flow
-    if (in_array($booking->status, [
-        Booking::STATUS_CANCELLED,
-        Booking::STATUS_CANCELLATION_PENDING,
-    ])) {
-        return $booking;
-    }
+The key is `bookingRefundIdempotencyKey($booking)` — a pure function of the
+durable `(booking, payment_intent)`. A refund Stripe accepted but lost to an HTTP
+timeout is therefore **de-duplicated by Stripe on retry** instead of double-refunding
+the guest. Each refund also carries `metadata.booking_id` and
+`metadata.soleil_refund_event_id` so the reconciler can recognize its own prior
+refunds.
 
-    $refundPolicy = app(RefundPolicyService::class);
+### The idempotency stack
 
-    // Check if refund is needed
-    $needsRefund = $booking->payment_id && $refundPolicy->isRefundable($booking);
+| Layer | Guard | Where |
+| --- | --- | --- |
+| **BL-6** terminal no-op | already-`CANCELLED` cancel returns fresh row, zero side effects | `CancellationService:76` |
+| Row lock + re-read | `transitionToRefundPending` / `finalizeCancellation` lock before mutating | `CancellationService:206,373` |
+| **SH-02** Stripe idempotency key | stable per-booking key → Stripe dedups a lost-timeout refund | `StripeService::createBookingRefund` |
+| **SH-03** ledger-first write | ledger row written in the same tx as the booking projection | `CancellationService:409` |
+| **PAY-04** ledger UNIQUE | `stripe_refund_events.stripe_refund_id` UNIQUE = the linearization point | `StripeRefundEventRecorder:58` |
+| **BL-3** webhook dedup | INSERT-first on `stripe_webhook_events.stripe_event_id` UNIQUE | `StripeWebhookController:129` |
+| **PAY-01** reconciler claim + pre-check | CAS lease on `updated_at` + existing-refund discovery before any create | `ReconcileRefundsJob:180,588` |
 
-    return DB::transaction(function () use ($booking, $cancelledByUserId, $needsRefund, $refundPolicy) {
-        if ($needsRefund) {
-            // Set intermediate state — refund will complete async
-            $booking->update([
-                'status' => Booking::STATUS_CANCELLATION_PENDING,
-                'cancelled_at' => now(),
-                'cancelled_by' => $cancelledByUserId ?? auth()->id(),
-                'refund_amount' => $refundPolicy->calculateRefundAmount($booking),
-                'refund_status' => 'pending',
-            ]);
-
-            // Dispatch refund job AFTER transaction commits
-            ProcessRefundJob::dispatch($booking)
-                ->onQueue('refunds')
-                ->afterCommit();
-
-        } else {
-            // No payment or no refund needed — cancel immediately
-            $booking->update([
-                'status' => Booking::STATUS_CANCELLED,
-                'cancelled_at' => now(),
-                'cancelled_by' => $cancelledByUserId ?? auth()->id(),
-            ]);
-
-            // Notification for non-refund cancellation
-            $booking->user->notify(new BookingCancelled($booking));
-        }
-
-        $this->invalidateBooking($booking->id, $booking->user_id);
-
-        Log::info('Booking cancellation initiated', [
-            'booking_id' => $booking->id,
-            'needs_refund' => $needsRefund,
-            'status' => $booking->status,
-        ]);
-
-        return $booking->fresh();
-    });
-}
-```
-
-**Rationale:**
-
-- `cancellation_pending` state allows user to see progress
-- Refund dispatched `afterCommit()` ensures job only runs if DB update persists
-- Non-refund path completes synchronously (no external dependency)
+The recorder contract (`StripeRefundEventRecorder`, PAY-04): callers **must**
+`record()` inside the same `DB::transaction` that writes the booking projection
+and catch `UniqueConstraintViolationException` **outside** it, so the booking can
+never drift ahead of the ledger. `booking_id` always comes from the trusted DB
+row, never from Stripe metadata.
 
 ---
 
-### 4.5 ProcessRefundJob
+## 6. Webhook handling
 
-**File:** `app/Jobs/ProcessRefundJob.php`
+`StripeWebhookController extends Cashier's WebhookController` but **owns signature
+verification** — route `POST /api/webhooks/stripe`
+(`routes/api.php:124` → `handleWebhook`).
 
-```php
-<?php
+It deliberately does **not** call `parent::__construct()`: Cashier registers its
+`VerifyWebhookSignature` middleware only when `cashier.webhook.secret` is truthy,
+so an empty/unset secret would silently accept every unsigned webhook — an
+unauthenticated path into booking confirmation and refund state. Instead it
+**fails closed** in `handleWebhook()` (`:65`):
 
-namespace App\Jobs;
+| Condition | Response |
+| --- | --- |
+| secret not configured | `500` (server misconfiguration) |
+| missing `Stripe-Signature` header | `400` |
+| malformed JSON payload | `400` |
+| signature mismatch / expired | `400` |
+| verified | delegate to `parent::handleWebhook()` dispatcher |
 
-use App\Models\Booking;
-use App\Notifications\BookingCancelled;
-use App\Notifications\RefundFailed;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Laravel\Cashier\Exceptions\IncompletePayment;
-use Stripe\Exception\ApiErrorException;
+### Handled events
 
-class ProcessRefundJob implements ShouldQueue
-{
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+| Event | Handler | Effect |
+| --- | --- | --- |
+| `payment_intent.succeeded` | `:110` | Confirm booking via `StripePaymentIntentSucceededHandler` (idempotent) |
+| `charge.refunded` | `:190` | Normalize status (`tryFromStripe`), guard illegal transition, ledger-first record, project refund → `CANCELLED`/`REFUND_FAILED` |
+| `payment_intent.payment_failed` | `:459` | `payment_status = FAILED`; booking stays `PENDING` for retry |
+| `payment_intent.canceled` | `:535` | `payment_status = CANCELLED`; a `PENDING` booking → `CANCELLED` |
+| `payment_intent.amount_capturable_updated` | `:607` | Only for `AUTHORIZE_THEN_CAPTURE`: `payment_status = AUTHORIZED` |
 
-    public int $tries = 3;
-    public array $backoff = [60, 300, 900]; // 1min, 5min, 15min
-    public bool $deleteWhenMissingModels = true;
-
-    public function __construct(
-        public readonly Booking $booking
-    ) {}
-
-    public function handle(): void
-    {
-        // Idempotency: already processed
-        if ($this->booking->refund_id !== null) {
-            Log::info('Refund already processed, skipping', [
-                'booking_id' => $this->booking->id,
-                'refund_id' => $this->booking->refund_id,
-            ]);
-            return;
-        }
-
-        // Idempotency: wrong state
-        if ($this->booking->status !== Booking::STATUS_CANCELLATION_PENDING) {
-            Log::warning('Booking not in cancellation_pending state', [
-                'booking_id' => $this->booking->id,
-                'status' => $this->booking->status,
-            ]);
-            return;
-        }
-
-        try {
-            $refund = $this->issueRefund();
-            $this->completeRefund($refund);
-
-        } catch (ApiErrorException $e) {
-            Log::warning('Stripe refund attempt failed', [
-                'booking_id' => $this->booking->id,
-                'attempt' => $this->attempts(),
-                'error' => $e->getMessage(),
-                'stripe_code' => $e->getStripeCode(),
-            ]);
-
-            throw $e; // Let queue retry
-        }
-    }
-
-    private function issueRefund(): \Stripe\Refund
-    {
-        $user = $this->booking->user;
-
-        // Get the charge/payment intent from Cashier
-        $payment = $user->findPayment($this->booking->payment_id);
-
-        if (!$payment) {
-            throw new \RuntimeException("Payment not found: {$this->booking->payment_id}");
-        }
-
-        // Issue refund via Cashier with idempotency key
-        return $payment->refund([
-            'amount' => $this->booking->refund_amount,
-        ], [
-            'idempotency_key' => "refund-booking-{$this->booking->id}",
-        ]);
-    }
-
-    private function completeRefund(\Stripe\Refund $refund): void
-    {
-        DB::transaction(function () use ($refund) {
-            $this->booking->update([
-                'status' => Booking::STATUS_CANCELLED,
-                'refund_id' => $refund->id,
-                'refund_status' => $refund->status, // 'succeeded' or 'pending'
-            ]);
-        });
-
-        // Queue notification after successful refund
-        $this->booking->user->notify(new BookingCancelled($this->booking));
-
-        Log::info('Refund completed successfully', [
-            'booking_id' => $this->booking->id,
-            'refund_id' => $refund->id,
-            'amount' => $this->booking->refund_amount,
-        ]);
-    }
-
-    /**
-     * Handle job failure after all retries exhausted.
-     */
-    public function failed(\Throwable $exception): void
-    {
-        DB::transaction(function () {
-            $this->booking->update([
-                'status' => Booking::STATUS_REFUND_FAILED,
-                'refund_status' => 'failed',
-            ]);
-        });
-
-        // Notify user of failure
-        $this->booking->user->notify(new RefundFailed($this->booking));
-
-        // Alert ops team
-        Log::error('Refund failed permanently', [
-            'booking_id' => $this->booking->id,
-            'payment_id' => $this->booking->payment_id,
-            'error' => $exception->getMessage(),
-            'alert' => 'refund_failure', // For log-based alerting
-        ]);
-
-        // Metric for monitoring
-        app('metrics')->increment('refunds.failed');
-    }
-}
-```
-
-**Rationale:**
-
-- Idempotency key prevents duplicate refunds on retry
-- `failed()` updates status to `refund_failed` for manual resolution
-- Structured logging enables alerting (e.g., Datadog, Sentry)
+`charge.refunded` is **fail-closed and self-healing**: an unrecognized refund
+status (SH-05 / F-73) or an illegal state transition is logged, marks the webhook
+event `failed` for operator visibility, and acks `200` (a retry never reclassifies
+a permanent business-state error) — the booking is never mutated. Unexpected
+runtime errors return `500` so Stripe retries and `ReconcileRefundsJob` remains
+the durable recovery path.
 
 ---
 
-### 4.6 Updated Controller: Return 202 for Async
+## 7. Reconciliation & recovery
 
-**File:** `app/Http/Controllers/BookingController.php` (modify cancel method)
+`ReconcileRefundsJob` (`app/Jobs/ReconcileRefundsJob.php`) runs **every 5 minutes**
+(`Schedule::job(new ReconcileRefundsJob)->everyFiveMinutes()->withoutOverlapping()
+->onOneServer()`, name `reconcile-refunds`, `routes/console.php:26`). `tries = 3`,
+`backoff = [60, 300, 900]`.
 
-```php
-public function cancel(Booking $booking): JsonResponse
-{
-    $this->authorize('cancel', $booking);
+It has two passes:
 
-    // Idempotency: already cancelled
-    if ($booking->status === Booking::STATUS_CANCELLED) {
-        return response()->json([
-            'success' => true,
-            'message' => 'Booking is already cancelled',
-            'data' => new BookingResource($booking),
-        ], 200);
-    }
+1. **`reconcilePendingRefunds()`** (`:102`) — bookings stuck in `REFUND_PENDING`
+   older than `booking.reconciliation.stale_threshold_minutes` (default 5).
+   Queries Stripe for the real refund status, records the ledger, and finalizes
+   (`succeeded → CANCELLED`, `failed → REFUND_FAILED`, `pending → leave`).
+2. **`retryFailedRefunds()`** (`:119`) — `REFUND_FAILED`, older than 15 min, with
+   a `payment_intent_id` and no `refund_id`. Retry count is parsed from
+   `refund_error` (`[Attempt N]`), capped at `booking.reconciliation.max_attempts`
+   (default 5).
 
-    // Check refund eligibility
-    $refundPolicy = app(RefundPolicyService::class);
-    $denialReason = $refundPolicy->getRefundDenialReason($booking);
+**PAY-01** prevents double-refunding under concurrency:
 
-    if ($denialReason && $booking->payment_id) {
-        return response()->json([
-            'success' => false,
-            'message' => $denialReason,
-        ], 422);
-    }
+- `claimFailedRefund()` (`:180`) — atomic compare-and-swap on `updated_at`; a
+  second worker's identical claim matches zero rows. No row lock is held across
+  the Stripe call.
+- `findExistingStripeRefundForBooking()` (`:588`) — before creating any refund,
+  retrieve the PaymentIntent's refunds and match by identity
+  (`metadata.soleil_refund_event_id`) or fallback (amount + currency +
+  `booking_id`). Exactly one usable match → sync it; more than one → mark
+  **ambiguous** for manual reconciliation; none → safe to create.
 
-    try {
-        $booking = $this->bookingService->initiateCancellation($booking, auth()->id());
+Null-user safe (CONC-006): a deleted guest leaves `user_id = NULL` (FK
+`ON DELETE SET NULL`); `resolveStripeClientFor()` falls back to the
+application-level `Cashier::stripe()` client.
 
-        // Different response based on whether refund is pending
-        $isPending = $booking->status === Booking::STATUS_CANCELLATION_PENDING;
+### Related schedulers (all every 5 min, `routes/console.php`)
 
-        return response()->json([
-            'success' => true,
-            'message' => $isPending
-                ? 'Cancellation initiated. Refund is being processed.'
-                : 'Booking cancelled successfully.',
-            'data' => new BookingResource($booking->load('room')),
-        ], $isPending ? 202 : 200);
-
-    } catch (\RuntimeException $e) {
-        return response()->json([
-            'success' => false,
-            'message' => $e->getMessage(),
-        ], 422);
-    }
-}
-```
-
-**Rationale:**
-
-- `202 Accepted` signals async processing to client
-- Idempotent: repeated calls return success without re-processing
+| Name | Job/command | Purpose |
+| --- | --- | --- |
+| `reconcile-refunds` | `ReconcileRefundsJob` | Orphaned refund recovery (this doc) |
+| `reconcile-stuck-stripe-webhooks` | `webhook:reconcile-stuck-events` | Replays webhook events stuck in `processing` — see [STRIPE_WEBHOOK_RECONCILIATION.md](../STRIPE_WEBHOOK_RECONCILIATION.md) |
+| `expire-stale-bookings` | `ExpireStaleBookings` | Auto-cancels unconfirmed `PENDING` past TTL (`booking.pending_ttl_minutes`, default 30) |
+| `process-payment-cancellation-outbox` | `ProcessPaymentCancellationOutbox` | Drains the PI-cancellation outbox off the booking lock (PAY-03) |
 
 ---
 
-## 5. Failure Modes & Edge Cases
+## 8. Authorization
 
-### Matrix of Failure Scenarios
+Cancellation ownership is enforced at **two independent layers**
+(see [`ARCHITECTURE_FACTS.md` §Cancellation Ownership: Defense-in-Depth](../../agents/ARCHITECTURE_FACTS.md)):
 
-| Scenario                            | Detection                         | Recovery                           | User Sees                              |
-| ----------------------------------- | --------------------------------- | ---------------------------------- | -------------------------------------- |
-| Already cancelled                   | Status check                      | Return 200 (idempotent)            | "Already cancelled"                    |
-| Non-refundable window               | Policy check                      | Reject with reason                 | "Cannot refund within 24h of check-in" |
-| Payment not found                   | `findPayment()` returns null      | Mark `refund_failed`, alert        | "Refund issue, contact support"        |
-| Stripe timeout                      | `ApiErrorException`               | Job retry (3x backoff)             | "Processing..."                        |
-| Stripe permanent error              | `ApiErrorException` after retries | Mark `refund_failed`, notify       | Email with manual refund steps         |
-| Race condition (2 requests)         | `cancellation_pending` check      | First wins, second returns 200     | Both see success                       |
-| User not owner                      | Policy `can:cancel`               | 403 Forbidden                      | "Unauthorized"                         |
-| Soft-deleted booking                | Model binding fails               | 404 Not Found                      | "Booking not found"                    |
-| Multi-tenant isolation              | Scoped queries                    | Query filters by tenant            | Only sees own bookings                 |
-| Queue worker down                   | Job stays in queue                | Horizon/Supervisor auto-restart    | Delayed but eventually processed       |
-| Refund succeeds, notification fails | Separate concerns                 | Notification retries independently | Refund works, email delayed            |
+1. **Policy / controller** — `Gate::authorize('cancel', $booking)` →
+   `BookingPolicy::cancel` (ownership, status, refund window).
+2. **Service** — `CancellationService::validateCancellation()` (`:184`) re-checks
+   `! $actor->isAdmin() && booking.user_id !== actor.id` and throws
+   `BookingCancellationException::unauthorized()`. This guards alternate callers
+   that reach the service without the controller policy — notably
+   `ProposalConfirmationController::executeCancellation`.
 
-### When NOT to Rollback
-
-| Situation                                 | Why No Rollback                                                                |
-| ----------------------------------------- | ------------------------------------------------------------------------------ |
-| Refund initiated but booking update fails | Refund is external — money already moved. Compensation: log, alert, manual fix |
-| Notification fails                        | Non-critical; user still gets refund. Retry via queue.                         |
-| Partial refund calculation error          | Log and process full refund; adjust manually if needed                         |
-
-### Allowed Intermediate States
-
-| State                  | Duration               | Resolution                                     |
-| ---------------------- | ---------------------- | ---------------------------------------------- |
-| `cancellation_pending` | < 30 minutes typically | Job completes → `cancelled` or `refund_failed` |
-| `refund_failed`        | Until admin resolves   | Admin marks `cancelled` after manual refund    |
+Admins are exempt from the ownership and the post-check-in guards, matching
+`BookingPolicy::cancel`.
 
 ---
 
-## 6. Testing Strategy
+## 9. Cancellation & refund policy
 
-### Feature Tests (Fake Cashier)
+Refund amount is computed by `Booking::calculateRefundAmount()`
+(`app/Models/Booking.php:266`); the matching value object is
+`Booking::cancellationPolicy()` (`:171`, shared with the deposit FSM). All windows
+are evaluated in **hostel-local civil time** (`Asia/Ho_Chi_Minh` by default) via
+`HostelClock` — not UTC. Money is integer minor units (cents).
 
-**File:** `tests/Feature/BookingCancellationTest.php`
+| Window (hours before check-in) | Refund | Config key (`config/booking.php`) | Default |
+| --- | --- | --- | --- |
+| `≥ full_refund_hours` | 100% | `cancellation.full_refund_hours` | 48 |
+| `≥ partial_refund_hours` (and `< full`) | `partial_refund_pct`% | `cancellation.partial_refund_pct` | 50 |
+| `< partial_refund_hours` | 0% | — | — |
+| past check-in (`hours < 0`) | 0% | — | — |
 
-```php
-public function test_cancellation_with_refund_sets_pending_status(): void
-{
-    $user = User::factory()->create();
-    $booking = Booking::factory()
-        ->for($user)
-        ->create([
-            'status' => 'confirmed',
-            'payment_id' => 'pi_test_123',
-            'amount' => 10000, // $100
-            'check_in' => now()->addDays(7),
-        ]);
+If `cancellation.allow_fee` is true (default `false`), the refund percentage is
+reduced by `cancellation.fee_pct` (default `0`): `pct = max(0, pct - fee_pct)`.
 
-    $this->actingAs($user)
-        ->postJson("/api/bookings/{$booking->id}/cancel")
-        ->assertStatus(202)
-        ->assertJson(['success' => true]);
+`cancellation.allow_after_checkin` (default `false`) gates whether a started
+booking can be cancelled by a non-admin.
 
-    $this->assertDatabaseHas('bookings', [
-        'id' => $booking->id,
-        'status' => 'cancellation_pending',
-        'refund_status' => 'pending',
-    ]);
-
-    Queue::assertPushed(ProcessRefundJob::class);
-}
-
-public function test_cancellation_idempotent_on_already_cancelled(): void
-{
-    $booking = Booking::factory()->create(['status' => 'cancelled']);
-
-    $this->actingAs($booking->user)
-        ->postJson("/api/bookings/{$booking->id}/cancel")
-        ->assertStatus(200)
-        ->assertJson(['message' => 'Booking is already cancelled']);
-}
-
-public function test_refund_job_updates_status_on_success(): void
-{
-    // Mock Stripe
-    $this->mock(\Laravel\Cashier\Payment::class, function ($mock) {
-        $mock->shouldReceive('refund')->andReturn(
-            new \Stripe\Refund(['id' => 're_123', 'status' => 'succeeded'])
-        );
-    });
-
-    $booking = Booking::factory()->create([
-        'status' => 'cancellation_pending',
-        'payment_id' => 'pi_test',
-    ]);
-
-    (new ProcessRefundJob($booking))->handle();
-
-    $this->assertDatabaseHas('bookings', [
-        'id' => $booking->id,
-        'status' => 'cancelled',
-        'refund_id' => 're_123',
-    ]);
-}
-```
-
-### Manual Verification Checklist
-
-- [ ] Cancel confirmed booking with payment → status becomes `cancellation_pending`
-- [ ] Queue worker processes job → status becomes `cancelled`, refund_id populated
-- [ ] Cancel pending booking (no payment) → status becomes `cancelled` immediately
-- [ ] Cancel already-cancelled booking → returns 200, no state change
-- [ ] Cancel as non-owner → returns 403
-- [ ] Cancel within 24h of check-in → appropriate refund amount or denial
-- [ ] Simulate Stripe failure → after 3 retries, status becomes `refund_failed`
-- [ ] Check email received for both success and failure paths
-
-### What Is NOT Unit Tested (and Why)
-
-| Component             | Reason                                                       |
-| --------------------- | ------------------------------------------------------------ |
-| Stripe API calls      | Integration test with test keys, not unit mock               |
-| DB transactions       | Feature tests cover; unit tests can't verify commit behavior |
-| Queue dispatch timing | `afterCommit()` behavior requires integration test           |
+> **SH-01 date immutability.** A *money-final* booking — `isMoneyFinal()` =
+> `CONFIRMED || PAID` (`Booking.php:229`) — cannot have its dates edited;
+> re-pricing a captured stay would desync the charged amount. Guests must
+> cancel + rebook. Enforced at `UpdateBookingRequest` and
+> `CreateBookingService::update` (defense in depth).
 
 ---
 
-## 7. Decision Log
+## 10. Failure modes
 
-### Dedicated Endpoint vs. Embedded Logic
-
-| Option                                          | Verdict     | Reason                                                        |
-| ----------------------------------------------- | ----------- | ------------------------------------------------------------- |
-| `POST /bookings/{id}/cancel`                    | ✅ Chosen   | Clear semantics, auditable, RESTful                           |
-| `PATCH /bookings/{id}` with `status: cancelled` | ❌ Rejected | Mixes update concerns; cancellation has side effects (refund) |
-
-### Cashier vs. Custom Gateway Integration
-
-| Option                      | Verdict     | Reason                                                   |
-| --------------------------- | ----------- | -------------------------------------------------------- |
-| Cashier `$charge->refund()` | ✅ Chosen   | Battle-tested, handles edge cases, maintained by Laravel |
-| Direct Stripe SDK           | ❌ Rejected | Reinventing error handling, idempotency, logging         |
-| Multi-gateway abstraction   | 🔄 Future   | Add when business requires; Cashier is Stripe-only       |
-
-### Sync vs. Async Refund Processing
-
-| Option             | Verdict     | Reason                                                     |
-| ------------------ | ----------- | ---------------------------------------------------------- |
-| Async (queued job) | ✅ Chosen   | Stripe can timeout; keeps request fast (<500ms); retryable |
-| Sync (in request)  | ❌ Rejected | Request timeout risk; no automatic retry; blocks user      |
-
-### Intermediate State `cancellation_pending`
-
-| Option                                    | Verdict     | Reason                                                     |
-| ----------------------------------------- | ----------- | ---------------------------------------------------------- |
-| Explicit intermediate state               | ✅ Chosen   | User sees progress; job is idempotent; clear failure state |
-| Direct `cancelled` with background refund | ❌ Rejected | Confusing if refund fails after showing "cancelled"        |
-
-### Why This Survives High Load
-
-- **Queue-based refunds**: Spikes handled by worker scaling (Horizon)
-- **Idempotent endpoints**: Safe to retry from load balancer/client
-- **No transaction spanning external calls**: DB connections released fast
-- **Cache invalidation is async**: Doesn't block response
-
-### Observability Requirements
-
-| Type           | Implementation                                                                            |
-| -------------- | ----------------------------------------------------------------------------------------- |
-| **Logs**       | Structured JSON; levels: `info` (success), `warning` (retry), `error` (permanent failure) |
-| **Metrics**    | `refunds.initiated`, `refunds.succeeded`, `refunds.failed`, `refunds.retry_count`         |
-| **Alerts**     | Trigger on: `refunds.failed > 5/hour`, `cancellation_pending` stuck > 1 hour              |
-| **Dashboards** | Refund success rate, average processing time, failure reasons                             |
-
-### Multi-Tenant Extension
-
-```php
-// All queries already scoped
-Booking::where('user_id', auth()->id())->...
-
-// For multi-tenant (future):
-Booking::where('tenant_id', auth()->user()->tenant_id)->...
-
-// Refund scoped by payment ownership — Cashier handles via billable user
-```
+| Scenario | Booking ends in | Recovery |
+| --- | --- | --- |
+| Stripe refund API error during cancel | `REFUND_FAILED` (+ `refund_error`) | `retryFailedRefunds()` (capped) |
+| Process crashes after Stripe success, before DB write | `REFUND_PENDING` | `reconcilePendingRefunds()` records ledger + finalizes |
+| `charge.refunded` webhook lost | `REFUND_PENDING` | reconciler converges from Stripe |
+| Duplicate `charge.refunded` delivery | unchanged | BL-3 webhook UNIQUE → ack 200 |
+| Live cancel races webhook on the same refund | `CANCELLED` once | PAY-04 ledger UNIQUE; loser converges |
+| Two reconciler workers on one row | one refund | PAY-01 CAS claim + pre-check |
+| Refund Stripe accepted but our HTTP timed out | `CANCELLED` once | SH-02 key dedups; reconciler pre-check syncs |
+| Multiple ambiguous Stripe refunds found | `REFUND_FAILED` | flagged for manual reconciliation |
+| Unrecognized raw Stripe refund status | unchanged | SH-05 fail-closed; event marked failed, ack 200 |
 
 ---
 
-## 8. Production Recommendations
+## 11. Decision log
 
-### Cashier Configuration
-
-```php
-// config/cashier.php
-return [
-    'currency' => 'usd',
-    'currency_locale' => 'en',
-    'webhook' => [
-        'secret' => env('STRIPE_WEBHOOK_SECRET'),
-        'tolerance' => 300, // 5 min tolerance for webhook timestamp
-    ],
-];
-```
-
-### Webhook Handler for Async Refund Status
-
-```php
-// routes/api.php
-Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])
-    ->middleware('stripe.webhook');
-
-// Handle charge.refunded event to sync status
-protected function handleChargeRefunded(array $payload): Response
-{
-    $refundId = $payload['data']['object']['id'];
-
-    Booking::where('payment_id', $payload['data']['object']['payment_intent'])
-        ->update(['refund_status' => 'succeeded']);
-
-    return $this->successMethod();
-}
-```
-
-### Queue Configuration
-
-```php
-// config/queue.php - separate queue for refunds
-'connections' => [
-    'redis' => [
-        'queue' => 'default',
-        // ...
-    ],
-],
-
-// Horizon worker config
-'environments' => [
-    'production' => [
-        'refunds-worker' => [
-            'connection' => 'redis',
-            'queue' => ['refunds'],
-            'processes' => 2,
-            'tries' => 3,
-            'timeout' => 60,
-        ],
-    ],
-],
-```
-
-### Monitoring Setup
-
-```yaml
-# Datadog/Prometheus alert rules
-alerts:
-  - name: RefundFailureRate
-    condition: rate(refunds_failed[5m]) > 0.05
-    severity: warning
-
-  - name: StuckCancellations
-    condition: count(bookings{status="cancellation_pending"} offset 1h) > 10
-    severity: critical
-```
+| Decision | Choice | Why |
+| --- | --- | --- |
+| Webhook handling | **Custom controller, signature verified in `handleWebhook()`** | Cashier's middleware silently no-ops on an empty secret; we fail closed |
+| Refund issuance | **`StripeService` with stable idempotency keys** (not Cashier `$user->refund()`) | One key across live + reconciler paths → Stripe dedups lost-timeout refunds (SH-02) |
+| Refund policy | **`Booking::calculateRefundAmount()` / `cancellationPolicy()`** | Single source of truth; no separate `RefundPolicyService` (that draft class was never built) |
+| Refund timing | **Synchronous happy path + 5-min reconciler** | Immediate UX, but crash/slow-Stripe/lost-webhook all converge durably |
+| Refund history | **`stripe_refund_events` ledger** (not `bookings.refund_id`) | `refund_id` is a latest-pointer; partial refunds need a real ledger (PAY-04) |
+| Deposit refund | **Async `ProcessDepositRefund`** | Decoupled from the booking refund; driven by the deposit FSM (CONC-005) |
+| Time semantics | **Hostel-local (`HostelClock`) for windows** | Refund windows are civil-time business rules, not UTC instants (SH-01) |
 
 ---
 
-## Summary
+## 12. Source map
 
-This architecture provides:
-
-1. **Clear state machine** with explicit intermediate states
-2. **Proper atomicity boundaries** — DB transactional, external calls async
-3. **Idempotent operations** at every layer
-4. **Graceful degradation** — failures don't leave system in bad state
-5. **Observable behavior** — logs, metrics, alerts for production
-6. **Extensible design** — cancellation fees, partial refunds additive
-
-The key insight: **refunds are eventually consistent by nature**. Fighting this with "wrap everything in transaction" creates worse failure modes. Embrace the intermediate state and build compensation into the design.
+| Topic | File |
+| --- | --- |
+| Orchestration | `app/Services/CancellationService.php` |
+| Stripe refund/PI calls | `app/Services/StripeService.php` |
+| Ledger writer | `app/Services/Payment/StripeRefundEventRecorder.php` |
+| Webhook | `app/Http/Controllers/Payment/StripeWebhookController.php` |
+| Reconciler | `app/Jobs/ReconcileRefundsJob.php` |
+| Status machine | `app/Enums/BookingStatus.php` |
+| Refund projection | `app/Enums/RefundStatus.php` |
+| Policy & refund math | `app/Models/Booking.php` |
+| Config | `config/booking.php` |
+| Routes | `routes/api/v1.php` (cancel), `routes/api.php` (webhook), `routes/console.php` (schedulers) |

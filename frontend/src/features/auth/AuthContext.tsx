@@ -40,7 +40,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
  *
  * Security Benefits:
  * - XSS attacks cannot steal token (httpOnly = no JavaScript access)
- * - CSRF protection via SameSite=Strict cookie (X-XSRF-TOKEN sent as defense-in-depth; not validated server-side)
+ * - CSRF: the httpOnly auth cookie (soleil_token) is SameSite=Strict, so the
+ *   browser never attaches it to cross-site requests. That cookie is the
+ *   primary, server-enforced CSRF boundary for the cookie-auth API path.
+ *   The sessionStorage csrf_token, echoed back via the X-XSRF-TOKEN header, is
+ *   defense-in-depth / framework compatibility only: the authenticated API
+ *   routes (backend CheckHttpOnlyTokenValid middleware) do NOT validate this
+ *   header server-side. Do not treat X-XSRF-TOKEN as the authoritative CSRF
+ *   control unless the backend later enables explicit CSRF token validation
+ *   for these routes.
  * - Token refresh handled transparently
  * - Secure by default
  */

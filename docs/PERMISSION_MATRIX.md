@@ -35,6 +35,7 @@ Quick-reference for UI conditional rendering. Derived from Tables A–E below.
 | Admin Customers (`/admin/customers`) | ❌ | ✅ read-only | ✅ |
 | Admin Rooms (`/admin/rooms`) | ❌ | ✅ view-only | ✅ |
 | Room Create/Edit/Delete | ❌ | ❌ | ✅ |
+| Room readiness transition (front-desk: check-in/housekeeping) | ❌ | ✅ | ✅ |
 | Contact Messages | ❌ | ❌ | ✅ |
 | ReviewForm (for own past confirmed booking) | ✅ | ✅ | ✅ |
 | FAQ Assistant Widget | ✅ (auth required) | ✅ | ✅ |
@@ -56,6 +57,7 @@ What the system actually does. Tier 1 evidence only.
 | A2 | `PUT /api/v1/rooms/{room}` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Route `role:admin` (v1.php:34) + Policy `RoomPolicy::update` | HIERARCHY-DEPENDENT + EXACT-MATCH | YES | TEST-SURFACE DRIFT (legacy path) | OPUS-02R + OPUS-VERIFY-01 |
 | A3 | `PATCH /api/v1/rooms/{room}` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Route `role:admin` (v1.php:34) + Policy `RoomPolicy::update` | HIERARCHY-DEPENDENT + EXACT-MATCH | YES | CONFIRMED-V1 | OPUS-VERIFY-01 |
 | A4 | `DELETE /api/v1/rooms/{room}` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Route `role:admin` (v1.php:34) + Policy `RoomPolicy::delete` | HIERARCHY-DEPENDENT + EXACT-MATCH | YES | TEST-SURFACE DRIFT (legacy path) | OPUS-02R + OPUS-VERIFY-01 |
+| A4b | `PATCH /api/v1/rooms/{room}/readiness` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | ALLOWED | ALLOWED | Route `role:moderator` (v1.php:45) + Policy `RoomPolicy::updateReadiness` (RoomPolicy.php:57) | HIERARCHY-DEPENDENT | YES | CONFIRMED-V1 (RoomReadinessTest) | SH-10 / F-63 |
 | A5 | `POST /api/v1/bookings/{b}/cancel` (own) | DENIED-EXPLICIT (401) | ALLOWED-OWN-ONLY | ALLOWED-OWN-ONLY | ALLOWED | Policy `BookingPolicy::cancel` + Service `CancellationService` | ROLE-OR-OWNERSHIP | NO (policy only) | CONFIRMED-V1 | OPUS-03R + OPUS-VERIFY-01 |
 | A6 | `POST /api/v1/bookings/{b}/cancel` (others') | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | DENIED-SIDE-EFFECT (403) | ALLOWED | Policy `BookingPolicy::cancel` | ROLE-OR-OWNERSHIP | NO (policy only) | CONFIRMED-V1 | OPUS-03R + OPUS-VERIFY-01 |
 | A7 | `GET /api/v1/admin/bookings` | DENIED-EXPLICIT (401) | DENIED-SIDE-EFFECT (403) | ALLOWED | ALLOWED | Route `role:moderator` (v1.php:59) + Gate `view-all-bookings` (AdminBookingController) | HIERARCHY-DEPENDENT | YES | CONFIRMED-V1 | OPUS-VERIFY-01 |
@@ -97,7 +99,7 @@ The `isAtLeast()` method (`User.php:139-151`) uses a static level mapping: `USER
 
 - **Adding a role between existing roles** (e.g., `MANAGER` at level 3, pushing `ADMIN` to 4) silently shifts all `isAtLeast(ADMIN)` checks to include the new role.
 - **Reordering role levels** changes every HIERARCHY-DEPENDENT permission row in Table A without any code change in controllers, policies, or routes.
-- **All rows marked HIERARCHY-DEPENDENT** (A1-A4, A7-A12, A16-A17) are affected by hierarchy changes.
+- **All rows marked HIERARCHY-DEPENDENT** (A1-A4, A4b, A7-A12, A16-A17) are affected by hierarchy changes. Note A4b (`updateReadiness`) is the **one room write granted to moderators** — it deliberately diverges from the admin-only room CUD (A1-A4) because readiness is a front-desk operational transition (check-in/housekeeping), not room inventory management. SH-10 / F-63.
 
 **Required procedure before any role hierarchy change:**
 1. Full permission re-audit of all rows in Table A marked HIERARCHY-DEPENDENT
@@ -116,6 +118,7 @@ Owner: Security Lead (see [CONTROL_PLANE_OWNERSHIP.md](./agents/CONTROL_PLANE_OW
 | room:create | DENIED-EXPLICIT | DENIED-SIDE-EFFECT | DENIED-SIDE-EFFECT | CURRENT | — | OPUS-02R |
 | room:update | DENIED-EXPLICIT | DENIED-SIDE-EFFECT | DENIED-SIDE-EFFECT | CURRENT | — | OPUS-02R |
 | room:delete | DENIED-EXPLICIT | DENIED-SIDE-EFFECT | DENIED-SIDE-EFFECT | CURRENT | — | OPUS-02R |
+| room:update-readiness | DENIED-EXPLICIT | DENIED-SIDE-EFFECT | CURRENT | CURRENT | Front-desk readiness transition (check-in/housekeeping); `readiness_status` only, distinct from admin-only room CUD | SH-10 / F-63 |
 | booking:cancel-own | DENIED-EXPLICIT | CURRENT | CURRENT (UNRESOLVED INTENT) | CURRENT | BR-1, BR-2, BR-3 | OPUS-03R |
 | booking:cancel-any | DENIED-EXPLICIT | DENIED-SIDE-EFFECT | DENIED-SIDE-EFFECT | CURRENT | BR-1 | OPUS-03R |
 | booking:view-all | DENIED-EXPLICIT | DENIED-SIDE-EFFECT | ROUTE-ACCESSIBLE | CURRENT | — | OPUS-VERIFY-01 |

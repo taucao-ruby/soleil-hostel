@@ -110,7 +110,7 @@ const TodayOperations: React.FC = () => {
   const handleCheckIn = async (bookingId: number, roomId: number) => {
     setIsProcessing(bookingId)
     try {
-      await roomApi.updateStatus(roomId, 'occupied')
+      await roomApi.updateReadiness(roomId, 'occupied')
       toast.showToast?.success?.(`Nhận phòng #${bookingId} thành công`)
       refreshData()
     } catch {
@@ -123,7 +123,7 @@ const TodayOperations: React.FC = () => {
   const handleCheckOut = async (bookingId: number, roomId: number) => {
     setIsProcessing(bookingId)
     try {
-      await roomApi.updateStatus(roomId, 'cleaning')
+      await roomApi.updateReadiness(roomId, 'cleaning')
       toast.showToast?.success?.(`Trả phòng #${bookingId} thành công! Phòng chuyển sang dọn dẹp.`)
       refreshData()
     } catch {

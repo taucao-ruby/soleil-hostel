@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Enums\BookingStatus;
+use App\Models\Booking;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -15,6 +16,9 @@ class BookingResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        /** @var Booking $booking */
+        $booking = $this->resource;
+
         return [
             'id' => $this->id,
             'room_id' => $this->room_id,
@@ -23,6 +27,8 @@ class BookingResource extends JsonResource
             'check_out' => $this->check_out->format('Y-m-d'),
             'guest_name' => $this->guest_name,
             'guest_email' => $this->guest_email,
+            'number_of_guests' => $this->number_of_guests,
+            'special_requests' => $this->special_requests,
             'status' => $this->status instanceof BookingStatus
                 ? $this->status->value
                 : $this->status,
@@ -33,6 +39,19 @@ class BookingResource extends JsonResource
 
             // ===== PAYMENT INFO =====
             'amount' => $this->when($this->amount !== null, $this->amount),
+            'payment_policy' => $booking->payment_policy->value,
+            'payment_status' => $booking->payment_status->value,
+            'payment_currency' => $booking->payment_currency,
+            'amount_capturable' => $booking->amount_capturable,
+            'amount_received' => $booking->amount_received,
+            'authorized_at' => $this->when(
+                $booking->authorized_at !== null,
+                fn () => $booking->authorized_at?->toIso8601String()
+            ),
+            'paid_at' => $this->when(
+                $booking->paid_at !== null,
+                fn () => $booking->paid_at?->toIso8601String()
+            ),
             'amount_formatted' => $this->when(
                 $this->amount !== null,
                 fn () => '$'.number_format($this->amount / 100, 2)

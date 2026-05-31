@@ -4,13 +4,19 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Booking;
 
+use App\Enums\BookingStatus;
+use App\Enums\PaymentPolicy;
+use App\Enums\PaymentStatus;
 use App\Events\BookingUpdated;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
+use App\Services\CreateBookingService;
+use App\Services\StripeService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use RuntimeException;
 use Tests\TestCase;
 
 /**
@@ -102,7 +108,8 @@ class BookingUpdateTest extends TestCase
             ->assertJsonPath('data.check_in', $newCheckIn)
             ->assertJsonPath('data.check_out', $newCheckOut)
             ->assertJsonPath('data.guest_name', 'Trần Thị C')
-            ->assertJsonPath('data.guest_email', 'tran.thi.c@example.com');
+            ->assertJsonPath('data.guest_email', 'tran.thi.c@example.com')
+            ->assertJsonPath('data.room_id', $this->room->id);
 
         $this->assertDatabaseHas('bookings', [
             'id' => $booking->id,
@@ -269,6 +276,74 @@ class BookingUpdateTest extends TestCase
 
         $response->assertUnprocessable()
             ->assertJsonValidationErrors(['guest_email']);
+    }
+
+    public function test_update_rejects_room_id_because_room_movement_needs_dedicated_flow(): void
+    {
+        $booking = $this->ownerBooking();
+        $otherRoom = Room::factory()->create();
+
+        $response = $this->actingAs($this->user)
+            ->putJson("/api/v1/bookings/{$booking->id}", $this->payload([
+                'room_id' => $otherRoom->id,
+            ]));
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['room_id']);
+
+        $this->assertSame($this->room->id, $booking->fresh()->room_id);
+    }
+
+    public function test_update_rejects_number_of_guests_because_generic_update_does_not_reprice_capacity_contract(): void
+    {
+        $booking = $this->ownerBooking([
+            'number_of_guests' => 2,
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->putJson("/api/v1/bookings/{$booking->id}", $this->payload([
+                'number_of_guests' => 3,
+            ]));
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['number_of_guests']);
+
+        $this->assertSame(2, $booking->fresh()->number_of_guests);
+    }
+
+    public function test_owner_can_update_special_requests_without_changing_room(): void
+    {
+        $booking = $this->ownerBooking([
+            'special_requests' => 'Original note',
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->putJson("/api/v1/bookings/{$booking->id}", $this->payload([
+                'special_requests' => 'Please arrange a lower bunk.',
+            ]));
+
+        $response->assertOk()
+            ->assertJsonPath('data.room_id', $this->room->id)
+            ->assertJsonPath('data.special_requests', 'Please arrange a lower bunk.');
+
+        $this->assertDatabaseHas('bookings', [
+            'id' => $booking->id,
+            'room_id' => $this->room->id,
+            'special_requests' => 'Please arrange a lower bunk.',
+        ]);
+    }
+
+    public function test_update_rejects_oversized_special_requests(): void
+    {
+        $booking = $this->ownerBooking();
+
+        $response = $this->actingAs($this->user)
+            ->putJson("/api/v1/bookings/{$booking->id}", $this->payload([
+                'special_requests' => str_repeat('a', 2001),
+            ]));
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['special_requests']);
     }
 
     // ─── Authorization ────────────────────────────────────────────────────────
@@ -493,6 +568,8 @@ class BookingUpdateTest extends TestCase
                     'check_out',
                     'guest_name',
                     'guest_email',
+                    'number_of_guests',
+                    'special_requests',
                     'status',
                     'status_label',
                     'nights',
@@ -558,5 +635,275 @@ class BookingUpdateTest extends TestCase
             '<script>',
             $response->json('data.guest_name')
         );
+    }
+
+    // ─── SH-01: re-pricing + money-final date immutability ──────────────────────
+    //
+    // Phase 0 policy:
+    //   - pending/unpaid bookings may change dates, but the amount is recomputed
+    //     server-side (room.price × nights) so it can never go stale;
+    //   - paid/confirmed (money-final) bookings may NOT change dates — guests must
+    //     cancel + rebook. Enforced at both the request and service layers.
+
+    /** SH-01 Test A: a confirmed (money-final) booking cannot change dates. */
+    public function test_confirmed_booking_date_change_is_rejected(): void
+    {
+        Event::fake([BookingUpdated::class]);
+
+        $room = Room::factory()->create(['price' => 100_000]);
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($room)
+            ->confirmed()
+            ->create([
+                'check_in' => Carbon::now()->addDays(5)->startOfDay(),
+                'check_out' => Carbon::now()->addDays(7)->startOfDay(),
+                'amount' => 200_000,
+            ]);
+
+        $response = $this->actingAs($this->user)
+            ->putJson("/api/v1/bookings/{$booking->id}", $this->payload([
+                'check_in' => Carbon::now()->addDays(5)->format('Y-m-d'),
+                'check_out' => Carbon::now()->addDays(9)->format('Y-m-d'), // extend by 2 nights
+            ]));
+
+        // Request-layer prohibitedIf rejects the actual date change.
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['check_out']);
+
+        $fresh = $booking->fresh();
+        $this->assertSame(200_000, $fresh->amount, 'amount must not change');
+        $this->assertSame(
+            Carbon::now()->addDays(7)->format('Y-m-d'),
+            $fresh->check_out->format('Y-m-d'),
+            'check_out must not change'
+        );
+        Event::assertNotDispatched(BookingUpdated::class);
+    }
+
+    /**
+     * SH-01 Test A (paid arm + service guard): the service layer independently
+     * rejects a date change on a paid booking, even if the request layer were
+     * bypassed. Proves the money-final guard is defense in depth.
+     */
+    public function test_service_layer_rejects_date_change_on_paid_booking(): void
+    {
+        $room = Room::factory()->create(['price' => 100_000]);
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($room)
+            ->pending()            // status pending ...
+            ->withPayment(200_000) // ... but already PAID => money-final
+            ->create([
+                'check_in' => Carbon::now()->addDays(5)->startOfDay(),
+                'check_out' => Carbon::now()->addDays(7)->startOfDay(),
+            ]);
+
+        $this->assertTrue($booking->isMoneyFinal());
+
+        $threw = false;
+        try {
+            app(CreateBookingService::class)->update(
+                booking: $booking,
+                checkIn: Carbon::now()->addDays(5)->startOfDay(),
+                checkOut: Carbon::now()->addDays(10)->startOfDay(),
+            );
+        } catch (RuntimeException) {
+            $threw = true;
+        }
+
+        $this->assertTrue($threw, 'service must reject a date change on a paid booking');
+        $this->assertSame(200_000, $booking->fresh()->amount, 'amount must not change');
+    }
+
+    /** SH-01: a money-final booking can still edit guest info when dates are unchanged. */
+    public function test_confirmed_booking_can_update_guest_info_when_dates_unchanged(): void
+    {
+        $room = Room::factory()->create(['price' => 100_000]);
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($room)
+            ->confirmed()
+            ->create([
+                'check_in' => Carbon::now()->addDays(5)->startOfDay(),
+                'check_out' => Carbon::now()->addDays(7)->startOfDay(),
+                'amount' => 200_000,
+            ]);
+
+        $response = $this->actingAs($this->user)
+            ->putJson("/api/v1/bookings/{$booking->id}", [
+                'check_in' => $booking->check_in->format('Y-m-d'),   // unchanged
+                'check_out' => $booking->check_out->format('Y-m-d'), // unchanged
+                'guest_name' => 'Người Mới',
+                'guest_email' => 'nguoi.moi@example.com',
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.guest_name', 'Người Mới');
+
+        $this->assertSame(200_000, $booking->fresh()->amount, 'unchanged dates must not re-price');
+    }
+
+    /** SH-01 Test B: extending a pending booking re-prices amount upward. */
+    public function test_pending_booking_date_extension_reprices_amount(): void
+    {
+        $room = Room::factory()->create(['price' => 100_000]);
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($room)
+            ->pending()
+            ->create([
+                'check_in' => Carbon::now()->addDays(5)->startOfDay(),
+                'check_out' => Carbon::now()->addDays(6)->startOfDay(), // 1 night
+                'amount' => 100_000,
+            ]);
+
+        $response = $this->actingAs($this->user)
+            ->putJson("/api/v1/bookings/{$booking->id}", $this->payload([
+                'check_in' => Carbon::now()->addDays(5)->format('Y-m-d'),
+                'check_out' => Carbon::now()->addDays(8)->format('Y-m-d'), // 3 nights
+            ]));
+
+        $response->assertOk();
+        $this->assertSame(300_000, $booking->fresh()->amount); // 100k × 3
+        $this->assertSame(BookingStatus::PENDING, $booking->fresh()->status);
+    }
+
+    /** SH-01 Test C: shrinking a pending booking re-prices amount downward. */
+    public function test_pending_booking_date_shrink_reprices_amount(): void
+    {
+        $room = Room::factory()->create(['price' => 100_000]);
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($room)
+            ->pending()
+            ->create([
+                'check_in' => Carbon::now()->addDays(5)->startOfDay(),
+                'check_out' => Carbon::now()->addDays(8)->startOfDay(), // 3 nights
+                'amount' => 300_000,
+            ]);
+
+        $response = $this->actingAs($this->user)
+            ->putJson("/api/v1/bookings/{$booking->id}", $this->payload([
+                'check_in' => Carbon::now()->addDays(5)->format('Y-m-d'),
+                'check_out' => Carbon::now()->addDays(6)->format('Y-m-d'), // 1 night
+            ]));
+
+        $response->assertOk();
+        $this->assertSame(100_000, $booking->fresh()->amount); // 100k × 1
+    }
+
+    /** SH-01 Test D: a conflicting pending date change is rejected and not re-priced. */
+    public function test_pending_booking_date_change_conflict_is_rejected_without_repricing(): void
+    {
+        $room = Room::factory()->create(['price' => 100_000]);
+
+        $bookingA = Booking::factory()
+            ->for($this->user)
+            ->for($room)
+            ->pending()
+            ->create([
+                'check_in' => Carbon::now()->addDays(5)->startOfDay(),
+                'check_out' => Carbon::now()->addDays(7)->startOfDay(),
+                'amount' => 200_000,
+            ]);
+
+        // Obstacle: another active booking on the same room, days 12–14.
+        Booking::factory()
+            ->for(User::factory())
+            ->for($room)
+            ->confirmed()
+            ->create([
+                'check_in' => Carbon::now()->addDays(12)->startOfDay(),
+                'check_out' => Carbon::now()->addDays(14)->startOfDay(),
+            ]);
+
+        $response = $this->actingAs($this->user)
+            ->putJson("/api/v1/bookings/{$bookingA->id}", $this->payload([
+                'check_in' => Carbon::now()->addDays(12)->format('Y-m-d'),
+                'check_out' => Carbon::now()->addDays(14)->format('Y-m-d'),
+            ]));
+
+        $response->assertStatus(422)
+            ->assertJsonPath('success', false);
+
+        $fresh = $bookingA->fresh();
+        $this->assertSame(200_000, $fresh->amount, 'a rejected conflict must not re-price');
+        $this->assertSame(
+            Carbon::now()->addDays(5)->format('Y-m-d'),
+            $fresh->check_in->format('Y-m-d'),
+            'dates must be unchanged after a rejected conflict'
+        );
+    }
+
+    /**
+     * SH-01 Test E (stale-PI prevention): a pending booking that already has a
+     * Stripe PaymentIntent cannot change dates — the intent's amount would go
+     * stale. Require checkout restart instead (Phase 0 has no PI top-up path).
+     */
+    public function test_pending_booking_with_active_payment_intent_cannot_change_dates(): void
+    {
+        $room = Room::factory()->create(['price' => 100_000]);
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($room)
+            ->pending()
+            ->create([
+                'check_in' => Carbon::now()->addDays(5)->startOfDay(),
+                'check_out' => Carbon::now()->addDays(6)->startOfDay(),
+                'amount' => 100_000,
+                'payment_intent_id' => 'pi_pending_edit',
+                'payment_policy' => PaymentPolicy::PREPAID,
+                'payment_status' => PaymentStatus::REQUIRES_PAYMENT_METHOD,
+            ]);
+
+        // Not money-final (still unpaid), so the request layer allows it through;
+        // the SERVICE layer is what rejects to keep the PaymentIntent consistent.
+        $response = $this->actingAs($this->user)
+            ->putJson("/api/v1/bookings/{$booking->id}", $this->payload([
+                'check_in' => Carbon::now()->addDays(5)->format('Y-m-d'),
+                'check_out' => Carbon::now()->addDays(8)->format('Y-m-d'),
+            ]));
+
+        $response->assertStatus(422)
+            ->assertJsonPath('success', false);
+
+        $fresh = $booking->fresh();
+        $this->assertSame(100_000, $fresh->amount, 'amount must not change');
+        $this->assertSame('pi_pending_edit', $fresh->payment_intent_id, 'PaymentIntent must be untouched');
+    }
+
+    /**
+     * SH-01 Test E (freshness): after re-pricing a pending booking with no
+     * PaymentIntent yet, the PaymentIntent created later uses the NEW amount —
+     * proving the re-price flows into PI creation with no stale-amount window.
+     */
+    public function test_repriced_pending_booking_creates_payment_intent_with_new_amount(): void
+    {
+        $room = Room::factory()->create(['price' => 100_000]);
+        $booking = Booking::factory()
+            ->for($this->user)
+            ->for($room)
+            ->pending()
+            ->create([
+                'check_in' => Carbon::now()->addDays(5)->startOfDay(),
+                'check_out' => Carbon::now()->addDays(6)->startOfDay(), // 1 night
+                'amount' => 100_000,
+                'payment_policy' => PaymentPolicy::PREPAID,
+                'payment_status' => PaymentStatus::REQUIRES_CONFIRMATION,
+                // no payment_intent_id yet
+            ]);
+
+        $updated = app(CreateBookingService::class)->update(
+            booking: $booking,
+            checkIn: Carbon::now()->addDays(5)->startOfDay(),
+            checkOut: Carbon::now()->addDays(8)->startOfDay(), // 3 nights
+        );
+
+        $this->assertSame(300_000, $updated->amount);
+
+        // The PaymentIntent created after the date edit uses the re-priced amount.
+        $started = app(StripeService::class)->createPaymentIntent($updated->fresh());
+        $this->assertSame(300_000, $started->amount);
     }
 }

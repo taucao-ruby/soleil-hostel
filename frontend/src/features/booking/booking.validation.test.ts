@@ -1,12 +1,14 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   MAX_STAY_DAYS,
   validateBookingForm,
   calculateNights,
   formatDateForInput,
+  getMinCheckInDate,
   getMinCheckOutDate,
   getMaxCheckOutDate,
 } from './booking.validation'
+import { getHostelTomorrow } from '@/shared/lib/hostelDate'
 
 describe('Booking Validation', () => {
   const validData = {
@@ -81,6 +83,25 @@ describe('Booking Validation', () => {
       expect(errors.check_in).toBe('Ngày nhận phòng không thể là ngày đã qua')
     })
 
+    it('accepts hostel-local today during the UTC previous-day window', () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-05-25T17:30:00.000Z'))
+
+      try {
+        const errors = validateBookingForm({
+          ...validData,
+          check_in: '2026-05-26',
+          check_out: '2026-05-27',
+        })
+
+        expect(errors.check_in).toBeUndefined()
+        expect(getMinCheckInDate()).toBe('2026-05-26')
+        expect(getMinCheckOutDate()).toBe('2026-05-27')
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
     // Check-out date
     it('requires check-out date', () => {
       const errors = validateBookingForm({ ...validData, check_out: '' })
@@ -146,9 +167,7 @@ describe('Booking Validation', () => {
     })
 
     it('returns tomorrow when no check-in provided', () => {
-      const tomorrow = new Date()
-      tomorrow.setDate(tomorrow.getDate() + 1)
-      expect(getMinCheckOutDate()).toBe(formatDateForInput(tomorrow))
+      expect(getMinCheckOutDate()).toBe(getHostelTomorrow())
     })
   })
 

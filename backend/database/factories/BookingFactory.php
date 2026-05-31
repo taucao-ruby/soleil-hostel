@@ -4,6 +4,8 @@ namespace Database\Factories;
 
 use App\Enums\BookingStatus;
 use App\Enums\DepositStatus;
+use App\Enums\PaymentPolicy;
+use App\Enums\PaymentStatus;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
@@ -19,6 +21,32 @@ class BookingFactory extends Factory
      * This keeps random factory usage compatible with the DB exclusion constraint.
      */
     private static int $dateSlot = 0;
+
+    public function configure(): static
+    {
+        return $this->afterMaking(function (Booking $booking): void {
+            if (blank($booking->payment_intent_id) || $booking->payment_policy !== PaymentPolicy::PAY_AT_PROPERTY) {
+                return;
+            }
+
+            $booking->payment_policy = PaymentPolicy::PREPAID;
+            $booking->payment_currency ??= strtolower((string) config('cashier.currency', 'vnd'));
+
+            if (in_array($booking->status, [BookingStatus::CONFIRMED, BookingStatus::REFUND_PENDING], true)) {
+                $booking->payment_status = PaymentStatus::PAID;
+                $booking->paid_at ??= Carbon::now()->subMinutes(5);
+                $booking->amount_received ??= (int) $booking->amount;
+
+                return;
+            }
+
+            $booking->payment_status = match ($booking->status) {
+                BookingStatus::PENDING => PaymentStatus::REQUIRES_PAYMENT_METHOD,
+                BookingStatus::CANCELLED => PaymentStatus::CANCELLED,
+                BookingStatus::REFUND_FAILED => PaymentStatus::PAID,
+            };
+        });
+    }
 
     public function definition(): array
     {
@@ -36,6 +64,11 @@ class BookingFactory extends Factory
             'guest_name' => $this->faker->name(),
             'guest_email' => $this->faker->safeEmail(),
             'status' => BookingStatus::PENDING,
+            'payment_policy' => PaymentPolicy::PAY_AT_PROPERTY,
+            'payment_status' => PaymentStatus::OFFLINE_DUE,
+            'payment_currency' => strtolower((string) config('cashier.currency', 'vnd')),
+            'amount_capturable' => 0,
+            'amount_received' => 0,
             'deposit_amount' => null,
             'deposit_collected_at' => null,
             'deposit_status' => DepositStatus::NONE,
@@ -102,10 +135,18 @@ class BookingFactory extends Factory
      */
     public function withPayment(?int $amountCents = null): static
     {
-        return $this->state(fn (array $attributes) => [
-            'payment_intent_id' => 'pi_test_'.$this->faker->uuid(),
-            'amount' => $amountCents ?? $this->faker->numberBetween(5000, 50000), // $50-$500
-        ]);
+        return $this->state(function (array $attributes) use ($amountCents): array {
+            $amount = $amountCents ?? $this->faker->numberBetween(5000, 50000); // $50-$500
+
+            return [
+                'payment_intent_id' => 'pi_test_'.$this->faker->uuid(),
+                'amount' => $amount,
+                'payment_policy' => PaymentPolicy::PREPAID,
+                'payment_status' => PaymentStatus::PAID,
+                'paid_at' => Carbon::now()->subMinutes(5),
+                'amount_received' => $amount,
+            ];
+        });
     }
 
     /**
@@ -118,6 +159,8 @@ class BookingFactory extends Factory
             'cancelled_at' => Carbon::now()->subHours($this->faker->numberBetween(1, 24)),
             'payment_intent_id' => 'pi_test_'.$this->faker->uuid(),
             'amount' => $refundAmountCents ?? $this->faker->numberBetween(5000, 50000),
+            'payment_policy' => PaymentPolicy::PREPAID,
+            'payment_status' => PaymentStatus::REFUNDED,
             'refund_id' => 're_test_'.$this->faker->uuid(),
             'refund_status' => 'succeeded',
             'refund_amount' => $refundAmountCents ?? $this->faker->numberBetween(2500, 50000),

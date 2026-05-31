@@ -8,7 +8,8 @@ class CspHeaderTest extends TestCase
 {
     public function test_production_csp_allows_required_stripe_origins(): void
     {
-        config(['app.debug' => false]);
+        $this->setApplicationEnvironment('production');
+        config(['app.debug' => true]);
 
         $response = $this->get('/');
         $directives = $this->parseCsp($response->headers->get('Content-Security-Policy', ''));
@@ -22,7 +23,8 @@ class CspHeaderTest extends TestCase
 
     public function test_development_csp_allows_required_stripe_origins(): void
     {
-        config(['app.debug' => true]);
+        $this->setApplicationEnvironment('testing');
+        config(['app.debug' => false]);
 
         $response = $this->get('/');
         $directives = $this->parseCsp($response->headers->get('Content-Security-Policy', ''));
@@ -53,6 +55,7 @@ class CspHeaderTest extends TestCase
 
     public function test_production_csp_does_not_add_unsafe_stripe_exceptions(): void
     {
+        $this->setApplicationEnvironment('production');
         config(['app.debug' => false]);
 
         $response = $this->get('/');
@@ -64,6 +67,7 @@ class CspHeaderTest extends TestCase
 
     public function test_csp_header_is_preserved_on_login_booking_and_admin_routes(): void
     {
+        $this->setApplicationEnvironment('production');
         config(['app.debug' => false]);
 
         foreach (['/api/auth/csrf-token', '/api/v1/bookings', '/api/v1/admin/bookings'] as $uri) {
@@ -109,5 +113,11 @@ class CspHeaderTest extends TestCase
     {
         $this->assertArrayHasKey($directive, $directives, "CSP directive [{$directive}] should be present.");
         $this->assertContains($source, $directives[$directive], "CSP directive [{$directive}] should allow [{$source}].");
+    }
+
+    private function setApplicationEnvironment(string $environment): void
+    {
+        $this->app->detectEnvironment(fn () => $environment);
+        config(['app.env' => $environment]);
     }
 }

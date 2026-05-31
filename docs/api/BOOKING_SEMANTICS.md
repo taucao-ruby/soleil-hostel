@@ -2,7 +2,7 @@
 
 Authoritative reference for booking update and restore response contracts as shipped.
 Derived from `BookingController`, `AdminBookingController`, `UpdateBookingRequest`, and
-`BookingService`. Last verified: 2026-03-31.
+`BookingService`. Last verified: 2026-05-25.
 
 > **Canonical sources** for the underlying invariants this API exposes (half-open intervals, blocking statuses, `lockForUpdate()`, exclusion constraint, `lock_version`):
 > - `docs/agents/ARCHITECTURE_FACTS.md` (domain invariants)
@@ -83,11 +83,18 @@ fields. There is no partial-update shortcut.
 
 ### Optional fields
 
-| Field     | Type    | Constraint                                  |
-|-----------|---------|---------------------------------------------|
-| `room_id` | integer | Optional (`sometimes`). Must exist in rooms.|
+| Field              | Type             | Constraint                        |
+|--------------------|------------------|-----------------------------------|
+| `special_requests` | string \| null   | Optional. Max 2000 characters.    |
 
-If `room_id` is omitted, the booking keeps its current room.
+### Prohibited fields
+
+| Field              | Reason |
+|--------------------|--------|
+| `room_id`           | Room movement requires a dedicated flow with availability recheck, lock discipline, `location_id` recalculation, pricing review, and audit trail. |
+| `number_of_guests`  | Guest-count changes are outside the generic update contract and must not be silently accepted. |
+
+Sending a prohibited field returns `422 Unprocessable Entity`.
 
 ### Authorization
 

@@ -18,7 +18,7 @@ use Tests\TestCase;
  * 5. Refresh with expired token → 401
  * 6. Logout all devices → Revoke tất cả token
  * 7. Single device login → Logout device cũ
- * 8. Suspicious activity → Revoke token khi refresh quá nhiều
+ * 8. Refresh rate limit → 429 khi refresh quá nhiều
  * 9. Token expiration info → GET /api/auth/me-v2
  * 10. Long-lived token → Remember me feature
  */
@@ -450,41 +450,55 @@ class TokenExpirationTest extends TestCase
     }
 
     /**
-     * Test 10: Suspicious activity → Revoke token khi refresh quá nhiều
+     * Test 10: Refresh rate limit → 429 khi refresh quá nhiều
      *
      * Setup:
-     * - config('sanctum.max_refresh_count_per_hour') = 10
+     * - config('sanctum.max_token_refreshes_per_hour') = 10
      * - Simulate 11 refresh attempts trong 1 giờ
      *
      * Expected:
-     * - 11th refresh → 401 (SUSPICIOUS_ACTIVITY)
-     * - Token revoked
+     * - 11th refresh → 429
+     * - Token is not revoked by the rate limiter
      */
-    public function test_suspicious_activity_revokes_token(): void
+    public function test_refresh_rate_limit_returns_429_without_revoking_token(): void
     {
         // Set threshold = 3 (for testing)
-        config(['sanctum.max_refresh_count_per_hour' => 3]);
+        config(['sanctum.max_token_refreshes_per_hour' => 3]);
 
-        $token = $this->user->createToken(
-            name: 'Test Token',
-            abilities: ['*'],
-            expiresAt: now()->addHour(),
-        );
+        $login = $this->withHeader('User-Agent', 'TokenExpirationTest/1.0')
+            ->postJson('/api/auth/login-v2', [
+                'email' => 'test@example.com',
+                'password' => 'password123',
+                'device_name' => 'Test Browser',
+            ]);
+        $login->assertStatus(201);
+
+        $plainTextToken = $login->json('data.token');
 
         // Refresh 4 times (more than threshold)
         for ($i = 0; $i < 4; $i++) {
-            $response = $this->postJson('/api/auth/refresh-v2', [], [
-                'Authorization' => "Bearer {$token->plainTextToken}",
-            ]);
+            $response = $this->withHeaders([
+                'Authorization' => "Bearer {$plainTextToken}",
+                'User-Agent' => 'TokenExpirationTest/1.0',
+            ])->postJson('/api/auth/refresh-v2');
 
             if ($i < 3) {
                 $this->assertEquals(200, $response->status());
-                $token->plainTextToken = $response->json('data.token');
+                $plainTextToken = $response->json('data.token');
             } else {
-                // 4th refresh → 401 (suspicious)
-                $this->assertEquals(401, $response->status());
-                $this->assertEquals('SUSPICIOUS_ACTIVITY', $response->json('errors.code'));
+                // 4th refresh → 429 (hourly rate limit)
+                $this->assertEquals(429, $response->status());
+                $this->assertEquals(
+                    'Too many token refresh attempts. Please try again later.',
+                    $response->json('message')
+                );
             }
         }
+
+        $activeToken = PersonalAccessToken::where('tokenable_id', $this->user->id)
+            ->whereNull('revoked_at')
+            ->firstOrFail();
+
+        $this->assertSame(3, (int) $activeToken->refresh_count);
     }
 }

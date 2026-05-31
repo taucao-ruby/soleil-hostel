@@ -1,6 +1,7 @@
 <?php
 
 use App\Jobs\ExpireStaleBookings;
+use App\Jobs\ProcessPaymentCancellationOutbox;
 use App\Jobs\ReconcileRefundsJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -51,6 +52,17 @@ Schedule::job(new ExpireStaleBookings)
     ->withoutOverlapping()
     ->onOneServer()
     ->name('expire-stale-bookings');
+
+// Drain the Stripe PaymentIntent cancellation outbox every 5 minutes (PAY-03).
+// ExpireStaleBookings records a durable payment_cancellation_tasks row inside
+// its expiry transaction (no Stripe call under the booking lock); this drainer
+// performs the cancellation OUTSIDE any booking/room lock with bounded retry/
+// backoff. A crashed worker's in-flight row is re-claimed on a later run.
+Schedule::job(new ProcessPaymentCancellationOutbox)
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->name('process-payment-cancellation-outbox');
 
 // Horizon monitoring: Persist queue metrics for dashboard (every 5 minutes)
 Schedule::command('horizon:snapshot')

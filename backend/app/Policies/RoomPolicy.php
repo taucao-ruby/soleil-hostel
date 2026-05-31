@@ -46,4 +46,16 @@ class RoomPolicy
     {
         return $user->isAdmin();
     }
+
+    /**
+     * Determine whether the user can update a room's operational readiness.
+     *
+     * Front-desk operators (moderator) and admins perform readiness transitions
+     * (check-in / housekeeping). Distinct from update(), which is admin-only room
+     * CRUD. SH-10 / F-63.
+     */
+    public function updateReadiness(User $user, Room $room): bool
+    {
+        return $user->isModerator(); // moderator OR admin (admin satisfies isAtLeast)
+    }
 }

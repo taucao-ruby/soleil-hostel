@@ -6,10 +6,14 @@ namespace Tests\Feature\AiHarness;
 
 use App\Enums\RoomReadinessStatus;
 use App\Models\AiProposal;
+use App\Models\AiProposalEvent;
+use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
+use App\Services\CreateBookingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Mockery\MockInterface;
 use Tests\Support\EnablesAiHarness;
 use Tests\TestCase;
 
@@ -223,6 +227,21 @@ class ProposalLifecycleTest extends TestCase
             room: $room,
             shownAt: now()->subMinutes(2),
         );
+        $user = $this->user;
+
+        $this->mock(CreateBookingService::class, function (MockInterface $mock) use ($room, $user): void {
+            $mock->shouldReceive('create')
+                ->once()
+                ->andReturnUsing(function () use ($room, $user): Booking {
+                    return Booking::factory()
+                        ->for($user)
+                        ->for($room)
+                        ->create([
+                            'check_in' => now()->addDays(7)->startOfDay(),
+                            'check_out' => now()->addDays(9)->startOfDay(),
+                        ]);
+                });
+        });
 
         $response = $this->actingAs($this->user)
             ->postJson("/api/v1/ai/proposals/{$hash}/decide", [
@@ -241,6 +260,65 @@ class ProposalLifecycleTest extends TestCase
         $proposal = AiProposal::where('proposal_hash', $hash)->first();
         $this->assertSame('confirmed', $proposal?->decision);
         $this->assertNotNull($proposal?->decided_at);
+
+        $this->assertDatabaseHas('ai_proposal_events', [
+            'proposal_hash' => $hash,
+            'user_decision' => 'confirmed',
+        ]);
+    }
+
+    public function test_confirm_downstream_exception_records_errored_not_confirmed(): void
+    {
+        $room = $this->makeBookableRoom(price: 500_000);
+        $hash = $this->seedBookingProposal(
+            room: $room,
+            shownAt: now()->subMinutes(2),
+        );
+        $rawExceptionMessage = 'raw downstream secret token should not leak';
+
+        $this->mock(CreateBookingService::class, function (MockInterface $mock) use ($rawExceptionMessage): void {
+            $mock->shouldReceive('create')
+                ->once()
+                ->andThrow(new \RuntimeException($rawExceptionMessage));
+        });
+
+        $response = $this->actingAs($this->user)
+            ->postJson("/api/v1/ai/proposals/{$hash}/decide", [
+                'decision' => 'confirmed',
+            ]);
+
+        $response->assertStatus(502);
+        $response->assertJsonPath('success', false);
+        $response->assertJsonPath('errors.downstream_result.status', 'failed');
+        $response->assertJsonPath('errors.downstream_result.failure_reason', 'downstream_execution_failed');
+        $response->assertJsonPath('errors.downstream_result.error_class', 'RuntimeException');
+        $response->assertJsonPath('errors.downstream_result.message', 'Downstream execution failed.');
+        $this->assertStringNotContainsString($rawExceptionMessage, $response->getContent());
+        $this->assertStringNotContainsString('RuntimeException: '.$rawExceptionMessage, $response->getContent());
+
+        $proposal = AiProposal::where('proposal_hash', $hash)->first();
+        $this->assertSame('errored', $proposal?->decision);
+        $this->assertNotNull($proposal?->decided_at);
+
+        $event = AiProposalEvent::where('proposal_hash', $hash)->latest('id')->first();
+        $this->assertNotNull($event);
+        $this->assertSame('errored', $event->user_decision);
+        $this->assertStringNotContainsString($rawExceptionMessage, (string) $event->downstream_result);
+
+        $downstreamResult = json_decode((string) $event->downstream_result, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertSame('failed', $downstreamResult['status']);
+        $this->assertSame('downstream_execution_failed', $downstreamResult['failure_reason']);
+        $this->assertSame('RuntimeException', $downstreamResult['error_class']);
+        $this->assertSame('Downstream execution failed.', $downstreamResult['message']);
+
+        $this->assertDatabaseMissing('ai_proposals', [
+            'proposal_hash' => $hash,
+            'decision' => 'confirmed',
+        ]);
+        $this->assertDatabaseMissing('ai_proposal_events', [
+            'proposal_hash' => $hash,
+            'user_decision' => 'confirmed',
+        ]);
     }
 
     // ── decide(confirmed): missing durable record ──────────────────

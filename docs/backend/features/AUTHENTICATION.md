@@ -18,6 +18,7 @@ Both modes share `routes/api/v1.php`. Mode is detected at request time by `Unifi
 ### Recent hardening (Apr–May 2026)
 
 - **Batch-2 Sanctum hardening** (`5e258e7`, 2026-04-25): atomic refresh (`tokenable_id, type` lock window), device-fingerprint binding, fence-post unification across `expires_at`/`revoked_at`/`refresh_count`.
+- **Refresh-rate semantics** (2026-05-23): `sanctum.max_token_refreshes_per_hour` is a cache-backed 60-minute limiter for token-session refresh attempts. `refresh_count` is lifetime telemetry only and is not used for hourly enforcement. Expiration and revocation checks remain separate.
 - **F-32 unified Bearer detection** (`4ab9cfd`, 2026-04-27): `detectAuthMode()` uses `PersonalAccessToken::findToken()`.
 - **AUTH-004 OTP race hardening** (`1079946`, 2026-05-02): `EmailVerificationCodeService::sendCode()` now serializes resend attempts via `Cache::lock("evc:send:{user_id}", 5)`, eliminating the concurrent-double-send race.
 - **AI harness kill-switch contract finalized** (`6372d7f`, 2026-05-08): `FeatureFlag::forget()` no longer re-throws Redis exceptions; the local in-process cache is always evicted on Redis outage so the auth-adjacent feature-flag layer cannot serve stale `enabled` values during partial outages.
@@ -358,7 +359,7 @@ $fillable = [
     'revoked_at',     // Revocation timestamp (logout)
     'type',           // 'short_lived' or 'long_lived'
     'device_id',      // UUID per device
-    'refresh_count',  // Suspicious activity tracking
+    'refresh_count',  // Lifetime refresh telemetry
 ];
 
 // Check methods
@@ -367,17 +368,12 @@ $token->isRevoked();   // revoked_at !== null
 $token->isValid();     // !expired && !revoked
 ```
 
-### Suspicious Activity Detection
+### Refresh Rate Limiting
 
 ```php
-// If refresh_count exceeds limit → revoke token
-if ($oldToken->refresh_count > config('sanctum.max_refresh_count_per_hour')) {
-    $oldToken->revoke();
-    return response()->json([
-        'message' => 'Phát hiện hoạt động bất thường. Vui lòng login lại.',
-        'code' => 'SUSPICIOUS_ACTIVITY',
-    ], 401);
-}
+// Per token-session 60-minute limiter. Exceeding the limit returns 429.
+// refresh_count is lifetime telemetry and is not used for enforcement.
+config('sanctum.max_token_refreshes_per_hour');
 ```
 
 ### Single Device Login (Optional)

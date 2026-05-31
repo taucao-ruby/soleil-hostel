@@ -45,7 +45,10 @@ class BookingApiContractTest extends TestCase
         parent::setUp();
 
         $this->user = User::factory()->create();
-        $this->room = Room::factory()->create(['price' => 15000]);
+        $this->room = Room::factory()->create([
+            'price' => 15000,
+            'max_guests' => 4,
+        ]);
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -79,6 +82,7 @@ class BookingApiContractTest extends TestCase
                         'id', 'room_id', 'user_id',
                         'check_in', 'check_out',
                         'guest_name', 'guest_email',
+                        'number_of_guests', 'special_requests',
                         'status', 'status_label',
                         'nights',
                         'created_at', 'updated_at',
@@ -170,6 +174,7 @@ class BookingApiContractTest extends TestCase
                     'id', 'room_id', 'user_id',
                     'check_in', 'check_out',
                     'guest_name', 'guest_email',
+                    'number_of_guests', 'special_requests',
                     'status', 'status_label',
                     'nights',
                     'created_at', 'updated_at',
@@ -288,10 +293,14 @@ class BookingApiContractTest extends TestCase
                 'check_out' => $checkOut,
                 'guest_name' => 'Phạm Thị E',
                 'guest_email' => 'pham.thi.e@example.com',
+                'number_of_guests' => 3,
+                'special_requests' => 'Late arrival after 22:00',
             ]);
 
         $response->assertStatus(201)
             ->assertJsonPath('success', true)
+            ->assertJsonPath('data.number_of_guests', 3)
+            ->assertJsonPath('data.special_requests', 'Late arrival after 22:00')
             ->assertJsonStructure([
                 'success',
                 'message',
@@ -299,12 +308,93 @@ class BookingApiContractTest extends TestCase
                     'id', 'room_id', 'user_id',
                     'check_in', 'check_out',
                     'guest_name', 'guest_email',
+                    'number_of_guests', 'special_requests',
                     'status', 'status_label',
                     'nights',
                     'created_at', 'updated_at',
                     'room', // always eager-loaded on create
                 ],
             ]);
+
+        $this->assertDatabaseHas('bookings', [
+            'guest_email' => 'pham.thi.e@example.com',
+            'number_of_guests' => 3,
+            'special_requests' => 'Late arrival after 22:00',
+        ]);
+    }
+
+    public function test_store_accepts_missing_special_requests_as_null(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->postJson('/api/v1/bookings', [
+                'room_id' => $this->room->id,
+                'check_in' => Carbon::now()->addDays(5)->format('Y-m-d'),
+                'check_out' => Carbon::now()->addDays(7)->format('Y-m-d'),
+                'guest_name' => 'No Note Guest',
+                'guest_email' => 'no.note@example.com',
+                'number_of_guests' => 2,
+            ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.number_of_guests', 2)
+            ->assertJsonPath('data.special_requests', null);
+
+        $this->assertDatabaseHas('bookings', [
+            'guest_email' => 'no.note@example.com',
+            'number_of_guests' => 2,
+            'special_requests' => null,
+        ]);
+    }
+
+    /**
+     * @return array<string, array{0: mixed}>
+     */
+    public static function invalidGuestCountProvider(): array
+    {
+        return [
+            'zero' => [0],
+            'negative' => [-1],
+            'non-integer' => ['2.5'],
+            'above room capacity' => [5],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidGuestCountProvider')]
+    public function test_store_rejects_invalid_number_of_guests(mixed $guestCount): void
+    {
+        $response = $this->actingAs($this->user)
+            ->postJson('/api/v1/bookings', [
+                'room_id' => $this->room->id,
+                'check_in' => Carbon::now()->addDays(5)->format('Y-m-d'),
+                'check_out' => Carbon::now()->addDays(7)->format('Y-m-d'),
+                'guest_name' => 'Invalid Count',
+                'guest_email' => 'invalid.count@example.com',
+                'number_of_guests' => $guestCount,
+            ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['number_of_guests']);
+
+        $this->assertDatabaseMissing('bookings', [
+            'guest_email' => 'invalid.count@example.com',
+        ]);
+    }
+
+    public function test_store_rejects_oversized_special_requests(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->postJson('/api/v1/bookings', [
+                'room_id' => $this->room->id,
+                'check_in' => Carbon::now()->addDays(5)->format('Y-m-d'),
+                'check_out' => Carbon::now()->addDays(7)->format('Y-m-d'),
+                'guest_name' => 'Long Note',
+                'guest_email' => 'long.note@example.com',
+                'number_of_guests' => 2,
+                'special_requests' => str_repeat('a', 2001),
+            ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['special_requests']);
     }
 
     public function test_store_new_booking_status_is_pending(): void

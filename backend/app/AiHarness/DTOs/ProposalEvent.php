@@ -26,7 +26,7 @@ final readonly class ProposalEvent
      */
     public function toArray(): array
     {
-        return [
+        $data = [
             'user_id' => $this->userId,
             'proposal_hash' => $this->proposalHash,
             'action_type' => $this->actionType,
@@ -34,6 +34,14 @@ final readonly class ProposalEvent
             'downstream_result' => $this->downstreamResult,
             'timestamp' => $this->timestamp,
         ];
+
+        $downstreamPayload = $this->decodedDownstreamResult();
+        if ($downstreamPayload !== null) {
+            $data['downstream_status'] = $downstreamPayload['status'] ?? null;
+            $data['failure_reason'] = $downstreamPayload['failure_reason'] ?? null;
+        }
+
+        return $data;
     }
 
     /**
@@ -49,5 +57,36 @@ final readonly class ProposalEvent
             : 'anonymous';
 
         return $data;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function decodedDownstreamResult(): ?array
+    {
+        if ($this->downstreamResult === null) {
+            return null;
+        }
+
+        try {
+            $decoded = json_decode($this->downstreamResult, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return null;
+        }
+
+        if (! is_array($decoded)) {
+            return null;
+        }
+
+        $payload = [];
+        foreach ($decoded as $key => $value) {
+            if (! is_string($key)) {
+                return null;
+            }
+
+            $payload[$key] = $value;
+        }
+
+        return $payload;
     }
 }

@@ -3,11 +3,15 @@
 namespace App\Http\Controllers\Payment;
 
 use App\Enums\BookingStatus;
+use App\Enums\PaymentPolicy;
+use App\Enums\PaymentStatus;
+use App\Enums\RefundStatus;
 use App\Models\Booking;
-use App\Models\StripeRefundEvent;
 use App\Models\StripeWebhookEvent;
 use App\Services\Payment\PaymentIntentApplyOutcome;
 use App\Services\Payment\StripePaymentIntentSucceededHandler;
+use App\Services\Payment\StripeRefundEventRecorder;
+use App\Services\StripeService;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -107,7 +111,8 @@ class StripeWebhookController extends CashierWebhookController
     {
         $stripeEventId = $payload['id'] ?? null;
         $eventType = $payload['type'] ?? 'payment_intent.succeeded';
-        $paymentIntentId = $payload['data']['object']['id'] ?? null;
+        $paymentIntent = $payload['data']['object'] ?? [];
+        $paymentIntentId = $paymentIntent['id'] ?? null;
 
         if (! $stripeEventId || ! $paymentIntentId) {
             Log::warning('Stripe webhook: payment_intent.succeeded missing payment_intent_id');
@@ -139,7 +144,7 @@ class StripeWebhookController extends CashierWebhookController
 
         try {
             $outcome = app(StripePaymentIntentSucceededHandler::class)
-                ->applyToBooking($paymentIntentId);
+                ->applyToBooking($paymentIntent);
         } catch (\Throwable $e) {
             Log::error('Stripe webhook: failed to confirm booking', [
                 'payment_intent_id' => $paymentIntentId,
@@ -185,6 +190,7 @@ class StripeWebhookController extends CashierWebhookController
     protected function handleChargeRefunded(array $payload): JsonResponse
     {
         $stripeEventId = $payload['id'] ?? null;
+        $eventType = $payload['type'] ?? 'charge.refunded';
         $chargeObject = $payload['data']['object'] ?? [];
         $chargeId = $chargeObject['id'] ?? null;
         $paymentIntentId = $chargeObject['payment_intent'] ?? null;
@@ -199,12 +205,9 @@ class StripeWebhookController extends CashierWebhookController
             return response()->json(['handled' => false], 400);
         }
 
-        Log::info('Stripe webhook: charge.refunded', [
-            'charge_id' => $chargeId,
-            'payment_intent_id' => $paymentIntentId,
-        ]);
-
-        // Extract refund details from the charge's refunds list
+        // Extract refund details from the charge's refunds list. Validate the
+        // payload shape BEFORE claiming the webhook event, so a malformed event
+        // returns 400 without leaving a dangling 'processing' row.
         $refunds = $chargeObject['refunds']['data'] ?? [];
         $latestRefund = $refunds[0] ?? null;
 
@@ -232,6 +235,27 @@ class StripeWebhookController extends CashierWebhookController
             return response()->json(['handled' => false], 400);
         }
 
+        // BL-3 idempotency: INSERT-first claim on stripe_webhook_events.stripe_event_id,
+        // identical to handlePaymentIntentSucceeded. A duplicate delivery throws here
+        // and short-circuits to 200 (already processed) before any side effect runs.
+        // The stripe_refund_events.stripe_refund_id UNIQUE is retained underneath as
+        // the cross-source ledger dedup (synchronous cancellation / reconciler).
+        try {
+            $webhookEvent = DB::transaction(fn () => StripeWebhookEvent::create([
+                'stripe_event_id' => $stripeEventId,
+                'type' => $eventType,
+                'status' => 'processing',
+                'payload' => $payload,
+            ]));
+        } catch (UniqueConstraintViolationException) {
+            return response()->json(['handled' => true], 200);
+        }
+
+        Log::info('Stripe webhook: charge.refunded', [
+            'charge_id' => $chargeId,
+            'payment_intent_id' => $paymentIntentId,
+        ]);
+
         try {
             $result = DB::transaction(function () use (
                 $paymentIntentId,
@@ -249,20 +273,57 @@ class StripeWebhookController extends CashierWebhookController
                     return ['status' => 'missing_booking'];
                 }
 
-                StripeRefundEvent::create([
-                    'stripe_refund_id' => $refundId,
-                    'stripe_event_id' => $stripeEventId,
-                    'booking_id' => $booking->id,
-                    'amount_refunded' => $refundAmount,
-                    'currency' => strtolower((string) $currency),
-                ]);
+                // SH-05 / F-73: normalize the raw Stripe refund status into the
+                // closed internal {pending, succeeded, failed} set BEFORE it can
+                // touch bookings.refund_status. Fail closed — an unrecognized
+                // Stripe status is never persisted as a raw provider string.
+                $normalizedRefundStatus = RefundStatus::tryFromStripe($refundStatus);
 
-                $newStatus = $refundStatus === 'succeeded'
+                if ($normalizedRefundStatus === null) {
+                    return [
+                        'status' => 'unknown_refund_status',
+                        'booking_id' => $booking->id,
+                        'raw_status' => $refundStatus,
+                    ];
+                }
+
+                $targetStatus = $normalizedRefundStatus === RefundStatus::SUCCEEDED
                     ? BookingStatus::CANCELLED
                     : BookingStatus::REFUND_FAILED;
 
-                if ($booking->status !== $newStatus) {
-                    $booking = $booking->transitionTo($newStatus);
+                // Explicitly guard illegal state-machine transitions. A
+                // charge.refunded carrying a non-succeeded refund for a booking
+                // that never entered the refund flow (e.g. a still-CONFIRMED
+                // booking, or an already-terminal CANCELLED one) would otherwise
+                // attempt the forbidden CONFIRMED/CANCELLED -> REFUND_FAILED
+                // transition, which transitionTo() throws on. We must NOT let that
+                // throw fall through to a catch-all that 500s a *permanent*
+                // business-state error into an endless Stripe retry, nor mutate
+                // the booking. Report it as an invalid state; the caller acks 200
+                // and leaves the booking untouched.
+                if ($booking->status !== $targetStatus
+                    && ! $booking->status->canTransitionTo($targetStatus)) {
+                    return [
+                        'status' => 'invalid_transition',
+                        'booking_id' => $booking->id,
+                        'from' => $booking->status->value,
+                        'to' => $targetStatus->value,
+                    ];
+                }
+
+                // Ledger first (authoritative refund history). UNIQUE(stripe_refund_id)
+                // dedups against the synchronous cancellation path and the reconciler;
+                // a duplicate throws UniqueConstraintViolationException, caught below.
+                app(StripeRefundEventRecorder::class)->record(
+                    $booking,
+                    (string) $refundId,
+                    $refundAmount,
+                    (string) $currency,
+                    (string) $stripeEventId,
+                );
+
+                if ($booking->status !== $targetStatus) {
+                    $booking = $booking->transitionTo($targetStatus);
                 }
 
                 // bookings.refund_id is a latest-refund pointer for operational
@@ -274,9 +335,9 @@ class StripeWebhookController extends CashierWebhookController
                 // §bookings.refund_id semantics.
                 $booking->forceFill([
                     'refund_id' => $refundId,
-                    'refund_status' => $refundStatus,
+                    'refund_status' => $normalizedRefundStatus->value,
                     'refund_amount' => $refundAmount,
-                    'refund_error' => $refundStatus === 'failed'
+                    'refund_error' => $normalizedRefundStatus === RefundStatus::FAILED
                         ? 'Refund failed on Stripe'
                         : null,
                 ])->save();
@@ -286,33 +347,99 @@ class StripeWebhookController extends CashierWebhookController
                     'booking_id' => $booking->id,
                 ];
             });
-
-            if ($result['status'] === 'missing_booking') {
-                Log::warning('Stripe webhook: no booking found for payment_intent', [
-                    'payment_intent_id' => $paymentIntentId,
-                ]);
-
-                return response()->json(['handled' => true]);
-            }
-
-            Log::info('Stripe webhook: booking refund status updated', [
-                'booking_id' => $result['booking_id'],
-                'refund_id' => $refundId,
-                'refund_status' => $refundStatus,
-                'refund_amount' => $refundAmount,
-            ]);
         } catch (UniqueConstraintViolationException) {
-            Log::info('Stripe webhook: refund event replay skipped', [
+            // The refund is already in the ledger: the synchronous cancellation
+            // path or the reconciler won the race and owns the booking projection.
+            // Idempotent replay — ack and mark the event processed.
+            Log::info('Stripe webhook: refund event replay skipped (already in ledger)', [
                 'stripe_event_id' => $stripeEventId,
                 'refund_id' => $refundId,
             ]);
+
+            $webhookEvent->markProcessed();
+
+            return response()->json(['handled' => true]);
         } catch (\Throwable $e) {
+            // Unexpected DB/runtime failure: DO NOT swallow into a 200. Mark the
+            // event failed and return 500 so Stripe retries and the row surfaces
+            // to operators. The booking (if any) is left untouched — the
+            // transaction rolled back — and ReconcileRefundsJob remains the
+            // durable recovery path for the refund projection + ledger.
             Log::error('Stripe webhook: failed to update refund status', [
                 'payment_intent_id' => $paymentIntentId,
                 'refund_id' => $refundId,
                 'error' => $e->getMessage(),
             ]);
+
+            $webhookEvent->markFailed($e);
+
+            return response()->json(['handled' => false], 500);
         }
+
+        if ($result['status'] === 'missing_booking') {
+            Log::warning('Stripe webhook: no booking found for payment_intent', [
+                'payment_intent_id' => $paymentIntentId,
+            ]);
+
+            $webhookEvent->markProcessed();
+
+            return response()->json(['handled' => true]);
+        }
+
+        if ($result['status'] === 'invalid_transition') {
+            // Permanent business-state error: a retry never makes an illegal
+            // transition legal, so mark the event failed (terminal — charge.refunded
+            // is not a reconcilable webhook type) for operator visibility and ack
+            // 200 to stop the retry storm. The booking is NOT mutated.
+            Log::warning('Stripe webhook: charge.refunded illegal state transition ignored', [
+                'stripe_event_id' => $stripeEventId,
+                'booking_id' => $result['booking_id'],
+                'from' => $result['from'],
+                'to' => $result['to'],
+                'refund_id' => $refundId,
+                'refund_status' => $refundStatus,
+            ]);
+
+            $webhookEvent->markFailed(sprintf(
+                'Illegal booking transition %s -> %s ignored for refund %s (charge.refunded)',
+                $result['from'],
+                $result['to'],
+                $refundId,
+            ));
+
+            return response()->json(['handled' => true]);
+        }
+
+        if ($result['status'] === 'unknown_refund_status') {
+            // SH-05 / F-73 fail-closed: Stripe sent a refund status outside the
+            // closed internal set. A retry never reclassifies it, so this is a
+            // permanent error — mark the event failed for operator visibility and
+            // ack 200 to stop the retry storm. The booking is NOT mutated and no
+            // raw provider status leaks into bookings.refund_status.
+            Log::warning('Stripe webhook: charge.refunded carried an unrecognized refund status; not persisted', [
+                'stripe_event_id' => $stripeEventId,
+                'booking_id' => $result['booking_id'],
+                'refund_id' => $refundId,
+                'raw_refund_status' => $result['raw_status'],
+            ]);
+
+            $webhookEvent->markFailed(sprintf(
+                'Unrecognized Stripe refund status "%s" ignored for refund %s (charge.refunded)',
+                (string) $result['raw_status'],
+                $refundId,
+            ));
+
+            return response()->json(['handled' => true]);
+        }
+
+        Log::info('Stripe webhook: booking refund status updated', [
+            'booking_id' => $result['booking_id'],
+            'refund_id' => $refundId,
+            'refund_status' => $refundStatus,
+            'refund_amount' => $refundAmount,
+        ]);
+
+        $webhookEvent->markProcessed();
 
         return response()->json(['handled' => true]);
     }
@@ -333,8 +460,9 @@ class StripeWebhookController extends CashierWebhookController
     {
         $stripeEventId = $payload['id'] ?? null;
         $eventType = $payload['type'] ?? 'payment_intent.payment_failed';
-        $paymentIntentId = $payload['data']['object']['id'] ?? null;
-        $failureMessage = $payload['data']['object']['last_payment_error']['message'] ?? 'Unknown';
+        $paymentIntent = $payload['data']['object'] ?? [];
+        $paymentIntentId = $paymentIntent['id'] ?? null;
+        $failureMessage = $paymentIntent['last_payment_error']['message'] ?? 'Unknown';
 
         if (! $stripeEventId) {
             // Malformed payload (no event id). Preserve the historical
@@ -371,17 +499,168 @@ class StripeWebhookController extends CashierWebhookController
             'stripe_event_id' => $stripeEventId,
         ]);
 
-        if ($paymentIntentId) {
-            $booking = Booking::where('payment_intent_id', $paymentIntentId)->first();
+        try {
+            if ($paymentIntentId) {
+                $booking = Booking::where('payment_intent_id', $paymentIntentId)->first();
 
-            if ($booking && $booking->status === BookingStatus::PENDING) {
-                Log::info('Stripe webhook: payment failed for pending booking', [
-                    'booking_id' => $booking->id,
-                ]);
+                if ($booking && $booking->status === BookingStatus::PENDING) {
+                    app(StripeService::class)->assertPaymentIntentMatchesBooking($paymentIntent, $booking);
+
+                    $booking->forceFill([
+                        'payment_status' => PaymentStatus::FAILED,
+                        'payment_failed_reason' => mb_substr((string) $failureMessage, 0, 1000),
+                        'amount_capturable' => (int) data_get($paymentIntent, 'amount_capturable', 0),
+                        'amount_received' => (int) data_get($paymentIntent, 'amount_received', 0),
+                    ])->save();
+
+                    Log::info('Stripe webhook: payment failed for pending booking', [
+                        'booking_id' => $booking->id,
+                    ]);
+                }
             }
+
+            $webhookEvent->markProcessed();
+        } catch (\Throwable $e) {
+            $webhookEvent->markFailed($e);
+
+            return response()->json(['handled' => false], 500);
         }
 
-        $webhookEvent->markProcessed();
+        return response()->json(['handled' => true]);
+    }
+
+    /**
+     * Handle payment_intent.canceled webhook.
+     */
+    protected function handlePaymentIntentCanceled(array $payload): JsonResponse
+    {
+        $stripeEventId = $payload['id'] ?? null;
+        $eventType = $payload['type'] ?? 'payment_intent.canceled';
+        $paymentIntent = $payload['data']['object'] ?? [];
+        $paymentIntentId = $paymentIntent['id'] ?? null;
+
+        if (! $stripeEventId || ! $paymentIntentId) {
+            Log::warning('Stripe webhook: payment_intent.canceled missing identifiers', [
+                'stripe_event_id' => $stripeEventId,
+                'payment_intent_id' => $paymentIntentId,
+            ]);
+
+            return response()->json(['handled' => false], 400);
+        }
+
+        try {
+            $webhookEvent = DB::transaction(fn () => StripeWebhookEvent::create([
+                'stripe_event_id' => $stripeEventId,
+                'type' => $eventType,
+                'status' => 'processing',
+                'payload' => $payload,
+            ]));
+        } catch (UniqueConstraintViolationException) {
+            return response()->json(['handled' => true]);
+        }
+
+        try {
+            DB::transaction(function () use ($paymentIntent, $paymentIntentId): void {
+                $booking = Booking::where('payment_intent_id', $paymentIntentId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($booking === null) {
+                    return;
+                }
+
+                app(StripeService::class)->assertPaymentIntentMatchesBooking($paymentIntent, $booking);
+
+                $updates = [
+                    'payment_status' => PaymentStatus::CANCELLED,
+                    'payment_failed_reason' => 'PaymentIntent canceled on Stripe',
+                    'amount_capturable' => (int) data_get($paymentIntent, 'amount_capturable', 0),
+                    'amount_received' => (int) data_get($paymentIntent, 'amount_received', 0),
+                ];
+
+                if ($booking->status === BookingStatus::PENDING) {
+                    $updates['status'] = BookingStatus::CANCELLED;
+                    $updates['cancellation_reason'] = 'payment_intent_canceled';
+                    $updates['cancelled_at'] = now();
+                }
+
+                $booking->forceFill($updates)->save();
+            });
+
+            $webhookEvent->markProcessed();
+        } catch (\Throwable $e) {
+            $webhookEvent->markFailed($e);
+
+            return response()->json(['handled' => false], 500);
+        }
+
+        return response()->json(['handled' => true]);
+    }
+
+    /**
+     * Handle payment_intent.amount_capturable_updated webhook.
+     *
+     * This only authorizes bookings that explicitly opted into manual capture.
+     * Soleil v1 defaults to prepaid automatic capture, so this path is a
+     * guarded compatibility hook rather than a new capture surface.
+     */
+    protected function handlePaymentIntentAmountCapturableUpdated(array $payload): JsonResponse
+    {
+        $stripeEventId = $payload['id'] ?? null;
+        $eventType = $payload['type'] ?? 'payment_intent.amount_capturable_updated';
+        $paymentIntent = $payload['data']['object'] ?? [];
+        $paymentIntentId = $paymentIntent['id'] ?? null;
+
+        if (! $stripeEventId || ! $paymentIntentId) {
+            Log::warning('Stripe webhook: amount_capturable_updated missing identifiers', [
+                'stripe_event_id' => $stripeEventId,
+                'payment_intent_id' => $paymentIntentId,
+            ]);
+
+            return response()->json(['handled' => false], 400);
+        }
+
+        try {
+            $webhookEvent = DB::transaction(fn () => StripeWebhookEvent::create([
+                'stripe_event_id' => $stripeEventId,
+                'type' => $eventType,
+                'status' => 'processing',
+                'payload' => $payload,
+            ]));
+        } catch (UniqueConstraintViolationException) {
+            return response()->json(['handled' => true]);
+        }
+
+        try {
+            $booking = Booking::where('payment_intent_id', $paymentIntentId)->first();
+
+            if ($booking !== null) {
+                app(StripeService::class)->assertPaymentIntentMatchesBooking($paymentIntent, $booking);
+
+                if ($booking->payment_policy === PaymentPolicy::AUTHORIZE_THEN_CAPTURE) {
+                    DB::transaction(function () use ($booking, $paymentIntent): void {
+                        $locked = Booking::query()
+                            ->whereKey($booking->id)
+                            ->lockForUpdate()
+                            ->firstOrFail();
+
+                        $locked->forceFill([
+                            'payment_status' => PaymentStatus::AUTHORIZED,
+                            'amount_capturable' => (int) data_get($paymentIntent, 'amount_capturable', 0),
+                            'amount_received' => (int) data_get($paymentIntent, 'amount_received', 0),
+                            'authorized_at' => $locked->authorized_at ?? now(),
+                            'payment_failed_reason' => null,
+                        ])->save();
+                    });
+                }
+            }
+
+            $webhookEvent->markProcessed();
+        } catch (\Throwable $e) {
+            $webhookEvent->markFailed($e);
+
+            throw $e;
+        }
 
         return response()->json(['handled' => true]);
     }

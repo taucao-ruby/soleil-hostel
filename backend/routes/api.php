@@ -80,15 +80,19 @@ Route::middleware(['auth:sanctum', 'check_token_valid', 'role:admin'])->group(fu
 Route::post('/auth/register', [AuthController::class, 'register'])
     ->middleware(['throttle:5,1', 'deprecated:2026-07-01,/api/v2/auth/register']);
 Route::post('/auth/login', [AuthController::class, 'login'])
-    ->middleware(['throttle:5,1', 'deprecated:2026-07-01,/api/auth/login-v2']);
+    ->name('auth.login')
+    ->middleware(['throttle:login', 'deprecated:2026-07-01,/api/auth/login-v2']);
 
 // ========== BEARER TOKEN ENDPOINTS (Current - v2) ==========
-Route::post('/auth/login-v2', [TokenAuthController::class, 'login'])->middleware('throttle:5,1');
+Route::post('/auth/login-v2', [TokenAuthController::class, 'login'])
+    ->name('auth.login-v2')
+    ->middleware('throttle:login');
 
 // ========== HTTPONLY COOKIE ENDPOINTS (Current) ==========
 // Token stored in httpOnly Cookie, NOT localStorage - XSS-safe
 Route::post('/auth/login-httponly', [HttpOnlyTokenController::class, 'login'])
-    ->middleware(['web', 'throttle:5,1']);
+    ->name('auth.login-httponly')
+    ->middleware(['web', 'throttle:login']);
 Route::get('/auth/csrf-token', function (Request $request) {
     abort_unless($request->user(), 401);
 
@@ -152,26 +156,37 @@ Route::get('/email/verification-status', [EmailVerificationCodeController::class
 // Frontend sẽ nhận 401 → tự động gọi refresh endpoint
 //
 
+// ========== HTTPONLY COOKIE AUTH ENDPOINTS ==========
+Route::post('/auth/refresh-httponly', [HttpOnlyTokenController::class, 'refresh'])
+    ->name('auth.refresh-httponly')
+    ->middleware(['throttle:refresh-token', 'check_httponly_token']);
+
 Route::middleware(['check_httponly_token'])->group(function () {
-    // ========== HTTPONLY COOKIE AUTH ENDPOINTS ==========
-    Route::post('/auth/refresh-httponly', [HttpOnlyTokenController::class, 'refresh']);
     Route::post('/auth/logout-httponly', [HttpOnlyTokenController::class, 'logout']);
     Route::get('/auth/me-httponly', [HttpOnlyTokenController::class, 'me']);
 });
 
+// ========== BEARER TOKEN REFRESH ENDPOINTS ==========
+// throttle:refresh-token runs before token validation so malformed refresh attempts
+// are bounded before DB token lookup. AuthController::refresh preserves token-state,
+// device-fingerprint, and hourly refresh-rate validation.
+Route::post('/auth/refresh', [TokenAuthController::class, 'refresh'])
+    ->name('auth.refresh')
+    ->middleware(['throttle:refresh-token', 'deprecated:2026-07-01,/api/auth/refresh-v2']);
+Route::post('/auth/refresh-v2', [TokenAuthController::class, 'refresh'])
+    ->name('auth.refresh-v2')
+    ->middleware('throttle:refresh-token');
+
 Route::middleware(['check_token_valid'])->group(function () {
     // ========== LEGACY AUTH ENDPOINTS (Deprecated — Sunset July 2026) ==========
-    // /auth/logout and /auth/refresh now delegate to TokenAuthController (v2).
+    // /auth/logout delegates to TokenAuthController (v2).
     // /auth/me stays on legacy AuthController (simpler response, no token metadata).
     Route::post('/auth/logout', [TokenAuthController::class, 'logout'])
         ->middleware('deprecated:2026-07-01,/api/auth/logout-v2');
-    Route::post('/auth/refresh', [TokenAuthController::class, 'refresh'])
-        ->middleware('deprecated:2026-07-01,/api/auth/refresh-v2');
     Route::get('/auth/me', [AuthController::class, 'me'])
         ->middleware('deprecated:2026-07-01,/api/auth/me-v2');
 
     // ========== BEARER TOKEN AUTH ENDPOINTS (Current - v2) ==========
-    Route::post('/auth/refresh-v2', [TokenAuthController::class, 'refresh']);
     Route::post('/auth/logout-v2', [TokenAuthController::class, 'logout']);
     Route::post('/auth/logout-all-v2', [TokenAuthController::class, 'logoutAll']);
     Route::get('/auth/me-v2', [TokenAuthController::class, 'me']);

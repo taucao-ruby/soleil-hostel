@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getLocations } from '@/shared/lib/location.api'
+import { getHostelToday, getHostelTomorrow } from '@/shared/lib/hostelDate'
 import type { Location } from '@/shared/types/location.types'
 
 /**
@@ -13,8 +14,8 @@ import type { Location } from '@/shared/types/location.types'
  */
 const SearchCard: React.FC = () => {
   const navigate = useNavigate()
-  const today = new Date().toISOString().slice(0, 10)
-  const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)
+  const today = getHostelToday()
+  const tomorrow = getHostelTomorrow()
 
   const [locations, setLocations] = useState<Location[]>([])
   const [locationsLoading, setLocationsLoading] = useState(true)

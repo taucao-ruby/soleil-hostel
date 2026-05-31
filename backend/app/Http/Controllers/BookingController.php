@@ -67,6 +67,13 @@ class BookingController extends Controller
     public function store(StoreBookingRequest $request): JsonResponse
     {
         $validated = $request->validated();
+        $additionalData = [];
+
+        foreach (['number_of_guests', 'special_requests'] as $field) {
+            if (array_key_exists($field, $validated)) {
+                $additionalData[$field] = $validated[$field];
+            }
+        }
 
         try {
             // Delegate to service to create booking (includes pessimistic locking)
@@ -77,7 +84,7 @@ class BookingController extends Controller
                 guestName: $validated['guest_name'],
                 guestEmail: $validated['guest_email'],
                 userId: $request->user()->id,
-                additionalData: []
+                additionalData: $additionalData
             );
         } catch (QueryException $e) {
             // Map PostgreSQL exclusion violation (SQLSTATE 23P01) to 409 Conflict.
@@ -186,6 +193,14 @@ class BookingController extends Controller
         $this->authorize('update', $booking);
 
         $validated = $request->validated();
+        $updateData = [
+            'guest_name' => $validated['guest_name'] ?? $booking->guest_name,
+            'guest_email' => $validated['guest_email'] ?? $booking->guest_email,
+        ];
+
+        if (array_key_exists('special_requests', $validated)) {
+            $updateData['special_requests'] = $validated['special_requests'];
+        }
 
         try {
             // Store original booking data BEFORE updating (to compare changes later)
@@ -197,10 +212,7 @@ class BookingController extends Controller
                 booking: $booking,
                 checkIn: \Carbon\Carbon::createFromFormat('Y-m-d', $validated['check_in'])->startOfDay(),
                 checkOut: \Carbon\Carbon::createFromFormat('Y-m-d', $validated['check_out'])->startOfDay(),
-                additionalData: [
-                    'guest_name' => $validated['guest_name'] ?? $booking->guest_name,
-                    'guest_email' => $validated['guest_email'] ?? $booking->guest_email,
-                ]
+                additionalData: $updateData
             );
 
             // Dispatch event for notification - pass actual Booking model and original data

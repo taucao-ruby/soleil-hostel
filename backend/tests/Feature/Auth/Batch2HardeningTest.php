@@ -16,7 +16,7 @@ use Tests\TestCase;
  *  T1  HttpOnlyTokenController::refresh() rotation is atomic.
  *  T2  Bearer-mode device-fingerprint binding rejects cross-device replay.
  *  T3  Legacy /api/auth/register issues a token row with the full security column set.
- *  T4  Refresh-count cap reads sanctum.max_refresh_count_per_hour and enforces (limit+1)th = 401.
+ *  T4  Refresh rate cap reads sanctum.max_token_refreshes_per_hour and enforces (limit+1)th = 429.
  *  T5  /api/auth/login-httponly rejects malformed payloads at validation, before any DB query.
  *
  * All five tests fail before the Batch 2 fixes land and pass after them.
@@ -142,17 +142,17 @@ class Batch2HardeningTest extends TestCase
     }
 
     /**
-     * T4 — Refresh-count cap reads sanctum.max_refresh_count_per_hour and the
-     * (limit+1)th refresh returns 401, regardless of the legacy 50 fallback.
+     * T4 — Refresh rate cap reads sanctum.max_token_refreshes_per_hour and the
+     * (limit+1)th refresh returns 429, regardless of the legacy 50 fallback.
      */
-    public function test_refresh_count_limit_uses_correct_config_key_and_blocks_at_threshold(): void
+    public function test_refresh_rate_limit_uses_correct_config_key_and_blocks_at_threshold(): void
     {
         // Pin the limit to a small value via the canonical key.
-        config(['sanctum.max_refresh_count_per_hour' => 3]);
+        config(['sanctum.max_token_refreshes_per_hour' => 3]);
 
         // Sanity-pin: the legacy (wrong) key must not be the source of truth.
-        $this->assertSame(3, (int) config('sanctum.max_refresh_count_per_hour'));
-        $this->assertNotSame(50, (int) config('sanctum.max_refresh_count_per_hour'));
+        $this->assertSame(3, (int) config('sanctum.max_token_refreshes_per_hour'));
+        $this->assertNotSame(50, (int) config('sanctum.max_token_refreshes_per_hour'));
 
         $this->postJson('/api/auth/login-httponly', [
             'email' => 'batch2@example.com',
@@ -183,8 +183,8 @@ class Batch2HardeningTest extends TestCase
         $blocked = $this->withHeader('Cookie', "{$cookieName}={$token->token_identifier}")
             ->postJson('/api/auth/refresh-httponly');
 
-        $blocked->assertStatus(401);
-        $this->assertSame('SUSPICIOUS_ACTIVITY', $blocked->json('errors.code'));
+        $blocked->assertStatus(429);
+        $this->assertSame('Too many token refresh attempts. Please try again later.', $blocked->json('message'));
     }
 
     /**

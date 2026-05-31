@@ -36,7 +36,15 @@ class BookingFillableTest extends TestCase
         $fillable = (new Booking)->getFillable();
 
         $this->assertSame(
-            ['room_id', 'check_in', 'check_out', 'guest_name', 'guest_email'],
+            [
+                'room_id',
+                'check_in',
+                'check_out',
+                'guest_name',
+                'guest_email',
+                'number_of_guests',
+                'special_requests',
+            ],
             $fillable,
             'Booking $fillable must be limited to user-supplied booking input.'
         );
@@ -92,6 +100,8 @@ class BookingFillableTest extends TestCase
             'check_out' => Carbon::tomorrow()->addDays(2)->toDateString(),
             'guest_name' => 'Honest Guest',
             'guest_email' => 'honest@example.com',
+            'number_of_guests' => 2,
+            'special_requests' => 'Bottom bunk if available',
             // Attempted mass-assign of protected columns:
             'status' => BookingStatus::CONFIRMED->value,
             'user_id' => 99999,
@@ -132,6 +142,8 @@ class BookingFillableTest extends TestCase
         $this->assertSame($room->id, $booking->room_id);
         $this->assertSame('Honest Guest', $booking->guest_name);
         $this->assertSame('honest@example.com', $booking->guest_email);
+        $this->assertSame(2, $booking->number_of_guests);
+        $this->assertSame('Bottom bunk if available', $booking->special_requests);
     }
 
     /**

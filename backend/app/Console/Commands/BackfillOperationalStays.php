@@ -6,7 +6,7 @@ use App\Enums\BookingStatus;
 use App\Enums\StayStatus;
 use App\Models\Booking;
 use App\Models\Stay;
-use Carbon\Carbon;
+use App\Support\HostelClock;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -47,7 +47,7 @@ class BackfillOperationalStays extends Command
     public function handle(): int
     {
         $dryRun = $this->option('dry-run');
-        $today = Carbon::today()->toDateString();
+        $today = HostelClock::todayDate();
 
         if ($dryRun) {
             $this->warn('DRY RUN MODE — No records will be persisted');

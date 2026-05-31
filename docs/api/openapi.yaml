@@ -3,7 +3,7 @@ info:
   title: Soleil Hostel API
   version: 2.0.0
   description: |
-    Production-ready hostel management API built with Laravel 11 + PHP 8.3.
+    Production-ready hostel management API for Soleil Hostel.
 
     ## Features
     - **Dual Auth Modes**: Bearer Token (stateless) + HttpOnly Cookie (web browsers)
@@ -148,8 +148,8 @@ components:
           example: 2
         status:
           type: string
-          enum: [active, inactive]
-          example: "active"
+          enum: [available, unavailable]
+          example: "available"
         lock_version:
           type: integer
           description: |
@@ -190,6 +190,16 @@ components:
           type: string
           format: email
           example: "jane@example.com"
+        number_of_guests:
+          type: integer
+          nullable: true
+          minimum: 1
+          example: 2
+        special_requests:
+          type: string
+          nullable: true
+          maxLength: 2000
+          example: "Late arrival after 22:00"
         status:
           type: string
           enum: [pending, confirmed, refund_pending, cancelled, refund_failed]
@@ -205,7 +215,7 @@ components:
         refund_status:
           type: string
           nullable: true
-          enum: [pending, completed, failed]
+          enum: [pending, succeeded, failed]
         refund_amount:
           type: integer
           nullable: true
@@ -1283,8 +1293,8 @@ paths:
                   example: 2
                 status:
                   type: string
-                  enum: [active, inactive]
-                  default: active
+                  enum: [available, unavailable]
+                  default: available
       responses:
         "201":
           description: Room created
@@ -1373,7 +1383,7 @@ paths:
                   type: integer
                 status:
                   type: string
-                  enum: [active, inactive]
+                  enum: [available, unavailable]
                 lock_version:
                   type: integer
                   description: Current version from GET request
@@ -1477,6 +1487,65 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /v1/rooms/{id}/readiness:
+    patch:
+      tags: [Rooms]
+      summary: Update room operational readiness (moderator/admin)
+      operationId: updateRoomReadiness
+      description: |
+        Canonical `readiness_status` transition for front-desk operators
+        (check-in / housekeeping). Distinct from the deprecated `rooms.status`
+        availability field and from the admin-only full room update
+        (PUT/PATCH /v1/rooms/{id}). Requires MODERATOR or ADMIN.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [readiness_status]
+              properties:
+                readiness_status:
+                  type: string
+                  enum: [ready, occupied, dirty, cleaning, inspected, out_of_service]
+                lock_version:
+                  type: integer
+                  description: Optional optimistic-lock version from a prior GET.
+            example:
+              readiness_status: occupied
+      responses:
+        "200":
+          description: Readiness updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/Room"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/VersionConflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
   # ═══════════════════════════════════════
   # BOOKINGS (v1)
   # ═══════════════════════════════════════
@@ -1551,6 +1620,17 @@ paths:
                   type: string
                   format: email
                   example: "jane@example.com"
+                number_of_guests:
+                  type: integer
+                  nullable: true
+                  minimum: 1
+                  description: Must not exceed the selected room's max_guests.
+                  example: 2
+                special_requests:
+                  type: string
+                  nullable: true
+                  maxLength: 2000
+                  example: "Late arrival after 22:00"
       responses:
         "201":
           description: Booking created successfully
@@ -1622,7 +1702,13 @@ paths:
       summary: Update a booking
       operationId: updateBooking
       description: |
-        Update booking dates and guest info. Room availability is re-validated.
+        Update booking dates, guest info, and optional guest notes. Room availability is
+        re-validated for date changes on the existing room.
+
+        `room_id` is prohibited on this generic endpoint. Room movement requires a
+        dedicated flow with availability recheck, lock discipline, `location_id`
+        recalculation, pricing review, and audit trail. `number_of_guests` is also
+        prohibited here because guest-count changes are outside this update contract.
 
         **Authorization (BookingPolicy::update — two-stage gate):**
         1. Caller must be the booking owner OR an admin.
@@ -1644,7 +1730,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [check_in, check_out]
+              required: [check_in, check_out, guest_name, guest_email]
               properties:
                 check_in:
                   type: string
@@ -1657,6 +1743,10 @@ paths:
                 guest_email:
                   type: string
                   format: email
+                special_requests:
+                  type: string
+                  nullable: true
+                  maxLength: 2000
       responses:
         "200":
           description: Booking updated

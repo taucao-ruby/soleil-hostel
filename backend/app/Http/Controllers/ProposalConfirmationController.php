@@ -35,6 +35,12 @@ use Illuminate\Support\Facades\Log;
  */
 class ProposalConfirmationController extends Controller
 {
+    private const DECISION_CONFIRMED = 'confirmed';
+
+    private const DECISION_ERRORED = 'errored';
+
+    private const DOWNSTREAM_FAILURE_REASON = 'downstream_execution_failed';
+
     /**
      * POST /api/v1/ai/proposals/{hash}/decide
      */
@@ -139,47 +145,107 @@ class ProposalConfirmationController extends Controller
 
         $proposedParams = $proposalData['proposed_params'] ?? [];
         $downstreamResult = null;
+        $failurePayload = null;
 
         try {
             $downstreamResult = match ($actionType) {
                 'suggest_booking' => $this->executeBooking($userId, $proposedParams),
                 'suggest_cancellation' => $this->executeCancellation($userId, $proposedParams),
-                default => 'unsupported_action_type',
+                default => 'error:unsupported_action_type',
             };
         } catch (\Throwable $e) {
-            $downstreamResult = "error:{$e->getMessage()}";
+            $failurePayload = $this->downstreamFailurePayload(self::DOWNSTREAM_FAILURE_REASON, $e);
+            $downstreamResult = $this->encodeDownstreamResult($failurePayload);
 
             Log::channel('ai')->error('Proposal confirmation downstream error', [
                 'proposal_hash' => $hash,
                 'action_type' => $actionType,
-                'error' => $e->getMessage(),
+                'failure_reason' => self::DOWNSTREAM_FAILURE_REASON,
+                'error_class' => class_basename($e),
             ]);
         }
 
-        $this->recordEvent($userId, $hash, $actionType, 'confirmed', $downstreamResult, $now);
+        $statusCode = 502;
+        if ($failurePayload === null && $this->isFailedDownstreamResult((string) $downstreamResult)) {
+            $failurePayload = $this->downstreamFailurePayload(
+                $this->failureReasonFromDownstreamResult((string) $downstreamResult),
+            );
+            $downstreamResult = $this->encodeDownstreamResult($failurePayload);
+            $statusCode = 422;
+        }
 
-        Cache::forget("ai_proposal:{$hash}");
-        $proposal->update([
-            'decision' => 'confirmed',
-            'decided_at' => now(),
-        ]);
+        if ($failurePayload !== null) {
+            $this->recordEvent($userId, $hash, $actionType, self::DECISION_ERRORED, $downstreamResult, $now);
 
-        $success = ! str_starts_with((string) $downstreamResult, 'error:');
+            Cache::forget("ai_proposal:{$hash}");
+            $proposal->update([
+                'decision' => self::DECISION_ERRORED,
+                'decided_at' => now(),
+            ]);
 
-        if (! $success) {
             return ApiResponse::error(
                 'Không thể thực hiện hành động. Vui lòng thử lại.',
-                ['downstream_result' => $downstreamResult],
-                422,
+                ['downstream_result' => $failurePayload],
+                $statusCode,
             );
         }
 
+        $this->recordEvent($userId, $hash, $actionType, self::DECISION_CONFIRMED, $downstreamResult, $now);
+
+        Cache::forget("ai_proposal:{$hash}");
+        $proposal->update([
+            'decision' => self::DECISION_CONFIRMED,
+            'decided_at' => now(),
+        ]);
+
         return ApiResponse::success([
             'proposal_hash' => $hash,
-            'decision' => 'confirmed',
+            'decision' => self::DECISION_CONFIRMED,
             'downstream_result' => $downstreamResult,
             'message' => 'Hành động đã được thực hiện thành công.',
         ]);
+    }
+
+    /**
+     * @return array{status: string, failure_reason: string, error_class: string|null, message: string}
+     */
+    private function downstreamFailurePayload(string $failureReason, ?\Throwable $e = null): array
+    {
+        return [
+            'status' => 'failed',
+            'failure_reason' => $this->sanitizeFailureReason($failureReason),
+            'error_class' => $e === null ? null : class_basename($e),
+            'message' => 'Downstream execution failed.',
+        ];
+    }
+
+    /**
+     * @param  array{status: string, failure_reason: string, error_class: string|null, message: string}  $payload
+     */
+    private function encodeDownstreamResult(array $payload): string
+    {
+        return json_encode($payload, JSON_THROW_ON_ERROR);
+    }
+
+    private function isFailedDownstreamResult(string $downstreamResult): bool
+    {
+        return str_starts_with($downstreamResult, 'error:');
+    }
+
+    private function failureReasonFromDownstreamResult(string $downstreamResult): string
+    {
+        $reason = str_starts_with($downstreamResult, 'error:')
+            ? substr($downstreamResult, strlen('error:'))
+            : $downstreamResult;
+
+        return $this->sanitizeFailureReason($reason);
+    }
+
+    private function sanitizeFailureReason(string $reason): string
+    {
+        return preg_match('/\A[a-z0-9_]{1,80}\z/', $reason) === 1
+            ? $reason
+            : self::DOWNSTREAM_FAILURE_REASON;
     }
 
     /**

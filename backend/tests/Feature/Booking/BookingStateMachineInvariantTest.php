@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Booking;
 
 use App\Enums\BookingStatus;
+use App\Enums\PaymentPolicy;
+use App\Enums\PaymentStatus;
 use App\Events\BookingStatusChanged;
 use App\Exceptions\BookingTransitionException;
 use App\Http\Controllers\Payment\StripeWebhookController;
@@ -85,6 +87,10 @@ final class BookingStateMachineInvariantTest extends TestCase
         $booking = Booking::factory()->create([
             'status' => BookingStatus::PENDING,
             'payment_intent_id' => 'pi_replay_idempotent',
+            'payment_policy' => PaymentPolicy::PREPAID,
+            'payment_status' => PaymentStatus::REQUIRES_PAYMENT_METHOD,
+            'payment_currency' => 'vnd',
+            'amount' => 50000,
         ]);
         $payload = $this->paymentIntentSucceededPayload(
             eventId: 'evt_replay_idempotent',
@@ -106,6 +112,10 @@ final class BookingStateMachineInvariantTest extends TestCase
         $booking = Booking::factory()->create([
             'status' => BookingStatus::PENDING,
             'payment_intent_id' => 'pi_forced_failure',
+            'payment_policy' => PaymentPolicy::PREPAID,
+            'payment_status' => PaymentStatus::REQUIRES_PAYMENT_METHOD,
+            'payment_currency' => 'vnd',
+            'amount' => 50000,
         ]);
         $payload = $this->paymentIntentSucceededPayload(
             eventId: 'evt_forced_failure',
@@ -116,8 +126,11 @@ final class BookingStateMachineInvariantTest extends TestCase
         {
             public function __construct() {}
 
-            public function confirmBooking(Booking $booking): Booking
-            {
+            public function markPaidAndConfirm(
+                Booking $booking,
+                int $amountReceived,
+                int $amountCapturable = 0,
+            ): Booking {
                 throw new \RuntimeException('forced confirmation failure');
             }
         });
@@ -161,6 +174,8 @@ final class BookingStateMachineInvariantTest extends TestCase
 
     private function paymentIntentSucceededPayload(string $eventId, string $paymentIntentId): array
     {
+        $booking = Booking::where('payment_intent_id', $paymentIntentId)->first();
+
         return [
             'id' => $eventId,
             'type' => 'payment_intent.succeeded',
@@ -170,6 +185,12 @@ final class BookingStateMachineInvariantTest extends TestCase
                     'status' => 'succeeded',
                     'amount' => 50000,
                     'currency' => 'vnd',
+                    'amount_capturable' => 0,
+                    'amount_received' => 50000,
+                    'metadata' => [
+                        'booking_id' => (string) $booking?->id,
+                        'user_id' => (string) $booking?->user_id,
+                    ],
                 ],
             ],
         ];

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type React from 'react'
 import BookingForm from './BookingForm'
 
 const {
@@ -8,22 +9,32 @@ const {
   mockSearchParamsRef,
   mockGetRooms,
   mockCreateBooking,
+  mockCreateBookingPaymentIntent,
+  mockVerifyBookingPayment,
+  mockConfirmPayment,
   mockValidateBookingForm,
   mockGetMinCheckInDate,
   mockGetMinCheckOutDate,
   mockGetMaxCheckOutDate,
   mockCalculateNights,
-} = vi.hoisted(() => ({
-  mockNavigate: vi.fn(),
-  mockSearchParamsRef: { current: new URLSearchParams() },
-  mockGetRooms: vi.fn(),
-  mockCreateBooking: vi.fn(),
-  mockValidateBookingForm: vi.fn(),
-  mockGetMinCheckInDate: vi.fn(),
-  mockGetMinCheckOutDate: vi.fn(),
-  mockGetMaxCheckOutDate: vi.fn(),
-  mockCalculateNights: vi.fn(),
-}))
+} = vi.hoisted(() => {
+  vi.stubEnv('VITE_STRIPE_PUBLISHABLE_KEY', 'pk_test_unit')
+
+  return {
+    mockNavigate: vi.fn(),
+    mockSearchParamsRef: { current: new URLSearchParams() },
+    mockGetRooms: vi.fn(),
+    mockCreateBooking: vi.fn(),
+    mockCreateBookingPaymentIntent: vi.fn(),
+    mockVerifyBookingPayment: vi.fn(),
+    mockConfirmPayment: vi.fn(),
+    mockValidateBookingForm: vi.fn(),
+    mockGetMinCheckInDate: vi.fn(),
+    mockGetMinCheckOutDate: vi.fn(),
+    mockGetMaxCheckOutDate: vi.fn(),
+    mockCalculateNights: vi.fn(),
+  }
+})
 
 vi.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
@@ -36,6 +47,23 @@ vi.mock('../rooms/room.api', () => ({
 
 vi.mock('./booking.api', () => ({
   createBooking: (...args: unknown[]) => mockCreateBooking(...args),
+  createBookingPaymentIntent: (...args: unknown[]) => mockCreateBookingPaymentIntent(...args),
+  verifyBookingPayment: (...args: unknown[]) => mockVerifyBookingPayment(...args),
+}))
+
+vi.mock('@stripe/stripe-js', () => ({
+  loadStripe: vi.fn(() => Promise.resolve({})),
+}))
+
+vi.mock('@stripe/react-stripe-js', () => ({
+  Elements: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="stripe-elements">{children}</div>
+  ),
+  PaymentElement: () => <div data-testid="payment-element" />,
+  useElements: () => ({}),
+  useStripe: () => ({
+    confirmPayment: (...args: unknown[]) => mockConfirmPayment(...args),
+  }),
 }))
 
 vi.mock('./booking.validation', () => ({
@@ -54,6 +82,30 @@ function makeAxiosError(response?: { status: number; data?: unknown }) {
   })
 }
 
+function makeBooking(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 42,
+    room_id: 1,
+    user_id: 1,
+    guest_name: 'Nguyen Van A',
+    guest_email: 'user@example.com',
+    check_in: '2026-06-15',
+    check_out: '2026-06-18',
+    number_of_guests: 2,
+    special_requests: null,
+    status: 'pending',
+    status_label: null,
+    nights: 3,
+    total_price: 1050000,
+    payment_policy: 'prepaid',
+    payment_status: 'requires_payment_method',
+    payment_currency: 'vnd',
+    created_at: '2026-06-01T10:00:00Z',
+    updated_at: '2026-06-01T10:00:00Z',
+    ...overrides,
+  }
+}
+
 async function fillValidBookingAndSubmit() {
   await waitFor(() => {
     expect(screen.getByRole('option', { name: /Phòng Dormitory 4 giường/i })).toBeInTheDocument()
@@ -66,7 +118,26 @@ async function fillValidBookingAndSubmit() {
   })
   fireEvent.change(screen.getByLabelText(/Ngày nhận phòng/), { target: { value: '2026-06-15' } })
   fireEvent.change(screen.getByLabelText(/Ngày trả phòng/), { target: { value: '2026-06-18' } })
-  fireEvent.click(screen.getByRole('button', { name: 'Xác nhận đặt phòng →' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Giữ phòng và thanh toán' }))
+}
+
+async function fillValidBookingWithSpecialRequestAndSubmit() {
+  await waitFor(() => {
+    expect(screen.getByRole('option', { name: /Phòng Dormitory 4 giường/i })).toBeInTheDocument()
+  })
+
+  fireEvent.change(screen.getByLabelText(/Chọn phòng/), { target: { value: '1' } })
+  fireEvent.change(screen.getByLabelText(/Họ và tên/), { target: { value: 'Nguyen Van A' } })
+  fireEvent.change(screen.getByLabelText(/Địa chỉ email/), {
+    target: { value: 'user@example.com' },
+  })
+  fireEvent.change(screen.getByLabelText(/Ngày nhận phòng/), { target: { value: '2026-06-15' } })
+  fireEvent.change(screen.getByLabelText(/Ngày trả phòng/), { target: { value: '2026-06-18' } })
+  fireEvent.change(screen.getByLabelText(/Số khách/), { target: { value: '3' } })
+  fireEvent.change(screen.getByLabelText(/Yêu cầu đặc biệt/), {
+    target: { value: '  Phòng tầng cao  ' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Giữ phòng và thanh toán' }))
 }
 
 describe('BookingForm', () => {
@@ -107,6 +178,19 @@ describe('BookingForm', () => {
         updated_at: '',
       },
     ])
+    mockCreateBooking.mockResolvedValue(makeBooking())
+    mockCreateBookingPaymentIntent.mockResolvedValue({
+      client_secret: 'pi_client_secret_unit',
+      payment_policy: 'prepaid',
+      payment_status: 'requires_payment_method',
+    })
+    mockConfirmPayment.mockResolvedValue({})
+    mockVerifyBookingPayment.mockResolvedValue(
+      makeBooking({
+        status: 'confirmed',
+        payment_status: 'paid',
+      })
+    )
     mockValidateBookingForm.mockReturnValue({})
     mockGetMinCheckInDate.mockReturnValue('2026-04-01')
     mockGetMinCheckOutDate.mockReturnValue('2026-04-02')
@@ -123,7 +207,9 @@ describe('BookingForm', () => {
 
     expect(screen.getByRole('heading', { name: 'Đặt phòng' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Tóm tắt đặt phòng' })).toBeInTheDocument()
-    expect(screen.getByText('Thanh toán tại chỗ · Không cần thẻ')).toBeInTheDocument()
+    expect(
+      screen.getByText('Thanh toán trực tuyến bảo mật · Xác nhận sau khi thanh toán thành công')
+    ).toBeInTheDocument()
 
     await waitFor(() => {
       expect(screen.getByRole('option', { name: /Phòng Dormitory 4 giường/i })).toBeInTheDocument()
@@ -198,10 +284,10 @@ describe('BookingForm', () => {
 
     const user = userEvent.setup()
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Xác nhận đặt phòng →' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Giữ phòng và thanh toán' })).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: 'Xác nhận đặt phòng →' }))
+    await user.click(screen.getByRole('button', { name: 'Giữ phòng và thanh toán' }))
 
     expect(screen.getByText('Vui lòng nhập họ và tên')).toBeInTheDocument()
     expect(screen.getByText('Vui lòng nhập địa chỉ email')).toBeInTheDocument()
@@ -297,22 +383,41 @@ describe('BookingForm', () => {
     })
   })
 
-  it('shows the success state and redirects after two seconds', async () => {
-    mockCreateBooking.mockResolvedValue({
-      id: 42,
-      room_id: 1,
-      guest_name: 'Nguyen Van A',
-      guest_email: 'user@example.com',
-      check_in: '2026-06-15',
-      check_out: '2026-06-18',
-      number_of_guests: 2,
-      special_requests: null,
-      status: 'pending',
-      total_price: 1050000,
-      created_at: '2026-06-01T10:00:00Z',
-      updated_at: '2026-06-01T10:00:00Z',
-    })
+  it('submits number_of_guests and null special_requests for a blank note', async () => {
+    mockCreateBooking.mockResolvedValue(makeBooking())
 
+    render(<BookingForm />)
+    await fillValidBookingAndSubmit()
+
+    expect(mockCreateBooking).toHaveBeenCalledWith(
+      expect.objectContaining({
+        number_of_guests: 1,
+        special_requests: null,
+      })
+    )
+  })
+
+  it('trims and submits special_requests when provided', async () => {
+    mockCreateBooking.mockResolvedValue(
+      makeBooking({
+        id: 43,
+        number_of_guests: 3,
+        special_requests: 'Phòng tầng cao',
+      })
+    )
+
+    render(<BookingForm />)
+    await fillValidBookingWithSpecialRequestAndSubmit()
+
+    expect(mockCreateBooking).toHaveBeenCalledWith(
+      expect.objectContaining({
+        number_of_guests: 3,
+        special_requests: 'Phòng tầng cao',
+      })
+    )
+  })
+
+  it('renders Stripe checkout, verifies payment, and redirects after success', async () => {
     render(<BookingForm />)
 
     await waitFor(() => {
@@ -332,9 +437,19 @@ describe('BookingForm', () => {
     fireEvent.change(screen.getByLabelText(/Ngày trả phòng/), {
       target: { value: '2026-06-18' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận đặt phòng →' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Giữ phòng và thanh toán' }))
+
+    expect(await screen.findByTestId('payment-step')).toBeInTheDocument()
+    expect(screen.getByTestId('payment-element')).toBeInTheDocument()
+    expect(mockCreateBookingPaymentIntent).toHaveBeenCalledWith(42)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Thanh toán và xác nhận đặt phòng' }))
 
     expect(await screen.findByTestId('success-message')).toBeInTheDocument()
+    expect(mockConfirmPayment).toHaveBeenCalledWith(
+      expect.objectContaining({ redirect: 'if_required' })
+    )
+    expect(mockVerifyBookingPayment).toHaveBeenCalledWith(42)
     expect(screen.getByTestId('booking-reference')).toHaveTextContent('SOL-2026-0042')
     expect(screen.getByText('Quay về trang quản lý sau 2 giây...')).toBeInTheDocument()
 
@@ -345,4 +460,37 @@ describe('BookingForm', () => {
       { timeout: 3000 }
     )
   }, 10000)
+
+  it('shows a Vietnamese payment error when Stripe confirmation fails', async () => {
+    mockConfirmPayment.mockResolvedValueOnce({
+      error: { message: 'Your card was declined.' },
+    })
+
+    render(<BookingForm />)
+    await fillValidBookingAndSubmit()
+
+    expect(await screen.findByTestId('payment-step')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Thanh toán và xác nhận đặt phòng' }))
+
+    expect(await screen.findByTestId('payment-error-message')).toHaveTextContent(
+      'Thanh toán chưa hoàn tất. Vui lòng kiểm tra thông tin thẻ và thử lại.'
+    )
+    expect(mockVerifyBookingPayment).not.toHaveBeenCalled()
+  })
+
+  it('does not render Stripe checkout for explicit pay-at-property bookings', async () => {
+    mockCreateBooking.mockResolvedValue(
+      makeBooking({
+        payment_policy: 'pay_at_property',
+        payment_status: 'offline_due',
+      })
+    )
+
+    render(<BookingForm />)
+    await fillValidBookingAndSubmit()
+
+    expect(await screen.findByTestId('success-message')).toBeInTheDocument()
+    expect(screen.queryByTestId('payment-step')).not.toBeInTheDocument()
+    expect(mockCreateBookingPaymentIntent).not.toHaveBeenCalled()
+  })
 })

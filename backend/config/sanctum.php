@@ -25,9 +25,18 @@ return [
         30
     ),
 
+    // Per token-session, 60-minute refresh-rate limit. This is not a
+    // lifetime refresh cap; refresh_count is retained as lifetime telemetry.
+    'max_token_refreshes_per_hour' => (int) env(
+        'SANCTUM_MAX_TOKEN_REFRESHES_PER_HOUR',
+        env('SANCTUM_MAX_REFRESH_COUNT_PER_HOUR', 10)
+    ),
+
+    // Backward-compatible config alias for older deployments/tests.
+    // New enforcement reads max_token_refreshes_per_hour.
     'max_refresh_count_per_hour' => (int) env(
         'SANCTUM_MAX_REFRESH_COUNT_PER_HOUR',
-        10
+        env('SANCTUM_MAX_TOKEN_REFRESHES_PER_HOUR', 10)
     ),
 
     'single_device_login' => (bool) env(

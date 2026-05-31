@@ -57,7 +57,7 @@ const BookingCalendar: React.FC = () => {
 
   // Helper to check if a booking overlaps a specific day
   const getBookingForDay = (roomId: number, day: number) => {
-    const targetDate = new Date(Date.UTC(year, month, day)).toISOString().split('T')[0]
+    const targetDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 
     return bookings.find(b => {
       // Half-open interval [check_in, check_out)

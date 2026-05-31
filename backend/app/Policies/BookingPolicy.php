@@ -107,6 +107,18 @@ class BookingPolicy
     }
 
     /**
+     * Determine whether the user can create or verify an online payment for a booking.
+     *
+     * The PaymentIntent client_secret is scoped to the booking owner only.
+     * Admin and moderator users can inspect bookings through their own read
+     * endpoints, but they must not receive a guest's client_secret.
+     */
+    public function pay(User $user, Booking $booking): bool
+    {
+        return $user->id === $booking->user_id;
+    }
+
+    /**
      * Determine whether the user can cancel a booking.
      *
      * Rules:

@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 return [
 
+    'business_timezone' => env(
+        'BOOKING_BUSINESS_TIMEZONE',
+        env('APP_TIMEZONE', 'Asia/Ho_Chi_Minh')
+    ),
+
     /*
     |--------------------------------------------------------------------------
     | Pending Booking Expiry (TTL)
@@ -21,6 +26,19 @@ return [
     */
 
     'pending_ttl_minutes' => (int) env('BOOKING_PENDING_TTL_MINUTES', 30),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Payment Policy
+    |--------------------------------------------------------------------------
+    |
+    | Default policy for new booking holds. `prepaid` is the v1 production
+    | policy: a booking stays pending until Stripe confirms automatic capture.
+    | `pay_at_property` is explicit offline payment and creates no PaymentIntent.
+    |
+    */
+
+    'payment_policy' => env('BOOKING_PAYMENT_POLICY', 'prepaid'),
 
     /*
     |--------------------------------------------------------------------------
@@ -184,21 +202,51 @@ return [
 
         /*
         |--------------------------------------------------------------------------
-        | Webhook Backlog Alert Threshold (multiplier)
+        | Webhook Backlog Alert Threshold
         |--------------------------------------------------------------------------
         |
-        | webhook:reconcile-stuck-events emits a WARNING-level structured log
-        | line (stripe_webhook_reconciler.backlog_high) when the number of
-        | stripe_webhook_events still in 'processing' exceeds this multiple of
-        | the per-run --limit. It signals the fixed drain rate is losing to
-        | inflow (e.g. recovery from a regional Stripe outage), so log-based
-        | SIEM alerting can page an operator. The intended "3 consecutive runs"
-        | debounce lives in the SIEM rule, not here — the reaper only emits the
-        | signal on each run the threshold is crossed.
-        | Default: 2 (alert when backlog > 2 x limit).
+        | webhook:reconcile-stuck-events emits structured log metrics for the
+        | current stuck webhook backlog on every run. The high-backlog signal
+        | uses this formula:
+        |
+        | backlog_high = stuck_webhook_count >=
+        |     webhook_backlog_alert_baseline * webhook_backlog_alert_multiplier
+        |
+        | The intended debounce lives in the SIEM rule, not here — the reaper
+        | only emits the current gauge values for each run.
+        | Default threshold: 20 (10 baseline x 2 multiplier).
         |
         */
+        'webhook_backlog_alert_baseline' => env('BOOKING_WEBHOOK_BACKLOG_ALERT_BASELINE', 10),
+
         'webhook_backlog_alert_multiplier' => env('BOOKING_WEBHOOK_BACKLOG_ALERT_MULTIPLIER', 2),
+
+        /*
+        |--------------------------------------------------------------------------
+        | Stripe PaymentIntent Cancellation Outbox (PAY-03)
+        |--------------------------------------------------------------------------
+        |
+        | ExpireStaleBookings records a durable payment_cancellation_tasks row
+        | inside its expiry transaction and ProcessPaymentCancellationOutbox
+        | drains it off the booking lock. These tune that drainer:
+        |
+        | - batch_size               : tasks claimed per run.
+        | - max_attempts             : claims before a task is failed permanently
+        |                              and surfaced for operator review.
+        | - stale_processing_minutes : how long a 'processing' row may sit before
+        |                              a crashed worker is assumed and it is re-claimed.
+        | - initial_backoff_seconds  : first transient-retry delay (doubles per attempt).
+        | - max_backoff_seconds      : cap on the exponential backoff.
+        |
+        */
+
+        'payment_cancellation' => [
+            'batch_size' => (int) env('BOOKING_PAYMENT_CANCEL_BATCH_SIZE', 50),
+            'max_attempts' => (int) env('BOOKING_PAYMENT_CANCEL_MAX_ATTEMPTS', 10),
+            'stale_processing_minutes' => (int) env('BOOKING_PAYMENT_CANCEL_STALE_MINUTES', 5),
+            'initial_backoff_seconds' => (int) env('BOOKING_PAYMENT_CANCEL_INITIAL_BACKOFF', 60),
+            'max_backoff_seconds' => (int) env('BOOKING_PAYMENT_CANCEL_MAX_BACKOFF', 3600),
+        ],
 
     ],
 

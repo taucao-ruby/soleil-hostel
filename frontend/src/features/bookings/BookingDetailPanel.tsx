@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { getBookingById } from '@/features/booking/booking.api'
 import type { BookingDetailRaw } from '@/shared/types/booking.types'
 import { getStatusConfig, formatDateVN, formatDateOnly } from '@/shared/lib/booking.utils'
+import { isDateBeforeHostelToday } from '@/shared/lib/hostelDate'
 import Skeleton from '@/shared/components/ui/Skeleton'
 import Button from '@/shared/components/ui/Button'
 import ReviewForm from './ReviewForm'
@@ -124,10 +125,9 @@ const DetailContent: React.FC<DetailContentProps> = ({ booking }) => {
       )}
 
       {/* PR-4B.1 — Review form (eligible: confirmed + check_out in the past) */}
-      {booking.status === 'confirmed' &&
-        booking.check_out < new Date().toISOString().split('T')[0] && (
-          <ReviewForm bookingId={booking.id} />
-        )}
+      {booking.status === 'confirmed' && isDateBeforeHostelToday(booking.check_out) && (
+        <ReviewForm bookingId={booking.id} />
+      )}
     </>
   )
 }

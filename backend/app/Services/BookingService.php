@@ -58,7 +58,16 @@ class BookingService
     // Payment/refund projection required by booking serializers and cancellation flow
     private const BOOKING_PAYMENT_REFUND_COLUMNS = [
         'amount',
+        'payment_policy',
+        'payment_status',
+        'payment_currency',
         'payment_intent_id',
+        'amount_capturable',
+        'amount_received',
+        'authorized_at',
+        'paid_at',
+        'capture_due_at',
+        'payment_failed_reason',
         'refund_id',
         'refund_status',
         'refund_amount',
@@ -100,7 +109,16 @@ class BookingService
     public function confirmBooking(Booking $booking): Booking
     {
         return DB::transaction(function () use ($booking) {
-            $booking = $booking->transitionTo(BookingStatus::CONFIRMED);
+            $locked = Booking::query()
+                ->whereKey($booking->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (! $locked->paymentAllowsConfirmation()) {
+                throw new \RuntimeException('Booking payment is not complete.');
+            }
+
+            $booking = $locked->transitionTo(BookingStatus::CONFIRMED);
 
             // Create the operational stay record (idempotent — skip if already exists).
             // Canonical business hours: 14:00 check-in, 12:00 check-out.
@@ -134,6 +152,34 @@ class BookingService
             ]);
 
             return $booking->fresh();
+        });
+    }
+
+    public function markPaidAndConfirm(
+        Booking $booking,
+        int $amountReceived,
+        int $amountCapturable = 0
+    ): Booking {
+        return DB::transaction(function () use ($booking, $amountReceived, $amountCapturable): Booking {
+            $locked = Booking::query()
+                ->whereKey($booking->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $locked->forceFill([
+                'payment_status' => \App\Enums\PaymentStatus::PAID,
+                'amount_received' => $amountReceived,
+                'amount_capturable' => $amountCapturable,
+                'paid_at' => $locked->paid_at ?? now(),
+                'payment_failed_reason' => null,
+                'updated_at' => now(),
+            ])->save();
+
+            if ($locked->status === BookingStatus::CONFIRMED) {
+                return $locked->fresh();
+            }
+
+            return $this->confirmBooking($locked);
         });
     }
 

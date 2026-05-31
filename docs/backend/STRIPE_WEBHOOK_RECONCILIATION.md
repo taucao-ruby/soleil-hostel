@@ -45,6 +45,16 @@ The composite index `idx_stripe_webhook_events_status_created_at` backs the reap
 
 These queries are intentionally specified in raw SQL so they can be wired into whichever alerting backend the operator deploys (Grafana SQL panel, Prometheus exporter, scheduled DB cron, etc.). The thresholds reflect the silent-failure scenario the reaper is designed to detect.
 
+The reaper also emits low-cardinality structured log metrics once per run:
+
+| Metric | Meaning |
+|---|---|
+| `stripe_webhook_reconciler.backlog_count` | Current count of stuck webhook rows the reaper is responsible for: stale claimable rows plus rows eligible for exhaustion retirement |
+| `stripe_webhook_reconciler.backlog_threshold` | `webhook_backlog_alert_baseline * webhook_backlog_alert_multiplier`, clamped to at least 1 |
+| `stripe_webhook_reconciler.backlog_high` | `1` when `backlog_count >= backlog_threshold`, otherwise `0` |
+
+Formula: `backlog_high = stuck_webhook_count >= webhook_backlog_alert_baseline * webhook_backlog_alert_multiplier`. Use this signal to detect when the Stripe webhook reconciler is not draining stuck `processing` rows fast enough. `stripe_webhook_reconciler.reconciliation_exhausted` remains the per-row max-attempt failure signal.
+
 ### P1 — Stuck `processing` events
 
 The reaper should converge any `processing` row older than 15 minutes within the next scheduler tick (≤ 5 min). Anything older than that threshold escaping conversion means the reaper itself is failing.

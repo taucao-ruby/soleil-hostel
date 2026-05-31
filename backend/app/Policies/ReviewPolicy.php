@@ -8,6 +8,7 @@ use App\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Models\Review;
 use App\Models\User;
+use App\Support\HostelClock;
 use Illuminate\Auth\Access\Response;
 
 /**
@@ -76,7 +77,7 @@ class ReviewPolicy
         }
 
         // Temporal check: checkout must have passed
-        if (! $booking->check_out->isPast()) {
+        if ($booking->check_out->toDateString() >= HostelClock::todayDate()) {
             return Response::deny('Cannot review before checkout date.');
         }
 

@@ -3,6 +3,8 @@
 namespace Tests\Feature\Payment;
 
 use App\Enums\BookingStatus;
+use App\Enums\PaymentPolicy;
+use App\Enums\PaymentStatus;
 use App\Models\Booking;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
@@ -95,12 +97,27 @@ class StripeWebhookTest extends TestCase
         $booking = Booking::factory()->create([
             'status' => BookingStatus::PENDING,
             'payment_intent_id' => 'pi_sig_happy_path',
+            'payment_policy' => PaymentPolicy::PREPAID,
+            'payment_status' => PaymentStatus::REQUIRES_PAYMENT_METHOD,
+            'payment_currency' => 'vnd',
+            'amount' => 50000,
         ]);
 
         $rawBody = json_encode([
             'id' => 'evt_sig_happy_path',
             'type' => 'payment_intent.succeeded',
-            'data' => ['object' => ['id' => 'pi_sig_happy_path', 'status' => 'succeeded']],
+            'data' => ['object' => [
+                'id' => 'pi_sig_happy_path',
+                'status' => 'succeeded',
+                'amount' => 50000,
+                'currency' => 'vnd',
+                'amount_capturable' => 0,
+                'amount_received' => 50000,
+                'metadata' => [
+                    'booking_id' => (string) $booking->id,
+                    'user_id' => (string) $booking->user_id,
+                ],
+            ]],
         ]);
 
         $response = $this->postSignedWebhook($rawBody);

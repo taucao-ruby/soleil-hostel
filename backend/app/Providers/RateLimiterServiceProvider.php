@@ -24,15 +24,16 @@ class RateLimiterServiceProvider extends RouteServiceProvider
     protected function configureRateLimiters(): void
     {
         // ========== LOGIN RATE LIMITING ==========
-        // Strategy: 5 requests per minute per IP + 20 per hour per email
+        // Strategy: 5 requests per minute per normalized email+IP + 20 per minute per IP
         // Purpose: Prevent brute force attacks
         RateLimiter::for('login', function (Request $request) {
-            $email = (string) $request->input('email');
+            $email = strtolower(trim((string) $request->input('email')));
+            $ip = $this->requestIp($request);
 
             return [
-                // Per IP: 5 per minute (sliding window)
+                // Per account candidate + IP: 5 per minute.
                 Limit::perMinute(5)
-                    ->by($request->ip())
+                    ->by($this->hashedLimiterKey('login:email-ip', "{$email}|{$ip}"))
                     ->response(function (Request $request, array $headers) {
                         return response()->json([
                             'message' => 'Too many login attempts. Please try again in 60 seconds.',
@@ -40,12 +41,12 @@ class RateLimiterServiceProvider extends RouteServiceProvider
                         ], 429, $headers);
                     }),
 
-                // Per email: 20 per hour (sliding window)
-                Limit::perHour(20)
-                    ->by("login:{$email}")
+                // Per IP: 20 per minute across account candidates.
+                Limit::perMinute(20)
+                    ->by($this->hashedLimiterKey('login:ip', $ip))
                     ->response(function (Request $request, array $headers) {
                         return response()->json([
-                            'message' => 'Too many login attempts for this email. Please try again later.',
+                            'message' => 'Too many login attempts from this network. Please try again later.',
                             'retry_after' => $headers['Retry-After'],
                         ], 429, $headers);
                     }),
@@ -53,15 +54,18 @@ class RateLimiterServiceProvider extends RouteServiceProvider
         });
 
         // ========== BOOKING RATE LIMITING ==========
-        // Strategy: 3 requests per minute per user + 20 per hour per user
+        // Strategy: 5 requests per minute per actor+IP + 20 per minute per IP
         // Purpose: Prevent spam bookings
         RateLimiter::for('booking', function (Request $request) {
-            $userId = $request->user()?->id ?? $request->ip();
+            $ip = $this->requestIp($request);
+            $actor = $request->user()?->getAuthIdentifier()
+                ? 'user:'.$request->user()->getAuthIdentifier()
+                : 'ip:'.$ip;
 
             return [
-                // Per user: 3 per minute
-                Limit::perMinute(3)
-                    ->by("booking:{$userId}")
+                // Per authenticated user + IP: 5 per minute.
+                Limit::perMinute(5)
+                    ->by($this->hashedLimiterKey('booking:actor-ip', "{$actor}|{$ip}"))
                     ->response(function (Request $request, array $headers) {
                         return response()->json([
                             'message' => 'Too many booking requests. Please wait before making another booking.',
@@ -69,46 +73,43 @@ class RateLimiterServiceProvider extends RouteServiceProvider
                         ], 429, $headers);
                     }),
 
-                // Per user: 20 per hour
-                Limit::perHour(20)
-                    ->by("booking_hour:{$userId}")
+                // Per IP: 20 per minute across actors.
+                Limit::perMinute(20)
+                    ->by($this->hashedLimiterKey('booking:ip', $ip))
                     ->response(function (Request $request, array $headers) {
                         return response()->json([
-                            'message' => 'Daily booking limit reached. Please try tomorrow.',
+                            'message' => 'Too many booking requests from this network. Please try again later.',
                             'retry_after' => $headers['Retry-After'],
                         ], 429, $headers);
                     }),
             ];
         });
 
-        // ========== API PUBLIC RATE LIMITING ==========
-        // Strategy: 100 requests per minute per IP (for listing rooms)
-        // Purpose: Allow mobile app + web browsing without throttling
-        RateLimiter::for('api-public', function (Request $request) {
-            return Limit::perMinute(100)
-                ->by($request->ip())
-                ->response(function (Request $request, array $headers) {
-                    return response()->json([
-                        'message' => 'Rate limit exceeded. Please wait before making more requests.',
-                        'retry_after' => $headers['Retry-After'],
-                    ], 429, $headers);
-                });
-        });
-
         // ========== TOKEN REFRESH RATE LIMITING ==========
-        // Strategy: 10 requests per minute per user
+        // Strategy: 5 requests per minute per token-derived actor + 20 per minute per IP
         // Purpose: Prevent abuse of token refresh endpoint
         RateLimiter::for('refresh-token', function (Request $request) {
-            $userId = $request->user()?->id ?? $request->ip();
+            $ip = $this->requestIp($request);
 
-            return Limit::perMinute(10)
-                ->by("refresh_token:{$userId}")
-                ->response(function (Request $request, array $headers) {
-                    return response()->json([
-                        'message' => 'Too many token refresh attempts. Please try again later.',
-                        'retry_after' => $headers['Retry-After'],
-                    ], 429, $headers);
-                });
+            return [
+                Limit::perMinute(5)
+                    ->by($this->hashedLimiterKey('refresh-token:actor', $this->refreshActorSubject($request)))
+                    ->response(function (Request $request, array $headers) {
+                        return response()->json([
+                            'message' => 'Too many token refresh attempts. Please try again later.',
+                            'retry_after' => $headers['Retry-After'],
+                        ], 429, $headers);
+                    }),
+
+                Limit::perMinute(20)
+                    ->by($this->hashedLimiterKey('refresh-token:ip', $ip))
+                    ->response(function (Request $request, array $headers) {
+                        return response()->json([
+                            'message' => 'Too many token refresh attempts from this network. Please try again later.',
+                            'retry_after' => $headers['Retry-After'],
+                        ], 429, $headers);
+                    }),
+            ];
         });
 
         // ========== CSRF TOKEN RATE LIMITING ==========
@@ -155,36 +156,6 @@ class RateLimiterServiceProvider extends RouteServiceProvider
             ];
         });
 
-        // ========== GLOBAL API RATE LIMITING ==========
-        // Strategy: 1000 requests per minute per IP (catch-all)
-        // Purpose: Prevent DoS attacks
-        RateLimiter::for('global-api', function (Request $request) {
-            return Limit::perMinute(1000)
-                ->by($request->ip())
-                ->response(function (Request $request, array $headers) {
-                    return response()->json([
-                        'message' => 'Too many requests. Rate limited.',
-                        'retry_after' => $headers['Retry-After'],
-                    ], 429, $headers);
-                });
-        });
-
-        // ========== PASSWORD RESET RATE LIMITING ==========
-        // Strategy: 3 requests per hour per email
-        // Purpose: Prevent reset email spam
-        RateLimiter::for('password-reset', function (Request $request) {
-            $email = $request->input('email');
-
-            return Limit::perHour(3)
-                ->by("reset:{$email}")
-                ->response(function (Request $request, array $headers) {
-                    return response()->json([
-                        'message' => 'Too many password reset requests. Please try again later.',
-                        'retry_after' => $headers['Retry-After'],
-                    ], 429, $headers);
-                });
-        });
-
         // ========== EMAIL VERIFICATION RATE LIMITING ==========
         // Strategy: 5 requests per hour per email
         // Purpose: Prevent email verification spam
@@ -192,7 +163,7 @@ class RateLimiterServiceProvider extends RouteServiceProvider
             $email = $request->user()?->email ?? $request->input('email');
 
             return Limit::perHour(5)
-                ->by("verify:{$email}")
+                ->by($this->hashedLimiterKey('email-verification', (string) $email))
                 ->response(function (Request $request, array $headers) {
                     return response()->json([
                         'message' => 'Too many verification requests. Please try again later.',
@@ -216,5 +187,65 @@ class RateLimiterServiceProvider extends RouteServiceProvider
         RateLimiter::for('booking-confirmation-email-recipient', function (SendBookingConfirmationEmail $job) {
             return Limit::perMinute(5)->by((string) $job->recipientUserId());
         });
+    }
+
+    private function refreshActorSubject(Request $request): string
+    {
+        $cookieName = (string) config('sanctum.cookie_name', 'soleil_token');
+        $cookieToken = $request->cookie($cookieName)
+            ?? $this->extractCookieFromHeader($request, $cookieName);
+
+        if (is_string($cookieToken) && $cookieToken !== '') {
+            return 'cookie:'.hash('sha256', $cookieToken);
+        }
+
+        $bearerToken = $request->bearerToken();
+        if (is_string($bearerToken) && $bearerToken !== '') {
+            return 'bearer:'.hash('sha256', $bearerToken);
+        }
+
+        $userId = $request->user()?->getAuthIdentifier();
+        if ($userId !== null) {
+            return 'user:'.$userId;
+        }
+
+        return 'ip:'.$this->requestIp($request);
+    }
+
+    private function extractCookieFromHeader(Request $request, string $cookieName): ?string
+    {
+        $cookieHeader = $request->header('Cookie');
+
+        if (! is_string($cookieHeader) || $cookieHeader === '') {
+            return null;
+        }
+
+        foreach (explode(';', $cookieHeader) as $cookiePair) {
+            $parts = explode('=', trim($cookiePair), 2);
+
+            if (count($parts) !== 2) {
+                continue;
+            }
+
+            [$name, $value] = $parts;
+
+            if (rawurldecode(trim($name)) !== $cookieName) {
+                continue;
+            }
+
+            return rawurldecode($value);
+        }
+
+        return null;
+    }
+
+    private function requestIp(Request $request): string
+    {
+        return (string) ($request->ip() ?: 'unknown');
+    }
+
+    private function hashedLimiterKey(string $prefix, string $subject): string
+    {
+        return $prefix.':'.hash('sha256', $subject);
     }
 }

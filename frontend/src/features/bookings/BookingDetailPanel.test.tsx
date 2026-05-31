@@ -41,6 +41,10 @@ function makeDetail(overrides: Partial<BookingDetailRaw> = {}): BookingDetailRaw
       price: 20000,
     },
     ...overrides,
+    number_of_guests: overrides.number_of_guests ?? null,
+    special_requests: overrides.special_requests ?? null,
+    payment_policy: overrides.payment_policy ?? 'prepaid',
+    payment_status: overrides.payment_status ?? 'requires_payment_method',
   }
 }
 

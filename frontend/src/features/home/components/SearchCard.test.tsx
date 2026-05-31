@@ -18,6 +18,7 @@ vi.mock('@/shared/lib/location.api', () => ({
 }))
 
 import { getLocations } from '@/shared/lib/location.api'
+import { getHostelToday } from '@/shared/lib/hostelDate'
 import type { Location } from '@/shared/types/location.types'
 
 const mockedGetLocations = vi.mocked(getLocations)
@@ -150,7 +151,7 @@ describe('SearchCard', () => {
     // Set check_out to same day as check_in
     const checkInInput = screen.getByLabelText(/Nhận phòng/i)
     const checkOutInput = screen.getByLabelText(/Trả phòng/i)
-    const today = new Date().toISOString().slice(0, 10)
+    const today = getHostelToday()
 
     await user.clear(checkInInput)
     await user.type(checkInInput, today)

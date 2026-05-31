@@ -3,8 +3,10 @@
 namespace App\Http\Requests;
 
 use App\Models\Room;
+use App\Support\HostelClock;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
+use InvalidArgumentException;
 
 class StoreBookingRequest extends FormRequest
 {
@@ -25,11 +27,24 @@ class StoreBookingRequest extends FormRequest
     {
         return [
             'room_id' => 'required|integer|exists:rooms,id',
-            'check_in' => 'required|date_format:Y-m-d|after_or_equal:today',
+            'check_in' => [
+                'required',
+                'date_format:Y-m-d',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    try {
+                        if (HostelClock::isDateBeforeToday((string) $value)) {
+                            $fail('The check-in date must be today or later.');
+                        }
+                    } catch (InvalidArgumentException) {
+                        // date_format reports invalid input; avoid replacing that error.
+                    }
+                },
+            ],
             'check_out' => 'required|date_format:Y-m-d|after:check_in',
             'guest_name' => 'required|string|min:2|max:255',
             'guest_email' => 'required|email|max:255',
             'number_of_guests' => 'nullable|integer|min:1',
+            'special_requests' => 'nullable|string|max:2000',
         ];
     }
 
@@ -80,6 +95,7 @@ class StoreBookingRequest extends FormRequest
             'guest_email.email' => 'Guest email must be a valid email address.',
             'number_of_guests.integer' => 'Number of guests must be a whole number.',
             'number_of_guests.min' => 'Number of guests must be at least 1.',
+            'special_requests.max' => 'Special requests cannot exceed 2000 characters.',
         ];
     }
 

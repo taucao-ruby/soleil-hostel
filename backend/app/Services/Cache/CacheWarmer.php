@@ -7,6 +7,7 @@ use App\Models\Room;
 use App\Models\User;
 use App\Services\BookingService;
 use App\Services\RoomAvailabilityService;
+use App\Support\HostelClock;
 use App\Traits\HasCacheTagSupport;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -307,7 +308,7 @@ class CacheWarmer
         $warmed++;
 
         // Warm room availability for next 30 days
-        $today = Carbon::today();
+        $today = HostelClock::today()->toMutable();
         $endDate = $today->copy()->addDays(self::DEFAULT_DATE_RANGE_DAYS);
 
         $cacheEntries = $this->roomAvailabilityCache->warmUpCache($today, $endDate);
@@ -393,10 +394,11 @@ class CacheWarmer
     protected function warmBookingsCache(): array
     {
         $warmed = 0;
+        $today = HostelClock::todayDate();
 
         if ($this->dryRun) {
-            $todayBookings = Booking::whereDate('check_in', today())
-                ->orWhereDate('check_out', today())
+            $todayBookings = Booking::whereDate('check_in', $today)
+                ->orWhereDate('check_out', $today)
                 ->count();
 
             return [
@@ -411,7 +413,7 @@ class CacheWarmer
         }
 
         // Warm today's check-ins
-        $todayCheckIns = Booking::whereDate('check_in', today())
+        $todayCheckIns = Booking::whereDate('check_in', $today)
             ->with(['room', 'user'])
             ->get();
 
@@ -420,7 +422,7 @@ class CacheWarmer
         $warmed++;
 
         // Warm today's check-outs
-        $todayCheckOuts = Booking::whereDate('check_out', today())
+        $todayCheckOuts = Booking::whereDate('check_out', $today)
             ->with(['room', 'user'])
             ->get();
 
@@ -512,12 +514,18 @@ class CacheWarmer
         Cache::put('stats:rooms', $roomStats, now()->addHours(1));
         $warmed++;
 
-        // Booking statistics (current month)
+        // Booking statistics (current hostel-local month, bounded as a UTC range
+        // because created_at is a UTC instant column — whereMonth(now()->month)
+        // would skew at the month boundary and ignore the year).
+        $monthStart = HostelClock::now()->startOfMonth();
         $bookingStats = [
-            'total_bookings_month' => Booking::whereMonth('created_at', now()->month)->count(),
+            'total_bookings_month' => Booking::whereBetween('created_at', [
+                $monthStart->utc(),
+                $monthStart->endOfMonth()->utc(),
+            ])->count(),
             'confirmed_bookings' => Booking::where('status', 'confirmed')->count(),
             'pending_bookings' => Booking::where('status', 'pending')->count(),
-            'occupancy_today' => $this->calculateOccupancyRate(today()),
+            'occupancy_today' => $this->calculateOccupancyRate(HostelClock::today()->toMutable()),
         ];
         Cache::put('stats:bookings', $bookingStats, now()->addMinutes(30));
         $warmed++;

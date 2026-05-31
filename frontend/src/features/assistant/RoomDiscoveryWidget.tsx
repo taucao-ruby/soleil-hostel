@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import api from '@/shared/lib/api'
+import { getHostelToday } from '@/shared/lib/hostelDate'
 
 interface RoomCard {
   id: number
@@ -37,6 +38,7 @@ interface AiRoomDiscoveryResponse {
 }
 
 export default function RoomDiscoveryWidget() {
+  const today = getHostelToday()
   const [isOpen, setIsOpen] = useState(false)
   const [checkIn, setCheckIn] = useState('')
   const [checkOut, setCheckOut] = useState('')
@@ -132,7 +134,7 @@ export default function RoomDiscoveryWidget() {
               type="date"
               value={checkIn}
               onChange={e => setCheckIn(e.target.value)}
-              min={new Date().toISOString().split('T')[0]}
+              min={today}
               className="w-full border rounded px-2 py-1.5 text-sm"
             />
           </div>
@@ -145,7 +147,7 @@ export default function RoomDiscoveryWidget() {
               type="date"
               value={checkOut}
               onChange={e => setCheckOut(e.target.value)}
-              min={checkIn || new Date().toISOString().split('T')[0]}
+              min={checkIn || today}
               className="w-full border rounded px-2 py-1.5 text-sm"
             />
           </div>

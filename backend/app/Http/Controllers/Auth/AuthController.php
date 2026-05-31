@@ -7,6 +7,7 @@ use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RefreshTokenRequest;
 use App\Models\PersonalAccessToken;
 use App\Models\User;
+use App\Services\Auth\TokenRefreshRateLimiter;
 use App\Services\EmailVerificationCodeService;
 use App\Traits\ApiResponse;
 use Illuminate\Auth\AuthenticationException;
@@ -191,7 +192,7 @@ class AuthController extends Controller
         }
 
         // ========== Transaction with pessimistic lock (prevents race conditions) ==========
-        return DB::transaction(function () use ($bearerToken) {
+        return DB::transaction(function () use ($bearerToken, $request) {
             // Lock token row to prevent concurrent refresh
             $oldToken = PersonalAccessToken::where(
                 'token',
@@ -204,23 +205,39 @@ class AuthController extends Controller
 
             // ========== Validate: Token not expired? ==========
             if ($oldToken->isExpired()) {
-                return $this->error('Token đã hết hạn. Vui lòng login lại.', 401, ['code' => 'TOKEN_EXPIRED']);
+                return response()->json([
+                    'message' => 'Token đã hết hạn. Vui lòng refresh token.',
+                    'code' => 'TOKEN_EXPIRED',
+                    'expires_at' => $oldToken->expires_at?->toIso8601String(),
+                ], 401);
             }
 
             // ========== Validate: Token not revoked? ==========
             if ($oldToken->isRevoked()) {
-                return $this->error('Token đã bị revoke. Vui lòng login lại.', 401, ['code' => 'TOKEN_REVOKED']);
+                return response()->json([
+                    'message' => 'Token đã bị revoke. Vui lòng login lại.',
+                    'code' => 'TOKEN_REVOKED',
+                    'revoked_at' => $oldToken->revoked_at?->toIso8601String(),
+                ], 401);
             }
 
-            // ========== Check: Refresh count (suspicious activity) ==========
-            // IMPORTANT: Check threshold BEFORE incrementing using >= to catch exact threshold
-            if ($oldToken->refresh_count >= config('sanctum.max_refresh_count_per_hour')) {
-                $oldToken->revoke();
+            if (config('sanctum.verify_device_fingerprint') && $oldToken->device_fingerprint) {
+                $currentFingerprint = self::computeBearerFingerprint($request);
+                if ($currentFingerprint !== null && $currentFingerprint !== $oldToken->device_fingerprint) {
+                    $oldToken->revoke();
 
-                return $this->error('Phát hiện hoạt động bất thường. Vui lòng login lại.', 401, ['code' => 'SUSPICIOUS_ACTIVITY']);
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Token được sử dụng từ device khác. Vui lòng login lại.',
+                        'errors' => ['code' => 'DEVICE_MISMATCH'],
+                    ], 401);
+                }
             }
 
-            // Only increment after passing threshold check
+            app(TokenRefreshRateLimiter::class)->enforce($oldToken);
+
+            // refresh_count is lifetime telemetry only. The per-hour refresh
+            // limit is enforced by TokenRefreshRateLimiter above.
             $oldToken->incrementRefreshCount();
 
             // ========== Get user + token info ==========

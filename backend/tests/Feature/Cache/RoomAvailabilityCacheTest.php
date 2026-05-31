@@ -45,8 +45,20 @@ class RoomAvailabilityCacheTest extends TestCase
         // Results should be identical
         $this->assertEquals($result1->pluck('id')->sort(), $result2->pluck('id')->sort());
 
-        // Cache hit should be significantly faster
-        $this->assertLessThan($time1, $time2 * 2);  // Cache hit should be <50% of DB hit
+        // Behavioral proof: cache key was populated after the first call.
+        // Timing assertions are inherently flaky at sub-millisecond scale.
+        $cacheKey = "rooms_availability_{$checkIn->format('Y-m-d')}_{$checkOut->format('Y-m-d')}_2";
+        try {
+            $inCache = Cache::tags(['room_availability'])->has($cacheKey);
+        } catch (\BadMethodCallException $e) {
+            $inCache = Cache::has($cacheKey);
+        }
+        $this->assertTrue($inCache, 'Second request should have been served from cache (key not found)');
+
+        // Timing variables were collected but we no longer assert on them to
+        // avoid spurious failures on fast hardware where DB + cache latencies
+        // converge (e.g. $time1 ≈ $time2 < 1 ms).
+        unset($time1, $time2);
     }
 
     #[\PHPUnit\Framework\Attributes\Test]

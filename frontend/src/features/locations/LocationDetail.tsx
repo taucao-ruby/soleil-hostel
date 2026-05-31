@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { formatVND } from '@/shared/lib/formatCurrency'
+import { addDaysToDateOnly, getHostelToday } from '@/shared/lib/hostelDate'
 import type { LocationWithRooms } from '@/shared/types/location.types'
 import {
   amenityMaterialIcons,
@@ -66,18 +67,8 @@ const defaultRoomDescription =
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function getLocalDateString(date = new Date()): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
 function addDays(dateString: string, amount: number): string {
-  const [year, month, day] = dateString.split('-').map(Number)
-  if (!year || !month || !day) return dateString
-  const date = new Date(Date.UTC(year, month - 1, day + amount))
-  return date.toISOString().slice(0, 10)
+  return addDaysToDateOnly(dateString, amount)
 }
 
 function clampGuests(value: number): number {
@@ -143,7 +134,7 @@ const LocationDetail: React.FC = () => {
   const [checkOut, setCheckOut] = useState(searchParams.get('check_out') || '')
   const [guests, setGuests] = useState(clampGuests(Number(searchParams.get('guests') || '1')))
 
-  const today = getLocalDateString()
+  const today = getHostelToday()
   const defaultCheckOutMin = addDays(today, 1)
 
   const submittedCheckIn = searchParams.get('check_in') || ''

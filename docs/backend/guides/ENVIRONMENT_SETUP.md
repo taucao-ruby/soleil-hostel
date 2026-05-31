@@ -122,11 +122,26 @@ php artisan migrate
 php artisan db:seed
 ```
 
-### SQLite (Testing)
+### PostgreSQL (Testing)
 
-Tests use in-memory SQLite by default. No setup required.
+The test suite is PostgreSQL-only — it exercises exclusion constraints,
+`btree_gist`, `daterange` operators, and triggers — and runs against a dedicated
+`soleil_test` database (configured in `backend/phpunit.xml`). Start PostgreSQL
+and create the test database once:
 
 ```bash
+# From the repo root — starts the `db` service (postgres:16)
+docker compose up -d db
+
+# Create the dedicated test database (one-time, if missing)
+docker compose exec -T db createdb -U soleil soleil_test
+```
+
+Confirm readiness (GATE-0 prints PASSED / BLOCKED), then run the suite:
+
+```bash
+cd backend
+php scripts/check-test-db.php
 php artisan test
 ```
 
@@ -184,11 +199,15 @@ docker-compose up -d redis
 ### Database Connection Refused
 
 ```bash
-# Check PostgreSQL is running
-pg_isready -h localhost -p 5432
+# Confirm the test DB is reachable (clear GATE-0 PASSED / BLOCKED message)
+cd backend && php scripts/check-test-db.php
 
-# Create database if missing
-createdb soleil_hostel
+# Start PostgreSQL if it is down (from the repo root)
+docker compose up -d db
+
+# Create databases if missing
+docker compose exec -T db createdb -U soleil soleil_hostel   # dev/app DB
+docker compose exec -T db createdb -U soleil soleil_test     # test DB
 ```
 
 ### CORS Errors

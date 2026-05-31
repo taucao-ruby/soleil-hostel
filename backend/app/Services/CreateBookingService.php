@@ -5,10 +5,13 @@ namespace App\Services;
 use App\Database\TransactionIsolation;
 use App\Database\TransactionMetrics;
 use App\Enums\BookingStatus;
+use App\Enums\PaymentPolicy;
+use App\Enums\PaymentStatus;
 use App\Exceptions\PendingBookingLimitExceededException;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
+use App\Support\HostelClock;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
@@ -51,9 +54,10 @@ class CreateBookingService
 
     private const SQLSTATE_DEADLOCK_DETECTED = '40P01';
 
-    public function __construct(
-        private readonly StripeService $stripeService
-    ) {}
+    private const USER_SUPPLIED_ADDITIONAL_FIELDS = [
+        'number_of_guests' => true,
+        'special_requests' => true,
+    ];
 
     /**
      * Create a new booking guaranteed not to overlap with existing bookings
@@ -127,18 +131,6 @@ class CreateBookingService
                     $userId,
                     $additionalData
                 );
-
-                if ($booking->status === BookingStatus::PENDING) {
-                    try {
-                        $paymentIntentId = $this->createPaymentIntentOutsideTransaction($booking);
-                    } catch (Throwable $e) {
-                        $this->voidPendingBookingAfterPaymentIntentFailure($booking, $e);
-
-                        throw $e;
-                    }
-
-                    $booking = $this->attachPaymentIntentToBooking($booking, $paymentIntentId);
-                }
 
                 // Record success metrics
                 $durationMs = (microtime(true) - $startTime) * 1000;
@@ -329,9 +321,19 @@ class CreateBookingService
             //
             // User-input columns flow through fill() (respects $fillable).
             // Server-controlled columns (location_id, status, user_id, amount,
-            // plus any internal $additionalData) flow through forceFill() so
+            // plus trusted internal $additionalData) flow through forceFill() so
             // they cannot be supplied by mass assignment from the controller.
-            $amount = $additionalData['amount'] ?? $this->calculateAmount($room, $checkIn, $checkOut);
+            $userSuppliedAdditionalData = array_intersect_key(
+                $additionalData,
+                self::USER_SUPPLIED_ADDITIONAL_FIELDS
+            );
+            $trustedAdditionalData = array_diff_key(
+                $additionalData,
+                self::USER_SUPPLIED_ADDITIONAL_FIELDS
+            );
+
+            $amount = $trustedAdditionalData['amount'] ?? $this->calculateAmount($room, $checkIn, $checkOut);
+            $paymentPolicy = $this->defaultPaymentPolicy();
 
             $booking = (new Booking)->fill([
                 'room_id' => $roomId,
@@ -339,86 +341,21 @@ class CreateBookingService
                 'check_out' => $checkOut,
                 'guest_name' => $guestName,
                 'guest_email' => $guestEmail,
+                ...$userSuppliedAdditionalData,
             ])->forceFill([
                 'location_id' => $room->location_id,
                 'status' => BookingStatus::PENDING,
                 'user_id' => $userId,
                 'amount' => $amount,
-                ...$additionalData,
+                'payment_policy' => $paymentPolicy,
+                'payment_status' => $this->initialPaymentStatus($paymentPolicy),
+                'payment_currency' => strtolower((string) config('cashier.currency', 'vnd')),
+                ...$trustedAdditionalData,
             ]);
             $booking->save();
 
             // Step 5: Return booking (transaction auto-commit, lock released)
             return $booking->fresh();
-        });
-    }
-
-    /**
-     * Create the Stripe PaymentIntent after the booking transaction commits.
-     */
-    private function createPaymentIntentOutsideTransaction(Booking $booking): string
-    {
-        return $this->stripeService->createPaymentIntent($booking);
-    }
-
-    /**
-     * Attach Stripe's PaymentIntent to the still-pending booking with a guarded update.
-     */
-    private function attachPaymentIntentToBooking(Booking $booking, string $paymentIntentId): Booking
-    {
-        $updated = Booking::query()
-            ->whereKey($booking->id)
-            ->where('status', BookingStatus::PENDING->value)
-            ->whereNull('payment_intent_id')
-            ->update([
-                'payment_intent_id' => $paymentIntentId,
-                'updated_at' => now(),
-            ]);
-
-        if ($updated !== 1) {
-            throw new RuntimeException(
-                "Could not attach PaymentIntent to pending booking #{$booking->id}; reconciliation required."
-            );
-        }
-
-        return $booking->fresh();
-    }
-
-    /**
-     * Release inventory if Stripe PaymentIntent creation fails after local commit.
-     */
-    private function voidPendingBookingAfterPaymentIntentFailure(Booking $booking, Throwable $e): void
-    {
-        Log::error('Booking PaymentIntent creation failed; voiding pending booking', [
-            'booking_id' => $booking->id,
-            'room_id' => $booking->room_id,
-            'location_id' => $booking->location_id,
-            'user_id' => $booking->user_id,
-            'amount' => $booking->amount,
-            'exception' => class_basename($e),
-            'code' => $e->getCode(),
-        ]);
-
-        DB::transaction(function () use ($booking): void {
-            $locked = Booking::query()
-                ->whereKey($booking->id)
-                ->lockForUpdate()
-                ->first();
-
-            if ($locked === null) {
-                return;
-            }
-
-            if ($locked->status !== BookingStatus::PENDING || $locked->payment_intent_id !== null) {
-                return;
-            }
-
-            $locked = $locked->transitionTo(BookingStatus::CANCELLED);
-            $locked->forceFill([
-                'cancelled_at' => now(),
-                'cancelled_by' => null,
-                'cancellation_reason' => 'payment_intent_creation_failed',
-            ])->save();
         });
     }
 
@@ -458,6 +395,44 @@ class CreateBookingService
         return (int) round(((float) $room->price) * $nights);
     }
 
+    private function defaultPaymentPolicy(): PaymentPolicy
+    {
+        $configured = (string) config('booking.payment_policy', PaymentPolicy::PREPAID->value);
+        $policy = PaymentPolicy::tryFrom($configured) ?? PaymentPolicy::PREPAID;
+
+        // PAY-02 v1 guardrail: `authorize_then_capture` has no capture trigger
+        // yet — there is no StripeService::capturePaymentIntent and capture_due_at
+        // is never written or consumed. A booking originated under that policy
+        // would CONFIRM on authorization (paymentAllowsConfirmation accepts
+        // AUTHORIZED) and then have its uncaptured Stripe auth-hold expire
+        // (~7 days), leaving a confirmed-but-unpaid booking that silently gives
+        // away the room. Until the capture loop ships, refuse to originate new
+        // bookings under it so a BOOKING_PAYMENT_POLICY misconfiguration cannot
+        // leak revenue; fall back to prepaid (automatic capture). The webhook
+        // handler keeps its manual-capture branch for forward compatibility.
+        // See docs/FINDINGS_BACKLOG.md (PAY-02).
+        if ($policy === PaymentPolicy::AUTHORIZE_THEN_CAPTURE) {
+            Log::warning(
+                'CreateBookingService: booking.payment_policy "authorize_then_capture" is not supported in v1 (no capture path); falling back to prepaid.',
+                ['configured_policy' => $configured]
+            );
+
+            return PaymentPolicy::PREPAID;
+        }
+
+        return $policy;
+    }
+
+    private function initialPaymentStatus(PaymentPolicy $policy): PaymentStatus
+    {
+        return match ($policy) {
+            PaymentPolicy::PREPAID,
+            PaymentPolicy::AUTHORIZE_THEN_CAPTURE => PaymentStatus::REQUIRES_CONFIRMATION,
+            PaymentPolicy::PAY_AT_PROPERTY => PaymentStatus::OFFLINE_DUE,
+            PaymentPolicy::NOT_REQUIRED => PaymentStatus::NOT_REQUIRED,
+        };
+    }
+
     /**
      * Update a booking while checking for overlaps (excluding the booking itself)
      *
@@ -474,7 +449,36 @@ class CreateBookingService
         $this->validateDates($checkIn, $checkOut, true, $request);
 
         return DB::transaction(function () use ($booking, $checkIn, $checkOut, $additionalData) {
+            $datesChanged = ! $checkIn->isSameDay($booking->check_in)
+                || ! $checkOut->isSameDay($booking->check_out);
+
+            if ($datesChanged) {
+                // SH-01: money-final (paid or confirmed) bookings are date-immutable
+                // in Phase 0 — re-pricing a captured payment is out of scope, so the
+                // guest must cancel + rebook. Defense in depth behind
+                // UpdateBookingRequest; also guards non-HTTP callers.
+                if ($booking->isMoneyFinal()) {
+                    throw new RuntimeException(
+                        'Không thể đổi ngày cho booking đã thanh toán hoặc đã xác nhận. Vui lòng hủy và đặt lại.'
+                    );
+                }
+
+                // SH-01: a pending booking that already has a Stripe PaymentIntent
+                // cannot be re-priced in place — Phase 0 has no PI top-up/amount-sync
+                // path and Stripe I/O must not run under the row lock acquired below.
+                // Require checkout restart so the intent can never go stale (its
+                // amount would no longer match and assertPaymentIntentMatchesBooking
+                // would block payment).
+                if (filled($booking->payment_intent_id)) {
+                    throw new RuntimeException(
+                        'Không thể đổi ngày khi đã khởi tạo thanh toán. Vui lòng hủy và đặt lại.'
+                    );
+                }
+            }
+
             // Acquire lock on overlapping bookings (excluding the current booking)
+            // so a date change can never create a double-booking. Half-open
+            // interval [check_in, check_out).
             $conflicts = Booking::query()
                 ->overlappingBookings($booking->room_id, $checkIn, $checkOut, $booking->id)
                 ->withLock()
@@ -486,11 +490,29 @@ class CreateBookingService
                 );
             }
 
-            $booking->update([
+            $booking->fill([
                 'check_in' => $checkIn,
                 'check_out' => $checkOut,
                 ...$additionalData,
             ]);
+
+            // SH-01: re-price a pending booking server-side whenever the stay
+            // length changes, using the same canonical formula as create(), so a
+            // date edit can never leave a stale (under- or over-priced) amount.
+            // amount is not mass-assignable (server-controlled) — set via forceFill.
+            if ($datesChanged) {
+                $booking->loadMissing('room');
+                $room = $booking->room;
+                if (! $room instanceof Room) {
+                    throw new RuntimeException("Booking #{$booking->id} is missing its room; cannot re-price.");
+                }
+
+                $booking->forceFill([
+                    'amount' => $this->calculateAmount($room, $checkIn, $checkOut),
+                ]);
+            }
+
+            $booking->save();
 
             return $booking;
         });
@@ -517,7 +539,7 @@ class CreateBookingService
 
         // Only reject dates before today for new bookings, not updates to existing ones.
         // Check-in is date-only, so same-day bookings are valid throughout the day.
-        if (! $isUpdate && $checkIn->lt(Carbon::today())) {
+        if (! $isUpdate && $checkIn->toDateString() < HostelClock::todayDate()) {
             throw new RuntimeException(
                 'Ngày check-in không được là ngày đã qua'
             );
@@ -530,9 +552,9 @@ class CreateBookingService
     private function parseDate($date): Carbon
     {
         if ($date instanceof Carbon) {
-            return $date;
+            return $date->copy()->startOfDay();
         }
 
-        return Carbon::parse($date)->startOfDay();
+        return HostelClock::parseDate((string) $date)->toMutable();
     }
 }

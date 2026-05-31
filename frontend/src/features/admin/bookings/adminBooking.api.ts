@@ -1,4 +1,5 @@
 import api from '@/shared/lib/api'
+import { getHostelToday } from '@/shared/lib/hostelDate'
 import {
   parseBookingStatusPayload,
   type BookingDetailRaw,
@@ -88,7 +89,7 @@ export const getTodayArrivals = async (
   locationId?: number,
   signal?: AbortSignal
 ): Promise<BookingDetailRaw[]> => {
-  const today = new Date().toISOString().split('T')[0]
+  const today = getHostelToday()
   const response = await api.get<{ data: AdminBookingsResponsePayload }>('/v1/admin/bookings', {
     params: {
       location_id: locationId,
@@ -105,7 +106,7 @@ export const getTodayDepartures = async (
   locationId?: number,
   signal?: AbortSignal
 ): Promise<BookingDetailRaw[]> => {
-  const today = new Date().toISOString().split('T')[0]
+  const today = getHostelToday()
   const response = await api.get<{ data: AdminBookingsResponsePayload }>('/v1/admin/bookings', {
     params: {
       location_id: locationId,

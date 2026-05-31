@@ -15,6 +15,7 @@ use App\Models\Location;
 use App\Models\Room;
 use App\Models\ServiceRecoveryCase;
 use App\Models\Stay;
+use App\Support\HostelClock;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -27,10 +28,12 @@ class OperationalDashboardService
 
     public function expectedArrivals(Location $location, Carbon $date): Collection
     {
+        [$startUtc, $endUtc] = HostelClock::localDateRangeAsUtc($date->toDateString());
+
         return Stay::query()
             ->with(['booking.room', 'currentRoomAssignment.room'])
             ->where('stay_status', StayStatus::EXPECTED->value)
-            ->whereDate('scheduled_check_in_at', $date->toDateString())
+            ->whereBetween('scheduled_check_in_at', [$startUtc, $endUtc])
             ->whereHas('booking', fn ($query) => $query->where('location_id', $location->id))
             ->orderBy('scheduled_check_in_at')
             ->get();
@@ -48,10 +51,12 @@ class OperationalDashboardService
 
     public function dueOuts(Location $location, Carbon $date): Collection
     {
+        [$startUtc, $endUtc] = HostelClock::localDateRangeAsUtc($date->toDateString());
+
         return Stay::query()
             ->with(['booking.room', 'currentRoomAssignment.room'])
             ->where('stay_status', StayStatus::IN_HOUSE->value)
-            ->whereDate('scheduled_check_out_at', $date->toDateString())
+            ->whereBetween('scheduled_check_out_at', [$startUtc, $endUtc])
             ->whereHas('booking', fn ($query) => $query->where('location_id', $location->id))
             ->orderBy('scheduled_check_out_at')
             ->get();

@@ -311,7 +311,7 @@ export interface BookingFormData {
   check_in: string   // ISO date string
   check_out: string  // ISO date string
   number_of_guests: number
-  special_requests?: string
+  special_requests: string | null
 }
 
 // Created booking (POST /v1/bookings response)
@@ -322,7 +322,7 @@ export interface Booking {
   guest_email: string
   check_in: string
   check_out: string
-  number_of_guests: number
+  number_of_guests: number | null
   special_requests: string | null
   status: 'pending' | 'confirmed' | 'refund_pending' | 'cancelled' | 'refund_failed'  // matches backend BookingStatus enum
   total_price: number
@@ -393,6 +393,9 @@ export function getMinCheckOutDate(checkInDate?: string): string
 - `check_in`: Required, cannot be in the past
 - `check_out`: Required, must be after check-in, max 30 days stay
 - `number_of_guests`: Required, 1-10
+
+**Generic booking update:** The frontend does not implement `bookingApi.update`. Backend generic
+update does not accept `room_id`; room movement requires a dedicated flow if introduced later.
 
 ---
 

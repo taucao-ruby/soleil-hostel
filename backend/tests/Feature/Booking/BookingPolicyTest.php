@@ -123,14 +123,14 @@ class BookingPolicyTest extends TestCase
      */
     public function test_owner_can_update_own_booking(): void
     {
-        $newCheckIn = Carbon::now()->addDays(10)->startOfDay();
-        $newCheckOut = $newCheckIn->clone()->addDays(2);
-
+        // SH-01: this fixture booking is CONFIRMED (money-final), so its dates are
+        // immutable — the owner may still update guest contact info by resending
+        // the existing dates unchanged. Owner date changes on PENDING bookings are
+        // covered in BookingUpdateTest.
         $response = $this->actingAs($this->owner, 'sanctum')
             ->putJson("/api/bookings/{$this->booking->id}", [
-                'room_id' => $this->room->id,
-                'check_in' => $newCheckIn->toDateString(),
-                'check_out' => $newCheckOut->toDateString(),
+                'check_in' => $this->booking->check_in->toDateString(),
+                'check_out' => $this->booking->check_out->toDateString(),
                 'guest_name' => 'Updated Guest Name',
                 'guest_email' => 'updated@example.com',
             ]);
@@ -151,9 +151,12 @@ class BookingPolicyTest extends TestCase
      */
     public function test_non_owner_cannot_update_other_booking(): void
     {
+        // SH-01 regression guard: the money-final date prohibition must NOT
+        // pre-empt authorization. A non-owner editing this CONFIRMED booking gets
+        // a clean 403 (not a 422 leaking that the booking is paid/confirmed),
+        // because the request-layer prohibition is gated on can('update').
         $response = $this->actingAs($this->otherUser, 'sanctum')
             ->putJson("/api/bookings/{$this->booking->id}", [
-                'room_id' => $this->room->id,
                 'check_in' => Carbon::now()->addDays(10)->toDateString(),
                 'check_out' => Carbon::now()->addDays(12)->toDateString(),
                 'guest_name' => 'Hacker',
@@ -266,13 +269,15 @@ class BookingPolicyTest extends TestCase
      */
     public function test_booking_creation_rate_limiting(): void
     {
-        // Throttle is 10 requests per 1 minute
+        // throttle:booking allows 5 creation attempts per actor+IP per minute.
         $checkIn = Carbon::now()->addDays(5)->startOfDay();
         $checkOut = $checkIn->clone()->addDays(2);
+        $ip = '203.0.113.71';
 
-        for ($i = 0; $i < 11; $i++) {
+        for ($i = 0; $i < 6; $i++) {
             $room = Room::factory()->create();
             $response = $this->actingAs($this->owner, 'sanctum')
+                ->withServerVariables(['REMOTE_ADDR' => $ip])
                 ->postJson('/api/bookings', [
                     'room_id' => $room->id,
                     'check_in' => $checkIn->toDateString(),
@@ -281,10 +286,10 @@ class BookingPolicyTest extends TestCase
                     'guest_email' => "guest{$i}@example.com",
                 ]);
 
-            if ($i < 10) {
+            if ($i < 5) {
                 $this->assertTrue($response->status() === 201 || $response->status() === 422);
             } else {
-                // 11th request should be throttled
+                // 6th request should be throttled
                 $this->assertEquals(429, $response->status());
             }
         }
@@ -298,7 +303,6 @@ class BookingPolicyTest extends TestCase
     {
         $response = $this->actingAs($this->owner, 'sanctum')
             ->putJson("/api/bookings/{$this->booking->id}", [
-                'room_id' => $this->room->id,
                 'check_in' => '2025-12-15',
                 'check_out' => '2025-12-10', // Before checkin
                 'guest_name' => 'Guest',
@@ -326,7 +330,6 @@ class BookingPolicyTest extends TestCase
         // Try to update first booking to overlap with second
         $response = $this->actingAs($this->owner, 'sanctum')
             ->putJson("/api/bookings/{$this->booking->id}", [
-                'room_id' => $this->room->id,
                 'check_in' => Carbon::now()->addDays(16)->toDateString(),
                 'check_out' => Carbon::now()->addDays(20)->toDateString(),
                 'guest_name' => 'Guest',
@@ -372,7 +375,6 @@ class BookingPolicyTest extends TestCase
     {
         $response = $this->actingAs($this->owner, 'sanctum')
             ->putJson('/api/bookings/9999', [
-                'room_id' => $this->room->id,
                 'check_in' => Carbon::now()->addDays(5)->toDateString(),
                 'check_out' => Carbon::now()->addDays(7)->toDateString(),
                 'guest_name' => 'Guest',

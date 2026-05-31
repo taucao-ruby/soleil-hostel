@@ -45,11 +45,15 @@ const arrival: BookingDetailRaw = {
   check_out: '2026-04-30',
   guest_name: 'Nguyen Van A',
   guest_email: 'guest@example.com',
+  number_of_guests: null,
+  special_requests: null,
   status: 'confirmed',
   status_label: 'Confirmed',
   nights: 1,
   amount: 900000,
   amount_formatted: '900.000₫',
+  payment_policy: 'prepaid',
+  payment_status: 'paid',
   room: {
     id: 7,
     name: 'Superior 7',
@@ -128,17 +132,8 @@ describe('TodayOperations', () => {
     consoleErrorSpy.mockRestore()
   })
 
-  it('calls the live room patch route without the deprecated /status suffix', async () => {
+  it('checks in via the canonical /readiness route, not /status or the full-update route', async () => {
     const user = userEvent.setup()
-    mockApiPatch.mockImplementation((url: string) => {
-      if (url.endsWith('/status')) {
-        return Promise.reject(
-          Object.assign(new Error('Unhandled route'), { response: { status: 404 } })
-        )
-      }
-
-      return Promise.resolve(roomResponse)
-    })
 
     renderTodayOperations()
 
@@ -146,14 +141,13 @@ describe('TodayOperations', () => {
 
     await waitFor(() => {
       expect(mockApiPatch).toHaveBeenCalledWith(
-        '/v1/rooms/7',
+        '/v1/rooms/7/readiness',
         expect.objectContaining({ readiness_status: 'occupied' })
       )
     })
-    expect(mockApiPatch).not.toHaveBeenCalledWith(
-      '/v1/rooms/7/status',
-      expect.objectContaining({ readiness_status: 'occupied' })
-    )
+    // Neither the deprecated /status route nor the admin-only full-room PATCH.
+    expect(mockApiPatch).not.toHaveBeenCalledWith('/v1/rooms/7/status', expect.anything())
+    expect(mockApiPatch).not.toHaveBeenCalledWith('/v1/rooms/7', expect.anything())
   })
 
   it('does not send lock_version when updating room readiness', async () => {

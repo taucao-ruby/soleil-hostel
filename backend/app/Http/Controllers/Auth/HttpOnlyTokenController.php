@@ -156,8 +156,8 @@ class HttpOnlyTokenController extends Controller
      *
      * SECURITY FLOW:
      * 1. Validate old token from cookie
-     * 2. Check expiration + refresh count
-     * 3. Create new token with a fresh refresh_count
+     * 2. Check expiration + hourly refresh-rate limit
+     * 3. Create new token with lifetime refresh_count telemetry
      * 4. Revoke old token
      * 5. Set new httpOnly cookie
      *
@@ -173,14 +173,13 @@ class HttpOnlyTokenController extends Controller
         }
 
         $stagedTokenId = $stagedToken->getKey();
-        $maxRefreshCount = (int) config('sanctum.max_refresh_count_per_hour', 10);
 
         // ========== Atomic rotation ==========
         // Wrap the full refresh in a single transaction with pessimistic row-lock to prevent
         // concurrent refresh requests from creating two new tokens for one identifier
         // (TOCTOU between revoke and create). The lockForUpdate inside the transaction
         // serializes parallel calls; the second one sees revoked_at != null and returns 401.
-        return DB::transaction(function () use ($stagedTokenId, $maxRefreshCount) {
+        return DB::transaction(function () use ($stagedTokenId) {
             /** @var PersonalAccessToken $oldToken */
             $oldToken = PersonalAccessToken::where('id', $stagedTokenId)
                 ->lockForUpdate()
@@ -191,13 +190,8 @@ class HttpOnlyTokenController extends Controller
                 return $this->error('Token không hợp lệ. Vui lòng login lại.', 401, ['code' => 'TOKEN_INVALID']);
             }
 
-            // Inclusive cap (>=): a token already at the threshold is rejected.
-            if ($oldToken->refresh_count >= $maxRefreshCount) {
-                $oldToken->update(['revoked_at' => now()]);
-
-                return $this->error('Phát hiện hoạt động bất thường. Vui lòng login lại.', 401, ['code' => 'SUSPICIOUS_ACTIVITY']);
-            }
-
+            // refresh_count is lifetime telemetry only. The per-hour refresh
+            // limit is enforced in CheckHttpOnlyTokenValid.
             $oldToken->increment('refresh_count');
 
             // ========== Create New Token ==========

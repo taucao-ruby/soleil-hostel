@@ -17,6 +17,14 @@ fail() { echo "[FAIL] $1"; exit 1; }
 echo "=== Soleil Hostel — Ship Gate ==="
 echo ""
 
+# Pre-gate: booking date correctness
+echo "--- Pre-gate: assert-date-correctness.sh ---"
+(cd "$REPO_ROOT" && bash scripts/assert-date-correctness.sh) \
+    && pass "Pre-gate assert-date-correctness" \
+    || fail "Pre-gate assert-date-correctness"
+
+echo ""
+
 # Pre-gate: harness governance lints (no-op if scripts or node are absent)
 if command -v node >/dev/null 2>&1; then
     for lint in lint-memory.mjs audit-skills.mjs lint-doc-pointers.mjs; do

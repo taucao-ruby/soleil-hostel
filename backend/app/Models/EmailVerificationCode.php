@@ -2,10 +2,18 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property CarbonInterface|null $expires_at
+ * @property CarbonInterface|null $last_sent_at
+ * @property CarbonInterface|null $consumed_at
+ */
 class EmailVerificationCode extends Model
 {
     protected $fillable = [
@@ -40,7 +48,7 @@ class EmailVerificationCode extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->whereNull('consumed_at')
-            ->where('expires_at', '>', now());
+            ->where('expires_at', '>', CarbonImmutable::now('UTC'));
     }
 
     /**
@@ -56,6 +64,34 @@ class EmailVerificationCode extends Model
      */
     public function isExpired(): bool
     {
-        return $this->expires_at->isPast();
+        return $this->expires_at->lessThanOrEqualTo(CarbonImmutable::now('UTC'));
+    }
+
+    protected function expiresAt(): Attribute
+    {
+        return Attribute::make(set: fn (mixed $value) => $this->utcDateTime($value));
+    }
+
+    protected function lastSentAt(): Attribute
+    {
+        return Attribute::make(set: fn (mixed $value) => $this->utcDateTime($value));
+    }
+
+    protected function consumedAt(): Attribute
+    {
+        return Attribute::make(set: fn (mixed $value) => $this->utcDateTime($value));
+    }
+
+    private function utcDateTime(mixed $value): mixed
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if ($value instanceof CarbonInterface) {
+            return $value->copy()->utc();
+        }
+
+        return CarbonImmutable::parse((string) $value)->utc();
     }
 }

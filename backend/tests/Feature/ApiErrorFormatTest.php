@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Http\Middleware\AddCorrelationId;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 /**
@@ -208,6 +209,32 @@ class ApiErrorFormatTest extends TestCase
         $this->assertStringNotContainsString('Stack trace', $body);
         $this->assertStringNotContainsString('#0 ', $body);
         $this->assertStringNotContainsString('.php:', $body);
+    }
+
+    public function test_production_unhandled_api_error_is_generic_when_debug_is_true(): void
+    {
+        $this->app->detectEnvironment(fn () => 'production');
+        config([
+            'app.env' => 'production',
+            'app.debug' => true,
+        ]);
+
+        Route::get('/api/test-unhandled-production-error', static function (): void {
+            throw new \RuntimeException('Sensitive production exception detail');
+        });
+
+        $response = $this->getJson('/api/test-unhandled-production-error');
+
+        $response->assertStatus(500);
+        $response->assertJson([
+            'success' => false,
+            'message' => 'Internal server error.',
+        ]);
+
+        $this->assertStringNotContainsString(
+            'Sensitive production exception detail',
+            $response->getContent()
+        );
     }
 
     // =====================================================================

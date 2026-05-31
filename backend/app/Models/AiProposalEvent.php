@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Audit record for every BookingActionProposal lifecycle event.
  *
- * Events: shown (proposal presented to user), confirmed, declined.
+ * Events: shown (proposal presented to user), confirmed, declined, errored.
  *
  * @property int $id
  * @property int|null $user_id // nullable since Batch 4 (3F): user deletion sets this null, audit row survives

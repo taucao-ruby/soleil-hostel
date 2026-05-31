@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { createBooking } from './booking.api'
+import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
+import { loadStripe } from '@stripe/stripe-js'
+import { createBooking, createBookingPaymentIntent, verifyBookingPayment } from './booking.api'
 import { getRooms } from '../rooms/room.api'
 import type { Room } from '../rooms/room.types'
 import type { Booking } from '@/shared/types/booking.types'
@@ -29,6 +31,14 @@ const BOOKING_VALIDATION_FALLBACK_MESSAGE =
   'Thông tin đặt phòng không hợp lệ. Vui lòng kiểm tra lại.'
 
 const BOOKING_GENERIC_ERROR_MESSAGE = 'Không thể tạo đặt phòng lúc này. Vui lòng thử lại sau.'
+const PAYMENT_SETUP_ERROR_MESSAGE =
+  'Cổng thanh toán chưa được cấu hình. Vui lòng liên hệ lễ tân để được hỗ trợ.'
+const PAYMENT_GENERIC_ERROR_MESSAGE = 'Không thể xử lý thanh toán lúc này. Vui lòng thử lại sau.'
+const PAYMENT_INCOMPLETE_MESSAGE =
+  'Thanh toán chưa hoàn tất. Vui lòng kiểm tra thông tin thẻ và thử lại.'
+
+const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined
+const stripePromise = STRIPE_PUBLISHABLE_KEY ? loadStripe(STRIPE_PUBLISHABLE_KEY) : null
 
 function getSafeServerMessage(data: ApiErrorBody | undefined): string | null {
   if (typeof data?.message === 'string' && data.message.trim().length > 0) {
@@ -54,6 +64,24 @@ function resolveBookingSubmitErrorMessage(error: unknown): string {
   }
 
   return BOOKING_GENERIC_ERROR_MESSAGE
+}
+
+function resolvePaymentErrorMessage(error: unknown): string {
+  if (!isAxiosError<ApiErrorBody>(error)) {
+    return PAYMENT_GENERIC_ERROR_MESSAGE
+  }
+
+  const status = error.response?.status
+
+  if (status === 401 || status === 403) {
+    return 'Bạn không có quyền thực hiện thanh toán cho đặt phòng này.'
+  }
+
+  if (status === 422) {
+    return getSafeServerMessage(error.response?.data) ?? PAYMENT_INCOMPLETE_MESSAGE
+  }
+
+  return PAYMENT_GENERIC_ERROR_MESSAGE
 }
 
 function formatCompactVND(amount: number): string {
@@ -128,6 +156,101 @@ function InlineSpinner({ label }: { label: string }) {
   )
 }
 
+function BookingPaymentStep({
+  booking,
+  bookingReference,
+  onVerified,
+}: {
+  booking: Booking
+  bookingReference: string
+  onVerified: (booking: Booking) => void
+}) {
+  const stripe = useStripe()
+  const elements = useElements()
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [isPaymentSubmitting, setIsPaymentSubmitting] = useState(false)
+
+  const handlePaymentSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (!stripe || !elements) {
+      setPaymentError('Biểu mẫu thanh toán chưa sẵn sàng. Vui lòng thử lại sau vài giây.')
+      return
+    }
+
+    setPaymentError(null)
+    setIsPaymentSubmitting(true)
+
+    try {
+      const result = await stripe.confirmPayment({
+        elements,
+        redirect: 'if_required',
+        confirmParams: {
+          return_url: window.location.href,
+        },
+      })
+
+      if (result.error) {
+        setPaymentError(PAYMENT_INCOMPLETE_MESSAGE)
+        return
+      }
+
+      const verifiedBooking = await verifyBookingPayment(booking.id)
+      if (verifiedBooking.status !== 'confirmed' || verifiedBooking.payment_status !== 'paid') {
+        setPaymentError('Thanh toán đang xử lý. Vui lòng đợi trong giây lát rồi thử lại.')
+        return
+      }
+
+      onVerified(verifiedBooking)
+    } catch (error) {
+      setPaymentError(resolvePaymentErrorMessage(error))
+    } finally {
+      setIsPaymentSubmitting(false)
+    }
+  }
+
+  return (
+    <div data-testid="payment-step" className="mt-6 border-t border-hueBorder pt-6">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-hueBlack">Thanh toán bảo mật</p>
+          <p className="mt-1 text-sm text-hueMuted">Mã đặt phòng {bookingReference}</p>
+        </div>
+        <p className="text-sm font-medium text-brandAmber">Đã giữ phòng tạm thời</p>
+      </div>
+
+      {paymentError && (
+        <div
+          data-testid="payment-error-message"
+          className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3"
+          role="alert"
+        >
+          <p className="text-sm font-medium leading-6 text-red-800">{paymentError}</p>
+        </div>
+      )}
+
+      <form className="mt-5 space-y-5" noValidate onSubmit={handlePaymentSubmit}>
+        <div className="rounded-2xl border border-hueBorder bg-white p-4">
+          <PaymentElement />
+        </div>
+
+        <button
+          type="submit"
+          disabled={!stripe || !elements || isPaymentSubmitting}
+          aria-busy={isPaymentSubmitting}
+          className="flex w-full items-center justify-center rounded-xl bg-brandAmber px-4 py-3 text-sm font-medium text-hueBlack transition hover:bg-[#b8872a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandAmber/30 disabled:cursor-not-allowed disabled:bg-[#d6b173] disabled:text-hueBlack/70"
+        >
+          {isPaymentSubmitting ? (
+            <InlineSpinner label="Đang xác nhận thanh toán..." />
+          ) : (
+            'Thanh toán và xác nhận đặt phòng'
+          )}
+        </button>
+      </form>
+    </div>
+  )
+}
+
 function getFieldClass(hasError: boolean, disabled = false): string {
   return `w-full rounded-xl border bg-white px-4 py-3 text-sm text-hueBlack outline-none transition focus:ring-2 ${
     hasError
@@ -157,6 +280,8 @@ const BookingForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [bookingReference, setBookingReference] = useState<string | null>(null)
+  const [pendingBooking, setPendingBooking] = useState<Booking | null>(null)
+  const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [redirectCountdown, setRedirectCountdown] = useState(2)
 
   useEffect(() => {
@@ -224,7 +349,8 @@ const BookingForm: React.FC = () => {
     formData.check_in && formData.check_out
       ? `${formatDateDisplay(formData.check_in)} → ${formatDateDisplay(formData.check_out)}`
       : 'Chọn ngày nhận phòng và ngày trả phòng'
-  const canSubmit = !isSubmitting && !loadingRooms && rooms.length > 0
+  const hasPaymentStep = Boolean(pendingBooking && clientSecret)
+  const canSubmit = !isSubmitting && !loadingRooms && rooms.length > 0 && !hasPaymentStep
 
   const clearFieldError = (fieldName: keyof ValidationErrors) => {
     setFieldErrors(current => {
@@ -281,8 +407,15 @@ const BookingForm: React.FC = () => {
     }
   }
 
+  const handlePaymentVerified = (booking: Booking) => {
+    setPendingBooking(booking)
+    setBookingReference(buildBookingReference(booking))
+    setIsSuccess(true)
+  }
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    let createdBookingForPayment: Booking | null = null
 
     const validationErrors = validateBookingForm(formData)
     if (Object.keys(validationErrors).length > 0) {
@@ -293,9 +426,12 @@ const BookingForm: React.FC = () => {
 
     setFieldErrors({})
     setSubmitError(null)
+    setPendingBooking(null)
+    setClientSecret(null)
     setIsSubmitting(true)
 
     try {
+      const specialRequests = formData.special_requests.trim()
       const bookingData: BookingFormData = {
         room_id: formData.room_id!,
         guest_name: formData.guest_name,
@@ -303,14 +439,41 @@ const BookingForm: React.FC = () => {
         check_in: formData.check_in,
         check_out: formData.check_out,
         number_of_guests: formData.number_of_guests,
-        special_requests: formData.special_requests || undefined,
+        special_requests: specialRequests.length > 0 ? specialRequests : null,
       }
 
       const booking = await createBooking(bookingData)
-      setBookingReference(buildBookingReference(booking))
-      setIsSuccess(true)
+      createdBookingForPayment = booking
+      const reference = buildBookingReference(booking)
+      setBookingReference(reference)
+      setPendingBooking(booking)
+
+      if (
+        booking.payment_policy === 'pay_at_property' ||
+        booking.payment_policy === 'not_required'
+      ) {
+        setIsSuccess(true)
+        return
+      }
+
+      if (!stripePromise) {
+        setSubmitError(PAYMENT_SETUP_ERROR_MESSAGE)
+        return
+      }
+
+      const paymentIntent = await createBookingPaymentIntent(booking.id)
+      if (!paymentIntent.client_secret) {
+        setSubmitError(PAYMENT_GENERIC_ERROR_MESSAGE)
+        return
+      }
+
+      setClientSecret(paymentIntent.client_secret)
     } catch (error) {
-      setSubmitError(resolveBookingSubmitErrorMessage(error))
+      setSubmitError(
+        createdBookingForPayment
+          ? resolvePaymentErrorMessage(error)
+          : resolveBookingSubmitErrorMessage(error)
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -379,247 +542,271 @@ const BookingForm: React.FC = () => {
               </div>
             )}
 
-            <form className="mt-6 space-y-6" noValidate onSubmit={handleSubmit}>
-              <div>
-                <label htmlFor="room_id" className="mb-2 block text-sm font-medium text-hueBlack">
-                  Chọn phòng
-                </label>
-                <select
-                  id="room_id"
-                  name="room_id"
-                  value={formData.room_id ?? ''}
-                  onChange={handleChange}
-                  disabled={loadingRooms || isSubmitting || rooms.length === 0}
-                  className={getFieldClass(
-                    Boolean(fieldErrors.room_id),
-                    loadingRooms || isSubmitting || rooms.length === 0
+            {pendingBooking && clientSecret && stripePromise ? (
+              <Elements stripe={stripePromise} options={{ clientSecret }}>
+                <BookingPaymentStep
+                  booking={pendingBooking}
+                  bookingReference={bookingReference ?? buildBookingReference(pendingBooking)}
+                  onVerified={handlePaymentVerified}
+                />
+              </Elements>
+            ) : (
+              <form className="mt-6 space-y-6" noValidate onSubmit={handleSubmit}>
+                <div>
+                  <label htmlFor="room_id" className="mb-2 block text-sm font-medium text-hueBlack">
+                    Chọn phòng
+                  </label>
+                  <select
+                    id="room_id"
+                    name="room_id"
+                    value={formData.room_id ?? ''}
+                    onChange={handleChange}
+                    disabled={loadingRooms || isSubmitting || rooms.length === 0}
+                    className={getFieldClass(
+                      Boolean(fieldErrors.room_id),
+                      loadingRooms || isSubmitting || rooms.length === 0
+                    )}
+                    aria-describedby={fieldErrors.room_id ? 'booking-room-error' : undefined}
+                    aria-invalid={fieldErrors.room_id ? 'true' : 'false'}
+                  >
+                    {loadingRooms ? (
+                      <option value="">Đang tải danh sách phòng...</option>
+                    ) : rooms.length === 0 ? (
+                      <option value="">—</option>
+                    ) : (
+                      <>
+                        <option value="">Chọn phòng phù hợp</option>
+                        {roomSelectionMissing && formData.room_id && (
+                          <option value={formData.room_id}>Phòng đã chọn không còn trống</option>
+                        )}
+                        {rooms.map(room => (
+                          <option key={room.id} value={room.id}>
+                            {formatRoomLabel(room.name)} — {formatCompactVND(room.price)}/đêm
+                          </option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                  {loadingRooms && (
+                    <div className="mt-2">
+                      <InlineSpinner label="Đang tải danh sách phòng..." />
+                    </div>
                   )}
-                  aria-describedby={fieldErrors.room_id ? 'booking-room-error' : undefined}
-                  aria-invalid={fieldErrors.room_id ? 'true' : 'false'}
-                >
-                  {loadingRooms ? (
-                    <option value="">Đang tải danh sách phòng...</option>
-                  ) : rooms.length === 0 ? (
-                    <option value="">—</option>
-                  ) : (
-                    <>
-                      <option value="">Chọn phòng phù hợp</option>
-                      {roomSelectionMissing && formData.room_id && (
-                        <option value={formData.room_id}>Phòng đã chọn không còn trống</option>
-                      )}
-                      {rooms.map(room => (
-                        <option key={room.id} value={room.id}>
-                          {formatRoomLabel(room.name)} — {formatCompactVND(room.price)}/đêm
-                        </option>
-                      ))}
-                    </>
-                  )}
-                </select>
-                {loadingRooms && (
-                  <div className="mt-2">
-                    <InlineSpinner label="Đang tải danh sách phòng..." />
-                  </div>
-                )}
-                {!loadingRooms && rooms.length === 0 && (
-                  <p role="status" className="mt-2 text-xs font-medium text-amber-700">
-                    Không có phòng nào còn trống
-                  </p>
-                )}
-                {fieldErrors.room_id && (
-                  <p id="booking-room-error" className="mt-2 text-xs font-medium text-red-700">
-                    {fieldErrors.room_id}
-                  </p>
-                )}
-              </div>
-
-              <div className="border-t border-hueBorder pt-6">
-                <p className="text-sm font-semibold text-hueBlack">Thông tin khách hàng</p>
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label
-                      htmlFor="guest_name"
-                      className="mb-2 block text-sm font-medium text-hueBlack"
-                    >
-                      Họ và tên
-                    </label>
-                    <input
-                      id="guest_name"
-                      name="guest_name"
-                      type="text"
-                      value={formData.guest_name}
-                      onChange={handleChange}
-                      disabled={isSubmitting}
-                      placeholder="Nguyễn Văn A"
-                      className={getFieldClass(Boolean(fieldErrors.guest_name), isSubmitting)}
-                      aria-describedby={fieldErrors.guest_name ? 'booking-name-error' : undefined}
-                      aria-invalid={fieldErrors.guest_name ? 'true' : 'false'}
-                    />
-                    {fieldErrors.guest_name && (
-                      <p id="booking-name-error" className="mt-2 text-xs font-medium text-red-700">
-                        {fieldErrors.guest_name}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="guest_email"
-                      className="mb-2 block text-sm font-medium text-hueBlack"
-                    >
-                      Địa chỉ email
-                    </label>
-                    <input
-                      id="guest_email"
-                      name="guest_email"
-                      type="email"
-                      value={formData.guest_email}
-                      onChange={handleChange}
-                      disabled={isSubmitting}
-                      placeholder="user@example.com"
-                      className={getFieldClass(Boolean(fieldErrors.guest_email), isSubmitting)}
-                      aria-describedby={fieldErrors.guest_email ? 'booking-email-error' : undefined}
-                      aria-invalid={fieldErrors.guest_email ? 'true' : 'false'}
-                    />
-                    {fieldErrors.guest_email && (
-                      <p id="booking-email-error" className="mt-2 text-xs font-medium text-red-700">
-                        {fieldErrors.guest_email}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t border-hueBorder pt-6">
-                <p className="text-sm font-semibold text-hueBlack">Thời gian lưu trú</p>
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label
-                      htmlFor="check_in"
-                      className="mb-2 block text-sm font-medium text-hueBlack"
-                    >
-                      Ngày nhận phòng
-                    </label>
-                    <input
-                      id="check_in"
-                      name="check_in"
-                      type="date"
-                      value={formData.check_in}
-                      onChange={handleChange}
-                      min={getMinCheckInDate()}
-                      disabled={isSubmitting}
-                      className={getFieldClass(Boolean(fieldErrors.check_in), isSubmitting)}
-                      aria-describedby={fieldErrors.check_in ? 'booking-checkin-error' : undefined}
-                      aria-invalid={fieldErrors.check_in ? 'true' : 'false'}
-                    />
-                    {fieldErrors.check_in && (
-                      <p
-                        id="booking-checkin-error"
-                        className="mt-2 text-xs font-medium text-red-700"
-                      >
-                        {fieldErrors.check_in}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="check_out"
-                      className="mb-2 block text-sm font-medium text-hueBlack"
-                    >
-                      Ngày trả phòng
-                    </label>
-                    <input
-                      id="check_out"
-                      name="check_out"
-                      type="date"
-                      value={formData.check_out}
-                      onChange={handleChange}
-                      min={getMinCheckOutDate(formData.check_in)}
-                      max={maxCheckOutDate}
-                      disabled={isSubmitting}
-                      className={getFieldClass(Boolean(fieldErrors.check_out), isSubmitting)}
-                      aria-describedby={
-                        fieldErrors.check_out ? 'booking-checkout-error' : undefined
-                      }
-                      aria-invalid={fieldErrors.check_out ? 'true' : 'false'}
-                    />
-                    <p className="mt-2 text-xs text-hueMuted">
-                      Tối đa {MAX_STAY_DAYS} ngày cho mỗi lần đặt phòng
+                  {!loadingRooms && rooms.length === 0 && (
+                    <p role="status" className="mt-2 text-xs font-medium text-amber-700">
+                      Không có phòng nào còn trống
                     </p>
-                    {fieldErrors.check_out && (
-                      <p
-                        id="booking-checkout-error"
-                        className="mt-2 text-xs font-medium text-red-700"
+                  )}
+                  {fieldErrors.room_id && (
+                    <p id="booking-room-error" className="mt-2 text-xs font-medium text-red-700">
+                      {fieldErrors.room_id}
+                    </p>
+                  )}
+                </div>
+
+                <div className="border-t border-hueBorder pt-6">
+                  <p className="text-sm font-semibold text-hueBlack">Thông tin khách hàng</p>
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label
+                        htmlFor="guest_name"
+                        className="mb-2 block text-sm font-medium text-hueBlack"
                       >
-                        {fieldErrors.check_out}
-                      </p>
-                    )}
+                        Họ và tên
+                      </label>
+                      <input
+                        id="guest_name"
+                        name="guest_name"
+                        type="text"
+                        value={formData.guest_name}
+                        onChange={handleChange}
+                        disabled={isSubmitting}
+                        placeholder="Nguyễn Văn A"
+                        className={getFieldClass(Boolean(fieldErrors.guest_name), isSubmitting)}
+                        aria-describedby={fieldErrors.guest_name ? 'booking-name-error' : undefined}
+                        aria-invalid={fieldErrors.guest_name ? 'true' : 'false'}
+                      />
+                      {fieldErrors.guest_name && (
+                        <p
+                          id="booking-name-error"
+                          className="mt-2 text-xs font-medium text-red-700"
+                        >
+                          {fieldErrors.guest_name}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="guest_email"
+                        className="mb-2 block text-sm font-medium text-hueBlack"
+                      >
+                        Địa chỉ email
+                      </label>
+                      <input
+                        id="guest_email"
+                        name="guest_email"
+                        type="email"
+                        value={formData.guest_email}
+                        onChange={handleChange}
+                        disabled={isSubmitting}
+                        placeholder="user@example.com"
+                        className={getFieldClass(Boolean(fieldErrors.guest_email), isSubmitting)}
+                        aria-describedby={
+                          fieldErrors.guest_email ? 'booking-email-error' : undefined
+                        }
+                        aria-invalid={fieldErrors.guest_email ? 'true' : 'false'}
+                      />
+                      {fieldErrors.guest_email && (
+                        <p
+                          id="booking-email-error"
+                          className="mt-2 text-xs font-medium text-red-700"
+                        >
+                          {fieldErrors.guest_email}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div>
-                <label
-                  htmlFor="number_of_guests"
-                  className="mb-2 block text-sm font-medium text-hueBlack"
-                >
-                  Số khách
-                </label>
-                <input
-                  id="number_of_guests"
-                  name="number_of_guests"
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  max={10}
-                  value={formData.number_of_guests}
-                  onChange={handleChange}
-                  disabled={isSubmitting}
-                  className={getFieldClass(Boolean(fieldErrors.number_of_guests), isSubmitting)}
-                  aria-describedby={
-                    fieldErrors.number_of_guests ? 'booking-guests-error' : 'booking-guests-note'
-                  }
-                  aria-invalid={fieldErrors.number_of_guests ? 'true' : 'false'}
-                />
-                <p id="booking-guests-note" className="mt-2 text-xs text-hueMuted">
-                  Thông tin tham khảo — không ảnh hưởng đặt phòng
-                </p>
-                {fieldErrors.number_of_guests && (
-                  <p id="booking-guests-error" className="mt-2 text-xs font-medium text-red-700">
-                    {fieldErrors.number_of_guests}
+                <div className="border-t border-hueBorder pt-6">
+                  <p className="text-sm font-semibold text-hueBlack">Thời gian lưu trú</p>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label
+                        htmlFor="check_in"
+                        className="mb-2 block text-sm font-medium text-hueBlack"
+                      >
+                        Ngày nhận phòng
+                      </label>
+                      <input
+                        id="check_in"
+                        name="check_in"
+                        type="date"
+                        value={formData.check_in}
+                        onChange={handleChange}
+                        min={getMinCheckInDate()}
+                        disabled={isSubmitting}
+                        className={getFieldClass(Boolean(fieldErrors.check_in), isSubmitting)}
+                        aria-describedby={
+                          fieldErrors.check_in ? 'booking-checkin-error' : undefined
+                        }
+                        aria-invalid={fieldErrors.check_in ? 'true' : 'false'}
+                      />
+                      {fieldErrors.check_in && (
+                        <p
+                          id="booking-checkin-error"
+                          className="mt-2 text-xs font-medium text-red-700"
+                        >
+                          {fieldErrors.check_in}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="check_out"
+                        className="mb-2 block text-sm font-medium text-hueBlack"
+                      >
+                        Ngày trả phòng
+                      </label>
+                      <input
+                        id="check_out"
+                        name="check_out"
+                        type="date"
+                        value={formData.check_out}
+                        onChange={handleChange}
+                        min={getMinCheckOutDate(formData.check_in)}
+                        max={maxCheckOutDate}
+                        disabled={isSubmitting}
+                        className={getFieldClass(Boolean(fieldErrors.check_out), isSubmitting)}
+                        aria-describedby={
+                          fieldErrors.check_out ? 'booking-checkout-error' : undefined
+                        }
+                        aria-invalid={fieldErrors.check_out ? 'true' : 'false'}
+                      />
+                      <p className="mt-2 text-xs text-hueMuted">
+                        Tối đa {MAX_STAY_DAYS} ngày cho mỗi lần đặt phòng
+                      </p>
+                      {fieldErrors.check_out && (
+                        <p
+                          id="booking-checkout-error"
+                          className="mt-2 text-xs font-medium text-red-700"
+                        >
+                          {fieldErrors.check_out}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="number_of_guests"
+                    className="mb-2 block text-sm font-medium text-hueBlack"
+                  >
+                    Số khách
+                  </label>
+                  <input
+                    id="number_of_guests"
+                    name="number_of_guests"
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={10}
+                    value={formData.number_of_guests}
+                    onChange={handleChange}
+                    disabled={isSubmitting}
+                    className={getFieldClass(Boolean(fieldErrors.number_of_guests), isSubmitting)}
+                    aria-describedby={
+                      fieldErrors.number_of_guests ? 'booking-guests-error' : 'booking-guests-note'
+                    }
+                    aria-invalid={fieldErrors.number_of_guests ? 'true' : 'false'}
+                  />
+                  <p id="booking-guests-note" className="mt-2 text-xs text-hueMuted">
+                    Thông tin tham khảo — không ảnh hưởng đặt phòng
                   </p>
-                )}
-              </div>
+                  {fieldErrors.number_of_guests && (
+                    <p id="booking-guests-error" className="mt-2 text-xs font-medium text-red-700">
+                      {fieldErrors.number_of_guests}
+                    </p>
+                  )}
+                </div>
 
-              <div>
-                <label
-                  htmlFor="special_requests"
-                  className="mb-2 block text-sm font-medium text-hueBlack"
+                <div>
+                  <label
+                    htmlFor="special_requests"
+                    className="mb-2 block text-sm font-medium text-hueBlack"
+                  >
+                    Yêu cầu đặc biệt
+                  </label>
+                  <p className="mb-2 text-xs text-hueMuted">(Tùy chọn — không đảm bảo)</p>
+                  <textarea
+                    id="special_requests"
+                    name="special_requests"
+                    rows={3}
+                    value={formData.special_requests}
+                    onChange={handleChange}
+                    disabled={isSubmitting}
+                    placeholder="Ví dụ: đến muộn, cần giường tầng thấp, hoặc ghi chú thêm"
+                    className={`${getFieldClass(false, isSubmitting)} resize-none`}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={!canSubmit}
+                  aria-busy={isSubmitting}
+                  className="flex w-full items-center justify-center rounded-xl bg-brandAmber px-4 py-3 text-sm font-medium text-hueBlack transition hover:bg-[#b8872a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandAmber/30 disabled:cursor-not-allowed disabled:bg-[#d6b173] disabled:text-hueBlack/70"
                 >
-                  Yêu cầu đặc biệt
-                </label>
-                <p className="mb-2 text-xs text-hueMuted">(Tùy chọn — không đảm bảo)</p>
-                <textarea
-                  id="special_requests"
-                  name="special_requests"
-                  rows={3}
-                  value={formData.special_requests}
-                  onChange={handleChange}
-                  disabled={isSubmitting}
-                  placeholder="Ví dụ: đến muộn, cần giường tầng thấp, hoặc ghi chú thêm"
-                  className={`${getFieldClass(false, isSubmitting)} resize-none`}
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={!canSubmit}
-                aria-busy={isSubmitting}
-                className="flex w-full items-center justify-center rounded-xl bg-brandAmber px-4 py-3 text-sm font-medium text-hueBlack transition hover:bg-[#b8872a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandAmber/30 disabled:cursor-not-allowed disabled:bg-[#d6b173] disabled:text-hueBlack/70"
-              >
-                {isSubmitting ? <InlineSpinner label="Đang xử lý..." /> : 'Xác nhận đặt phòng →'}
-              </button>
-            </form>
+                  {isSubmitting ? (
+                    <InlineSpinner label="Đang xử lý..." />
+                  ) : (
+                    'Giữ phòng và thanh toán'
+                  )}
+                </button>
+              </form>
+            )}
           </div>
 
           <aside className="self-start rounded-[28px] border border-hueBorder bg-white p-6 shadow-[0_24px_50px_rgba(28,26,23,0.08)] lg:sticky lg:top-24">
@@ -680,7 +867,9 @@ const BookingForm: React.FC = () => {
               </span>
             </div>
 
-            <p className="mt-6 text-sm text-hueMuted">Thanh toán tại chỗ · Không cần thẻ</p>
+            <p className="mt-6 text-sm text-hueMuted">
+              Thanh toán trực tuyến bảo mật · Xác nhận sau khi thanh toán thành công
+            </p>
           </aside>
         </div>
       </div>

@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\PersonalAccessToken;
+use App\Services\Auth\TokenRefreshRateLimiter;
 use Closure;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
@@ -17,15 +18,16 @@ use Illuminate\Http\Request;
  *   cross-origin requests from carrying the cookie (active server-side defence)
  * - X-XSRF-TOKEN header is sent by the frontend but is NOT validated here;
  *   it provides a supplementary XSS barrier, not the primary CSRF control
- * - Validates: Existence, expiration, revocation, suspicious activity
+ * - Validates: Existence, expiration, revocation, and refresh-rate limits
  * - Sets resolved user on $request attributes for use in controllers
  *
  * Middleware Pipeline:
  * 1. Extract token_identifier from the httpOnly cookie
  * 2. Hash the identifier and look up token_hash in the database
- * 3. Validate token state (expired, revoked, refresh_count abuse)
+ * 3. Validate token state (expired, revoked)
  * 4. Validate device fingerprint if enabled
- * 5. Attach token and user to $request attributes
+ * 5. Enforce refresh-rate limit on refresh requests
+ * 6. Attach token and user to $request attributes
  */
 class CheckHttpOnlyTokenValid
 {
@@ -69,18 +71,6 @@ class CheckHttpOnlyTokenValid
             ], 401);
         }
 
-        // ========== Validate Suspicious Activity ==========
-        // Inclusive cap: refresh_count >= max → blocked. Unified with controllers and bearer middleware.
-        if ($token->refresh_count >= (int) config('sanctum.max_refresh_count_per_hour', 10)) {
-            $token->revoke();
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Phát hiện hoạt động bất thường.',
-                'errors' => ['code' => 'SUSPICIOUS_ACTIVITY'],
-            ], 401);
-        }
-
         // ========== Validate Device Fingerprint ==========
         if (config('sanctum.verify_device_fingerprint') && $token->device_fingerprint) {
             $currentFingerprint = $this->generateDeviceFingerprint($request);
@@ -95,6 +85,13 @@ class CheckHttpOnlyTokenValid
                     'code' => 'DEVICE_MISMATCH',
                 ], 401);
             }
+        }
+
+        // ========== Validate Token Refresh Rate ==========
+        // refresh_count is lifetime telemetry only. Hourly refresh enforcement is
+        // cache-backed and scoped to the token session, separate from expiry/revocation.
+        if ($request->is('api/auth/refresh-httponly')) {
+            app(TokenRefreshRateLimiter::class)->enforce($token);
         }
 
         // ========== Attach to Request ==========

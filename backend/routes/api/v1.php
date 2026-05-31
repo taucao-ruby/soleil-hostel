@@ -5,6 +5,7 @@ use App\Http\Controllers\AdminBookingController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\LocationController;
+use App\Http\Controllers\Payment\BookingPaymentController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\RoomController;
 use Illuminate\Support\Facades\Route;
@@ -38,15 +39,26 @@ Route::middleware(['check_token_valid', 'role:admin'])->group(function () {
     Route::delete('/rooms/{room}', [RoomController::class, 'destroy'])->name('v1.rooms.destroy');
 });
 
+// Operational room readiness transitions (front-desk operators: moderator+).
+// Canonical readiness_status only — distinct from the admin-only CRUD above and
+// from the deprecated rooms.status availability semantics. SH-10 / F-63.
+Route::middleware(['check_token_valid', 'role:moderator'])->group(function () {
+    Route::patch('/rooms/{room}/readiness', [RoomController::class, 'updateReadiness'])->name('v1.rooms.readiness');
+});
+
 // ========== BOOKING ENDPOINTS (v1) ==========
 // All booking endpoints require authenticated + verified email
 Route::middleware(['check_token_valid', 'verified'])->group(function () {
-    Route::post('/bookings', [BookingController::class, 'store'])->name('v1.bookings.store')->middleware('throttle:10,1');
+    Route::post('/bookings', [BookingController::class, 'store'])->name('v1.bookings.store')->middleware('throttle:booking');
     Route::get('/bookings', [BookingController::class, 'index'])->name('v1.bookings.index');
     Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('v1.bookings.show');
     Route::put('/bookings/{booking}', [BookingController::class, 'update'])->name('v1.bookings.update')->middleware('throttle:10,1');
     Route::patch('/bookings/{booking}', [BookingController::class, 'update'])->name('v1.bookings.patch')->middleware('throttle:10,1');
     Route::delete('/bookings/{booking}', [BookingController::class, 'destroy'])->name('v1.bookings.destroy')->middleware('throttle:10,1');
+    Route::post('/bookings/{booking}/payment-intent', [BookingPaymentController::class, 'createPaymentIntent'])
+        ->name('v1.bookings.paymentIntent')->middleware('throttle:10,1');
+    Route::post('/bookings/{booking}/payment/verify', [BookingPaymentController::class, 'verify'])
+        ->name('v1.bookings.payment.verify')->middleware('throttle:10,1');
 
     // Booking status change endpoints
     Route::post('/bookings/{booking}/confirm', [BookingController::class, 'confirm'])

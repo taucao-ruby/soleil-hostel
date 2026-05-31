@@ -60,6 +60,9 @@ final class ReconcileStuckStripeWebhookEvents extends Command
         $maxAttempts = max(1, (int) config('booking.reconciliation.webhook_max_attempts', 12));
         $cutoff = now()->subMinutes($minutes);
 
+        $backlogCount = $this->stuckWebhookBacklogCount($cutoff, $maxAttempts);
+        $this->emitBacklogTelemetry($backlogCount);
+
         // Surface rows that exhausted their reconciliation budget BEFORE
         // claiming: mark them failed so they leave the processing pool and an
         // operator can see them, instead of letting them be re-claimed every
@@ -128,6 +131,60 @@ final class ReconcileStuckStripeWebhookEvents extends Command
         ]);
 
         return self::SUCCESS;
+    }
+
+    private function stuckWebhookBacklogCount(\Illuminate\Support\Carbon $cutoff, int $maxAttempts): int
+    {
+        $staleCount = StripeWebhookEvent::query()
+            ->staleProcessing($cutoff, $maxAttempts)
+            ->count();
+
+        $exhaustedCount = StripeWebhookEvent::query()
+            ->reconciliationExhausted($maxAttempts)
+            ->count();
+
+        return $staleCount + $exhaustedCount;
+    }
+
+    private function emitBacklogTelemetry(int $backlogCount): void
+    {
+        $baseline = max(1, (int) config(
+            'booking.reconciliation.webhook_backlog_alert_baseline',
+            10,
+        ));
+        $multiplier = max(1, (int) config(
+            'booking.reconciliation.webhook_backlog_alert_multiplier',
+            2,
+        ));
+        $threshold = max(1, $baseline * $multiplier);
+        $backlogHighValue = $backlogCount >= $threshold ? 1 : 0;
+
+        Log::info('stripe_webhook_reconciler.backlog_count', [
+            'metric' => 'stripe_webhook_reconciler.backlog_count',
+            'value' => $backlogCount,
+        ]);
+
+        Log::info('stripe_webhook_reconciler.backlog_threshold', [
+            'metric' => 'stripe_webhook_reconciler.backlog_threshold',
+            'value' => $threshold,
+        ]);
+
+        $context = [
+            'metric' => 'stripe_webhook_reconciler.backlog_high',
+            'value' => $backlogHighValue,
+            'backlog_count' => $backlogCount,
+            'threshold' => $threshold,
+            'baseline' => $baseline,
+            'multiplier' => $multiplier,
+        ];
+
+        if ($backlogHighValue === 1) {
+            Log::warning('stripe_webhook_reconciler.backlog_high', $context);
+
+            return;
+        }
+
+        Log::info('stripe_webhook_reconciler.backlog_high', $context);
     }
 
     /**
@@ -299,7 +356,7 @@ final class ReconcileStuckStripeWebhookEvents extends Command
         }
 
         try {
-            $outcome = $handler->applyToBooking($paymentIntentId);
+            $outcome = $handler->applyToBooking($paymentIntent);
         } catch (Throwable $e) {
             $event->markFailed($e);
 
@@ -339,7 +396,7 @@ final class ReconcileStuckStripeWebhookEvents extends Command
         $remoteAmount = (int) ($paymentIntent->amount ?? 0);
         $remoteCurrency = strtolower((string) ($paymentIntent->currency ?? ''));
         $localAmount = (int) $booking->amount;
-        $localCurrency = strtolower((string) config('cashier.currency', 'vnd'));
+        $localCurrency = strtolower((string) ($booking->payment_currency ?: config('cashier.currency', 'vnd')));
 
         if ($localAmount > 0 && $remoteAmount !== $localAmount) {
             $event->markFailed(sprintf(

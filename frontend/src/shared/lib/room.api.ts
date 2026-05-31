@@ -28,51 +28,22 @@ interface RoomResponse {
   data: RoomResourceData
 }
 
-interface RoomUpdatePayload {
-  location_id: number
-  name: string
-  description: string
-  price: number
-  max_guests: number
-  status: RoomAvailabilityStatus
-  readiness_status: RoomReadinessStatus
-  room_type_code: string | null
-  room_tier: number | null
-}
-
-const normalizeAvailabilityStatus = (status: string): RoomAvailabilityStatus => {
-  if (status === 'booked' || status === 'maintenance') {
-    return status
-  }
-
-  return 'available'
-}
-
-const buildRoomUpdatePayload = (
-  room: RoomResourceData,
-  readinessStatus: RoomReadinessStatus
-): RoomUpdatePayload => ({
-  location_id: room.location_id,
-  name: room.name,
-  description: room.description ?? '',
-  price: room.price,
-  max_guests: room.max_guests,
-  status: normalizeAvailabilityStatus(room.status),
-  readiness_status: readinessStatus,
-  room_type_code: room.room_type_code ?? null,
-  room_tier: room.room_tier ?? null,
-})
-
 export const roomApi = {
-  async updateStatus(
+  /**
+   * Update a room's operational readiness via the canonical readiness endpoint.
+   *
+   * PATCH /api/v1/rooms/{id}/readiness — sends only `readiness_status`, the
+   * canonical physical-readiness field (NOT the deprecated availability `status`,
+   * and NOT a full-room read-modify-write). Authorized for moderator+ operators.
+   * SH-10 / F-63.
+   */
+  async updateReadiness(
     roomId: number,
     readinessStatus: RoomReadinessStatus
   ): Promise<RoomResourceData> {
-    const currentRoom = await api.get<RoomResponse>(`/v1/rooms/${roomId}`)
-    const response = await api.patch<RoomResponse>(
-      `/v1/rooms/${roomId}`,
-      buildRoomUpdatePayload(currentRoom.data.data, readinessStatus)
-    )
+    const response = await api.patch<RoomResponse>(`/v1/rooms/${roomId}/readiness`, {
+      readiness_status: readinessStatus,
+    })
 
     return response.data.data
   },

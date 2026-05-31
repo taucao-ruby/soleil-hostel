@@ -14,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Stripe\Exception\ApiConnectionException;
 use Stripe\StripeClient;
 use Tests\TestCase;
@@ -493,7 +494,130 @@ final class ReconcileStuckStripeWebhookEventsTest extends TestCase
         $this->assertStringContainsString('upstream tcp reset', (string) $event->error);
     }
 
+    public function test_backlog_telemetry_emits_zero_when_no_stuck_events_exist(): void
+    {
+        $this->configureBacklogTelemetryForNoStripe(thresholdBaseline: 1, thresholdMultiplier: 3);
+        Log::spy();
+
+        $exit = Artisan::call('webhook:reconcile-stuck-events', ['--minutes' => 15, '--limit' => 50]);
+
+        $this->assertSame(0, $exit);
+        $this->assertBacklogInfoMetric('stripe_webhook_reconciler.backlog_count', 0);
+        $this->assertBacklogInfoMetric('stripe_webhook_reconciler.backlog_threshold', 3);
+        $this->assertBacklogHighMetric(0);
+        $this->assertNoBacklogHighWarning();
+    }
+
+    public function test_backlog_telemetry_stays_healthy_one_below_threshold(): void
+    {
+        $this->configureBacklogTelemetryForNoStripe(thresholdBaseline: 1, thresholdMultiplier: 3);
+        $this->makeStuckEvents(count: 2, prefix: 'below_threshold');
+        Log::spy();
+
+        Artisan::call('webhook:reconcile-stuck-events', ['--minutes' => 15, '--limit' => 50]);
+
+        $this->assertBacklogInfoMetric('stripe_webhook_reconciler.backlog_count', 2);
+        $this->assertBacklogInfoMetric('stripe_webhook_reconciler.backlog_threshold', 3);
+        $this->assertBacklogHighMetric(0);
+        $this->assertNoBacklogHighWarning();
+    }
+
+    public function test_backlog_telemetry_warns_at_exact_threshold(): void
+    {
+        $this->configureBacklogTelemetryForNoStripe(thresholdBaseline: 1, thresholdMultiplier: 3);
+        $this->makeStuckEvents(count: 3, prefix: 'exact_threshold');
+        Log::spy();
+
+        Artisan::call('webhook:reconcile-stuck-events', ['--minutes' => 15, '--limit' => 50]);
+
+        $this->assertBacklogInfoMetric('stripe_webhook_reconciler.backlog_count', 3);
+        $this->assertBacklogInfoMetric('stripe_webhook_reconciler.backlog_threshold', 3);
+        $this->assertBacklogHighWarning(1);
+    }
+
+    public function test_backlog_telemetry_warns_above_threshold(): void
+    {
+        $this->configureBacklogTelemetryForNoStripe(thresholdBaseline: 1, thresholdMultiplier: 3);
+        $this->makeStuckEvents(count: 4, prefix: 'above_threshold');
+        Log::spy();
+
+        Artisan::call('webhook:reconcile-stuck-events', ['--minutes' => 15, '--limit' => 50]);
+
+        $this->assertBacklogInfoMetric('stripe_webhook_reconciler.backlog_count', 4);
+        $this->assertBacklogInfoMetric('stripe_webhook_reconciler.backlog_threshold', 3);
+        $this->assertBacklogHighWarning(1);
+    }
+
+    public function test_exhausted_rows_keep_row_level_log_without_high_backlog_when_below_threshold(): void
+    {
+        config(['booking.reconciliation.webhook_max_attempts' => 3]);
+        $this->configureBacklogTelemetryForNoStripe(thresholdBaseline: 1, thresholdMultiplier: 3);
+
+        $this->makeStuckEvent(
+            stripeEventId: 'evt_exhausted_low_backlog',
+            paymentIntentId: 'pi_exhausted_low_backlog',
+            createdMinutesAgo: 60,
+            reconcileAttempts: 3,
+            error: 'upstream tcp reset (stripe.com)',
+        );
+
+        Log::spy();
+
+        Artisan::call('webhook:reconcile-stuck-events', ['--minutes' => 15, '--limit' => 50]);
+
+        $this->assertBacklogInfoMetric('stripe_webhook_reconciler.backlog_count', 1);
+        $this->assertBacklogHighMetric(0);
+        $this->assertNoBacklogHighWarning();
+        Log::shouldHaveReceived('error')
+            ->with('stripe_webhook_reconciler.reconciliation_exhausted', \Mockery::on(
+                fn (array $context): bool => $context['stripe_event_id'] === 'evt_exhausted_low_backlog'
+                    && $context['payment_intent_id'] === 'pi_exhausted_low_backlog'
+                    && $context['reconcile_attempts'] === 3
+                    && $context['max_attempts'] === 3,
+            ))
+            ->once();
+    }
+
+    public function test_healthy_run_after_high_backlog_emits_zero_to_clear_stale_gauge(): void
+    {
+        $this->configureBacklogTelemetryForNoStripe(thresholdBaseline: 1, thresholdMultiplier: 2);
+        $this->makeStuckEvents(count: 2, prefix: 'clear_stale_high');
+        Log::spy();
+
+        Artisan::call('webhook:reconcile-stuck-events', ['--minutes' => 15, '--limit' => 50]);
+
+        StripeWebhookEvent::query()->update([
+            'status' => 'processed',
+            'processed_at' => Carbon::now(),
+        ]);
+
+        Artisan::call('webhook:reconcile-stuck-events', ['--minutes' => 15, '--limit' => 50]);
+
+        $this->assertBacklogHighWarning(1);
+        $this->assertBacklogHighMetric(0);
+    }
+
     // ===== Helpers =====
+
+    private function configureBacklogTelemetryForNoStripe(int $thresholdBaseline, int $thresholdMultiplier): void
+    {
+        config([
+            'booking.reconciliation.webhook_backlog_alert_baseline' => $thresholdBaseline,
+            'booking.reconciliation.webhook_backlog_alert_multiplier' => $thresholdMultiplier,
+            'cashier.secret' => null,
+        ]);
+    }
+
+    private function makeStuckEvents(int $count, string $prefix): void
+    {
+        for ($i = 1; $i <= $count; $i++) {
+            $this->makeStuckEvent(
+                stripeEventId: "evt_{$prefix}_{$i}",
+                paymentIntentId: "pi_{$prefix}_{$i}",
+                createdMinutesAgo: 20,
+            );
+        }
+    }
 
     private function makeStuckEvent(
         string $stripeEventId,
@@ -524,6 +648,44 @@ final class ReconcileStuckStripeWebhookEventsTest extends TestCase
             ]);
 
         return $event->fresh();
+    }
+
+    private function assertBacklogInfoMetric(string $metric, int $value): void
+    {
+        Log::shouldHaveReceived('info')
+            ->with($metric, \Mockery::on(
+                fn (array $context): bool => ($context['metric'] ?? null) === $metric
+                    && ($context['value'] ?? null) === $value,
+            ))
+            ->once();
+    }
+
+    private function assertBacklogHighMetric(int $value): void
+    {
+        Log::shouldHaveReceived('info')
+            ->with('stripe_webhook_reconciler.backlog_high', \Mockery::on(
+                fn (array $context): bool => ($context['metric'] ?? null) === 'stripe_webhook_reconciler.backlog_high'
+                    && ($context['value'] ?? null) === $value,
+            ))
+            ->once();
+    }
+
+    private function assertBacklogHighWarning(int $value): void
+    {
+        Log::shouldHaveReceived('warning')
+            ->with('stripe_webhook_reconciler.backlog_high', \Mockery::on(
+                fn (array $context): bool => ($context['metric'] ?? null) === 'stripe_webhook_reconciler.backlog_high'
+                    && ($context['value'] ?? null) === $value,
+            ))
+            ->once();
+    }
+
+    private function assertNoBacklogHighWarning(): void
+    {
+        Log::shouldNotHaveReceived('warning', [
+            'stripe_webhook_reconciler.backlog_high',
+            \Mockery::any(),
+        ]);
     }
 
     /**
@@ -589,11 +751,19 @@ final class ReconcileStuckStripeWebhookEventsTest extends TestCase
         int $amount,
         string $currency,
     ): object {
+        $booking = Booking::where('payment_intent_id', $id)->first();
+
         return (object) [
             'id' => $id,
             'status' => $status,
             'amount' => $amount,
             'currency' => $currency,
+            'amount_capturable' => $status === 'requires_capture' ? $amount : 0,
+            'amount_received' => $status === 'succeeded' ? $amount : 0,
+            'metadata' => (object) [
+                'booking_id' => (string) $booking?->id,
+                'user_id' => (string) $booking?->user_id,
+            ],
         ];
     }
 }

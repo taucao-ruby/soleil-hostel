@@ -379,6 +379,19 @@ jobs:
           elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             echo "environment=production" >> $GITHUB_OUTPUT
           fi
+      - name: Production runtime gate prerequisites
+        if: steps.deploy-target.outputs.environment == 'production'
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${DEPLOY_HOST}" ] || [ -z "${DEPLOY_USER}" ] || [ -z "${DEPLOY_KEY}" ]; then
+            echo "::error::Production deploy requires DEPLOY_HOST, DEPLOY_USER, and DEPLOY_KEY so pre-traffic runtime gates can run on the deployed backend."
+            exit 1
+          fi
       - name: Assert schema constraints (pre-deploy)
         working-directory: ./backend
         run: php artisan db:assert-schema-constraints
@@ -494,6 +507,7 @@ jobs:
       # New ordering:
       #   Deploy code (Forge/Render/Coolify/SSH)
       #     → Run database migrations    ← must finish before traffic
+      #     → Assert production config   ← validates runtime security config
       #     → Health Check               ← validates post-migration state
       #     → Warm up cache              ← persists correct cache shape
       #
@@ -527,6 +541,28 @@ jobs:
           ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key "${DEPLOY_USER}@${DEPLOY_HOST}" \
             "cd ${DEPLOY_PATH}/backend && php artisan migrate --force --no-interaction"
           rm -f ~/.ssh/deploy_key
+      - name: Assert production config (pre-traffic)
+        if: steps.deploy-target.outputs.environment == 'production'
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/var/www/soleil-hostel' }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${DEPLOY_HOST}" ] || [ -z "${DEPLOY_USER}" ] || [ -z "${DEPLOY_KEY}" ]; then
+            echo "::error::Production config gate requires DEPLOY_HOST, DEPLOY_USER, and DEPLOY_KEY to run in the deployed backend runtime."
+            exit 1
+          fi
+
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          trap 'rm -f ~/.ssh/deploy_key' EXIT
+
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "cd ${DEPLOY_PATH}/backend && php artisan app:assert-production-config"
       - name: Health Check
         run: |
           APP_URL="${{ vars.APP_URL || 'https://soleilhotel.com' }}"

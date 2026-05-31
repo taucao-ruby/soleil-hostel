@@ -29,6 +29,10 @@ Source: `2026_02_12_000001_fix_overlapping_bookings_constraint_soft_deletes.php`
 
 Requires: `CREATE EXTENSION IF NOT EXISTS btree_gist;`
 
+### Booking Business Dates
+
+Booking business dates are evaluated in hostel-local civil time (`Asia/Ho_Chi_Minh` by default). UTC remains correct for stored instants, logs, audit timestamps, Stripe/webhook timestamps, and DB timestamp columns, but booking min-date, check-in/check-out validation, started-state, cancellation-window, review eligibility, and admin booking date filters must use hostel-local date semantics.
+
 ### Soft Delete & Cancellation Audit
 
 - `deleted_at` + `deleted_by` (FK to users, ON DELETE SET NULL)

@@ -105,7 +105,7 @@ class AiProposalDecided
 {
     public function __construct(
         public AiProposal $proposal,
-        public string $decision, // 'confirmed' | 'declined'
+        public string $decision, // 'confirmed' | 'declined' | 'errored'
         public User $actor,
     ) {}
 }

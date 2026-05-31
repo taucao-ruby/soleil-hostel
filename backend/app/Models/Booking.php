@@ -5,8 +5,11 @@ namespace App\Models;
 use App\Booking\CancellationPolicy;
 use App\Enums\BookingStatus;
 use App\Enums\DepositStatus;
+use App\Enums\PaymentPolicy;
+use App\Enums\PaymentStatus;
 use App\Events\BookingStatusChanged;
 use App\Exceptions\BookingTransitionException;
+use App\Support\HostelClock;
 use App\Traits\Purifiable;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -39,6 +42,8 @@ class Booking extends Model
         'check_out',
         'guest_name',
         'guest_email',
+        'number_of_guests',
+        'special_requests',
     ];
 
     protected $casts = [
@@ -49,7 +54,15 @@ class Booking extends Model
         'updated_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'status' => BookingStatus::class,
+        'payment_policy' => PaymentPolicy::class,
+        'payment_status' => PaymentStatus::class,
+        'number_of_guests' => 'integer',
         'amount' => 'integer',
+        'amount_capturable' => 'integer',
+        'amount_received' => 'integer',
+        'authorized_at' => 'datetime',
+        'paid_at' => 'datetime',
+        'capture_due_at' => 'datetime',
         'deposit_amount' => 'integer',
         'deposit_collected_at' => 'datetime',
         'deposit_status' => DepositStatus::class,
@@ -157,7 +170,7 @@ class Booking extends Model
      */
     public function cancellationPolicy(): CancellationPolicy
     {
-        $hoursUntilCheckIn = (int) floor(now()->diffInHours($this->check_in, false));
+        $hoursUntilCheckIn = (int) floor($this->hoursUntilCheckInStart());
         $config = config('booking.cancellation');
 
         $fullWindow = (int) $config['full_refund_hours'];
@@ -189,6 +202,35 @@ class Booking extends Model
 
     // ===== PAYMENT / REFUND METHODS =====
 
+    public function isPending(): bool
+    {
+        return $this->status === BookingStatus::PENDING;
+    }
+
+    public function isConfirmed(): bool
+    {
+        return $this->status === BookingStatus::CONFIRMED;
+    }
+
+    public function isPaid(): bool
+    {
+        return $this->payment_status === PaymentStatus::PAID;
+    }
+
+    /**
+     * "Money-final" = the booking is confirmed or fully paid.
+     *
+     * Phase 0 (SH-01) treats money-final bookings as date-immutable: re-pricing
+     * a stay whose payment has already been captured/committed would desync the
+     * charged amount, so guests must cancel + rebook instead. Enforced at both
+     * UpdateBookingRequest (request layer) and CreateBookingService::update
+     * (service layer, defense in depth).
+     */
+    public function isMoneyFinal(): bool
+    {
+        return $this->isConfirmed() || $this->isPaid();
+    }
+
     /**
      * Check if booking has a refundable payment.
      */
@@ -196,7 +238,24 @@ class Booking extends Model
     {
         return $this->payment_intent_id !== null
             && $this->refund_id === null
+            && $this->payment_status === PaymentStatus::PAID
             && $this->status->isCancellable();
+    }
+
+    public function paymentAllowsConfirmation(): bool
+    {
+        /** @var PaymentPolicy $paymentPolicy */
+        $paymentPolicy = $this->payment_policy;
+
+        return match ($paymentPolicy) {
+            PaymentPolicy::PREPAID => $this->payment_status === PaymentStatus::PAID,
+            PaymentPolicy::AUTHORIZE_THEN_CAPTURE => in_array($this->payment_status, [
+                PaymentStatus::AUTHORIZED,
+                PaymentStatus::PAID,
+            ], true),
+            PaymentPolicy::PAY_AT_PROPERTY => $this->payment_status === PaymentStatus::OFFLINE_DUE,
+            PaymentPolicy::NOT_REQUIRED => $this->payment_status === PaymentStatus::NOT_REQUIRED,
+        };
     }
 
     /**
@@ -210,7 +269,7 @@ class Booking extends Model
             return 0;
         }
 
-        $hoursUntilCheckIn = now()->diffInHours($this->check_in, false);
+        $hoursUntilCheckIn = $this->hoursUntilCheckInStart();
         $config = config('booking.cancellation');
 
         // Already past check-in
@@ -246,7 +305,7 @@ class Booking extends Model
      */
     public function getRefundPercentage(): int
     {
-        $hoursUntilCheckIn = now()->diffInHours($this->check_in, false);
+        $hoursUntilCheckIn = $this->hoursUntilCheckInStart();
         $config = config('booking.cancellation');
 
         if ($hoursUntilCheckIn < 0) {
@@ -335,6 +394,8 @@ class Booking extends Model
             'bookings.check_out',
             'bookings.guest_name',
             'bookings.guest_email',
+            'bookings.number_of_guests',
+            'bookings.special_requests',
             'bookings.status',
             'bookings.amount',
             'bookings.payment_intent_id',
@@ -431,7 +492,7 @@ class Booking extends Model
      */
     public function isExpired(): bool
     {
-        return $this->check_out->isPast();
+        return $this->check_out->toDateString() <= HostelClock::todayDate();
     }
 
     /**
@@ -439,7 +500,7 @@ class Booking extends Model
      */
     public function isStarted(): bool
     {
-        return $this->check_in->isPast() || $this->check_in->isToday();
+        return $this->check_in->toDateString() <= HostelClock::todayDate();
     }
 
     /**
@@ -500,5 +561,12 @@ class Booking extends Model
         $this->deleted_by = null;
 
         return $this->restore();
+    }
+
+    private function hoursUntilCheckInStart(): float
+    {
+        $checkInStart = HostelClock::parseDate($this->check_in->toDateString());
+
+        return HostelClock::now()->diffInHours($checkInStart, false);
     }
 }

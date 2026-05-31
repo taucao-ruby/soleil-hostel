@@ -561,8 +561,12 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           trap 'rm -f ~/.ssh/deploy_key' EXIT
 
+          # Pre-cutover guardrail: validates production HTTP-runtime config
+          # (APP_DEBUG, session.secure, APP_URL, CORS origins, Stripe webhook
+          # secret) against the deployed, config-cached runtime. A non-zero
+          # exit here MUST fail the deploy before traffic is admitted.
           ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "cd ${DEPLOY_PATH}/backend && php artisan app:assert-production-config"
+            "cd ${DEPLOY_PATH}/backend && php artisan app:assert-production-config --no-interaction"
       - name: Health Check
         run: |
           APP_URL="${{ vars.APP_URL || 'https://soleilhotel.com' }}"

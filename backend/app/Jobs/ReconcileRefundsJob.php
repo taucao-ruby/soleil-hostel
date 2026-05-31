@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Enums\BookingStatus;
+use App\Enums\RefundStatus;
 use App\Events\BookingCancelled;
 use App\Models\Booking;
 use App\Models\User;
@@ -711,10 +712,15 @@ final class ReconcileRefundsJob implements ShouldQueue
         }
 
         // pending / requires_action: hand off to the pending reconciler.
+        // SH-05 / F-73: normalize before persistence so a raw Stripe status
+        // (e.g. 'requires_action') never lands in bookings.refund_status. The
+        // booking is entering REFUND_PENDING, so the coherent projection is
+        // 'pending'; tryFromStripe maps pending/requires_action -> pending and we
+        // fail safe to PENDING for anything unexpected reaching this branch.
         $transitioned = $booking->transitionTo(BookingStatus::REFUND_PENDING);
         $transitioned->forceFill([
             'refund_id' => $refund->id,
-            'refund_status' => (string) $refund->status,
+            'refund_status' => (RefundStatus::tryFromStripe((string) $refund->status) ?? RefundStatus::PENDING)->value,
         ])->save();
 
         Log::info('ReconcileRefunds: adopted pre-existing in-flight refund, deferred to pending reconciler', [

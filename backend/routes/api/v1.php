@@ -39,6 +39,13 @@ Route::middleware(['check_token_valid', 'role:admin'])->group(function () {
     Route::delete('/rooms/{room}', [RoomController::class, 'destroy'])->name('v1.rooms.destroy');
 });
 
+// Operational room readiness transitions (front-desk operators: moderator+).
+// Canonical readiness_status only — distinct from the admin-only CRUD above and
+// from the deprecated rooms.status availability semantics. SH-10 / F-63.
+Route::middleware(['check_token_valid', 'role:moderator'])->group(function () {
+    Route::patch('/rooms/{room}/readiness', [RoomController::class, 'updateReadiness'])->name('v1.rooms.readiness');
+});
+
 // ========== BOOKING ENDPOINTS (v1) ==========
 // All booking endpoints require authenticated + verified email
 Route::middleware(['check_token_valid', 'verified'])->group(function () {

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Payment;
 use App\Enums\BookingStatus;
 use App\Enums\PaymentPolicy;
 use App\Enums\PaymentStatus;
+use App\Enums\RefundStatus;
 use App\Models\Booking;
 use App\Models\StripeWebhookEvent;
 use App\Services\Payment\PaymentIntentApplyOutcome;
@@ -272,7 +273,21 @@ class StripeWebhookController extends CashierWebhookController
                     return ['status' => 'missing_booking'];
                 }
 
-                $targetStatus = $refundStatus === 'succeeded'
+                // SH-05 / F-73: normalize the raw Stripe refund status into the
+                // closed internal {pending, succeeded, failed} set BEFORE it can
+                // touch bookings.refund_status. Fail closed — an unrecognized
+                // Stripe status is never persisted as a raw provider string.
+                $normalizedRefundStatus = RefundStatus::tryFromStripe($refundStatus);
+
+                if ($normalizedRefundStatus === null) {
+                    return [
+                        'status' => 'unknown_refund_status',
+                        'booking_id' => $booking->id,
+                        'raw_status' => $refundStatus,
+                    ];
+                }
+
+                $targetStatus = $normalizedRefundStatus === RefundStatus::SUCCEEDED
                     ? BookingStatus::CANCELLED
                     : BookingStatus::REFUND_FAILED;
 
@@ -320,9 +335,9 @@ class StripeWebhookController extends CashierWebhookController
                 // §bookings.refund_id semantics.
                 $booking->forceFill([
                     'refund_id' => $refundId,
-                    'refund_status' => $refundStatus,
+                    'refund_status' => $normalizedRefundStatus->value,
                     'refund_amount' => $refundAmount,
-                    'refund_error' => $refundStatus === 'failed'
+                    'refund_error' => $normalizedRefundStatus === RefundStatus::FAILED
                         ? 'Refund failed on Stripe'
                         : null,
                 ])->save();
@@ -389,6 +404,28 @@ class StripeWebhookController extends CashierWebhookController
                 'Illegal booking transition %s -> %s ignored for refund %s (charge.refunded)',
                 $result['from'],
                 $result['to'],
+                $refundId,
+            ));
+
+            return response()->json(['handled' => true]);
+        }
+
+        if ($result['status'] === 'unknown_refund_status') {
+            // SH-05 / F-73 fail-closed: Stripe sent a refund status outside the
+            // closed internal set. A retry never reclassifies it, so this is a
+            // permanent error — mark the event failed for operator visibility and
+            // ack 200 to stop the retry storm. The booking is NOT mutated and no
+            // raw provider status leaks into bookings.refund_status.
+            Log::warning('Stripe webhook: charge.refunded carried an unrecognized refund status; not persisted', [
+                'stripe_event_id' => $stripeEventId,
+                'booking_id' => $result['booking_id'],
+                'refund_id' => $refundId,
+                'raw_refund_status' => $result['raw_status'],
+            ]);
+
+            $webhookEvent->markFailed(sprintf(
+                'Unrecognized Stripe refund status "%s" ignored for refund %s (charge.refunded)',
+                (string) $result['raw_status'],
                 $refundId,
             ));
 

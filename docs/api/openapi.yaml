@@ -1487,6 +1487,65 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /v1/rooms/{id}/readiness:
+    patch:
+      tags: [Rooms]
+      summary: Update room operational readiness (moderator/admin)
+      operationId: updateRoomReadiness
+      description: |
+        Canonical `readiness_status` transition for front-desk operators
+        (check-in / housekeeping). Distinct from the deprecated `rooms.status`
+        availability field and from the admin-only full room update
+        (PUT/PATCH /v1/rooms/{id}). Requires MODERATOR or ADMIN.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [readiness_status]
+              properties:
+                readiness_status:
+                  type: string
+                  enum: [ready, occupied, dirty, cleaning, inspected, out_of_service]
+                lock_version:
+                  type: integer
+                  description: Optional optimistic-lock version from a prior GET.
+            example:
+              readiness_status: occupied
+      responses:
+        "200":
+          description: Readiness updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/Room"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/VersionConflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
   # ═══════════════════════════════════════
   # BOOKINGS (v1)
   # ═══════════════════════════════════════

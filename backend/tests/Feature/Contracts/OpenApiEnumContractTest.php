@@ -87,6 +87,35 @@ class OpenApiEnumContractTest extends TestCase
         ], 'components.schemas.Booking.properties.refund_status');
     }
 
+    public function test_refund_status_openapi_matches_internal_refund_status_enum(): void
+    {
+        // The published contract must equal the runtime RefundStatus enum, the
+        // single source of truth for the closed {pending, succeeded, failed} set.
+        $expected = \App\Enums\RefundStatus::values();
+
+        $this->assertOpenApiEnumMatches($expected, [
+            'components',
+            'schemas',
+            'Booking',
+            'properties',
+            'refund_status',
+            'enum',
+        ], 'components.schemas.Booking.properties.refund_status');
+
+        // The storage-contract comment must agree with the enum too, so all three
+        // sources (enum, migration comment, OpenAPI) can never drift apart.
+        $storageValues = $this->refundStatusValuesFromStorageContract();
+        sort($storageValues, SORT_STRING);
+        $sortedExpected = $expected;
+        sort($sortedExpected, SORT_STRING);
+
+        $this->assertSame(
+            $sortedExpected,
+            $storageValues,
+            'bookings.refund_status storage comment drifted from App\\Enums\\RefundStatus.'
+        );
+    }
+
     /**
      * @param  list<string>  $expected
      * @param  list<string>  $path

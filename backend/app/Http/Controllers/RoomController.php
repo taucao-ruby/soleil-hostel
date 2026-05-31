@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ListRoomsRequest;
 use App\Http\Requests\RoomRequest;
+use App\Http\Requests\UpdateRoomReadinessRequest;
 use App\Http\Resources\RoomResource;
 use App\Models\Room;
 use App\Services\AdminAuditService;
@@ -146,6 +147,40 @@ class RoomController extends Controller
 
         $this->auditService->log('room.update', 'room', $room->id, [
             'changed_fields' => array_keys($data),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('messages.room_updated'),
+            'data' => new RoomResource($updatedRoom),
+        ]);
+    }
+
+    /**
+     * Update a room's operational readiness.
+     *
+     * PATCH /api/v1/rooms/{room}/readiness
+     *
+     * Canonical readiness_status transition for front-desk operators (moderator+),
+     * separate from the admin-only room CRUD in update(). Reuses the optimistic-lock
+     * write path so readiness audit columns (readiness_updated_at/by) stay consistent.
+     * SH-10 / F-63.
+     */
+    public function updateReadiness(UpdateRoomReadinessRequest $request, Room $room): JsonResponse
+    {
+        // Defense-in-depth: route role:moderator middleware + policy.
+        $this->authorize('updateReadiness', $room);
+
+        $readinessStatus = $request->validated('readiness_status');
+
+        $updatedRoom = $this->roomService->updateWithOptimisticLock(
+            $room,
+            ['readiness_status' => $readinessStatus],
+            $request->getLockVersion()
+        );
+
+        $this->auditService->log('room.readiness.update', 'room', $room->id, [
+            'readiness_status' => $readinessStatus,
         ]);
 
         return response()->json([

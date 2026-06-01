@@ -1,7 +1,7 @@
 # Audit Report — Soleil Hostel
 
 > **Rolling audit-state summary**
-> Last updated: 2026-05-08 | HEAD: `6372d7f` | Branch: `dev`
+> Last updated: 2026-06-01 | HEAD: `b7d9d28` | Branch: `dev`
 >
 > This is the current-state audit index. Each historical audit pass is preserved in its dated file under `docs/`, and every code-level finding lives canonically in [`docs/FINDINGS_BACKLOG.md`](./docs/FINDINGS_BACKLOG.md). When a finding is resolved, FINDINGS_BACKLOG is the source of truth — this file is the rolled-up view.
 
@@ -27,7 +27,7 @@
 
 ## 2. Current Verification Gates
 
-Verified at the documentation layer 2026-05-08; runtime gate re-verification required after the Apr 19 → May 8 batches. Single source of truth: [`PROJECT_STATUS.md`](./PROJECT_STATUS.md).
+Verified at the documentation layer 2026-05-08; runtime gate re-verification required after the May 9 → May 31 wave (126 commits since `6372d7f`, HEAD `b7d9d28`). Single source of truth: [`PROJECT_STATUS.md`](./PROJECT_STATUS.md).
 
 | Gate | Cmd | Last verified status | Owner |
 |------|-----|----------------------|-------|

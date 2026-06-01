@@ -1,9 +1,11 @@
 # BACKLOG.md — Soleil Hostel
 
 > **Product backlog — prioritized by implementation order**
-> Last updated: 2026-05-08 | Source: COMPACT.md + KNOWN_LIMITATIONS.md + FINDINGS_BACKLOG.md + PERMISSION_MATRIX.md
+> Last updated: 2026-06-01 (HEAD `b7d9d28`) | Source: COMPACT.md + KNOWN_LIMITATIONS.md + FINDINGS_BACKLOG.md + PERMISSION_MATRIX.md + AI_Engineering_Capability_Assessment (EPIC 7)
 >
 > Apr–May 2026 batches landed on `dev` (commits `347649a` → `6372d7f`): AI Harness hardening (proposal lifecycle, HMAC audit, PII hard-block, AI-001 prompt-injection defense), batch-8 kill-switch + E2E smoke gate, Booking integrity wave (state-machine invariants, payment-hold, durable refund idempotency, actor snapshots, no-overlap constraint hardening, deposit FSM, stay cancellation propagation OPS-004), Auth + observability hardening (batch-2 Sanctum, F-32, RBAC-001, PII redaction, OBS-001/OBS-002), AUTH-004 OTP resend race-hardening. May 5–8 finalized the AI harness kill-switch contract (`FeatureFlag::killSwitch()` is the sole gate; `FeatureFlag::forget()` degrades gracefully on Redis outage) and tightened type contracts in `ReconcileRefundsJob` + `Booking` PHPDoc. **Backend product surface for booking + AI is now production-quality;** frontend payment checkout remains the largest open gap.
+>
+> **May 9–31 wave (126 commits → HEAD `b7d9d28`):** booking-logic invariant hardening (BL-1..BL-7), A-1 mass-assignment defense (`Booking::$fillable` shrunk to user input), a durable Stripe webhook reaper with fail-closed signature verification, the `PaymentPolicy`×`PaymentStatus` state machine + `RefundStatus` projection, refund correctness PAY-01/03/04 + SH-01/02/03, hostel-local timezone enforcement, the room readiness endpoint (moderator+), and `number_of_guests`/`special_requests` now persisted end-to-end (closes TL-03). Canonical + booking-domain docs re-synced (`2315188`).
 
 ---
 
@@ -394,6 +396,58 @@
 - [ ] Thread messages per booking
 - [ ] Real-time via WebSocket (Laravel Reverb or Pusher)
 - [ ] Unread count badge in the dashboard
+
+---
+
+## EPIC 7 — Distinguished-Engineer Trajectory
+
+> Strategic items extracted from [`AI_Engineering_Capability_Assessment_Soleil_Hostel.md`](AI_Engineering_Capability_Assessment_Soleil_Hostel.md) (DE-calibrated Apr-4-2026 snapshot, weighted **6.2/10**). The assessment's thesis: engineering competency is *not* the gap — **shipping, leverage, and external influence** are. It estimates these actions move the score **6.2 → 7.5** (clears the DE threshold). Source sections: §G (Trajectory), §H (Growth Plan), "What to STOP".
+
+### DE-01 🟠 Ship to staging/production — close the Shipping & Impact gap (3.0/10)
+
+**Description:** Deploy and process real (test-mode) traffic. The single biggest score blocker — *"a product claim without deployment evidence is unfalsifiable."* Infra already supports it (`docker-compose.prod.yml`).
+
+**Actions (assessment §H Phase 2):**
+
+- [ ] `docker compose -f docker-compose.prod.yml up` on a VPS
+- [ ] Configure Sentry (per the assessment, a TODO in the frontend `ErrorBoundary`)
+- [ ] Process one Stripe test-mode payment end-to-end (webhook handlers already tested)
+- [ ] Record the first deploy in a `DEPLOYMENT_LOG.md`
+
+**Depends on:** OPS-001 (deployment pipeline, 60%) + PAY-001 (frontend checkout UI) for a usable guest payment flow.
+
+### DE-02 🟡 Extract + open-source the AI governance framework — highest-leverage DE action
+
+**Description:** The constitutional hierarchy + skill routing + self-learning gates + MCP safety model are a novel contribution locked inside this repo. Extraction is the assessment's highest-rated trajectory move (Leverage 5.5→7, Influence 2→6). Source: §H Phase 3, §D3.
+
+**Acceptance criteria:**
+
+- [ ] Standalone repo (e.g. `ai-agent-governance`) with: constitutional hierarchy (CLAUDE.md → ARCHITECTURE_FACTS → CONTRACT → skills → commands), skill routing, AGENT_LEARNINGS human-verification gates, MCP `policy.json` safety model, COMPACT session-memory lifecycle
+- [ ] Docs explaining the *design decisions*, not just the structure
+- [ ] Generalized — decoupled from Soleil-specific conventions
+
+### DE-03 🟢 Publish technical write-ups — build external influence
+
+**Description:** Convert the strongest artifacts into public knowledge (Influence → 7.5). Source: §H Phase 3–4.
+
+**Acceptance criteria:**
+
+- [ ] Blog post: "Governing AI Agents: A Formal Framework for Multi-Session AI-Assisted Development"
+- [ ] Blog post: half-open intervals + PostgreSQL exclusion constraints (booking-overlap two-layer defense)
+- [ ] Blog post: the 13-ADR solo-project decision-documentation practice
+- [ ] (Optional, high-signal) submit to a conference / engineering newsletter
+
+### DE-04 🟡 Scope control + declare product-vs-research priority
+
+**Description:** The weakest judgment signal — a four-layer operational domain built for zero users, and a product-vs-research tension never declared. Source: §H "What to STOP", §I Gap 2.
+
+**Acceptance criteria:**
+
+- [ ] Declare in `PRODUCT_GOAL.md` whether Soleil is primarily a shipped product or a research vehicle for AI-assisted engineering
+- [ ] Freeze new operational-domain depth (stays / assignments / escalation) until Layer-1 booking ships and serves a user
+- [ ] Stop commissioning further full assessments before deploying
+
+> **Phase-1 "restore consistency" code fixes** from the assessment (F-26 `confirmBooking` lock, BE-01 cookie-auth, F-32 Bearer lookup, local `.env` → pgsql) are *code findings* — they live in [`docs/FINDINGS_BACKLOG.md`](docs/FINDINGS_BACKLOG.md), not here. The assessment is an Apr-4 snapshot; several are already resolved (e.g. F-32 Bearer lookup, Apr 25–28; `docker compose config` now PASS per `PROJECT_STATUS.md`). **Re-check status before actioning.**
 
 ---
 

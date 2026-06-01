@@ -130,12 +130,20 @@ api.interceptors.response.use(
       try {
         // ========== REFRESH TOKEN ==========
         // Browser automatically sends httpOnly cookie with old token
-        // Backend returns new token in httpOnly cookie + new csrf_token
-        const refreshResponse = await api.post<{ csrf_token: string }>('/auth/refresh-httponly')
+        // Backend returns new token in httpOnly cookie + new csrf_token.
+        //
+        // The refresh endpoint wraps its payload in the standard ApiResponse
+        // envelope ({ success, message, data }), so the rotated CSRF token lives
+        // at response.data.data.csrf_token — NOT response.data.csrf_token.
+        // Reading the shallow path silently dropped the rotated token
+        // (FINDINGS_BACKLOG F-25).
+        const refreshResponse = await api.post<{ data: { csrf_token: string } }>(
+          '/auth/refresh-httponly'
+        )
 
         // Update CSRF token from refresh response
-        if (refreshResponse.data?.csrf_token) {
-          setCsrfToken(refreshResponse.data.csrf_token)
+        if (refreshResponse.data?.data?.csrf_token) {
+          setCsrfToken(refreshResponse.data.data.csrf_token)
         }
 
         // Process all queued requests

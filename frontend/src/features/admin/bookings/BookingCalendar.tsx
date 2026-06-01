@@ -1,19 +1,37 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { Link } from 'react-router-dom'
-import api from '@/shared/lib/api'
+import { Link, useNavigate } from 'react-router-dom'
+import { getAllBookings } from './adminBooking.api'
+import { getLocations } from '@/shared/lib/location.api'
+import { getRoomsByLocation } from '@/features/admin/rooms/adminRoom.api'
 import {
   assertNever,
   type BookingDetailRaw,
   type BookingStatus,
 } from '@/shared/types/booking.types'
 
-// Note: In a real implementation we would fetch rooms and bookings, then map them together.
+/**
+ * Treat axios `CanceledError` (code `ERR_CANCELED`) and the DOM `AbortError` as
+ * the expected outcome of effect cleanup, never as a real failure to report.
+ */
+const isAbortError = (error: unknown): boolean => {
+  if (error instanceof DOMException) {
+    return error.name === 'AbortError'
+  }
+
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (('name' in error && error.name === 'AbortError') ||
+      ('code' in error && error.code === 'ERR_CANCELED'))
+  )
+}
+
 const BookingCalendar: React.FC = () => {
+  const navigate = useNavigate()
   const [currentDate, setCurrentDate] = useState(new Date())
   const [locations, setLocations] = useState<{ id: number; name: string }[]>([])
   const [selectedLocationId, setSelectedLocationId] = useState<number | ''>('')
 
-  // Dummy data arrays for rooms and bookings to demonstrate UI structure
   const [rooms, setRooms] = useState<{ id: number; name: string }[]>([])
   const [bookings, setBookings] = useState<BookingDetailRaw[]>([])
 
@@ -31,28 +49,65 @@ const BookingCalendar: React.FC = () => {
   const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1))
   const today = () => setCurrentDate(new Date())
 
-  // Fake fetch logic
+  // Load locations once on mount (via the shared location API module).
   useEffect(() => {
-    api.get('/v1/locations').then(res => {
-      setLocations(res.data.data)
-      if (res.data.data.length > 0) setSelectedLocationId(res.data.data[0].id)
+    const controller = new AbortController()
+
+    const loadLocations = async () => {
+      const data = await getLocations(controller.signal)
+      if (controller.signal.aborted) return
+
+      setLocations(data.map(location => ({ id: location.id, name: location.name })))
+      if (data.length > 0) setSelectedLocationId(data[0].id)
+    }
+
+    loadLocations().catch(error => {
+      if (!isAbortError(error)) {
+        console.warn('BookingCalendar: không thể tải danh sách cơ sở.', error)
+      }
     })
+
+    return () => controller.abort()
   }, [])
 
+  // Load rooms + bookings for the selected location.
+  // getAllBookings returns a normalized { bookings, meta }; we only need the
+  // bookings array, so `bookings` state is always BookingDetailRaw[] — never the
+  // raw { bookings, meta } envelope (the cause of the old `.find is not a
+  // function` crash).
   useEffect(() => {
     if (!selectedLocationId) return
 
-    // In a real app we would:
-    // 1. Fetch rooms for this location
-    // 2. Fetch bookings for this location overlapping with current month
-    // Here we'll just mock rooms up
-    api
-      .get('/v1/rooms', { params: { location_id: selectedLocationId } })
-      .then(res => setRooms(res.data.data || []))
+    const controller = new AbortController()
+    const locationId = selectedLocationId
 
-    api
-      .get('/v1/admin/bookings', { params: { location_id: selectedLocationId } })
-      .then(res => setBookings(res.data.data || []))
+    const loadRooms = async () => {
+      const data = await getRoomsByLocation(locationId, controller.signal)
+      if (controller.signal.aborted) return
+      setRooms(data.map(room => ({ id: room.id, name: room.name })))
+    }
+
+    const loadBookings = async () => {
+      const { bookings: list } = await getAllBookings(
+        { location_id: locationId },
+        controller.signal
+      )
+      if (controller.signal.aborted) return
+      setBookings(list)
+    }
+
+    loadRooms().catch(error => {
+      if (!isAbortError(error)) {
+        console.warn('BookingCalendar: không thể tải danh sách phòng.', error)
+      }
+    })
+    loadBookings().catch(error => {
+      if (!isAbortError(error)) {
+        console.warn('BookingCalendar: không thể tải danh sách đặt phòng.', error)
+      }
+    })
+
+    return () => controller.abort()
   }, [selectedLocationId, year, month])
 
   // Helper to check if a booking overlaps a specific day
@@ -178,7 +233,7 @@ const BookingCalendar: React.FC = () => {
                           className={`absolute inset-x-0 ${getStatusColor(booking.status)} mx-0 flex items-center px-1 text-[10px] leading-tight overflow-hidden rounded-sm cursor-pointer z-0 whitespace-nowrap z-0 shadow-sm transition-all hover:scale-105`}
                           style={{ height: 'calc(100% - 4px)' }}
                           title={`${booking.guest_name} (${booking.check_in} - ${booking.check_out})`}
-                          onClick={() => (window.location.href = `/admin/bookings/${booking.id}`)}
+                          onClick={() => navigate(`/admin/bookings/${booking.id}`)}
                         >
                           <span className="truncate">{booking.guest_name}</span>
                         </div>

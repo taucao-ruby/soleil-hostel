@@ -10,7 +10,7 @@
 > Design system: **TailwindCSS utility classes** — no custom component library.
 > Color signals: `pending` → yellow/amber | `confirmed` → green | `cancelled` → red/muted | `refund_failed` → orange + escalation alert.
 > **Do NOT design**: `/admin/reviews`, `/admin/messages` (routes not implemented).
-> **Do NOT design**: `number_of_guests` or `special_requests` form persistence (backend not wired to read these).
+> **Now wired (May 25, 2026)**: `number_of_guests` and `special_requests` are validated + persisted end-to-end (`1e32c8b` backend, `f6cc916` frontend) — these fields may now be designed in the booking form.
 > **Do NOT design**: Online payment checkout or Stripe UI (backend ready — payment-hold + durable refund idempotency landed Apr 22; frontend checkout still pending).
 > **Do NOT design**: AI proposal-confirmation widget visuals beyond the existing `RoomDiscoveryWidget` (AI proposal lifecycle is durable + proposer-bound; Stitch should not redesign without checking `docs/HARNESS_ENGINEERING.md`).
 

@@ -8,9 +8,75 @@
 | **Subject Level**    | Expert Principal Engineer, 15+ years experience                                                        |
 | **Evaluator**        | Distinguished Engineer perspective — evaluating for Principal→DE trajectory                            |
 | **Method**           | Full codebase read, all gates executed, every finding verified against source, AI system architecture reviewed |
-| **Date**             | March 7, 2026 (original) — **Rewritten April 2, 2026 (DE-calibrated)** — **Updated April 4, 2026 (Harness Hardening wave verified)** |
-| **Branch / HEAD**    | `dev` / `26fe51d` (April 4, 2026)                                                                     |
+| **Date**             | March 7, 2026 (original) — **Rewritten April 2, 2026 (DE-calibrated)** — **Updated April 4, 2026 (Harness Hardening wave verified)** — **Re-calibrated June 1, 2026 (current-state pass at HEAD `b7d9d28`)** |
+| **Branch / HEAD**    | `dev` / `26fe51d` (April 4 scoring) → `main` / `b7d9d28` (June 1 re-calibration)                                                                     |
 | **Prior assessment** | Two prior versions existed (rated 7.0–7.1/10 on a Senior→Staff scale). This rewrite recalibrates the entire framework for evaluating a Principal Engineer against Distinguished-level criteria.                    |
+
+---
+
+## ⟳ Re-Calibration — June 1, 2026 (HEAD `b7d9d28`)
+
+> **Supersedes the April 2–4 scoring (Sections A, C) for current state; prior content is retained below as the historical record** — this document is append-only across `26fe51d → b7d9d28`. **Method:** assessed from a full code read + the 126-commit delta `6372d7f..b7d9d28` + the reconciled `PROJECT_STATUS.md`. Runtime gates (tests / Pint / PHPStan / Psalm) are **pending re-verification** at this HEAD — this is a documentation-layer re-calibration, not a fresh gate execution.
+
+### What landed since April 4 (`26fe51d → b7d9d28`, ~8 weeks, 126 commits)
+
+A large, disciplined engineering wave — almost entirely backend correctness and hardening:
+
+- **Booking-logic invariants BL-1..BL-7** — restore empty-overlap race, refund-state overlap, constraint-first webhook idempotency, queued delivery, `location_id` three-layer guard, idempotency contract, confused-deputy cancellation.
+- **Payment & refund subsystem** — `PaymentPolicy`×`PaymentStatus` state machine, `RefundStatus` projection, PAY-01/03/04 (concurrent-refund prevention, PaymentIntent-cancellation outbox, ledger-on-all-paths), SH-01/02/03 (date immutability, idempotent refund unification, ledger-coupled finalize), a fail-closed Stripe webhook reaper.
+- **The exact gaps this assessment flagged, now closed** — F-33 `finalizeCancellation` re-lock; the A-1 mass-assignment defense (`Booking::$fillable` shrunk to user input); F-32 Bearer lookup; the `docker compose config` mysql override. The April "restore consistency" Phase-1 list is largely done.
+- **Plus** hostel-local timezone correctness, the room readiness endpoint + RBAC, a production runtime-config pre-traffic gate, Symfony CVE patches, and an OpenAPI enum runtime-contract test.
+- **The governance framework operating in anger** — this very re-calibration rides on a docs-reconciliation pass (booking-domain canon + root ledgers) executed under the `CLAUDE.md → CONTRACT` pipeline. The framework is no longer merely designed; it is visibly load-bearing.
+
+### Re-scored DE dimensions
+
+| Dimension | Apr 4 | **Jun 1** | Δ | Rationale |
+|---|---|---|---|---|
+| 1. Original technical contribution (25%) | 8.8 | **8.9** | ▲0.1 | Booking depth grew, but that is *expected* Principal mastery, not new originality. The novel artifact (the governance framework) is more battle-tested yet **still unextracted/unpublished** — the ceiling is unchanged. |
+| 2. Judgment & decision quality (25%) | 6.5 | **6.5** | ◦ | **Micro ▲, macro ▼.** The flagged locking / TOCTOU / mass-assignment gaps were closed (excellent micro-judgment). But 126 further commits of hardening on a **zero-user** system is the macro scope-control failure *compounding*, not resolving. |
+| 3. Leverage creation (20%) | 5.8 | **5.8** | ◦ | Still author-scoped. No OSS extraction, no users, no team. The framework multiplied output across *more* sessions — productivity, not org/community leverage. |
+| 4. Shipping & impact (15%) | 3.0 | **3.0** | ◦ | **Unchanged — still the blocker.** Zero deployments, zero users, zero payments processed; `PROJECT_STATUS` shows Deployment ~60% and checkout UI pending. More quality behind the same closed door. |
+| 5. Technical culture & influence (15%) | 5.0 | **5.0** | ◦ | No blog posts, talks, or open-source since April. External reach remains absent. |
+
+**Weighted score: 6.2/10 → `6.2/10` (unchanged).**
+
+### The finding that matters
+
+**~8 weeks and 126 commits moved Distinguished-readiness by ≈ 0.0.** Not because the work was weak — it was excellent — but because **every commit landed in dimensions that were already strong** (technical contribution, micro-judgment) while the **three dimensions this assessment named as the gap — Shipping (3.0), Influence (5.0), Leverage (5.8) — received zero new evidence.** The April thesis is now confirmed with longitudinal data: the constraint on the Principal→Distinguished transition here is **not** engineering capability; it is the conversion of internal quality into external impact, and that conversion has not started.
+
+### Meta-observation (the uncomfortable, DE-honest one)
+
+Commissioning *this* re-calibration before shipping is itself the documented anti-pattern — §H **"What to STOP"**: *"Stop commissioning assessments before deploying. Six cycles. The signal/noise ratio per additional audit is near zero. Ship, then audit production behaviour."* This is the next cycle. The most useful thing a reviewer can do is decline to inflate the number and point at the work that actually moves it: **`BACKLOG` EPIC 7 → DE-01 (ship to staging) and DE-02 (extract + publish the framework).** A seventh assessment is not on the critical path; a first deployment is.
+
+### Net verdict (June 1, 2026)
+
+Still an **Expert Principal Engineer** with Distinguished-level spikes in AI-governance design and backend correctness — now with the micro-judgment gaps largely closed, a genuine improvement. Still **not yet Distinguished**, gated on the identical three axes as in April. The gap is now **better-evidenced, not smaller**: the number moves when a *user* does something with this system and when the governance framework *leaves the repo* — not before.
+
+### Booking-system capability surface (as-built at `b7d9d28`) — full inventory
+
+The complete current Soleil booking domain. Each line is evidenced in source/commit. Per the rubric this is the *necessary* engineering depth treated as table-stakes Principal mastery (Section C) — comprehensive and correct, but not the DE differentiator.
+
+**1. Double-booking prevention (two independent layers).** PostgreSQL `EXCLUDE USING gist (room_id =, daterange(check_in, check_out) &&)` constraint `no_overlapping_bookings`, filtered to active statuses + `deleted_at IS NULL`, with a pre-deploy assertion gate `db:assert-schema-constraints` (`92f1ad1`); plus application pessimistic locking — `SELECT … FOR UPDATE` in `CreateBookingService` with deadlock-aware retry (3×, 100/200/400 ms). Half-open intervals `[check_in, check_out)` allow same-day turnover; same-day check-in datetime-precision fixed (`9793bff`); present/future availability constraint (`4332fdf`).
+
+**2. Booking state machine.** 5 states (PENDING → CONFIRMED → REFUND_PENDING → CANCELLED, + REFUND_FAILED); sole mutation path `Booking::transitionTo()` (row-locked, transition-validated, emits `BookingStatusChanged`); `ACTIVE_STATUSES = [pending, confirmed]` gate overlap, canonicalised to a single source (`4808142`); invariants locked by `BookingStateMachineInvariantTest`.
+
+**3. Payment FSM.** `PaymentPolicy` × `PaymentStatus` (4 × 13) with DB CHECKs (`chk_bookings_payment_policy/_status`) + indexes; `paymentAllowsConfirmation()` confirmation gate; PaymentIntent creation moved outside the DB transaction (`94cc391`) with constructor-injected `StripeClient` (`16939c8`); capture tracking (`amount_capturable`/`amount_received`/`authorized_at`/`paid_at`/`capture_due_at`).
+
+**4. Cancellation + refund (3-phase).** `CancellationService`: idempotent terminal no-op (BL-6) → lock + transition to `refund_pending` → Stripe refund *outside* the transaction → ledger-first finalize (F-33 re-lock, SH-03) → deposit FSM. Refund policy in `Booking::calculateRefundAmount()`/`cancellationPolicy()` (48 h → 100 %, 24 h → 50 %, configurable fee) in hostel-local time; one idempotent `StripeService::createBookingRefund` (SH-02). Canonical design: `docs/backend/architecture/BOOKING_CANCELLATION_REFUND_ARCHITECTURE.md`.
+
+**5. Stripe webhook ingestion.** Custom **fail-closed** `StripeWebhookController` — owns signature verification (missing secret → 500, bad/expired sig → 400; `f927d51`); handles `payment_intent.succeeded` / `charge.refunded` / `payment_failed` / `canceled` / `amount_capturable_updated`; `RefundStatus::tryFromStripe` fail-closed normalisation (SH-05/F-73).
+
+**6. Refund durability & idempotency stack.** `stripe_refund_events` ledger (PAY-04, `UNIQUE(stripe_refund_id)` replay guard; `bookings.refund_id` is a latest-pointer only); BL-3 webhook `stripe_event_id` UNIQUE; `ReconcileRefundsJob` every 5 min (pending + failed passes, PAY-01 CAS lease + existing-refund pre-check, null-user fallback CONC-006); stuck-webhook reaper with SIEM backlog telemetry (`ec51d6a`/`c2935cf`); PaymentIntent-cancellation outbox (PAY-03, `a90124c`).
+
+**7. Deposit lifecycle FSM (CONC-005/006).** `Deposit::transitionTo()` sole mutation; append-only `deposit_events`; `none → collected → applied | refunded | partial_refund | forfeited` (CHECK `chk_bookings_deposit_status`); async `ProcessDepositRefund`; null-user system-actor reconciliation.
+
+**8. Operational layers.** Stay-cancellation propagation OPS-004 (`BookingCancelled` → terminal `StayStatus::CANCELLED`, `7027adb`); immutable cancellation actor snapshot surviving user deletion (`048e40b`); room readiness endpoint + `RoomPolicy::updateReadiness` (moderator+, SH-10/F-63).
+
+**9. Integrity & safety.** A-1 mass-assignment defense (`Booking::$fillable` user-input-only, `d67b13f`); SH-01 date immutability for money-final bookings; TOCTOU-safe soft-delete restore (BL-1, `902f912`); HTML-Purifier XSS sanitisation on `guest_name`; `number_of_guests`/`special_requests` validated + persisted (`1e32c8b`/`f6cc916`); pending-booking TTL expiry (`ExpireStaleBookings`, 30 min default).
+
+**10. Contract & tests.** Published `docs/api/openapi.yaml` Booking schema (status / payment_policy / payment_status / refund_status enums) locked by `OpenApiEnumContractTest`; regression harnesses BL-1..BL-7, `RefundIdempotencyTest`, `BookingPaymentHoldTest`, `ConcurrentBookingTest`, `RoomReadinessTest`, `RefundStatusTest`.
+
+**Assessment note:** this surface is complete and correct — and it is exactly the engineering the rubric scores as *expected at Principal level* (Section C: "expected competencies … not differentiators"). It raises confidence in dimensions 1–2; it does **not** move dimensions 4–5 (shipping, influence), which remain the DE gate. A booking system this thorough that has still served **zero** real bookings is the assessment's central tension in one sentence.
 
 ---
 

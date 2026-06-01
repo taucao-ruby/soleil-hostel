@@ -41,9 +41,18 @@ return new class extends Migration
         // (reviews with no matching booking are considered invalid)
         DB::table('reviews')->whereNull('booking_id')->delete();
 
-        Schema::table('reviews', function (Blueprint $table) {
-            $table->unsignedBigInteger('booking_id')->nullable(false)->change();
-        });
+        // F-68 follow-up: avoid doctrine/dbal's secondary-connection introspection
+        // (which races primary-connection locks during migrate:fresh/RefreshDatabase
+        // and intermittently leaves a partial schema) by issuing the NOT NULL
+        // transition as raw DDL on pgsql. booking_id is already unsignedBigInteger,
+        // so only the NOT NULL change is required. Non-pgsql drivers retain ->change().
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('ALTER TABLE reviews ALTER COLUMN booking_id SET NOT NULL');
+        } else {
+            Schema::table('reviews', function (Blueprint $table) {
+                $table->unsignedBigInteger('booking_id')->nullable(false)->change();
+            });
+        }
     }
 
     /**
@@ -51,8 +60,12 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('reviews', function (Blueprint $table) {
-            $table->unsignedBigInteger('booking_id')->nullable()->change();
-        });
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('ALTER TABLE reviews ALTER COLUMN booking_id DROP NOT NULL');
+        } else {
+            Schema::table('reviews', function (Blueprint $table) {
+                $table->unsignedBigInteger('booking_id')->nullable()->change();
+            });
+        }
     }
 };

@@ -51,14 +51,28 @@ return new class extends Migration
             ->whereNull('lock_version')
             ->update(['lock_version' => 1]);
 
-        // Step 3: Make column NOT NULL with default
-        // This is safe now because all rows have a value
-        Schema::table('rooms', function (Blueprint $table) {
-            $table->unsignedBigInteger('lock_version')
-                ->default(1)
-                ->nullable(false)
-                ->change();
-        });
+        // Step 3: Make column NOT NULL with default.
+        // This is safe now because all rows have a value.
+        //
+        // F-68 follow-up: Laravel's Schema->change() routes through doctrine/dbal,
+        // which opens a secondary PostgreSQL connection to introspect the column
+        // before emitting ALTER TABLE. During migrate:fresh/RefreshDatabase that
+        // secondary connection races the primary connection for locks on rooms,
+        // intermittently leaving a partial schema. Issue the DEFAULT + NOT NULL
+        // transition as raw DDL on the primary connection instead; lock_version is
+        // already unsignedBigInteger (step 1), so no type coercion is required.
+        // Non-pgsql drivers retain ->change() since the race is pgsql-lock-specific.
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('ALTER TABLE rooms ALTER COLUMN lock_version SET DEFAULT 1');
+            DB::statement('ALTER TABLE rooms ALTER COLUMN lock_version SET NOT NULL');
+        } else {
+            Schema::table('rooms', function (Blueprint $table) {
+                $table->unsignedBigInteger('lock_version')
+                    ->default(1)
+                    ->nullable(false)
+                    ->change();
+            });
+        }
     }
 
     /**

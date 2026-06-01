@@ -10,16 +10,16 @@
 > Batches 1–12 + DevSecOps + quality hardening + DB hardening + v3.1 stay domain + AI Harness Phases 0–4 + AI proposal lifecycle hardening (Apr–May).
 > See [docs/AUDIT_2026_02_21.md](./docs/AUDIT_2026_02_21.md) for detailed audit history.
 
-Gates (verified at the documentation layer May 8, 2026; **runtime gate re-verification required after the May 9 → May 31 wave — 126 commits since `6372d7f`, see the "May 9–31" entry in Completed Work**):
+Gates (documentation layer May 8, 2026; **all runtime gates verified June 1, 2026 at `6d7b75b` in the isolated `verify-main` worktree — backend tests + frontend tsc/vitest + Pint/PHPStan/Psalm all green; see below**):
 
-- Backend tests: **re-verification required** — Mar 31 baseline 1047/2875; intermediate run May 3 reported 1414/4110 PASS at `b69a7a0` (per `docs/COMPACT.md`). Apr 19 → May 8 added: AI proposal lifecycle (`5a295c0`), HMAC audit + PII hard-block (`e588432`), AI-001 prompt-injection defense (`347649a`), no-overlap constraint hardening (`92f1ad1`), immutable actor snapshots (`048e40b`), RefundIdempotencyTest (`abc3959`), BookingPaymentHoldTest (`ae2d070`), StateMachineInvariantTest (`ac7275b`), Batch-2 Sanctum hardening (`5e258e7`), OPS-004 stay cancellation (`7027adb`), CONC-005/006 deposit FSM (`b69a7a0`), AUTH-004 OTP race (`1079946`), batch-8 kill-switch (`c5a37dc`); May 5–8 added Redis-free `AiHarnessDisabledTest` (`6372d7f`/`2ab45ae`) + Stripe charge type guard (`1441edb`).
-- Frontend typecheck PASS: 0 errors (`cd frontend && npx tsc --noEmit`) — TS5103 fixed
+- Backend tests: **✅ verified June 1, 2026 at `6d7b75b` — 1697 passed / 9 skipped / 5438 assertions** (`php artisan test` vs `soleil_test` PostgreSQL, 364s, in the `verify-main` worktree). Prior: Mar 31 baseline 1047/2875; May 3 intermediate 1414/4110 at `b69a7a0`. Apr 19 → May 8 added: AI proposal lifecycle (`5a295c0`), HMAC audit + PII hard-block (`e588432`), AI-001 prompt-injection defense (`347649a`), no-overlap constraint hardening (`92f1ad1`), immutable actor snapshots (`048e40b`), RefundIdempotencyTest (`abc3959`), BookingPaymentHoldTest (`ae2d070`), StateMachineInvariantTest (`ac7275b`), Batch-2 Sanctum hardening (`5e258e7`), OPS-004 stay cancellation (`7027adb`), CONC-005/006 deposit FSM (`b69a7a0`), AUTH-004 OTP race (`1079946`), batch-8 kill-switch (`c5a37dc`); May 5–8 added Redis-free `AiHarnessDisabledTest` (`6372d7f`/`2ab45ae`) + Stripe charge type guard (`1441edb`).
+- Frontend typecheck PASS: 0 errors (`npx tsc --noEmit`) — re-confirmed June 1, 2026 at `6d7b75b`
 - Frontend build PASS: `pnpm run build` exits 0
-- Frontend unit tests: **re-verification required** — Mar 31 baseline 261/25 files; current file count 39 (post-Apr feature batches).
+- Frontend unit tests: **✅ verified June 1, 2026 at `6d7b75b` — 488 passed / 48 files** (`vitest run`, 67s). Prior: Mar 31 baseline 261/25 files.
 - Compose config PASS (`docker compose config`) — host-env shadowing hardened (`093f5ae`); REDIS_PASSWORD placeholder injected (`fd796cf`); Redis auth enforced in non-local envs (`1737970`).
-- Pint style: **re-verification required** (AI proposal events + cancellation actor snapshot added)
-- PHPStan Level 5: **re-verification required** (AI harness lifecycle expanded; refactor of TransactionExceptions hierarchy `746a5bf`)
-- Psalm: **re-verification required** (cancellationActorSnapshot type contracts hardened `e68f40f` / `842e64a` / `98fbe93`)
+- Pint style: **✅ verified June 1, 2026 at `6d7b75b` — PASS, 539 files** (`vendor/bin/pint --test`)
+- PHPStan Level 5: **✅ verified June 1, 2026 at `6d7b75b` — [OK] No errors** (`vendor/bin/phpstan analyse`)
+- Psalm: **✅ verified June 1, 2026 at `6d7b75b` — No errors found** (89.75% types inferred; 601 info-level suggestions, non-blocking)
 - AI eval gate: `php artisan ai:eval --all-phases` — nightly CI at 03:00, blocks deploy on failure
 - OpenAPI contract lint (Spectral): CI gate `contract-lint.yml` added 2026-04-17 (`4a33755`); blocks on `docs/api/openapi.yaml` or `.spectral.yaml` changes
 - E2E smoke gate (new — `c5a37dc`): batch-8 added a frontend smoke gate to CI manifests as part of kill-switch hardening
@@ -57,22 +57,21 @@ Total Progress           ██████████████████�
 
 ## Test Results Summary
 
-> **Last verified suite run: March 31, 2026.** Apr–May commits added new tests (AI proposal lifecycle, RefundIdempotencyTest, BookingPaymentHoldTest, BookingStateMachineInvariantTest, ConcurrentBookingTest, AiProposalEventActorPreservationTest, deposit FSM tests, OPS-004 cancellation propagation tests, AUTH-004 OTP race tests). The May 9–31 wave added more (BL-1..BL-7 regression harnesses, OpenAPI enum runtime contract test, Stripe webhook-reaper tests, payment-FSM + RefundStatus tests, RoomReadinessTest). Re-run before next merge to `main`.
+> **Last verified suite run: June 1, 2026 at `6d7b75b`** (isolated `verify-main` worktree): backend **1697 passed / 9 skipped / 5438 assertions**; frontend **488 passed / 48 files**; `tsc --noEmit` **0 errors**; **Pint PASS (539 files), PHPStan 0 errors, Psalm 0 errors**. Prior baseline: March 31, 2026 (1047 backend / 261 frontend).
 
 ### Backend (PHPUnit/Pest)
 
 ```text
-Mar 31 baseline: 1047 tests passed / 2875 assertions / ~237s
-Test files on disk: 141 (includes new suites in tests/Feature/AiHarness/, tests/Feature/Stays/, tests/Feature/Payment/, tests/Feature/Database/)
-Apr–May delta: re-verification required
+Jun 1 verified (6d7b75b): 1697 passed / 9 skipped / 5438 assertions / 364s  — php artisan test, soleil_test PostgreSQL
+Mar 31 baseline:          1047 passed / 2875 assertions / ~237s
+Test suites: tests/Feature/AiHarness/, Stays/, Payment/, Database/, Room/, Contracts/, Booking/ (+ Unit/Enums)
 ```
 
 ### Frontend (Vitest)
 
 ```text
-Mar 31 baseline: 261 tests passed / 25 files / ~42s
-Test files on disk: 39 (added admin/, bookings/, locations/, assistant/ suites)
-Apr–May delta: re-verification required
+Jun 1 verified (6d7b75b): 488 passed / 48 files / 67s  — vitest run; tsc --noEmit 0 errors
+Mar 31 baseline:          261 passed / 25 files / ~42s
 ```
 
 ### E2E (Playwright)
@@ -179,7 +178,7 @@ All audit and batch details are preserved in [AUDIT_REPORT.md](./AUDIT_REPORT.md
 
 | Period | Work | Key Metrics |
 |--------|------|-------------|
-| May 9–31, 2026 | **Post-`6372d7f` wave (126 commits → HEAD `b7d9d28`).** Booking-logic invariant hardening BL-1..BL-7 (`902f912`/`d930e87`/`c01a22f`/`55d68f5`/`ef498bc`/`28a3852`/`6984f7e`); A-1 mass-assignment defense — Booking `$fillable` shrunk to user input (`d67b13f`); Stripe webhook reaper for stuck events + fail-closed signature verification (`ec51d6a`/`4d4f823`/`f927d51`); payment FSM `PaymentPolicy`×`PaymentStatus` (`f25273c`) + `RefundStatus` enum + room readiness endpoint (`fcd323f`); refund hardening PAY-01/03/04 + SH-01/02/03 (`0e2f858`/`a90124c`/`dd926b3`/`5259931`/`6d15690`); hostel-local timezone enforcement + `HostelClock` fail-fast (`1b92d40`/`67d8302`); F-33 finalizeCancellation re-lock (`bd3cff9`); AI-harness RBAC → Gate/Policy (`31eeeed`); `number_of_guests`/`special_requests` persisted end-to-end (`1e32c8b`/`f6cc916`, closes TL-03); production runtime config-assertion gate (`adaa517`/`b838143`); rate-limit/CSP/CSRF hardening (`fb8b1d8`/`c0caec8`/`b92a01e`); Symfony CVE patches (`b7663e3`/`146c8e1`); OpenAPI enum contract test + PG CI preflight (`0acbf18`/`1a4debf`); booking-domain docs sync (`2315188`). | 126 commits; tests re-verification required |
+| May 9–31, 2026 | **Post-`6372d7f` wave (126 commits → HEAD `b7d9d28`).** Booking-logic invariant hardening BL-1..BL-7 (`902f912`/`d930e87`/`c01a22f`/`55d68f5`/`ef498bc`/`28a3852`/`6984f7e`); A-1 mass-assignment defense — Booking `$fillable` shrunk to user input (`d67b13f`); Stripe webhook reaper for stuck events + fail-closed signature verification (`ec51d6a`/`4d4f823`/`f927d51`); payment FSM `PaymentPolicy`×`PaymentStatus` (`f25273c`) + `RefundStatus` enum + room readiness endpoint (`fcd323f`); refund hardening PAY-01/03/04 + SH-01/02/03 (`0e2f858`/`a90124c`/`dd926b3`/`5259931`/`6d15690`); hostel-local timezone enforcement + `HostelClock` fail-fast (`1b92d40`/`67d8302`); F-33 finalizeCancellation re-lock (`bd3cff9`); AI-harness RBAC → Gate/Policy (`31eeeed`); `number_of_guests`/`special_requests` persisted end-to-end (`1e32c8b`/`f6cc916`, closes TL-03); production runtime config-assertion gate (`adaa517`/`b838143`); rate-limit/CSP/CSRF hardening (`fb8b1d8`/`c0caec8`/`b92a01e`); Symfony CVE patches (`b7663e3`/`146c8e1`); OpenAPI enum contract test + PG CI preflight (`0acbf18`/`1a4debf`); booking-domain docs sync (`2315188`). | 126 commits; all gates verified Jun 1 at `6d7b75b` |
 | Feb 9–11, 2026 | Audit v1 + v2 | 159 issues found, 159 resolved |
 | Feb 21–23, 2026 | Audit v3 (docs) + v4 (code) | 20 findings, 20 resolved |
 | Feb 27, 2026 | FE-001/002/003 + TD-001 | +34 frontend tests, +19 backend tests |

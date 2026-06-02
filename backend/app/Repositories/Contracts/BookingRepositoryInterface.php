@@ -223,6 +223,23 @@ interface BookingRepositoryInterface
     public function findTrashedById(int $id, array $relations = []): ?Booking;
 
     /**
+     * Find multiple trashed bookings by their IDs.
+     *
+     * Derived from: AdminBookingController::restoreBulk()
+     *   Booking::onlyTrashed()->with([...])->whereIn('id', $ids)->get()
+     *
+     * Batches the trashed lookup so bulk restore performs a single query
+     * instead of one find() per id (F-45 N+1 fix). The caller keys the result
+     * (e.g. ->keyBy('id')) for O(1) per-id access; keying is left to the caller
+     * to keep this method a pure, transformation-free data accessor.
+     *
+     * @param  array<int>  $ids  Booking IDs
+     * @param  array  $relations  Relations to eager load
+     * @return Collection<int, Booking> Trashed bookings matching the given ids
+     */
+    public function findTrashedByIds(array $ids, array $relations = []): Collection;
+
+    /**
      * Restore a soft deleted booking.
      *
      * @param  Booking  $booking  The trashed booking to restore

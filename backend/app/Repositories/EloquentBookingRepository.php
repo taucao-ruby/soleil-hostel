@@ -213,6 +213,20 @@ class EloquentBookingRepository implements BookingRepositoryInterface
     /**
      * {@inheritDoc}
      */
+    public function findTrashedByIds(array $ids, array $relations = []): Collection
+    {
+        $query = Booking::onlyTrashed();
+
+        if (! empty($relations)) {
+            $query->with($relations);
+        }
+
+        return $query->whereIn('id', $ids)->get();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     public function restore(Booking $booking): bool
     {
         return $booking->restore();

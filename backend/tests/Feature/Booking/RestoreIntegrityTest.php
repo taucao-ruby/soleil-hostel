@@ -480,12 +480,11 @@ class RestoreIntegrityTest extends TestCase
 
         /** @var \Mockery\MockInterface&BookingService $mockService */
         $mockService = $this->mock(BookingService::class);
-        $mockService->shouldReceive('getTrashedBookingById')
-            ->with($b1->id)
-            ->andReturn($b1);
-        $mockService->shouldReceive('getTrashedBookingById')
-            ->with($b2->id)
-            ->andReturn($b2);
+        // The trashed lookup is now batched through the (real) repository, so the
+        // controller no longer calls BookingService::getTrashedBookingById here.
+        // Only the per-row restore() is exercised on the mocked service; it is
+        // matched by booking id because the repository returns freshly fetched
+        // models rather than these in-memory fixtures.
         $mockService->shouldReceive('restore')
             ->with(\Mockery::on(fn ($b) => $b->id === $b1->id))
             ->andReturn(true);
@@ -524,6 +523,66 @@ class RestoreIntegrityTest extends TestCase
             ->assertStatus(200);
 
         Event::assertDispatched(BookingRestored::class, 2);
+    }
+
+    /**
+     * F-45 regression: bulk restore must batch the trashed-booking lookup into a
+     * single query instead of one find() per id (N+1).
+     *
+     * Scope of the assertion: only the *lookup* phase is O(1). The restore work
+     * itself stays O(N) by design — each booking still gets its own lock, overlap
+     * check, audit write, and BookingRestored event — so this test deliberately
+     * does NOT assert a constant total query count. It asserts (a) at least one
+     * batched onlyTrashed() whereIn lookup runs, and (b) zero single-id trashed
+     * find() lookups (the old N+1 shape).
+     */
+    public function test_bulk_restore_batches_trashed_lookup_no_n_plus_one(): void
+    {
+        $b1 = $this->trashedBooking(['check_in' => Carbon::now()->addDays(5)->startOfDay(), 'check_out' => Carbon::now()->addDays(8)->startOfDay()]);
+        $b2 = $this->trashedBooking(['check_in' => Carbon::now()->addDays(15)->startOfDay(), 'check_out' => Carbon::now()->addDays(18)->startOfDay()]);
+        $b3 = $this->trashedBooking(['check_in' => Carbon::now()->addDays(25)->startOfDay(), 'check_out' => Carbon::now()->addDays(28)->startOfDay()]);
+
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+
+        $response = $this->actingAs($this->admin, 'sanctum')
+            ->postJson('/api/v1/admin/bookings/restore-bulk', [
+                'ids' => [$b1->id, $b2->id, $b3->id],
+            ]);
+
+        $queries = collect(DB::getQueryLog())->pluck('query')->map(fn ($q) => strtolower($q));
+        DB::disableQueryLog();
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.success_count', 3)
+            ->assertJsonPath('data.failure_count', 0);
+
+        // A "trashed lookup" is a SELECT against bookings filtered by the
+        // onlyTrashed() scope ("deleted_at ... is not null"). The restore path
+        // locks rows with withTrashed() (no deleted_at predicate), so it is not
+        // matched here. SQL is matched loosely to survive SQLite/PG grammar.
+        $isTrashedBookingsSelect = fn (string $q): bool => str_contains($q, 'from "bookings"')
+            && str_contains($q, 'deleted_at')
+            && str_contains($q, 'is not null');
+
+        // Batched preload: a single whereIn over the requested ids.
+        $batched = $queries->filter(fn ($q) => $isTrashedBookingsSelect($q) && str_contains($q, ' in ('));
+
+        // Old N+1 shape: one single-id trashed find() per requested id.
+        $perId = $queries->filter(fn ($q) => $isTrashedBookingsSelect($q)
+            && ! str_contains($q, ' in (')
+            && str_contains($q, '"id" = ?'));
+
+        $this->assertGreaterThanOrEqual(
+            1,
+            $batched->count(),
+            'restoreBulk must batch the trashed lookup into a single whereIn query'
+        );
+        $this->assertCount(
+            0,
+            $perId,
+            'restoreBulk must not look up trashed bookings one id at a time (N+1 regression)'
+        );
     }
 
     /**

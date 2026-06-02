@@ -210,7 +210,10 @@ class LocationApiTest extends TestCase
         $location = Location::factory()->create(['slug' => 'test-hostel', 'is_active' => true]);
         Room::factory()->count(3)->create(['location_id' => $location->id, 'status' => 'available']);
 
-        $response = $this->getJson('/api/v1/locations/test-hostel/availability?check_in=2026-06-01&check_out=2026-06-05');
+        $checkIn = now()->addDay()->toDateString();
+        $checkOut = now()->addDays(2)->toDateString();
+
+        $response = $this->getJson("/api/v1/locations/test-hostel/availability?check_in={$checkIn}&check_out={$checkOut}");
 
         $response->assertOk()
             ->assertJsonStructure([

@@ -175,7 +175,6 @@ api.interceptors.response.use(
         const AUTH_STORAGE_KEYS = ['csrf_token']
         AUTH_STORAGE_KEYS.forEach(key => {
           sessionStorage.removeItem(key)
-          localStorage.removeItem(key)
         })
 
         // Only redirect if user was trying to access protected route

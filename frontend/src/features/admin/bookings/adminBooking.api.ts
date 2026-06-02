@@ -6,16 +6,7 @@ import {
   type BookingStatus,
   type UnvalidatedBooking,
 } from '@/shared/types/booking.types'
-
-export interface AdminBookingsResponse {
-  bookings: BookingDetailRaw[]
-  meta: {
-    current_page: number
-    last_page: number
-    per_page: number
-    total: number
-  }
-}
+import type { AdminBookingsResponse } from '../admin.types'
 
 // ----------------------------------------------------
 // Admin Booking Types
@@ -31,8 +22,10 @@ export interface AdminBookingFilters {
   page?: number
 }
 
-type AdminBookingsResponsePayload = Omit<AdminBookingsResponse, 'bookings'> & {
-  bookings: Array<UnvalidatedBooking<BookingDetailRaw>>
+type AdminBookingsResponsePayload = Omit<AdminBookingsResponse, 'data'> & {
+  data: Omit<AdminBookingsResponse['data'], 'bookings'> & {
+    bookings: Array<UnvalidatedBooking<BookingDetailRaw>>
+  }
 }
 
 type BookingDetailPayload = UnvalidatedBooking<BookingDetailRaw>
@@ -44,8 +37,8 @@ type BookingDetailPayload = UnvalidatedBooking<BookingDetailRaw>
 export const getAllBookings = async (
   filters?: AdminBookingFilters,
   signal?: AbortSignal
-): Promise<AdminBookingsResponse> => {
-  const response = await api.get<{ data: AdminBookingsResponsePayload }>('/v1/admin/bookings', {
+): Promise<AdminBookingsResponse['data']> => {
+  const response = await api.get<AdminBookingsResponsePayload>('/v1/admin/bookings', {
     params: filters,
     signal,
   })
@@ -60,17 +53,8 @@ export const confirmBooking = async (id: number): Promise<BookingDetailRaw> => {
   return parseBookingStatusPayload(response.data.data)
 }
 
-export const adminCancelBooking = async (id: number, reason: string): Promise<BookingDetailRaw> => {
-  const response = await api.post<{ data: BookingDetailPayload }>(`/v1/bookings/${id}/cancel`, {
-    reason,
-  })
-  return parseBookingStatusPayload(response.data.data)
-}
-
 export const getTrashedBookings = async (): Promise<BookingDetailRaw[]> => {
-  const response = await api.get<{ data: AdminBookingsResponsePayload }>(
-    '/v1/admin/bookings/trashed'
-  )
+  const response = await api.get<AdminBookingsResponsePayload>('/v1/admin/bookings/trashed')
   return response.data.data.bookings.map(parseBookingStatusPayload)
 }
 
@@ -90,7 +74,7 @@ export const getTodayArrivals = async (
   signal?: AbortSignal
 ): Promise<BookingDetailRaw[]> => {
   const today = getHostelToday()
-  const response = await api.get<{ data: AdminBookingsResponsePayload }>('/v1/admin/bookings', {
+  const response = await api.get<AdminBookingsResponsePayload>('/v1/admin/bookings', {
     params: {
       location_id: locationId,
       check_in_start: today,
@@ -107,7 +91,7 @@ export const getTodayDepartures = async (
   signal?: AbortSignal
 ): Promise<BookingDetailRaw[]> => {
   const today = getHostelToday()
-  const response = await api.get<{ data: AdminBookingsResponsePayload }>('/v1/admin/bookings', {
+  const response = await api.get<AdminBookingsResponsePayload>('/v1/admin/bookings', {
     params: {
       location_id: locationId,
       check_out_start: today,

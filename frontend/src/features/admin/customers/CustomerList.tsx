@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { getCustomers, getCustomerStats } from './customer.api'
 import type { CustomerSummary, CustomerStats } from './customer.api'
 import LoadingSpinner from '@/shared/components/feedback/LoadingSpinner'
+import { isAbortError } from '@/shared/lib/request-error'
 
 const CustomerList: React.FC = () => {
   const navigate = useNavigate()
@@ -14,31 +15,57 @@ const CustomerList: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1)
 
   const [isLoading, setIsLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState('')
 
   useEffect(() => {
-    getCustomerStats()
-      .then(setStats)
-      .catch(() => {
-        /* ignored */
+    const controller = new AbortController()
+
+    getCustomerStats(controller.signal)
+      .then(data => {
+        if (!controller.signal.aborted) {
+          setStats(data)
+        }
       })
+      .catch(error => {
+        if (!controller.signal.aborted && !isAbortError(error)) {
+          setStats(null)
+        }
+      })
+
+    return () => controller.abort()
   }, [])
 
   useEffect(() => {
-    const fetchList = async () => {
+    const controller = new AbortController()
+
+    const fetchList = async (signal: AbortSignal) => {
       setIsLoading(true)
+      setErrorMessage('')
+
       try {
-        const res = await getCustomers(search, page)
-        setCustomers(res.data)
-        setTotalPages(res.last_page)
-      } catch {
-        // fetch error handled silently
+        const res = await getCustomers(search, page, signal)
+
+        if (!signal.aborted) {
+          setCustomers(res.data)
+          setTotalPages(res.last_page)
+        }
+      } catch (error) {
+        if (!signal.aborted && !isAbortError(error)) {
+          setCustomers([])
+          setErrorMessage('Không thể tải danh sách khách hàng. Vui lòng thử lại.')
+        }
       } finally {
-        setIsLoading(false)
+        if (!signal.aborted) {
+          setIsLoading(false)
+        }
       }
     }
 
-    const timeout = setTimeout(fetchList, 500)
-    return () => clearTimeout(timeout)
+    const timeout = setTimeout(() => void fetchList(controller.signal), 500)
+    return () => {
+      clearTimeout(timeout)
+      controller.abort()
+    }
   }, [search, page])
 
   return (
@@ -88,6 +115,12 @@ const CustomerList: React.FC = () => {
           />
         </div>
       </div>
+
+      {errorMessage && (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {errorMessage}
+        </div>
+      )}
 
       {isLoading ? (
         <LoadingSpinner message="Đang tải danh sách..." />

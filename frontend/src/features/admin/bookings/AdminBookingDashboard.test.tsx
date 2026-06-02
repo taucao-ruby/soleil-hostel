@@ -4,29 +4,23 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import AdminBookingDashboard from './AdminBookingDashboard'
 
-const { mockGetAllBookings, mockApiGet } = vi.hoisted(() => ({
+const { mockGetAllBookings, mockGetLocations } = vi.hoisted(() => ({
   mockGetAllBookings: vi.fn(),
-  mockApiGet: vi.fn(),
+  mockGetLocations: vi.fn(),
 }))
 
 vi.mock('./adminBooking.api', () => ({
   getAllBookings: mockGetAllBookings,
 }))
 
-vi.mock('@/shared/lib/api', () => ({
-  default: {
-    get: mockApiGet,
-  },
+vi.mock('@/shared/lib/location.api', () => ({
+  getLocations: mockGetLocations,
 }))
 
-const locationsResponse = {
-  data: {
-    data: [
-      { id: 1, name: 'Soleil Da Nang' },
-      { id: 2, name: 'Soleil Hoi An' },
-    ],
-  },
-}
+const locations = [
+  { id: 1, name: 'Soleil Da Nang' },
+  { id: 2, name: 'Soleil Hoi An' },
+]
 
 const bookingsPageOne = {
   bookings: [
@@ -111,7 +105,7 @@ function renderDashboard() {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockApiGet.mockResolvedValue(locationsResponse)
+  mockGetLocations.mockResolvedValue(locations)
   mockGetAllBookings.mockResolvedValue(bookingsPageOne)
 })
 

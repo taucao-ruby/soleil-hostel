@@ -10,6 +10,7 @@ import {
 import LoadingSpinner from '@/shared/components/feedback/LoadingSpinner'
 import BookingCancelDialog from './BookingCancelDialog'
 import { getHostelToday } from '@/shared/lib/hostelDate'
+import { isAbortError } from '@/shared/lib/request-error'
 
 const BOOKING_LIST_STATUS_BADGES: Record<BookingStatus, { label: string; className: string }> = {
   pending: {
@@ -46,19 +47,6 @@ const getStatusBadge = (status: BookingStatus) => {
   )
 }
 
-const isAbortError = (error: unknown): boolean => {
-  if (error instanceof DOMException) {
-    return error.name === 'AbortError'
-  }
-
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    (('name' in error && error.name === 'AbortError') ||
-      ('code' in error && error.code === 'ERR_CANCELED'))
-  )
-}
-
 const BookingList: React.FC = () => {
   const [bookings, setBookings] = useState<BookingApiRaw[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -84,7 +72,7 @@ const BookingList: React.FC = () => {
 
     loadBookings(controller.signal)
       .catch(error => {
-        if (!isAbortError(error)) {
+        if (!controller.signal.aborted && !isAbortError(error)) {
           setBookings([])
           setErrorMessage('Không thể tải danh sách đặt phòng. Vui lòng thử lại sau.')
         }

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import api, { isAxiosError } from '@/shared/lib/api'
+import { isAbortError } from '@/shared/lib/request-error'
 import { setCsrfToken, clearCsrfToken } from '@/shared/utils/csrf'
 import { User } from '@/shared/types/api'
 
@@ -100,22 +101,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setError(null)
         }
       } catch (err: unknown) {
-        if (err instanceof Error && (err.name === 'AbortError' || err.name === 'CanceledError')) {
+        if (isAbortError(err)) {
           return
         }
         // No valid token - user not authenticated
         if (!controller.signal.aborted) {
           setUser(null)
-          const status =
-            err &&
-            typeof err === 'object' &&
-            'response' in err &&
-            err.response &&
-            typeof err.response === 'object' &&
-            'status' in err.response &&
-            typeof err.response.status === 'number'
-              ? err.response.status
-              : undefined
+          const status = isAxiosError(err) ? err.response?.status : undefined
           // Only log if it's not a 401 (401 is expected when token expired)
           if (status !== 401) {
             if (import.meta.env.DEV) {
@@ -180,8 +172,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         setError(null)
       } catch (err: unknown) {
-        const error = err as { response?: { data?: { message?: string } } }
-        const errorMessage = error?.response?.data?.message || 'Đăng nhập thất bại'
+        const errorMessage =
+          isAxiosError<{ message?: unknown }>(err) &&
+          typeof err.response?.data?.message === 'string'
+            ? err.response.data.message
+            : 'Đăng nhập thất bại'
         setError(errorMessage)
         throw err
       } finally {

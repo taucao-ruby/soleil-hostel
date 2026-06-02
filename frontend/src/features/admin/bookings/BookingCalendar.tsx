@@ -8,23 +8,7 @@ import {
   type BookingDetailRaw,
   type BookingStatus,
 } from '@/shared/types/booking.types'
-
-/**
- * Treat axios `CanceledError` (code `ERR_CANCELED`) and the DOM `AbortError` as
- * the expected outcome of effect cleanup, never as a real failure to report.
- */
-const isAbortError = (error: unknown): boolean => {
-  if (error instanceof DOMException) {
-    return error.name === 'AbortError'
-  }
-
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    (('name' in error && error.name === 'AbortError') ||
-      ('code' in error && error.code === 'ERR_CANCELED'))
-  )
-}
+import { isAbortError } from '@/shared/lib/request-error'
 
 const BookingCalendar: React.FC = () => {
   const navigate = useNavigate()
@@ -62,7 +46,7 @@ const BookingCalendar: React.FC = () => {
     }
 
     loadLocations().catch(error => {
-      if (!isAbortError(error)) {
+      if (!controller.signal.aborted && !isAbortError(error)) {
         console.warn('BookingCalendar: không thể tải danh sách cơ sở.', error)
       }
     })
@@ -97,12 +81,12 @@ const BookingCalendar: React.FC = () => {
     }
 
     loadRooms().catch(error => {
-      if (!isAbortError(error)) {
+      if (!controller.signal.aborted && !isAbortError(error)) {
         console.warn('BookingCalendar: không thể tải danh sách phòng.', error)
       }
     })
     loadBookings().catch(error => {
-      if (!isAbortError(error)) {
+      if (!controller.signal.aborted && !isAbortError(error)) {
         console.warn('BookingCalendar: không thể tải danh sách đặt phòng.', error)
       }
     })

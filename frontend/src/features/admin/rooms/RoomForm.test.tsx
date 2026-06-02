@@ -140,14 +140,14 @@ describe('RoomForm', () => {
     expect(screen.getByLabelText('Giá mỗi đêm (₫)')).toHaveValue(420000)
     expect(screen.getByLabelText('Sức chứa tối đa')).toHaveValue(4)
     expect(screen.getByLabelText('Trạng thái phòng')).toHaveValue('booked')
-    expect(screen.getByLabelText('Readiness')).toHaveValue('inspected')
+    expect(screen.getByLabelText('Mức độ sẵn sàng')).toHaveValue('inspected')
 
-    expect(await screen.findByLabelText('Room Type Code')).toHaveValue('DORM4')
-    expect(screen.getByLabelText('Room Tier')).toHaveValue(1)
+    expect(await screen.findByLabelText('Mã loại phòng')).toHaveValue('DORM4')
+    expect(screen.getByLabelText('Hạng phòng')).toHaveValue(1)
 
-    await user.clear(screen.getByLabelText('Room Tier'))
-    await user.type(screen.getByLabelText('Room Tier'), '2')
-    await user.selectOptions(screen.getByLabelText('Readiness'), 'cleaning')
+    await user.clear(screen.getByLabelText('Hạng phòng'))
+    await user.type(screen.getByLabelText('Hạng phòng'), '2')
+    await user.selectOptions(screen.getByLabelText('Mức độ sẵn sàng'), 'cleaning')
     await user.click(screen.getByRole('button', { name: 'Lưu phòng' }))
 
     await waitFor(() => {

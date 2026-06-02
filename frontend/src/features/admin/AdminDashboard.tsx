@@ -4,6 +4,7 @@ import { useAuth } from '@/features/auth/AuthContext'
 import { getStatusConfig, formatDateRangeVN } from '@/shared/lib/booking.utils'
 import { formatVND } from '@/shared/lib/formatCurrency'
 import { getErrorMessage, showToast } from '@/shared/utils/toast'
+import { isAbortError } from '@/shared/lib/request-error'
 import type {
   AdminBookingRaw,
   AdminBookingsPaginatedResult,
@@ -61,13 +62,6 @@ const metricCards: MetricCard[] = [
     trendTone: 'accent',
   },
 ]
-
-function isAbortError(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    (error.name === 'AbortError' || error.name === 'CanceledError' || error.name === 'ERR_CANCELED')
-  )
-}
 
 function parseDisplayDate(value: string): Date {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T00:00:00`) : new Date(value)

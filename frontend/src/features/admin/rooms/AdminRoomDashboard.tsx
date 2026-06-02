@@ -8,6 +8,7 @@ import { useAuth } from '@/features/auth/AuthContext'
 import LoadingSpinner from '@/shared/components/feedback/LoadingSpinner'
 import { getLocations } from '@/shared/lib/location.api'
 import { getErrorMessage, showToast } from '@/shared/utils/toast'
+import { isAbortError } from '@/shared/lib/request-error'
 
 interface LocationOption {
   id: number
@@ -24,16 +25,6 @@ interface RoomDashboardVariantProps {
   onLocationChange: (value: string) => void
   rooms: AdminRoom[]
   selectedLocationId: string
-}
-
-const isAbortError = (error: unknown) => {
-  if (error instanceof DOMException) {
-    return error.name === 'AbortError'
-  }
-
-  return (
-    typeof error === 'object' && error !== null && 'code' in error && error.code === 'ERR_CANCELED'
-  )
 }
 
 const RoomDashboardVariant: React.FC<RoomDashboardVariantProps> = ({
@@ -157,7 +148,7 @@ const AdminRoomDashboard: React.FC = () => {
           setLocations(items.map(location => ({ id: location.id, name: location.name })))
         }
       } catch (error) {
-        if (!isAbortError(error)) {
+        if (!controller.signal.aborted && !isAbortError(error)) {
           showToast.error('Không thể tải danh sách chi nhánh.')
         }
       }
@@ -184,7 +175,7 @@ const AdminRoomDashboard: React.FC = () => {
           setRooms(data)
         }
       } catch (error) {
-        if (!isAbortError(error)) {
+        if (!controller.signal.aborted && !isAbortError(error)) {
           showToast.error('Không thể tải danh sách phòng.')
         }
       } finally {

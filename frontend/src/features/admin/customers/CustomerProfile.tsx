@@ -6,6 +6,7 @@ import type { BookingDetailRaw } from '@/shared/types/booking.types'
 import LoadingSpinner from '@/shared/components/feedback/LoadingSpinner'
 import { BookingStatusBadge } from '@/shared/components/ui/StatusBadge'
 import StayJournal from './StayJournal'
+import { isAbortError } from '@/shared/lib/request-error'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -75,6 +76,7 @@ const CustomerProfile: React.FC = () => {
   const [profile, setProfile] = useState<TCustomerProfile | null>(null)
   const [bookings, setBookings] = useState<BookingDetailRaw[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState('')
 
   useEffect(() => {
     if (!email) {
@@ -86,17 +88,23 @@ const CustomerProfile: React.FC = () => {
 
     const loadData = async () => {
       setIsLoading(true)
+      setErrorMessage('')
+
       try {
         const [profData, bookingsData] = await Promise.all([
-          getCustomerProfile(email),
-          getCustomerBookings(email),
+          getCustomerProfile(email, controller.signal),
+          getCustomerBookings(email, controller.signal),
         ])
         if (!controller.signal.aborted) {
           setProfile(profData)
           setBookings(bookingsData)
         }
-      } catch {
-        // fetch error handled silently
+      } catch (error) {
+        if (!controller.signal.aborted && !isAbortError(error)) {
+          setProfile(null)
+          setBookings([])
+          setErrorMessage('Không thể tải hồ sơ khách hàng. Vui lòng thử lại.')
+        }
       } finally {
         if (!controller.signal.aborted) {
           setIsLoading(false)
@@ -121,7 +129,7 @@ const CustomerProfile: React.FC = () => {
   if (!profile) {
     return (
       <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center text-[#6B6760]">
-        <p className="mb-4 text-sm">Không tìm thấy thông tin khách hàng.</p>
+        <p className="mb-4 text-sm">{errorMessage || 'Không tìm thấy thông tin khách hàng.'}</p>
         <Link to="/admin/customers" className="text-[#C9973A] text-sm hover:underline">
           ← Quay lại danh sách
         </Link>

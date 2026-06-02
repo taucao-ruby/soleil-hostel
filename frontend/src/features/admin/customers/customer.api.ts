@@ -36,9 +36,10 @@ export interface CustomerStats {
 
 export const getCustomers = async (
   search?: string,
-  page: number = 1
+  page: number = 1,
+  signal?: AbortSignal
 ): Promise<PaginatedCustomers> => {
-  const response = await api.get('/v1/admin/customers', { params: { search, page } })
+  const response = await api.get('/v1/admin/customers', { params: { search, page }, signal })
   // Assuming the backend wraps the paginated resource in { success: true, data: [...], meta: {...} }
   return {
     data: response.data.data,
@@ -48,19 +49,26 @@ export const getCustomers = async (
   }
 }
 
-export const getCustomerProfile = async (email: string): Promise<CustomerProfile> => {
-  const response = await api.get(`/v1/admin/customers/${encodeURIComponent(email)}`)
+export const getCustomerProfile = async (
+  email: string,
+  signal?: AbortSignal
+): Promise<CustomerProfile> => {
+  const response = await api.get(`/v1/admin/customers/${encodeURIComponent(email)}`, { signal })
   return response.data.data
 }
 
-export const getCustomerBookings = async (email: string): Promise<BookingDetailRaw[]> => {
+export const getCustomerBookings = async (
+  email: string,
+  signal?: AbortSignal
+): Promise<BookingDetailRaw[]> => {
   const response = await api.get<{ data: Array<UnvalidatedBooking<BookingDetailRaw>> }>(
-    `/v1/admin/customers/${encodeURIComponent(email)}/bookings`
+    `/v1/admin/customers/${encodeURIComponent(email)}/bookings`,
+    { signal }
   )
   return response.data.data.map(parseBookingStatusPayload)
 }
 
-export const getCustomerStats = async (): Promise<CustomerStats> => {
-  const response = await api.get('/v1/admin/customers/stats')
+export const getCustomerStats = async (signal?: AbortSignal): Promise<CustomerStats> => {
+  const response = await api.get('/v1/admin/customers/stats', { signal })
   return response.data.data
 }

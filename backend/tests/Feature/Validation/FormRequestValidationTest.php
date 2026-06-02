@@ -118,7 +118,10 @@ class FormRequestValidationTest extends TestCase
     {
         $location = Location::factory()->create(['is_active' => true]);
 
-        $response = $this->getJson("/api/v1/locations/{$location->slug}?check_in=2026-06-01&check_out=2026-06-05");
+        $checkIn = now()->addDay()->toDateString();
+        $checkOut = now()->addDays(2)->toDateString();
+
+        $response = $this->getJson("/api/v1/locations/{$location->slug}?check_in={$checkIn}&check_out={$checkOut}");
 
         $response->assertStatus(200);
     }

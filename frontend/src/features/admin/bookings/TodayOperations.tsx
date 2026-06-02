@@ -6,19 +6,7 @@ import LoadingSpinner from '@/shared/components/feedback/LoadingSpinner'
 import { getLocations } from '@/shared/lib/location.api'
 import { roomApi } from '@/shared/lib/room.api'
 import * as toast from '@/shared/utils/toast'
-
-const isAbortError = (error: unknown): boolean => {
-  if (error instanceof DOMException) {
-    return error.name === 'AbortError'
-  }
-
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    (('name' in error && error.name === 'AbortError') ||
-      ('code' in error && error.code === 'ERR_CANCELED'))
-  )
-}
+import { isAbortError } from '@/shared/lib/request-error'
 
 const TodayOperations: React.FC = () => {
   const [locations, setLocations] = useState<{ id: number; name: string }[]>([])
@@ -45,7 +33,7 @@ const TodayOperations: React.FC = () => {
     }
 
     loadLocations().catch(error => {
-      if (!isAbortError(error)) {
+      if (!controller.signal.aborted && !isAbortError(error)) {
         setErrorMessage('Không thể tải danh sách cơ sở.')
         setIsLoading(false)
       }
@@ -91,7 +79,7 @@ const TodayOperations: React.FC = () => {
     const controller = new AbortController()
 
     loadData(controller.signal).catch(error => {
-      if (!isAbortError(error)) {
+      if (!controller.signal.aborted && !isAbortError(error)) {
         setErrorMessage('Không thể tải dữ liệu nghiệp vụ hôm nay.')
       }
     })
@@ -114,7 +102,7 @@ const TodayOperations: React.FC = () => {
       toast.showToast?.success?.(`Nhận phòng #${bookingId} thành công`)
       refreshData()
     } catch {
-      toast.showToast?.error?.('Lỗi khi Check-in')
+      toast.showToast?.error?.('Không thể nhận phòng.')
     } finally {
       setIsProcessing(null)
     }
@@ -127,7 +115,7 @@ const TodayOperations: React.FC = () => {
       toast.showToast?.success?.(`Trả phòng #${bookingId} thành công! Phòng chuyển sang dọn dẹp.`)
       refreshData()
     } catch {
-      toast.showToast?.error?.('Lỗi khi Check-out')
+      toast.showToast?.error?.('Không thể trả phòng.')
     } finally {
       setIsProcessing(null)
     }
@@ -179,7 +167,7 @@ const TodayOperations: React.FC = () => {
           {/* Arrivals Column (Check-in) */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div className="bg-blue-50 px-6 py-4 border-b border-blue-100 flex justify-between items-center">
-              <h2 className="text-lg font-bold text-blue-900">Khách nhận phòng (Check-in)</h2>
+              <h2 className="text-lg font-bold text-blue-900">Khách nhận phòng</h2>
               <span className="bg-blue-200 text-blue-800 py-1 px-3 rounded-full text-xs font-bold">
                 {arrivals.length}
               </span>
@@ -217,7 +205,7 @@ const TodayOperations: React.FC = () => {
                         onClick={() => handleCheckIn(b.id, b.room_id)}
                         className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded shadow-sm disabled:opacity-50"
                       >
-                        {isProcessing === b.id ? 'Đang...' : 'Check-in (Đã đến)'}
+                        {isProcessing === b.id ? 'Đang...' : 'Nhận phòng (đã đến)'}
                       </button>
                     </div>
                   </div>
@@ -229,7 +217,7 @@ const TodayOperations: React.FC = () => {
           {/* Departures Column (Check-out) */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div className="bg-yellow-50 px-6 py-4 border-b border-yellow-100 flex justify-between items-center">
-              <h2 className="text-lg font-bold text-yellow-900">Khách trả phòng (Check-out)</h2>
+              <h2 className="text-lg font-bold text-yellow-900">Khách trả phòng</h2>
               <span className="bg-yellow-200 text-yellow-800 py-1 px-3 rounded-full text-xs font-bold">
                 {departures.length}
               </span>
@@ -267,7 +255,7 @@ const TodayOperations: React.FC = () => {
                         onClick={() => handleCheckOut(b.id, b.room_id)}
                         className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded shadow-sm disabled:opacity-50"
                       >
-                        {isProcessing === b.id ? 'Đang...' : 'Check-out (Rời đi)'}
+                        {isProcessing === b.id ? 'Đang...' : 'Trả phòng (rời đi)'}
                       </button>
                     </div>
                   </div>

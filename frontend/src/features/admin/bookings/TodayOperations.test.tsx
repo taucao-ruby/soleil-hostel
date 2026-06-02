@@ -137,7 +137,7 @@ describe('TodayOperations', () => {
 
     renderTodayOperations()
 
-    await user.click(await screen.findByRole('button', { name: 'Check-in (Đã đến)' }))
+    await user.click(await screen.findByRole('button', { name: 'Nhận phòng (đã đến)' }))
 
     await waitFor(() => {
       expect(mockApiPatch).toHaveBeenCalledWith(
@@ -154,7 +154,7 @@ describe('TodayOperations', () => {
     const user = userEvent.setup()
     renderTodayOperations()
 
-    await user.click(await screen.findByRole('button', { name: 'Check-in (Đã đến)' }))
+    await user.click(await screen.findByRole('button', { name: 'Nhận phòng (đã đến)' }))
 
     await waitFor(() => {
       expect(mockApiPatch).toHaveBeenCalled()

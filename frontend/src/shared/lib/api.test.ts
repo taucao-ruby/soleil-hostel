@@ -205,8 +205,13 @@ describe('API Client', () => {
     it('updates csrf token and retries original request on successful refresh', async () => {
       vi.mocked(getCsrfToken).mockReturnValue('old-csrf')
 
+      // Real backend shape: HttpOnlyTokenController::refresh wraps the payload in
+      // the ApiResponse envelope ({ success, message, data }), so the rotated
+      // CSRF token is at response.data.data.csrf_token. Regression guard for
+      // F-25 — a shallow { data: { csrf_token } } mock would let the old buggy
+      // code pass while silently dropping the token in production.
       const postSpy = vi.spyOn(api, 'post').mockResolvedValueOnce({
-        data: { csrf_token: 'new-csrf-token' },
+        data: { data: { csrf_token: 'new-csrf-token' } },
       })
       // Intercept the retry at the adapter level to prevent real HTTP calls
       const originalAdapter = api.defaults.adapter
@@ -223,6 +228,9 @@ describe('API Client', () => {
 
       expect(postSpy).toHaveBeenCalledWith('/auth/refresh-httponly')
       expect(setCsrfToken).toHaveBeenCalledWith('new-csrf-token')
+      // The rotated token must actually reach storage — never undefined (the
+      // failure mode when the envelope depth is read one level too shallow).
+      expect(setCsrfToken).not.toHaveBeenCalledWith(undefined)
 
       api.defaults.adapter = originalAdapter
       postSpy.mockRestore()
@@ -254,8 +262,8 @@ describe('API Client', () => {
       const p1 = runResponseInterceptorError(err1)
       const p2 = runResponseInterceptorError(err2)
 
-      // Resolve the refresh with a new csrf token
-      resolveRefresh({ data: { csrf_token: 'refreshed-csrf' } })
+      // Resolve the refresh with a new csrf token (nested ApiResponse envelope)
+      resolveRefresh({ data: { data: { csrf_token: 'refreshed-csrf' } } })
 
       await Promise.allSettled([p1, p2])
 

@@ -313,6 +313,10 @@ class AiOrchestrationService
                 $room = Room::find($roomId);
                 if ($room !== null) {
                     $quotedPriceCents = $room->currentPriceForDates($checkIn, $checkOut);
+                } else {
+                    // Preserve the proposed room in proposed_params for review,
+                    // but do not violate the durable proposal FK.
+                    $roomId = null;
                 }
             }
         }

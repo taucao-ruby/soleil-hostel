@@ -18,6 +18,7 @@ import {
 } from './booking.validation'
 import { formatVND } from '@/shared/lib/formatCurrency'
 import { isAxiosError } from '@/shared/lib/api'
+import { isAbortError } from '@/shared/lib/request-error'
 
 type ApiErrorBody = {
   message?: unknown
@@ -294,7 +295,7 @@ const BookingForm: React.FC = () => {
           setRooms(data.filter(room => room.status === 'available'))
         }
       } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') {
+        if (isAbortError(error)) {
           return
         }
       } finally {

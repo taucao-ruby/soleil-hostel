@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import type { BookingDetailRaw, BookingStatus } from '@/shared/types/booking.types'
-import api from '@/shared/lib/api'
 import AdminBookingTable from './AdminBookingTable'
 import type { AdminBookingFilters } from './adminBooking.api'
 import { getAllBookings } from './adminBooking.api'
 import { normalizeAdminBookingSearch } from './adminBooking.helpers'
+import { getLocations } from '@/shared/lib/location.api'
+import { isAbortError } from '@/shared/lib/request-error'
 
 interface LocationOption {
   id: number
@@ -49,13 +50,6 @@ function hasActiveFilters(filters: BookingFilterDraft): boolean {
   return Object.values(filters).some(value => value.trim() !== '')
 }
 
-function isAbortError(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    (error.name === 'AbortError' || error.name === 'CanceledError' || error.name === 'ERR_CANCELED')
-  )
-}
-
 function buildApiFilters(filters: BookingFilterDraft, page: number): AdminBookingFilters {
   const normalizedSearch = normalizeAdminBookingSearch(filters.search)
 
@@ -85,13 +79,12 @@ const AdminBookingDashboard: React.FC = () => {
   useEffect(() => {
     const controller = new AbortController()
 
-    api
-      .get('/v1/locations', { signal: controller.signal })
-      .then(response => {
-        setLocations(response.data.data)
+    getLocations(controller.signal)
+      .then(items => {
+        setLocations(items.map(location => ({ id: location.id, name: location.name })))
       })
       .catch(error => {
-        if (!isAbortError(error)) {
+        if (!controller.signal.aborted && !isAbortError(error)) {
           setLocations([])
         }
       })

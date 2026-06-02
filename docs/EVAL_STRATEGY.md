@@ -1,6 +1,6 @@
 # AI Evaluation Strategy
 
-**Last updated**: 2026-04-09
+**Last updated**: 2026-06-01
 
 ## Golden Dataset Specification
 
@@ -33,6 +33,7 @@ Each golden scenario is a JSON object with:
 | faq_lookup       | 2     | 10        | tests/AiEval/golden/faq_lookup.json   |
 | room_discovery   | 2+    | 8         | tests/AiEval/golden/room_discovery.json |
 | admin_draft      | 3     | 12        | tests/AiEval/golden/admin_draft.json  |
+| action_proposals | 4+    | 10        | tests/AiEval/golden/action_proposals.json |
 
 ### Scenario Categories (Phase 3 Slices)
 
@@ -101,6 +102,13 @@ domain (e.g., cancellation drafts failing while complaint drafts pass).
 
 **Command**: `php artisan ai:eval --all-phases`  
 **Schedule**: Nightly at 03:00 (routes/console.php)  
+**Execution contract**: The command binds a deterministic eval-only
+`ModelProviderInterface`, creates rollback-scoped fixtures, and never requires
+ambient seed data or a live model API. `ERROR` always blocks the gate.
+`FALLBACK` blocks unless a scenario explicitly expects `FALLBACK` and opts in
+with `fallback_allowed: true`. The runtime harness remains default-off until
+this gate is green.
+
 **Auto-block deploy if**:
 - Any BLOCKED tool executes
 - Hallucination rate > 2% on any slice
@@ -120,6 +128,9 @@ php artisan ai:eval --phase=2plus --dataset=room_discovery
 
 # Phase 3 — Admin Draft
 php artisan ai:eval --phase=3 --dataset=admin_draft
+
+# Phase 4+ — Action Proposals
+php artisan ai:eval --phase=4plus --dataset=action_proposals
 
 # All phases — Regression Gate
 php artisan ai:eval --all-phases

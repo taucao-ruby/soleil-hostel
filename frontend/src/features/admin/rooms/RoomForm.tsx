@@ -6,6 +6,8 @@ import type { RoomReadinessStatus } from './adminRoom.types'
 import { getLocations } from '@/shared/lib/location.api'
 import LoadingSpinner from '@/shared/components/feedback/LoadingSpinner'
 import { getErrorMessage, showToast } from '@/shared/utils/toast'
+import { isAxiosError } from '@/shared/lib/api'
+import { isAbortError } from '@/shared/lib/request-error'
 
 interface LocationOption {
   id: number
@@ -63,16 +65,6 @@ const sectionLabelClass =
   'mb-4 text-[11px] font-semibold uppercase tracking-[0.24em] text-stone-500'
 const fieldClass =
   'w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm text-stone-900 shadow-sm transition focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200'
-
-const isAbortError = (error: unknown) => {
-  if (error instanceof DOMException) {
-    return error.name === 'AbortError'
-  }
-
-  return (
-    typeof error === 'object' && error !== null && 'code' in error && error.code === 'ERR_CANCELED'
-  )
-}
 
 const slugify = (value: string) =>
   value
@@ -207,7 +199,7 @@ const RoomForm: React.FC = () => {
           }))
         }
       } catch (error) {
-        if (!isAbortError(error)) {
+        if (!controller.signal.aborted && !isAbortError(error)) {
           showToast.error(
             isEditing ? 'Không thể tải thông tin phòng.' : 'Không thể tải biểu mẫu tạo phòng.'
           )
@@ -339,16 +331,17 @@ const RoomForm: React.FC = () => {
 
       navigate('/admin/rooms')
     } catch (error) {
-      const responseErrors = toErrorMap(
-        (error as { response?: { data?: { errors?: Record<string, string | string[]> } } }).response
-          ?.data?.errors
-      )
+      const responseErrors = isAxiosError<{
+        errors?: Record<string, string | string[]>
+      }>(error)
+        ? toErrorMap(error.response?.data?.errors)
+        : {}
 
       if (Object.keys(responseErrors).length > 0) {
         setErrors(current => ({ ...current, ...responseErrors }))
       }
 
-      if ((error as { response?: { status?: number } }).response?.status === 409) {
+      if (isAxiosError(error) && error.response?.status === 409) {
         const message = 'Phòng đã bị thay đổi bởi người khác. Vui lòng tải lại trang.'
         setErrors(current => ({ ...current, form: message }))
         showToast.error(message)
@@ -550,7 +543,7 @@ const RoomForm: React.FC = () => {
                   htmlFor="readiness_status"
                   className="mb-2 block text-sm font-medium text-stone-700"
                 >
-                  Readiness
+                  Mức độ sẵn sàng
                 </label>
                 <select
                   id="readiness_status"
@@ -609,7 +602,7 @@ const RoomForm: React.FC = () => {
                     htmlFor="room_type_code"
                     className="mb-2 block text-sm font-medium text-stone-700"
                   >
-                    Room Type Code
+                    Mã loại phòng
                   </label>
                   <input
                     id="room_type_code"
@@ -627,7 +620,7 @@ const RoomForm: React.FC = () => {
                     htmlFor="room_tier"
                     className="mb-2 block text-sm font-medium text-stone-700"
                   >
-                    Room Tier
+                    Hạng phòng
                   </label>
                   <input
                     id="room_tier"

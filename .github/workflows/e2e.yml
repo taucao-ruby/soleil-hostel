@@ -128,7 +128,12 @@ jobs:
           # can't throw and turn a confirmed booking into a 500 webhook response.
           MAIL_MAILER: log
         run: |
-          php artisan serve --host=127.0.0.1 --port=8000 &
+          # Fork 4 built-in-server workers so the SPA's parallel API calls and
+          # the payment-webhook POST are served concurrently (like prod php-fpm)
+          # instead of being serialized by one worker. --no-reload is REQUIRED:
+          # ServeCommand ignores PHP_CLI_SERVER_WORKERS and forks a single
+          # worker unless reloading is disabled.
+          PHP_CLI_SERVER_WORKERS=4 php artisan serve --host=127.0.0.1 --port=8000 --no-reload &
           # Wait until /up returns 200 instead of a fixed sleep — saves wall-clock
           # on warm runners and avoids race on cold ones.
           for i in {1..30}; do
@@ -262,7 +267,11 @@ jobs:
           # Seed a verified guest (user@soleil.test / P@ssworD!123) + bookable rooms
           # for the @smoke guest-booking flow.
           php artisan db:seed --class=DevRolePreviewSeeder --force
-          php artisan serve --host=127.0.0.1 --port=8000 &
+          # Fork 4 built-in-server workers so browser-driven concurrent requests
+          # are served in parallel (like prod php-fpm). --no-reload is REQUIRED:
+          # ServeCommand ignores PHP_CLI_SERVER_WORKERS and forks a single
+          # worker unless reloading is disabled.
+          PHP_CLI_SERVER_WORKERS=4 php artisan serve --host=127.0.0.1 --port=8000 --no-reload &
           for i in {1..30}; do
             if curl -sf http://127.0.0.1:8000/up >/dev/null 2>&1; then
               break

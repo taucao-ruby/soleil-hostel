@@ -293,9 +293,18 @@ jobs:
           php artisan migrate --env=testing --force
       - name: Start server
         working-directory: ./backend
-        run: php artisan serve --host=127.0.0.1 --port=8000 &
+        # PHP_CLI_SERVER_WORKERS forks 4 built-in-server workers so the 50
+        # curl_multi booking requests in the stub are handled concurrently
+        # (real FOR UPDATE lock contention + exclusion-constraint races)
+        # instead of being serialized one-at-a-time by a single worker, which
+        # never exercises the race the test exists to catch.
+        # --no-reload is REQUIRED: Laravel's ServeCommand::initialize() silently
+        # downgrades to a SINGLE worker (with a warning) unless reloading is
+        # disabled, so without it PHP_CLI_SERVER_WORKERS is a no-op.
+        run: php artisan serve --host=127.0.0.1 --port=8000 --no-reload &
         env:
           APP_ENV: testing
+          PHP_CLI_SERVER_WORKERS: "4"
           DB_CONNECTION: pgsql
           DB_HOST: 127.0.0.1
           DB_PORT: 5432
@@ -307,7 +316,23 @@ jobs:
           REDIS_PASSWORD: ""
       - name: Run concurrent booking stress test
         run: |
-          sleep 3
+          # Wait until the built-in server (master + 4 forked workers) is
+          # actually accepting connections before firing the 50-request burst,
+          # so the requests truly overlap instead of racing a half-booted server.
+          # NOTE: /up is intentionally 404 in this app (asserted by
+          # HealthControllerTest), so probe at the connection level — any HTTP
+          # response means a worker is serving — rather than a specific 200 route.
+          for i in {1..30}; do
+            if curl -s -o /dev/null http://127.0.0.1:8000/; then
+              echo "Backend accepting connections after ${i}s"
+              break
+            fi
+            if [ "$i" -eq 30 ]; then
+              echo "Backend never started accepting connections within 30s" >&2
+              exit 1
+            fi
+            sleep 1
+          done
           php backend/tests/stubs/concurrent_booking_test.php
         env:
           APP_ENV: testing

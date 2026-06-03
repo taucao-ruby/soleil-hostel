@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -18,12 +19,13 @@ return new class extends Migration
      *   LEFT JOIN bookings b ON b.id = r.booking_id
      *   WHERE b.id IS NULL;
      *
-     * SQLite guard follows existing convention from 2026_02_09_000000.
+     * Driver guard (DB::getDriverName() !== 'pgsql') skips non-PostgreSQL
+     * connections such as the SQLite test environment.
      */
     public function up(): void
     {
-        // Only add FK when NOT using SQLite (test environment)
-        if (config('database.default') === 'sqlite') {
+        // Only add the FK on PostgreSQL; skip on non-pgsql drivers (e.g. SQLite test env)
+        if (DB::getDriverName() !== 'pgsql') {
             return;
         }
 
@@ -37,7 +39,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (config('database.default') === 'sqlite') {
+        if (DB::getDriverName() !== 'pgsql') {
             return;
         }
 

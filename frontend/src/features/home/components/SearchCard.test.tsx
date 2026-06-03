@@ -6,7 +6,9 @@ import SearchCard from './SearchCard'
 
 // ── Mocks ───────────────────────────────────────────────
 
-const mockNavigate = vi.fn()
+const { mockNavigate } = vi.hoisted(() => ({
+  mockNavigate: vi.fn(),
+}))
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')

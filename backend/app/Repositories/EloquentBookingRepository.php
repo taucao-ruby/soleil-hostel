@@ -213,6 +213,26 @@ class EloquentBookingRepository implements BookingRepositoryInterface
     /**
      * {@inheritDoc}
      */
+    public function findTrashedByIds(array $ids, array $relations = []): Collection
+    {
+        $query = Booking::onlyTrashed();
+
+        if (! empty($relations)) {
+            $query->with($relations);
+        }
+
+        // Psalm infers Collection<int, Booking&static> from get(); narrow it to the
+        // contract's Collection<int, Booking> (the &static is an Eloquent stub artifact,
+        // not a runtime type — the query is anchored on Booking).
+        /** @var Collection<int, Booking> $bookings */
+        $bookings = $query->whereIn('id', $ids)->get();
+
+        return $bookings;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     public function restore(Booking $booking): bool
     {
         return $booking->restore();

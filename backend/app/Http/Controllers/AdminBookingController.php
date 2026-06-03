@@ -235,13 +235,22 @@ class AdminBookingController extends Controller
     {
         Gate::authorize('admin');
 
-        $ids = $request->validated('ids');
+        // De-duplicate and normalize ids so a repeated id is not restored twice
+        // (the second pass would otherwise surface as a spurious not-found).
+        $ids = array_values(array_unique(array_map('intval', $request->validated('ids'))));
+
+        // F-45: batch the trashed lookup into a single query instead of one
+        // find() per id. The restore below stays O(N) by design — each booking
+        // still gets its own lock + overlap check + audit write + event.
+        $trashedById = $this->bookingRepository
+            ->findTrashedByIds($ids, ['room', 'user'])
+            ->keyBy('id');
 
         $successCount = 0;
         $failed = [];
 
         foreach ($ids as $id) {
-            $booking = $this->bookingService->getTrashedBookingById($id);
+            $booking = $trashedById->get($id);
 
             if (! $booking) {
                 $failed[] = ['id' => $id, 'reason' => __('booking.bulk_not_found')];

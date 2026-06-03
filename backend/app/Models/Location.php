@@ -74,7 +74,11 @@ class Location extends Model
     /**
      * Get all rooms at this location.
      *
-     * @return HasMany<Room,$this>
+     * @return HasMany<Room, $this>
+     *
+     * @phpstan-return HasMany<Room, $this>
+     *
+     * @psalm-return HasMany<Room, static>
      */
     public function rooms(): HasMany
     {

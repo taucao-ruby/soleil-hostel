@@ -51,6 +51,26 @@ return new class extends Migration
 
     public function down(): void
     {
-        // No-op: this migration only reconciles historical index state safely.
+        $schema = Schema::connection($this->getConnection())->getConnection()->getSchemaBuilder();
+
+        // Reverse only the indexes this migration actually creates on the
+        // canonical migration chain. up() guards every add with hasIndex(); the
+        // single-column room_id/user_id/status indexes, the [user_id, check_in]
+        // composite, and rooms.status already exist by the time this migration
+        // runs — created by create_bookings_table, add_user_id_to_bookings, and
+        // add_nplusone_fix_indexes — so up() skips them and they are owned (and
+        // torn down) by those migrations. The only indexes up() recreates here
+        // are the two that optimize_booking_indexes had dropped. Dropping the
+        // pre-existing ones would clobber indexes this migration never created.
+        // Each drop is hasIndex-guarded so down() stays idempotent.
+        Schema::table('bookings', function (Blueprint $table) use ($schema) {
+            if ($schema->hasIndex('bookings', 'bookings_status_check_out_index')) {
+                $table->dropIndex('bookings_status_check_out_index');
+            }
+
+            if ($schema->hasIndex('bookings', 'bookings_room_id_check_in_check_out_index')) {
+                $table->dropIndex('bookings_room_id_check_in_check_out_index');
+            }
+        });
     }
 };

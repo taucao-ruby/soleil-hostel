@@ -30,10 +30,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Generate cache keys
         id: composer-hash
-        run: echo "hash=$(sha256sum backend/composer.lock | cut -c1-16)" >> $GITHUB_OUTPUT
+        run: echo "hash=$(sha256sum backend/composer.lock | cut -c1-16)" >> "$GITHUB_OUTPUT"
       - name: PNPM cache key
         id: pnpm-hash
-        run: echo "hash=$(sha256sum frontend/pnpm-lock.yaml | cut -c1-16)" >> $GITHUB_OUTPUT
+        run: echo "hash=$(sha256sum frontend/pnpm-lock.yaml | cut -c1-16)" >> "$GITHUB_OUTPUT"
 
   # ========== DATE CORRECTNESS GUARDRAIL ==========
   date-correctness-guard:
@@ -430,10 +430,12 @@ jobs:
       - name: Report Results
         if: success()
         run: |
-          echo "## N+1 Query Detection Results" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Query count within acceptable range" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ All eager loading working" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Cache invalidation events firing" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## N+1 Query Detection Results"
+            echo "- ✅ Query count within acceptable range"
+            echo "- ✅ All eager loading working"
+            echo "- ✅ Cache invalidation events firing"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # ========== STATIC ANALYSIS: PHPStan ==========
   phpstan:

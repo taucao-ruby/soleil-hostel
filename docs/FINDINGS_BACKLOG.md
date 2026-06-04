@@ -243,3 +243,11 @@ The following SH-labelled cleanup work is present in HEAD and no longer pending:
 | SH-10 | `fcd323f` | Moderator-gated room readiness endpoint replaces the nonexistent room-status route. Closes F-63. |
 | SH-11 | `4108e47` | Production configuration assertion command and traffic-admission wiring hardened. |
 | SH-12 | `2f52ade` | Remaining PostgreSQL `migrate:fresh` `->change()` races replaced with single-connection statements. |
+
+## 2026-06-04 Findings — CI Workflow Shellcheck Hygiene (surfaced in T-4 actionlint pass)
+
+Surfaced while reviewing **T-4** (frontend coverage-ratchet): running `actionlint` (Docker `rhysd/actionlint`) over `.github/workflows/tests.yml` flagged pre-existing shellcheck issues in `setup`/`nplusone-detection` jobs that are unrelated to T-4. Not introduced by T-4; recorded here and fixed in the same `chore(infra)` change. ID prefix `F-` continues the series above.
+
+| ID  | File:Line | Issue | Severity | Suggested Fix | Status |
+| --- | --------- | ----- | -------- | ------------- | ------ |
+| F-77 | `.github/workflows/tests.yml:33,36` (`setup` cache-key steps) + `:433-436` (`nplusone-detection` → "Report Results") | shellcheck **SC2086** — unquoted runner-provided redirect targets: `>> $GITHUB_OUTPUT` in the two `setup` cache-key steps and `>> $GITHUB_STEP_SUMMARY` on four consecutive `echo` lines in the N+1 summary step; plus **SC2129** (style) on the latter for four individual redirects instead of one grouped redirect. No runtime bug — `$GITHUB_OUTPUT`/`$GITHUB_STEP_SUMMARY` are runner-set paths with no spaces/globs — purely static-analysis hygiene: `actionlint` exits 1, which masks future real findings. | Low (CI-lint hygiene; no runtime impact) | Quote both vars (`>> "$GITHUB_OUTPUT"`, `>> "$GITHUB_STEP_SUMMARY"`); collapse the four N+1 echoes into one `{ …; } >> "$GITHUB_STEP_SUMMARY"` group (resolves SC2129 + SC2086 together). | **Fixed** (2026-06-04, `chore(infra)`) — quoted `$GITHUB_OUTPUT` in both `setup` cache-key steps; N+1 "Report Results" now uses a grouped redirect `{ … } >> "$GITHUB_STEP_SUMMARY"`. `actionlint` re-run over `tests.yml` is clean (exit 0). |

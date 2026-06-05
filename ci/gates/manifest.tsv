@@ -1,0 +1,46 @@
+# ci/gates/manifest.tsv — SINGLE SOURCE for the CI<->local gate map (T-5).
+# =============================================================================
+# This file is the one place that enumerates every CI gate and how (or whether)
+# scripts/ship.sh mirrors it locally. ship.sh reads ONLY this file; it has no
+# hardcoded gate list. CODEOWNERS-protected and SHA-pinned (.ship-hashes.sha256).
+#
+# It is the Laravel-monolith answer to T-5's "Docker-image-by-digest" mirror:
+# this repo's CI runs ~16 jobs directly on ubuntu-latest with setup-php/
+# setup-node — there is NO container image to pull, so the execution-environment
+# contract is captured here (tool + ci_version columns) and enforced by
+# ship.sh --mode=delta instead.
+#
+# FORMAT: tab-separated. Columns (8):
+#   id          stable gate id (no spaces)
+#   label       human description
+#   script      ci/gates/<x>.sh to run locally, or '-' for delta-only gates
+#   workdir     repo-relative dir to run in ('.', 'backend', 'frontend')
+#   local_mode  run | needs-tool | needs-db | delta
+#                 run        always runnable (bash/sh only)
+#                 needs-tool runs iff `tool` is on PATH, else reported as delta
+#                 needs-db   runs iff the test DB is reachable, else delta
+#                 delta      never run locally (heavy/infra); always in delta
+#   tool        primary tool for PATH + version checks (php/node/pnpm/composer/gitleaks/docker/bash)
+#   ci_version  version CI pins for `tool` ('-' if not version-pinned)
+#   source      provenance: <workflow>:<job(s)>
+#
+# WHEN CI CHANGES: update this row (and the gate script). Re-pin hashes via
+#   sh scripts/update-ship-hashes.sh --confirm
+# =============================================================================
+date-correctness	Booking date correctness guard	ci/gates/date-correctness.sh	.	run	bash	-	tests.yml:date-correctness-guard
+harness-lints	Harness governance lints (memory/skills/doc-pointers)	ci/gates/harness-lints.sh	.	needs-tool	node	20	harness-lints.yml
+hygiene	Repo hygiene H-01..H-05	ci/gates/hygiene.sh	.	run	sh	-	hygiene.yml
+backend-static	Backend static analysis (php -l, pint, phpstan L5, psalm L1)	ci/gates/backend-static.sh	backend	needs-tool	php	8.3	tests.yml:lint,pint,phpstan,psalm
+backend-tests	Backend tests + 95% coverage floor (Pest, parallel)	ci/gates/backend-tests.sh	backend	needs-db	php	8.3	tests.yml:backend-tests
+backend-audit	Composer security audit (--locked)	ci/gates/backend-audit.sh	backend	needs-tool	composer	-	tests.yml:composer-audit
+frontend-checks	Frontend typecheck + ESLint + production build	ci/gates/frontend-checks.sh	frontend	needs-tool	pnpm	9	tests.yml:frontend-typecheck,frontend-lint
+frontend-tests	Frontend unit tests + coverage thresholds (Vitest)	ci/gates/frontend-tests.sh	frontend	needs-tool	pnpm	9	tests.yml:frontend-unit-tests
+frontend-audit	NPM audit HIGH/CRITICAL (allowlist-aware)	ci/gates/frontend-audit.sh	frontend	needs-tool	node	20	tests.yml:npm-audit
+secrets-scan	Gitleaks full-history secret scan	ci/gates/secrets-scan.sh	.	needs-tool	gitleaks	-	tests.yml:security-scan
+compose-validate	docker compose config validation	ci/gates/compose-validate.sh	.	needs-tool	docker	-	tests.yml:docker-compose-validate
+nplusone	N+1 query detection	-	backend	delta	php	8.3	tests.yml:nplusone-detection
+booking-stress	Concurrent booking stress test (50 concurrent)	-	backend	delta	php	8.3	tests.yml:booking-stress-test
+contract-lint	OpenAPI Spectral lint + runtime enum contract	-	.	delta	node	20	contract-lint.yml:spectral
+batch-manifest	Eval batch manifest check (label-gated)	-	.	delta	node	20	batch-manifest-check.yml
+e2e	Playwright end-to-end tests	-	frontend	delta	pnpm	9	e2e.yml
+trivy	Trivy image vulnerability scan (tagged deploys)	-	.	delta	docker	-	deploy.yml:trivy-scan

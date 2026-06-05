@@ -733,47 +733,62 @@ jobs:
           path: frontend/coverage
           retention-days: 14
 
-  # ========== COVERAGE RATCHET (frontend, dev only) ==========
+  # ========== COVERAGE RATCHET (frontend, dev only — SUGGEST ONLY) ==========
   # Floors are ENFORCED by Vitest inside frontend-unit-tests (it reads
-  # frontend/coverage-thresholds.json dynamically at config load). This job only
-  # moves the floor UP after a green run on dev, then commits it back with
-  # [skip ci] so it can't loop. It never runs on main: per CLAUDE.md main stays
-  # human-reviewed, so the raised floor reaches main via the normal dev->main merge.
+  # frontend/coverage-thresholds.json dynamically at config load). After a green
+  # run on dev this job checks whether the floor COULD rise and, if so, publishes
+  # the suggested coverage-thresholds.json as a job-summary diff + artifact.
+  #
+  # It deliberately does NOT push back to dev: every threshold bump goes through a
+  # normal human PR so it gets full CI + review (per CLAUDE.md main stays
+  # human-reviewed). No bot commits, no [skip ci] — and note a GITHUB_TOKEN push
+  # would not trigger CI anyway, so committing back was a silent, unverified bump.
   coverage-ratchet:
-    name: Coverage Ratchet (dev only)
+    name: Coverage Ratchet (suggest only, dev)
     runs-on: ubuntu-latest
     needs: [frontend-unit-tests]
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     timeout-minutes: 5
     permissions:
-      contents: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: dev
-          fetch-depth: 0
       - name: Download coverage report
         uses: actions/download-artifact@v4
         with:
           name: frontend-coverage
           path: frontend/coverage
-      - name: Ratchet thresholds upward
+      - name: Compute suggested floors
         id: ratchet
         working-directory: ./frontend
-        # exit 0 = a floor rose (commit), exit 2 = unchanged, never exit 1.
+        # exit 0 = a higher floor is available, exit 2 = unchanged, never exit 1.
         run: |
           set +e
           bash scripts/ratchet-coverage.sh
           echo "code=$?" >> "$GITHUB_OUTPUT"
-      - name: Commit raised floors [skip ci]
+      - name: Publish suggested floors (summary)
         if: steps.ratchet.outputs.code == '0'
         working-directory: ./frontend
         run: |
-          git config user.name 'coverage-ratchet-bot'
-          git config user.email 'bot@noreply'
-          git add coverage-thresholds.json
-          git commit -m 'chore: ratchet coverage thresholds [skip ci]'
-          git push origin HEAD:dev
+          {
+            echo "### 📈 Coverage floors can rise"
+            echo ""
+            echo "A green dev run measured coverage above the current floors. To raise"
+            echo "them, open a PR applying this \`frontend/coverage-thresholds.json\`"
+            echo "(also downloadable as the **coverage-thresholds-suggested** artifact):"
+            echo ""
+            echo '```diff'
+            git diff -- coverage-thresholds.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice title=Coverage ratchet::Higher coverage floors are available — apply coverage-thresholds.json via PR."
+      - name: Upload suggested thresholds
+        if: steps.ratchet.outputs.code == '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-thresholds-suggested
+          path: frontend/coverage-thresholds.json
+          retention-days: 14
 
   # ========== FRONTEND LINT ==========
   frontend-lint:

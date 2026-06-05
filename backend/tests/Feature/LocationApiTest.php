@@ -170,15 +170,22 @@ class LocationApiTest extends TestCase
         $room1 = Room::factory()->create(['location_id' => $location->id, 'status' => 'available']);
         $room2 = Room::factory()->create(['location_id' => $location->id, 'status' => 'available']);
 
-        // Book room1 for specific dates
+        // Book room1 for a future window. Relative dates keep this test from
+        // ageing into the past — the query check_in must stay >= today or the
+        // availability endpoint (correctly) rejects it with 422.
+        $bookedCheckIn = now()->addDays(10)->toDateString();
+        $bookedCheckOut = now()->addDays(14)->toDateString();
         Booking::factory()->create([
             'room_id' => $room1->id,
-            'check_in' => '2026-06-01',
-            'check_out' => '2026-06-05',
+            'check_in' => $bookedCheckIn,
+            'check_out' => $bookedCheckOut,
             'status' => 'confirmed',
         ]);
 
-        $response = $this->getJson('/api/v1/locations/test-hostel?check_in=2026-06-03&check_out=2026-06-07');
+        // Query window overlaps room1's booking (excludes room1, keeps room2).
+        $queryCheckIn = now()->addDays(12)->toDateString();
+        $queryCheckOut = now()->addDays(16)->toDateString();
+        $response = $this->getJson("/api/v1/locations/test-hostel?check_in={$queryCheckIn}&check_out={$queryCheckOut}");
 
         $response->assertOk()
             ->assertJsonCount(1, 'data.rooms');
@@ -306,14 +313,18 @@ class LocationApiTest extends TestCase
         $room1 = Room::factory()->create(['location_id' => $location->id, 'status' => 'available']);
         $room2 = Room::factory()->create(['location_id' => $location->id, 'status' => 'available']);
 
+        $bookedCheckIn = now()->addDays(10)->toDateString();
+        $bookedCheckOut = now()->addDays(14)->toDateString();
         Booking::factory()->create([
             'room_id' => $room1->id,
-            'check_in' => '2026-06-01',
-            'check_out' => '2026-06-05',
+            'check_in' => $bookedCheckIn,
+            'check_out' => $bookedCheckOut,
             'status' => 'confirmed',
         ]);
 
-        $response = $this->getJson('/api/v1/rooms?check_in=2026-06-03&check_out=2026-06-07');
+        $queryCheckIn = now()->addDays(12)->toDateString();
+        $queryCheckOut = now()->addDays(16)->toDateString();
+        $response = $this->getJson("/api/v1/rooms?check_in={$queryCheckIn}&check_out={$queryCheckOut}");
 
         $response->assertOk()
             ->assertJsonCount(1, 'data');
@@ -332,8 +343,8 @@ class LocationApiTest extends TestCase
         Booking::factory()->create([
             'room_id' => $room->id,
             'user_id' => $user->id,
-            'check_in' => '2026-06-01',
-            'check_out' => '2026-06-05',
+            'check_in' => now()->addDays(10)->toDateString(),
+            'check_out' => now()->addDays(14)->toDateString(),
             'status' => 'confirmed',
         ]);
 

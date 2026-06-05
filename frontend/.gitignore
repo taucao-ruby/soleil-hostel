@@ -28,5 +28,10 @@ playwright-report/
 test-results/
 coverage/
 
+# Flake-tracking generated artifacts (the NDJSON ledger at
+# tests/e2e/flake-history.ndjson is COMMITTED and intentionally not ignored)
+flake-report.json
+flake-report.html
+
 # Temp files
 temp_*

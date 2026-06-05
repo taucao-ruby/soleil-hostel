@@ -1,2 +1,9 @@
 # Shell scripts must stay LF — CRLF would break the shebang on Linux CI runners.
 *.sh text eol=lf
+
+# coverage-thresholds.json is a ratchet state file (bot-written on dev, LF only).
+# Pin LF so a Windows checkout can't introduce CRLF churn. We deliberately do NOT
+# set merge=ours/union here: 'ours' can silently drop a HIGHER floor from the other
+# branch (anti-ratchet), and 'union' would corrupt the JSON. Let the default merge
+# surface conflicts and resolve by taking the MAX of both sides (see frontend/RATCHET.md).
+frontend/coverage-thresholds.json text eol=lf

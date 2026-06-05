@@ -186,7 +186,43 @@ jobs:
           CI: 'true'
           E2E_API_BASE: "http://127.0.0.1:8000/api"
           STRIPE_WEBHOOK_SECRET: "whsec_e2e_test_secret"
-        run: npx playwright test --grep @smoke --project=chromium --reporter=line,github
+          # Make Playwright's JSON reporter write to a file (CLI --reporter would
+          # otherwise send it to stdout). Feeds the flake pipeline below.
+          PLAYWRIGHT_JSON_OUTPUT_NAME: test-results/results.json
+        run: npx playwright test --grep @smoke --project=chromium --reporter=line,github,json
+
+      # ---- Flake tracking (D-2): observe + enforce the @smoke flake rule ----
+      # Report against the committed 14-day history PLUS this PR run (the PR data
+      # point is NOT committed — only the nightly full run accumulates history).
+      - name: Flake report + PR summary
+        if: always()
+        working-directory: ./frontend
+        run: |
+          cp tests/e2e/flake-history.ndjson /tmp/flake.ndjson 2>/dev/null || touch /tmp/flake.ndjson
+          node scripts/flake/ingest.mjs --file test-results/results.json \
+            --commit "${{ github.sha }}" --branch "${{ github.head_ref || github.ref_name }}" \
+            --ledger /tmp/flake.ndjson || true
+          node scripts/flake/report.mjs --ledger /tmp/flake.ndjson --out flake-report.json --html flake-report.html
+          {
+            echo "### E2E flake rate (14d rolling)"
+            echo ""
+            echo "| Flow | Flake rate | Runs (14d) | Status |"
+            echo "|------|------------|------------|--------|"
+            jq -r '.flows[] | "| \(.flow_group) | \(.flow_flake_rate*100|floor)% | \(.total_runs) | \(.smoke_status) |"' flake-report.json
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload flake report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flake-report-${{ github.run_id }}
+          path: frontend/flake-report.*
+          retention-days: 14
+      # Blocking: fails the PR when a currently-@smoke flow has a 7d flake_rate
+      # >= 5% over the committed history. Runs LAST so artifacts upload first.
+      - name: Smoke flake gate (blocking)
+        if: always()
+        working-directory: ./frontend
+        run: node scripts/flake/gate.mjs --report flake-report.json
 
       - name: Upload Playwright report on failure
         if: failure()
@@ -203,6 +239,9 @@ jobs:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    # Nightly accumulates the flake ledger and commits it back to dev [skip ci].
+    permissions:
+      contents: write
     services:
       postgres:
         image: postgres:16-alpine
@@ -306,13 +345,15 @@ jobs:
           CI: 'true'
           E2E_API_BASE: "http://127.0.0.1:8000/api"
           STRIPE_WEBHOOK_SECRET: "whsec_e2e_test_secret"
+          PLAYWRIGHT_JSON_OUTPUT_NAME: test-results/results.json
         run: |
           GREP="${{ github.event.inputs.grep }}"
           if [ -n "$GREP" ]; then
-            npx playwright test --grep "$GREP" --reporter=line,html,github
+            npx playwright test --grep "$GREP" --reporter=line,html,github,json
           else
-            npx playwright test --reporter=line,html,github
+            npx playwright test --reporter=line,html,github,json
           fi
+
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
@@ -321,4 +362,59 @@ jobs:
           path: |
             frontend/playwright-report
             frontend/test-results
+          retention-days: 14
+
+  flake-accumulate:
+    name: E2E flake ledger (nightly → dev)
+    needs: [full]
+    if: always() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    # The scheduled run fires on the default branch (main), but main stays
+    # human-reviewed — so we check out dev and accumulate the rolling 14-day
+    # ledger there (mirrors the coverage-ratchet job in tests.yml). Runs even
+    # when the full suite reports failures (flaky data is exactly the point).
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Download full-suite results
+        uses: actions/download-artifact@v4
+        with:
+          name: playwright-report-full
+          path: dl
+      - name: Ingest + prune + report + gate + commit [skip ci]
+        working-directory: ./frontend
+        run: |
+          RESULTS="../dl/test-results/results.json"
+          if [ ! -f "$RESULTS" ]; then
+            echo "no results.json in artifact — skipping accumulation"
+            exit 0
+          fi
+          node scripts/flake/ingest.mjs --file "$RESULTS" \
+            --commit "${{ github.sha }}" --branch dev --prune
+          node scripts/flake/report.mjs --ledger tests/e2e/flake-history.ndjson \
+            --out flake-report.json --html flake-report.html
+          node scripts/flake/gate.mjs --report flake-report.json || true
+          if git diff --quiet -- tests/e2e/flake-history.ndjson; then
+            echo "flake ledger unchanged"
+          else
+            git config user.name 'flake-tracker-bot'
+            git config user.email 'bot@noreply'
+            git add tests/e2e/flake-history.ndjson
+            git commit -m 'chore(ci): update e2e flake ledger [skip ci]'
+            git push origin HEAD:dev || echo "push skipped (non-fast-forward; next run reconciles)"
+          fi
+      - name: Upload flake report (nightly)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flake-report-nightly-${{ github.run_id }}
+          path: frontend/flake-report.*
           retention-days: 14

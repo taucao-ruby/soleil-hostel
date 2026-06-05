@@ -27,6 +27,7 @@ use Tests\TestCase;
  * 12. User index shows only own bookings
  * 13. Admin index shows all bookings
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class BookingPolicyTest extends TestCase
 {
     use RefreshDatabase;

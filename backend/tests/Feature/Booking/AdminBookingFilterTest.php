@@ -22,6 +22,7 @@ use Tests\TestCase;
  *   T3: check_out_start/end — inclusive DATE comparison (>= start, <= end)
  *   T4: status=confirmed only
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class AdminBookingFilterTest extends TestCase
 {
     use RefreshDatabase;

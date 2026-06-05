@@ -16,6 +16,7 @@ use Tests\TestCase;
  * - chk_bookings_dates (migration 2026_02_22_000001, already present)
  * - chk_reviews_rating (migration 2026_02_22_000001, already present)
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class CheckConstraintTest extends TestCase
 {
     use RefreshDatabase;

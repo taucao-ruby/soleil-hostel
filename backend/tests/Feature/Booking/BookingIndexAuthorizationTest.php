@@ -19,6 +19,7 @@ use Tests\TestCase;
  *
  * Covers: G-03 (RBAC audit — implicit safety validation)
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class BookingIndexAuthorizationTest extends TestCase
 {
     use RefreshDatabase;

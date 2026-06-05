@@ -19,6 +19,7 @@ use Tests\TestCase;
  *
  * Verify logic của service đúng: pessimistic locking, overlap detection, retry
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class CreateBookingServiceTest extends TestCase
 {
     use RefreshDatabase;

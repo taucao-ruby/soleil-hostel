@@ -26,6 +26,7 @@ use Tests\TestCase;
  * - Booking count matches successful transaction count
  * - Room availability is consistent after concurrent operations
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class TransactionIsolationIntegrationTest extends TestCase
 {
     use RefreshDatabase;

@@ -27,6 +27,7 @@ use Tests\TestCase;
  * services using forceFill, so the audit data persists without re-opening
  * the mass-assignment surface to user input.
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class BookingFillableTest extends TestCase
 {
     use RefreshDatabase;

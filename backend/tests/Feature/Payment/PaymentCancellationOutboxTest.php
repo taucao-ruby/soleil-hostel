@@ -41,6 +41,7 @@ use Tests\TestCase;
  *   7. Safety guards         — mismatched intent / non-terminal booking refused.
  *   8. Circuit breaker       — exhausted attempts fail permanently, no infinite loop.
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 final class PaymentCancellationOutboxTest extends TestCase
 {
     use RefreshDatabase;

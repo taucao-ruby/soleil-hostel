@@ -25,6 +25,7 @@ use Tests\TestCase;
  * (REFUNDED / PARTIAL_REFUND / FORFEITED) and writes an append-only audit
  * row to deposit_events.
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 final class DepositLifecycleTest extends TestCase
 {
     private User $guest;

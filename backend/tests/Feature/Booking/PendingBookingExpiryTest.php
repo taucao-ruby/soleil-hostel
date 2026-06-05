@@ -32,6 +32,7 @@ use Tests\TestCase;
  *   ✅ Batch size cap is honored
  *   ✅ Idempotent — second run does not double-process
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class PendingBookingExpiryTest extends TestCase
 {
     use RefreshDatabase;

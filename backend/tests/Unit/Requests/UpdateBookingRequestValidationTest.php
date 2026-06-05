@@ -11,6 +11,7 @@ use Tests\TestCase;
  * - guest_name min:2
  * - room_id is 'sometimes' (not required on updates)
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class UpdateBookingRequestValidationTest extends TestCase
 {
     private function rules(): array

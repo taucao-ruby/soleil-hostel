@@ -29,6 +29,7 @@ use Tests\TestCase;
  * @see App\Services\RoomService::updateWithOptimisticLock()
  * @see App\Exceptions\OptimisticLockException
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class RoomOptimisticLockingTest extends TestCase
 {
     use RefreshDatabase;

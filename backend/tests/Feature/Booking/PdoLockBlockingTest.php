@@ -34,6 +34,7 @@ use Tests\TestCase;
  * (they live outside RefreshDatabase's rollback). The dedicated room also keeps
  * the seed clear of the no_overlapping_bookings exclusion constraint.
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class PdoLockBlockingTest extends TestCase
 {
     use RefreshDatabase;

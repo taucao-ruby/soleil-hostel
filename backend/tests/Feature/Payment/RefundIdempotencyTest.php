@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 final class RefundIdempotencyTest extends TestCase
 {
     public function test_replaying_same_charge_refunded_event_five_times_results_in_one_state_transition(): void

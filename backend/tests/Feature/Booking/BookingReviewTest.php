@@ -45,6 +45,7 @@ use Tests\TestCase;
  *   ✅ Non-owner non-admin cannot delete (403)
  *   ✅ Review persisted with correct booking_id, room_id, user_id
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class BookingReviewTest extends TestCase
 {
     use RefreshDatabase;

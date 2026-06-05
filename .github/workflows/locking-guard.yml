@@ -1,0 +1,181 @@
+name: "Locking Guard (booking write-path lock coverage)"
+
+# =============================================================================
+# PRE-DEPLOY GATE — booking write-path locking coverage (T-6).
+#
+# Fails the pipeline if any discovered booking write service is missing
+# pessimistic-lock protection. Discovery is manifest-driven
+# (booking-write-services.yaml); the guard logic lives in
+# .agent/scripts/check-locking-coverage.sh and is hash-pinned.
+#
+# PLACEMENT: this runs on every PR to and push on the protected branch, i.e.
+# AFTER unit tests gate the same PR and BEFORE the tag-driven deploy pipeline
+# (deploy.yml) can ship. To make it truly block deploys, add
+# "Booking write-path lock coverage" as a REQUIRED status check in branch
+# protection for main (see LOCKING-GUARD.md "CI wiring"). There is NO
+# continue-on-error and NO admin skip — a real failure blocks merge.
+# =============================================================================
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+# Least privilege: read code, write PR comments only.
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: locking-guard-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  locking-guard:
+    name: Booking write-path lock coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          # Full depth: cheap here, and future git-history-based discovery
+          # methods would need it.
+          fetch-depth: 0
+
+      - name: Verify guard toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tool in bash awk grep sed sha256sum; do
+            command -v "$tool" >/dev/null 2>&1 || { echo "::error::Missing required tool: $tool"; exit 1; }
+          done
+          echo "Toolchain OK: $(bash --version | head -1)"
+
+      # SECURITY: refuse to run a guard that has been modified to lower
+      # coverage. The pinned hash in .locking-guard.sha256 is CODEOWNERS-
+      # protected; any guard/hash change needs owner approval.
+      - name: Verify guard integrity (SHA-256 pin)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! sha256sum -c .locking-guard.sha256; then
+            echo "::error title=GUARD_TAMPERED::.agent/scripts/check-locking-coverage.sh does not match its pinned SHA-256. A guard or hash change requires owner approval (see CODEOWNERS). Refusing to run a potentially-weakened guard."
+            exit 1
+          fi
+
+      # The guard. NO continue-on-error: a non-zero exit fails the job. The
+      # exit code is published as a step output BEFORE the failing exit so the
+      # reporting/paging steps below can branch on EMPTY (3) / INFRA (2)
+      # without swallowing the failure.
+      - name: Run booking locking-coverage guard
+        id: guard
+        shell: bash
+        run: |
+          set +e
+          ./.agent/scripts/check-locking-coverage.sh --auto-discover | tee guard-stdout.txt
+          code=${PIPESTATUS[0]}
+          set -e
+          echo "exit_code=${code}" >> "$GITHUB_OUTPUT"
+          exit "${code}"
+
+      # Always publish the machine-readable report when the script produced one
+      # (exit 0/1, and INFRA-on-missing-file). EMPTY/missing-manifest exit
+      # before a report is written, hence if-no-files-found: warn.
+      - name: Upload locking report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: locking-report
+          path: locking-report.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      # On any guard failure during a PR, post (or update) a comment listing the
+      # offending paths so engineers get the full picture in-context.
+      - name: Comment guard failure on PR
+        if: failure() && github.event_name == 'pull_request' && steps.guard.outputs.exit_code != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const code = '${{ steps.guard.outputs.exit_code }}';
+            const marker = '<!-- locking-guard-report -->';
+            let stdout = '';
+            try { stdout = fs.readFileSync('guard-stdout.txt', 'utf8'); } catch (e) {}
+            const unlocked = stdout.split('\n').filter(l => l.startsWith('UNLOCKED_PATH'));
+
+            let body = `${marker}\n## 🔒 Booking locking-coverage guard FAILED (exit ${code})\n\n`;
+            if (code === '3') {
+              body += '**EMPTY DISCOVERY (fail-closed).** `booking-write-services.yaml` declared **zero** services. ' +
+                      'This is treated as a misconfiguration, not a pass — the coverage manifest may have been wiped. ' +
+                      'On-call has been paged. See `LOCKING-GUARD.md`.\n';
+            } else if (code === '2') {
+              body += '**INFRASTRUCTURE / MANIFEST DRIFT.** Discovery failed, timed out, or a declared service file is ' +
+                      'missing. On-call has been paged. See the job log and `LOCKING-GUARD.md`.\n';
+            } else if (code === '1') {
+              body += 'One or more booking write paths are **missing pessimistic-lock protection**:\n\n```\n' +
+                      (unlocked.length ? unlocked.join('\n') : '(see job log)') + '\n```\n\n' +
+                      '**Fix the lock in code** (add `lockForUpdate()` / `withLock()` inside the write transaction) — ' +
+                      'there is NO override to skip this guard. See `LOCKING-GUARD.md` → "Break-glass".\n';
+            } else {
+              body += 'Guard failed before producing a result. See the job log.\n';
+            }
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const { data: comments } = await github.rest.issues.listComments({ owner, repo, issue_number });
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
+      # EMPTY (3) and INFRA (2) are operational incidents, not ordinary review
+      # failures — they must page on-call, not just fail silently. Primary
+      # signal is the loud ::error:: annotation (always works). Optional Slack
+      # page uses the repo's existing webhook secret if configured.
+      - name: Page on-call (EMPTY or INFRA)
+        if: failure() && (steps.guard.outputs.exit_code == '2' || steps.guard.outputs.exit_code == '3')
+        shell: bash
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          GUARD_CODE: ${{ steps.guard.outputs.exit_code }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          SEV="high"
+          [ "$GUARD_CODE" = "3" ] && KIND="EMPTY_DISCOVERY (coverage manifest wiped?)" || KIND="INFRA_ERROR"
+          echo "::error title=LOCKING_GUARD_PAGE::[${SEV}] locking guard exit ${GUARD_CODE} — ${KIND}. ${RUN_URL}"
+          if [ -n "${SLACK_WEBHOOK_URL:-}" ]; then
+            curl -sf -X POST "$SLACK_WEBHOOK_URL" \
+              -H 'Content-Type: application/json' \
+              -d "{\"text\":\"🚨 [${SEV}] Soleil locking guard exit ${GUARD_CODE} — ${KIND}\n${RUN_URL}\"}" \
+              || echo "::warning::Slack page failed to send (guard failure still stands)."
+          else
+            echo "::warning::SLACK_WEBHOOK_URL not configured; high-severity page not delivered. Wire an alert channel — see LOCKING-GUARD.md."
+          fi
+
+      - name: Write job summary
+        if: always()
+        shell: bash
+        env:
+          GUARD_CODE: ${{ steps.guard.outputs.exit_code }}
+        run: |
+          {
+            echo "## Booking locking-coverage guard"
+            echo ""
+            echo "| Field | Value |"
+            echo "|-------|-------|"
+            echo "| Exit code | \`${GUARD_CODE:-<failed before run>}\` |"
+            echo "| Meaning | 0=pass · 1=unlocked · 2=infra · 3=empty/fail-closed |"
+            echo "| Report | \`locking-report.json\` (artifact: locking-report) |"
+            echo ""
+            if [ "${GUARD_CODE:-}" = "0" ]; then
+              echo "✅ All discovered booking write paths hold pessimistic locks."
+            else
+              echo "❌ Guard did not pass — see job log and PR comment. No override exists; fix in code."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -22,6 +22,7 @@
     "require-dev": {
         "brianium/paratest": "^7.8",
         "fakerphp/faker": "^1.23",
+        "infection/infection": "^0.29",
         "larastan/larastan": "^3.9.4",
         "laravel/pail": "^1.2.2",
         "laravel/pint": "^1.13",
@@ -72,8 +73,20 @@
             "@php artisan config:clear --ansi",
             "@php artisan test"
         ],
+        "test:booking": [
+            "@php artisan config:clear --ansi",
+            "@php artisan test --group=booking"
+        ],
         "format": "vendor/bin/pint",
-        "lint": "vendor/bin/pint --test"
+        "lint": "vendor/bin/pint --test",
+        "mutation": [
+            "Composer\\Config::disableProcessTimeout",
+            "vendor/bin/infection --filter=app/Enums/BookingStatus.php,app/Enums/DepositStatus.php,app/Booking/CancellationPolicy.php,app/Models/Booking.php,app/Models/Deposit.php,app/Services/CancellationService.php,app/Services/CreateBookingService.php --threads=4 --no-progress"
+        ],
+        "mutation:phpdbg": [
+            "Composer\\Config::disableProcessTimeout",
+            "phpdbg -qrr -d memory_limit=-1 vendor/infection/infection/bin/infection --filter=app/Enums/BookingStatus.php,app/Enums/DepositStatus.php,app/Booking/CancellationPolicy.php,app/Models/Booking.php,app/Models/Deposit.php,app/Services/CancellationService.php,app/Services/CreateBookingService.php --threads=1 --no-progress"
+        ]
     },
     "extra": {
         "laravel": {
@@ -86,7 +99,8 @@
         "sort-packages": true,
         "allow-plugins": {
             "pestphp/pest-plugin": true,
-            "php-http/discovery": true
+            "php-http/discovery": true,
+            "infection/extension-installer": true
         },
         "platform": {
             "php": "8.3.30"

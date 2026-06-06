@@ -58,7 +58,10 @@ final class ReconcileStuckStripeWebhookEvents extends Command
         $minutes = max(1, (int) $this->option('minutes'));
         $limit = max(1, (int) $this->option('limit'));
         $maxAttempts = max(1, (int) config('booking.reconciliation.webhook_max_attempts', 12));
-        $cutoff = now()->subMinutes($minutes);
+        // now()->subMinutes() reports CarbonInterface in newer Carbon stubs;
+        // Carbon::instance() pins it back to Illuminate\Support\Carbon for the
+        // reconcile-query helpers' precise parameter type.
+        $cutoff = \Illuminate\Support\Carbon::instance(now()->subMinutes($minutes));
 
         $backlogCount = $this->stuckWebhookBacklogCount($cutoff, $maxAttempts);
         $this->emitBacklogTelemetry($backlogCount);

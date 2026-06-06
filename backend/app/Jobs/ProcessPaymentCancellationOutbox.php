@@ -313,6 +313,9 @@ final class ProcessPaymentCancellationOutbox implements ShouldQueue
         $exponent = max(0, (int) $task->attempts - 1);
         $delay = $base * (2 ** $exponent);
 
-        return now()->addSeconds((int) min($cap, $delay));
+        // now()->addSeconds() reports CarbonInterface in newer Carbon stubs;
+        // Carbon::instance() pins it back to Illuminate\Support\Carbon so the
+        // declared return type (and markRetrying's param) stays precise.
+        return Carbon::instance(now()->addSeconds((int) min($cap, $delay)));
     }
 }

@@ -5,31 +5,30 @@
 > **Canonical domain invariants**: `docs/agents/ARCHITECTURE_FACTS.md` (booking overlap, auth, concurrency).
 > When this file appears to conflict with either canonical source, the canonical source wins.
 
-> Complete database design for Soleil Hostel — 61 migrations on disk as of HEAD `6372d7f` (2026-05-08). 25 application+framework tables: `users`, `locations`, `rooms`, `bookings`, `reviews`, `personal_access_tokens`, `email_verification_codes`, `contact_messages`, `admin_audit_logs`, `stays`, `room_assignments`, `service_recovery_cases`, `policy_documents`, `ai_proposal_events`, `ai_proposals`, `stripe_webhook_events`, `stripe_refund_events`, `deposit_events`, plus framework tables (`sessions`, `password_reset_tokens`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`).
+> Complete database design for Soleil Hostel — 66 migrations on disk as of HEAD `ee9a5ba` (2026-06-03). 26 application+framework tables: `users`, `locations`, `rooms`, `bookings`, `reviews`, `personal_access_tokens`, `email_verification_codes`, `contact_messages`, `admin_audit_logs`, `stays`, `room_assignments`, `service_recovery_cases`, `policy_documents`, `ai_proposal_events`, `ai_proposals`, `stripe_webhook_events`, `stripe_refund_events`, `deposit_events`, `payment_cancellation_tasks`, plus framework tables (`sessions`, `password_reset_tokens`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`).
 
 ## ER Diagram
 
 ```
-┌────────────────────┐
-│     locations      │
-├────────────────────┤
-│ id (PK)            │
-│ name (UNIQUE)      │
-│ slug (UNIQUE)      │
-│ address            │
-│ city, district     │
-│ latitude/longitude │
-│ amenities (JSONB)  │
-│ images (JSONB)     │
-│ is_active          │
-│ total_rooms        │
-│ lock_version       │
-│ created_at         │
-│ updated_at         │
-└────────────────────┘
-          │
-          │ 1:N
-          ▼
+                             ┌────────────────────┐
+                             │     locations      │
+                             ├────────────────────┤
+                             │ id (PK)            │
+                             │ name (UNIQUE)      │
+                             │ slug (UNIQUE)      │
+                             │ address            │
+                             │ city, district     │
+                             │ latitude/longitude │
+                             │ amenities (JSONB)  │
+                             │ images (JSONB)     │
+                             │ is_active          │
+                             │ total_rooms        │
+                             │ lock_version       │
+                             │ created_at         │
+                             │ updated_at         │
+                             └────────────────────┘
+                                       │ 1:N → rooms  (+ 1:N → bookings, denormalized)
+                                       ▼
 ┌────────────────────┐       ┌────────────────────┐       ┌────────────────────┐
 │       users        │       │       rooms        │       │      reviews       │
 ├────────────────────┤       ├────────────────────┤       ├────────────────────┤
@@ -37,32 +36,33 @@
 │ name               │       │ location_id (FK)   │       │ booking_id (FK)    │
 │ email (UNIQUE)     │       │ name               │       │ room_id (FK)       │
 │ password           │       │ room_number        │       │ user_id (FK)       │
-│ role (ENUM)        │       │ description        │       │ title              │
+│ role (ENUM)        │       │ description        │ ◄──   │ title              │
 │ email_verified_at  │       │ price              │       │ content            │
 │ remember_token     │       │ max_guests         │       │ guest_name         │
 │ created_at         │       │ status             │       │ rating (1-5)       │
-│ updated_at         │       │ readiness_status   │◄──    │ approved           │
+│ updated_at         │       │ readiness_status   │       │ approved           │
 └────────────────────┘       │ room_type_code     │       │ created_at         │
           │                  │ room_tier          │       └────────────────────┘
-          │                  │ lock_version       │
-          │                  │ created_at         │
-          │                  │ updated_at         │
-          │ 1:N              └────────────────────┘                │
-          ▼                           │ 1:N                        │
+          │                  │ lock_version       │               │
+          │                  │ created_at         │               │
+          │                  │ updated_at         │               │
+          │ 1:N              └────────────────────┘               │
+          ▼                           │ 1:N                       │
+                                      ▼                           │
 ┌─────────────────────────────────────────────────┐               │
-│                   bookings                       │◄──────────────┘
+│                   bookings                      │◄──────────────┘
 ├─────────────────────────────────────────────────┤
-│ id (PK)                                          │
-│ user_id (FK → users)                             │
-│ room_id (FK → rooms)                             │
-│ location_id (FK → locations)  ◄── Denormalized   │
-│ guest_name, guest_email                          │
-│ check_in (DATE), check_out (DATE)                │
-│ status (commercial-only)                         │
-│ deposit_*                  ◄── Liability state   │
-│ cancellation_reason          ◄── Cancellation    │
-│ deleted_at, deleted_by       ◄── Soft delete     │
-│ created_at, updated_at                           │
+│ id (PK)                                         │
+│ user_id (FK → users)                            │
+│ room_id (FK → rooms)                            │
+│ location_id (FK → locations)  ◄── Denormalized  │
+│ guest_name, guest_email                         │
+│ check_in (DATE), check_out (DATE)               │
+│ status (commercial-only)                        │
+│ deposit_*                  ◄── Liability state  │
+│ cancellation_reason          ◄── Cancellation   │
+│ deleted_at, deleted_by       ◄── Soft delete    │
+│ created_at, updated_at                          │
 └─────────────────────────────────────────────────┘
 
                 │ 1:1 operational lifecycle
@@ -86,7 +86,7 @@
           │ 1:N                           │ 1:N
           ▼                               ▼
 ┌────────────────────────────┐   ┌──────────────────────────────┐
-│      room_assignments      │   │   service_recovery_cases    │
+│      room_assignments      │   │    service_recovery_cases    │
 ├────────────────────────────┤   ├──────────────────────────────┤
 │ id (PK)                    │   │ id (PK)                      │
 │ booking_id (FK)            │   │ booking_id (FK)              │
@@ -113,9 +113,9 @@
 │ created_at, updated_at     │
 └────────────────────────────┘
 
-┌─────────────────────────────────────────────────┐
+┌──────────────────────────────────────────────────┐
 │            personal_access_tokens                │ ◄── Sanctum + Custom
-├─────────────────────────────────────────────────┤
+├──────────────────────────────────────────────────┤
 │ id, tokenable_type, tokenable_id                 │
 │ name, token (UNIQUE), abilities                  │
 │ token_identifier, token_hash   ◄── HttpOnly      │
@@ -124,7 +124,7 @@
 │ device_id, device_fingerprint  ◄── Device bind   │
 │ refresh_count, last_rotated_at ◄── Rotation      │
 │ last_used_at, created_at, updated_at             │
-└─────────────────────────────────────────────────┘
+└──────────────────────────────────────────────────┘
 
 ┌────────────────────────────┐   ┌────────────────────────────┐
 │     policy_documents       │   │    ai_proposal_events      │ ◄── AI Harness
@@ -142,22 +142,34 @@
 └────────────────────────────┘
 ```
 
+> **Scope & fidelity.** Boxes list _key_ columns only — complete column lists (e.g.
+> `rooms.image_url`, `reviews.guest_email`, the `users` Cashier columns) live in the
+> per-table sections below. Seven audit/ledger/AI tables are **not drawn** here:
+> `email_verification_codes`, `admin_audit_logs`, `ai_proposals`, `stripe_webhook_events`,
+> `stripe_refund_events`, `deposit_events`, `payment_cancellation_tasks`. Their full FK
+> wiring is in [Model Relationships](#model-relationships) at the end of this document.
+
 ---
 
 ## Tables
 
 ### users
 
-| Column         | Type           | Constraints      |
-| -------------- | -------------- | ---------------- |
-| id             | BIGSERIAL      | PRIMARY KEY      |
-| name           | VARCHAR(255)   | NOT NULL         |
-| email          | VARCHAR(255)   | NOT NULL, UNIQUE |
-| password       | VARCHAR(255)   | NOT NULL         |
-| role           | user_role ENUM | DEFAULT 'user'   |
-| remember_token | VARCHAR(100)   | NULLABLE         |
-| created_at     | TIMESTAMP      |                  |
-| updated_at     | TIMESTAMP      |                  |
+| Column            | Type           | Constraints                                                     |
+| ----------------- | -------------- | --------------------------------------------------------------- |
+| id                | BIGSERIAL      | PRIMARY KEY                                                     |
+| name              | VARCHAR(255)   | NOT NULL                                                        |
+| email             | VARCHAR(255)   | NOT NULL, UNIQUE                                                |
+| email_verified_at | TIMESTAMP      | NULLABLE                                                        |
+| password          | VARCHAR(255)   | NOT NULL                                                        |
+| role              | user_role ENUM | DEFAULT 'user'                                                  |
+| stripe_id         | VARCHAR(255)   | NULLABLE, INDEX (Cashier, added 2026-02-28 `2026_02_28_000001`) |
+| pm_type           | VARCHAR(255)   | NULLABLE (Cashier)                                              |
+| pm_last_four      | VARCHAR(4)     | NULLABLE (Cashier)                                              |
+| trial_ends_at     | TIMESTAMP      | NULLABLE (Cashier)                                              |
+| remember_token    | VARCHAR(100)   | NULLABLE                                                        |
+| created_at        | TIMESTAMP      |                                                                 |
+| updated_at        | TIMESTAMP      |                                                                 |
 
 **ENUM: user_role**
 
@@ -192,25 +204,25 @@ CREATE TYPE user_role AS ENUM ('user', 'moderator', 'admin');
 
 ### rooms
 
-| Column       | Type            | Constraints              |
-| ------------ | --------------- | ------------------------ |
-| id           | BIGSERIAL       | PRIMARY KEY              |
-| location_id  | BIGINT          | NOT NULL, FK → locations |
-| name         | VARCHAR(255)    | NOT NULL                 |
-| room_number  | VARCHAR(50)     | NULLABLE                 |
-| description  | TEXT            | NULLABLE                 |
-| image_url    | VARCHAR(255)    | NULLABLE (added 2026-04-24, `2026_04_24_124546`) |
-| price        | DECIMAL(10,2)   | NOT NULL                 |
-| max_guests   | INTEGER         | NOT NULL                 |
-| status       | VARCHAR         | DEFAULT 'available', CHECK `status IN ('available','unavailable')` (pgsql, `rooms_status_deprecated`, added 2026-04-29) |
-| readiness_status | VARCHAR     | NOT NULL, DEFAULT 'ready' |
-| readiness_updated_at | TIMESTAMP | NULLABLE               |
-| readiness_updated_by | BIGINT  | NULLABLE, FK → users(id) |
-| room_type_code | VARCHAR(50)   | NULLABLE                |
-| room_tier    | SMALLINT        | NULLABLE, DEFAULT 1      |
-| lock_version | BIGINT UNSIGNED | NOT NULL, DEFAULT 1      |
-| created_at   | TIMESTAMP       |                          |
-| updated_at   | TIMESTAMP       |                          |
+| Column               | Type            | Constraints                                                                                                             |
+| -------------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| id                   | BIGSERIAL       | PRIMARY KEY                                                                                                             |
+| location_id          | BIGINT          | NOT NULL, FK → locations                                                                                                |
+| name                 | VARCHAR(255)    | NOT NULL                                                                                                                |
+| room_number          | VARCHAR(50)     | NULLABLE                                                                                                                |
+| description          | TEXT            | NULLABLE                                                                                                                |
+| image_url            | VARCHAR(255)    | NULLABLE (added 2026-04-24, `2026_04_24_124546`)                                                                        |
+| price                | DECIMAL(10,2)   | NOT NULL                                                                                                                |
+| max_guests           | INTEGER         | NOT NULL                                                                                                                |
+| status               | VARCHAR         | DEFAULT 'available', CHECK `status IN ('available','unavailable')` (pgsql, `rooms_status_deprecated`, added 2026-04-29) |
+| readiness_status     | VARCHAR         | NOT NULL, DEFAULT 'ready'                                                                                               |
+| readiness_updated_at | TIMESTAMP       | NULLABLE                                                                                                                |
+| readiness_updated_by | BIGINT          | NULLABLE, FK → users(id)                                                                                                |
+| room_type_code       | VARCHAR(50)     | NULLABLE                                                                                                                |
+| room_tier            | SMALLINT        | NULLABLE, DEFAULT 1                                                                                                     |
+| lock_version         | BIGINT UNSIGNED | NOT NULL, DEFAULT 1                                                                                                     |
+| created_at           | TIMESTAMP       |                                                                                                                         |
+| updated_at           | TIMESTAMP       |                                                                                                                         |
 
 **room_status: VARCHAR** (intentional — not a PostgreSQL ENUM).
 `rooms.status` is the legacy availability/admin field and remains intentionally separate from
@@ -222,6 +234,7 @@ Canonical physical room state lives on `rooms.readiness_status`:
 `ready`, `occupied`, `dirty`, `cleaning`, `inspected`, `out_of_service`.
 
 Room comparability lives on:
+
 - `room_type_code` = equivalence key for swap candidates
 - `room_tier` = numeric upgrade comparison (higher = better)
 
@@ -229,36 +242,47 @@ Room comparability lives on:
 
 ### bookings
 
-| Column               | Type         | Constraints                         |
-| -------------------- | ------------ | ----------------------------------- |
-| id                   | BIGSERIAL    | PRIMARY KEY                         |
-| user_id              | BIGINT       | FK → users(id), NULLABLE            |
-| room_id              | BIGINT       | FK → rooms(id)                      |
-| location_id          | BIGINT       | FK → locations(id), NULLABLE        |
-| guest_name           | VARCHAR(255) | NOT NULL                            |
-| guest_email          | VARCHAR(255) | NOT NULL                            |
-| check_in             | DATE         | NOT NULL                            |
-| check_out            | DATE         | NOT NULL                            |
-| status               | VARCHAR      | DEFAULT 'pending'                   |
-| amount               | BIGINT       | NULLABLE (cents)                    |
-| payment_intent_id    | VARCHAR(255) | NULLABLE (Stripe PaymentIntent ID)  |
-| refund_id            | VARCHAR(255) | NULLABLE (Stripe Refund ID)         |
-| refund_status        | VARCHAR      | NULLABLE (pending/succeeded/failed) |
-| refund_amount        | BIGINT       | NULLABLE (cents)                    |
-| refund_error         | TEXT         | NULLABLE                            |
-| deposit_amount       | BIGINT       | NULLABLE (cents)                    |
-| deposit_collected_at | TIMESTAMP    | NULLABLE                            |
-| deposit_status       | VARCHAR      | NOT NULL, DEFAULT 'none'            |
-| cancelled_at         | TIMESTAMP    | NULLABLE                            |
-| cancelled_by         | BIGINT       | NULLABLE, FK → users(id) SET NULL   |
-| cancelled_by_email   | VARCHAR(255) | NULLABLE (immutable actor snapshot, added 2026-05-01 `2026_05_01_000002`) |
-| cancelled_by_role    | VARCHAR(50)  | NULLABLE (immutable actor snapshot) |
-| cancelled_by_display | VARCHAR(255) | NULLABLE (immutable actor snapshot) |
-| cancellation_reason  | TEXT         | NULLABLE                            |
-| deleted_at           | TIMESTAMP    | NULLABLE (soft delete)              |
-| deleted_by           | BIGINT       | NULLABLE, FK → users(id)            |
-| created_at           | TIMESTAMP    |                                     |
-| updated_at           | TIMESTAMP    |                                     |
+| Column                | Type              | Constraints                                                                                             |
+| --------------------- | ----------------- | ------------------------------------------------------------------------------------------------------- |
+| id                    | BIGSERIAL         | PRIMARY KEY                                                                                             |
+| user_id               | BIGINT            | FK → users(id), NULLABLE                                                                                |
+| room_id               | BIGINT            | FK → rooms(id)                                                                                          |
+| location_id           | BIGINT            | FK → locations(id), NULLABLE                                                                            |
+| guest_name            | VARCHAR(255)      | NOT NULL                                                                                                |
+| guest_email           | VARCHAR(255)      | NOT NULL                                                                                                |
+| number_of_guests      | SMALLINT UNSIGNED | NULLABLE (guest contract, added 2026-05-25 `2026_05_25_000001`)                                         |
+| special_requests      | TEXT              | NULLABLE (guest contract, added 2026-05-25)                                                             |
+| check_in              | DATE              | NOT NULL                                                                                                |
+| check_out             | DATE              | NOT NULL                                                                                                |
+| status                | VARCHAR           | DEFAULT 'pending'                                                                                       |
+| amount                | BIGINT            | NULLABLE (cents)                                                                                        |
+| payment_policy        | VARCHAR(32)       | NOT NULL, DEFAULT 'prepaid', CHECK `chk_bookings_payment_policy` (added 2026-05-27 `2026_05_27_000002`) |
+| payment_status        | VARCHAR(32)       | NOT NULL, DEFAULT 'requires_confirmation', CHECK `chk_bookings_payment_status`                          |
+| payment_currency      | VARCHAR(3)        | NOT NULL, DEFAULT lower(config('cashier.currency'))                                                     |
+| amount_capturable     | BIGINT UNSIGNED   | NOT NULL, DEFAULT 0 (cents; authorize/capture)                                                          |
+| amount_received       | BIGINT UNSIGNED   | NOT NULL, DEFAULT 0 (cents)                                                                             |
+| authorized_at         | TIMESTAMP         | NULLABLE                                                                                                |
+| paid_at               | TIMESTAMP         | NULLABLE                                                                                                |
+| capture_due_at        | TIMESTAMP         | NULLABLE (authorize-then-capture deadline)                                                              |
+| payment_failed_reason | TEXT              | NULLABLE                                                                                                |
+| payment_intent_id     | VARCHAR(255)      | NULLABLE (Stripe PaymentIntent ID)                                                                      |
+| refund_id             | VARCHAR(255)      | NULLABLE (Stripe Refund ID)                                                                             |
+| refund_status         | VARCHAR           | NULLABLE (pending/succeeded/failed)                                                                     |
+| refund_amount         | BIGINT            | NULLABLE (cents)                                                                                        |
+| refund_error          | TEXT              | NULLABLE                                                                                                |
+| deposit_amount        | BIGINT            | NULLABLE (cents)                                                                                        |
+| deposit_collected_at  | TIMESTAMP         | NULLABLE                                                                                                |
+| deposit_status        | VARCHAR           | NOT NULL, DEFAULT 'none'                                                                                |
+| cancelled_at          | TIMESTAMP         | NULLABLE                                                                                                |
+| cancelled_by          | BIGINT            | NULLABLE, FK → users(id) SET NULL                                                                       |
+| cancelled_by_email    | VARCHAR(255)      | NULLABLE (immutable actor snapshot, added 2026-05-01 `2026_05_01_000002`)                               |
+| cancelled_by_role     | VARCHAR(50)       | NULLABLE (immutable actor snapshot)                                                                     |
+| cancelled_by_display  | VARCHAR(255)      | NULLABLE (immutable actor snapshot)                                                                     |
+| cancellation_reason   | TEXT              | NULLABLE                                                                                                |
+| deleted_at            | TIMESTAMP         | NULLABLE (soft delete)                                                                                  |
+| deleted_by            | BIGINT            | NULLABLE, FK → users(id)                                                                                |
+| created_at            | TIMESTAMP         |                                                                                                         |
+| updated_at            | TIMESTAMP         |                                                                                                         |
 
 The three `cancelled_by_*` fields are populated synchronously by `CancellationService` so that cancellation attribution survives deletion of the cancelling user. They are append-only by convention: once written, only the cancellation transaction itself may rewrite them.
 
@@ -287,6 +311,7 @@ Enforcement: application layer (`App\Enums\BookingStatus`) + DB CHECK constraint
 `bookings.status` remains the **commercial reservation state only**. Operational occupancy state is derived from `stays.stay_status`, not from booking status or a static user flag.
 
 Deposit lifecycle values (`App\Enums\DepositStatus`):
+
 - `none`
 - `collected`
 - `applied`
@@ -299,24 +324,39 @@ DB CHECK `chk_bookings_deposit_status` was extended in `2026_05_02_000001` to ac
 `deposit_amount` is operational liability tracking only. It is **unearned revenue / liability**
 until the stay is fulfilled. This schema does **not** represent authoritative accounting or GL.
 
+**Payment lifecycle (added 2026-05-27 `2026_05_27_000002`).** `payment_policy` and `payment_status`
+are VARCHAR columns cast to `App\Enums\PaymentPolicy` / `App\Enums\PaymentStatus` and enforced by DB
+CHECK constraints:
+
+- `payment_policy` ∈ `prepaid`, `authorize_then_capture`, `pay_at_property`, `not_required`
+  (`chk_bookings_payment_policy`).
+- `payment_status` ∈ `not_required`, `offline_due`, `requires_confirmation`,
+  `requires_payment_method`, `requires_action`, `processing`, `authorized`, `paid`, `failed`,
+  `cancelled`, `capture_failed`, `refunded`, `partially_refunded` (`chk_bookings_payment_status`).
+
+`amount_capturable` / `amount_received` (cents) mirror the Stripe PaymentIntent for the
+authorize-then-capture flow; `capture_due_at` is the capture deadline. The migration backfilled
+existing rows: offline bookings (no `payment_intent_id`) → `pay_at_property` / `offline_due`;
+confirmed prepaid → `paid`; pending prepaid → `requires_payment_method`.
+
 ### stays
 
-| Column                   | Type         | Constraints                      |
-| ------------------------ | ------------ | -------------------------------- |
-| id                       | BIGSERIAL    | PRIMARY KEY                      |
-| booking_id               | BIGINT       | NOT NULL, UNIQUE, FK → bookings  |
-| stay_status              | VARCHAR      | DEFAULT 'expected'               |
-| scheduled_check_in_at    | TIMESTAMP    | NULLABLE                         |
-| scheduled_check_out_at   | TIMESTAMP    | NULLABLE                         |
-| actual_check_in_at       | TIMESTAMP    | NULLABLE                         |
-| actual_check_out_at      | TIMESTAMP    | NULLABLE                         |
-| late_checkout_minutes    | INTEGER      | NOT NULL, DEFAULT 0              |
-| late_checkout_fee_amount | BIGINT       | NULLABLE (cents)                 |
-| no_show_at               | TIMESTAMP    | NULLABLE                         |
-| checked_in_by            | BIGINT       | NULLABLE, FK → users(id)         |
-| checked_out_by           | BIGINT       | NULLABLE, FK → users(id)         |
-| created_at               | TIMESTAMP    |                                  |
-| updated_at               | TIMESTAMP    |                                  |
+| Column                   | Type      | Constraints                     |
+| ------------------------ | --------- | ------------------------------- |
+| id                       | BIGSERIAL | PRIMARY KEY                     |
+| booking_id               | BIGINT    | NOT NULL, UNIQUE, FK → bookings |
+| stay_status              | VARCHAR   | DEFAULT 'expected'              |
+| scheduled_check_in_at    | TIMESTAMP | NULLABLE                        |
+| scheduled_check_out_at   | TIMESTAMP | NULLABLE                        |
+| actual_check_in_at       | TIMESTAMP | NULLABLE                        |
+| actual_check_out_at      | TIMESTAMP | NULLABLE                        |
+| late_checkout_minutes    | INTEGER   | NOT NULL, DEFAULT 0             |
+| late_checkout_fee_amount | BIGINT    | NULLABLE (cents)                |
+| no_show_at               | TIMESTAMP | NULLABLE                        |
+| checked_in_by            | BIGINT    | NULLABLE, FK → users(id)        |
+| checked_out_by           | BIGINT    | NULLABLE, FK → users(id)        |
+| created_at               | TIMESTAMP |                                 |
+| updated_at               | TIMESTAMP |                                 |
 
 **stay_status: VARCHAR** (intentional — not a PostgreSQL ENUM).
 Allowed values are enforced via `App\Enums\StayStatus` and PostgreSQL CHECK constraint `chk_stays_stay_status`. Valid values: `expected`, `in_house`, `late_checkout`, `checked_out`, `no_show`, `relocated_internal`, `relocated_external`, `cancelled`. The `cancelled` terminal state was added 2026-05-03 (`2026_05_03_000001`) when OPS-004 wired `BookingCancelled` to synchronously cancel non-terminal stays.
@@ -326,21 +366,21 @@ A static `users.active` flag is **not** the source of truth.
 
 ### room_assignments
 
-| Column            | Type         | Constraints                      |
-| ----------------- | ------------ | -------------------------------- |
-| id                | BIGSERIAL    | PRIMARY KEY                      |
-| booking_id        | BIGINT       | NOT NULL, FK → bookings          |
-| stay_id           | BIGINT       | NOT NULL, FK → stays             |
-| room_id           | BIGINT       | NOT NULL, FK → rooms             |
-| assignment_type   | VARCHAR      | NOT NULL                         |
-| assignment_status | VARCHAR      | DEFAULT 'active'                 |
-| assigned_from     | TIMESTAMP    | NOT NULL                         |
-| assigned_until    | TIMESTAMP    | NULLABLE                         |
-| assigned_by       | BIGINT       | NULLABLE, FK → users(id)         |
-| reason_code       | VARCHAR(255) | NULLABLE                         |
-| notes             | TEXT         | NULLABLE                         |
-| created_at        | TIMESTAMP    |                                  |
-| updated_at        | TIMESTAMP    |                                  |
+| Column            | Type         | Constraints              |
+| ----------------- | ------------ | ------------------------ |
+| id                | BIGSERIAL    | PRIMARY KEY              |
+| booking_id        | BIGINT       | NOT NULL, FK → bookings  |
+| stay_id           | BIGINT       | NOT NULL, FK → stays     |
+| room_id           | BIGINT       | NOT NULL, FK → rooms     |
+| assignment_type   | VARCHAR      | NOT NULL                 |
+| assignment_status | VARCHAR      | DEFAULT 'active'         |
+| assigned_from     | TIMESTAMP    | NOT NULL                 |
+| assigned_until    | TIMESTAMP    | NULLABLE                 |
+| assigned_by       | BIGINT       | NULLABLE, FK → users(id) |
+| reason_code       | VARCHAR(255) | NULLABLE                 |
+| notes             | TEXT         | NULLABLE                 |
+| created_at        | TIMESTAMP    |                          |
+| updated_at        | TIMESTAMP    |                          |
 
 `assigned_until IS NULL` means the assignment is currently active.
 PostgreSQL partial unique index `udx_room_assignments_one_active_per_stay`
@@ -348,31 +388,31 @@ enforces at most one active room assignment per stay.
 
 ### service_recovery_cases
 
-| Column                     | Type         | Constraints                      |
-| -------------------------- | ------------ | -------------------------------- |
-| id                         | BIGSERIAL    | PRIMARY KEY                      |
-| booking_id                 | BIGINT       | NOT NULL, FK → bookings          |
-| stay_id                    | BIGINT       | NULLABLE, FK → stays             |
-| incident_type              | VARCHAR      | NOT NULL                         |
-| severity                   | VARCHAR      | DEFAULT 'medium'                 |
-| case_status                | VARCHAR      | DEFAULT 'open'                   |
-| action_taken               | TEXT         | NULLABLE                         |
-| external_hotel_name        | VARCHAR(255) | NULLABLE                         |
-| external_booking_reference | VARCHAR(255) | NULLABLE                         |
-| compensation_type          | VARCHAR      | DEFAULT 'none'                   |
-| refund_amount              | BIGINT       | NULLABLE (cents)                 |
-| voucher_amount             | BIGINT       | NULLABLE (cents)                 |
-| cost_delta_absorbed        | BIGINT       | NULLABLE (cents)                 |
-| settlement_status          | VARCHAR      | NOT NULL, DEFAULT 'unsettled'    |
-| settled_amount             | BIGINT       | NULLABLE (cents)                 |
-| settled_at                 | TIMESTAMP    | NULLABLE                         |
-| settlement_notes           | TEXT         | NULLABLE                         |
-| handled_by                 | BIGINT       | NULLABLE, FK → users(id)         |
-| opened_at                  | TIMESTAMP    | NOT NULL                         |
-| resolved_at                | TIMESTAMP    | NULLABLE                         |
-| notes                      | TEXT         | NULLABLE                         |
-| created_at                 | TIMESTAMP    |                                  |
-| updated_at                 | TIMESTAMP    |                                  |
+| Column                     | Type         | Constraints                   |
+| -------------------------- | ------------ | ----------------------------- |
+| id                         | BIGSERIAL    | PRIMARY KEY                   |
+| booking_id                 | BIGINT       | NOT NULL, FK → bookings       |
+| stay_id                    | BIGINT       | NULLABLE, FK → stays          |
+| incident_type              | VARCHAR      | NOT NULL                      |
+| severity                   | VARCHAR      | DEFAULT 'medium'              |
+| case_status                | VARCHAR      | DEFAULT 'open'                |
+| action_taken               | TEXT         | NULLABLE                      |
+| external_hotel_name        | VARCHAR(255) | NULLABLE                      |
+| external_booking_reference | VARCHAR(255) | NULLABLE                      |
+| compensation_type          | VARCHAR      | DEFAULT 'none'                |
+| refund_amount              | BIGINT       | NULLABLE (cents)              |
+| voucher_amount             | BIGINT       | NULLABLE (cents)              |
+| cost_delta_absorbed        | BIGINT       | NULLABLE (cents)              |
+| settlement_status          | VARCHAR      | NOT NULL, DEFAULT 'unsettled' |
+| settled_amount             | BIGINT       | NULLABLE (cents)              |
+| settled_at                 | TIMESTAMP    | NULLABLE                      |
+| settlement_notes           | TEXT         | NULLABLE                      |
+| handled_by                 | BIGINT       | NULLABLE, FK → users(id)      |
+| opened_at                  | TIMESTAMP    | NOT NULL                      |
+| resolved_at                | TIMESTAMP    | NULLABLE                      |
+| notes                      | TEXT         | NULLABLE                      |
+| created_at                 | TIMESTAMP    |                               |
+| updated_at                 | TIMESTAMP    |                               |
 
 All compensation amounts are stored in **cents** (BIGINT) to match `bookings.amount`.
 `stay_id` remains nullable because incidents may be recorded before the stay row exists.
@@ -380,20 +420,20 @@ All compensation amounts are stored in **cents** (BIGINT) to match `bookings.amo
 
 ### reviews
 
-| Column      | Type         | Constraints                     |
-| ----------- | ------------ | ------------------------------- |
-| id          | BIGSERIAL    | PRIMARY KEY                     |
-| booking_id  | BIGINT       | NOT NULL, UNIQUE, FK → bookings |
-| room_id     | BIGINT       | NOT NULL, INDEX                 |
-| user_id     | BIGINT       | NULLABLE, INDEX                 |
-| title       | VARCHAR(255) | NOT NULL (purified)             |
-| content     | TEXT         | NOT NULL (purified HTML)        |
-| guest_name  | VARCHAR(255) | NOT NULL (purified)             |
-| guest_email | VARCHAR(255) | NULLABLE                        |
-| rating      | TINYINT      | NOT NULL, CHECK (1-5)           |
-| approved    | BOOLEAN      | DEFAULT TRUE                    |
-| created_at  | TIMESTAMP    |                                 |
-| updated_at  | TIMESTAMP    |                                 |
+| Column      | Type         | Constraints                                                                                                                                  |
+| ----------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| id          | BIGSERIAL    | PRIMARY KEY                                                                                                                                  |
+| booking_id  | BIGINT       | NOT NULL, UNIQUE, FK → bookings                                                                                                              |
+| room_id     | BIGINT       | NOT NULL, INDEX                                                                                                                              |
+| user_id     | BIGINT       | NULLABLE, INDEX                                                                                                                              |
+| title       | VARCHAR(255) | NOT NULL (purified)                                                                                                                          |
+| content     | TEXT         | NOT NULL (purified HTML)                                                                                                                     |
+| guest_name  | VARCHAR(255) | NOT NULL (purified)                                                                                                                          |
+| guest_email | VARCHAR(255) | NULLABLE                                                                                                                                     |
+| rating      | TINYINT      | NOT NULL, CHECK (1-5)                                                                                                                        |
+| approved    | BOOLEAN      | DEFAULT FALSE (flipped from TRUE 2026-05-30 `2026_05_30_000001`, SH-09/F-44 — matches `Review::$attributes`; new reviews require moderation) |
+| created_at  | TIMESTAMP    |                                                                                                                                              |
+| updated_at  | TIMESTAMP    |                                                                                                                                              |
 
 ### personal_access_tokens
 
@@ -469,19 +509,19 @@ Queue tables for background job processing. See Laravel Queue documentation.
 
 Hostel policy content used for AI FAQ grounding. Added `2026_04_09_000001`.
 
-| Column           | Type         | Constraints                |
-| ---------------- | ------------ | -------------------------- |
-| id               | UUID         | PRIMARY KEY                |
-| slug             | VARCHAR(255) | NOT NULL, UNIQUE           |
-| title            | VARCHAR(255) | NOT NULL                   |
-| content          | TEXT         | NOT NULL                   |
-| category         | VARCHAR(255) | NOT NULL                   |
-| language         | VARCHAR(10)  | NOT NULL, DEFAULT 'vi'     |
-| is_active        | BOOLEAN      | NOT NULL, DEFAULT true     |
-| last_verified_at | TIMESTAMP    | NULLABLE                   |
-| version          | VARCHAR(255) | NOT NULL                   |
-| created_at       | TIMESTAMP    |                            |
-| updated_at       | TIMESTAMP    |                            |
+| Column           | Type         | Constraints            |
+| ---------------- | ------------ | ---------------------- |
+| id               | UUID         | PRIMARY KEY            |
+| slug             | VARCHAR(255) | NOT NULL, UNIQUE       |
+| title            | VARCHAR(255) | NOT NULL               |
+| content          | TEXT         | NOT NULL               |
+| category         | VARCHAR(255) | NOT NULL               |
+| language         | VARCHAR(10)  | NOT NULL, DEFAULT 'vi' |
+| is_active        | BOOLEAN      | NOT NULL, DEFAULT true |
+| last_verified_at | TIMESTAMP    | NULLABLE               |
+| version          | VARCHAR(255) | NOT NULL               |
+| created_at       | TIMESTAMP    |                        |
+| updated_at       | TIMESTAMP    |                        |
 
 **Indexes:** `(slug, is_active, language)`, `(category, is_active)`
 
@@ -489,19 +529,19 @@ Hostel policy content used for AI FAQ grounding. Added `2026_04_09_000001`.
 
 Audit trail for AI booking proposal confirm/decline decisions. Added `2026_04_11_000001`. **FK relaxed + actor snapshot added 2026-04-29** (`2026_04_29_000001`, AI Batch 4 / 3F) to preserve the audit trail across user deletion.
 
-| Column              | Type         | Constraints                                                               |
-| ------------------- | ------------ | ------------------------------------------------------------------------- |
-| id                  | BIGSERIAL    | PRIMARY KEY                                                               |
-| user_id             | BIGINT       | NULLABLE, FK → users(id) **ON DELETE SET NULL** (was CASCADE pre 2026-04-29) |
-| actor_email         | VARCHAR(255) | NULLABLE — denormalized actor snapshot                                    |
-| actor_role          | VARCHAR(32)  | NULLABLE — denormalized actor snapshot                                    |
-| actor_display_name  | VARCHAR(255) | NULLABLE — denormalized actor snapshot                                    |
-| proposal_hash       | VARCHAR(64)  | NOT NULL, indexed                                                         |
-| action_type         | VARCHAR(30)  | NOT NULL                                                                  |
-| user_decision       | VARCHAR(20)  | NOT NULL (confirmed/declined/shown/errored)                               |
-| downstream_result   | TEXT         | NULLABLE; structured JSON for execution failures                          |
-| created_at          | TIMESTAMP    |                                                                           |
-| updated_at          | TIMESTAMP    |                                                                           |
+| Column             | Type         | Constraints                                                                  |
+| ------------------ | ------------ | ---------------------------------------------------------------------------- |
+| id                 | BIGSERIAL    | PRIMARY KEY                                                                  |
+| user_id            | BIGINT       | NULLABLE, FK → users(id) **ON DELETE SET NULL** (was CASCADE pre 2026-04-29) |
+| actor_email        | VARCHAR(255) | NULLABLE — denormalized actor snapshot                                       |
+| actor_role         | VARCHAR(32)  | NULLABLE — denormalized actor snapshot                                       |
+| actor_display_name | VARCHAR(255) | NULLABLE — denormalized actor snapshot                                       |
+| proposal_hash      | VARCHAR(64)  | NOT NULL, indexed                                                            |
+| action_type        | VARCHAR(30)  | NOT NULL                                                                     |
+| user_decision      | VARCHAR(20)  | NOT NULL (confirmed/declined/shown/errored)                                  |
+| downstream_result  | TEXT         | NULLABLE; structured JSON for execution failures                             |
+| created_at         | TIMESTAMP    |                                                                              |
+| updated_at         | TIMESTAMP    |                                                                              |
 
 **Indexes:** `(proposal_hash)`, `(proposal_hash, user_decision)`
 
@@ -511,25 +551,25 @@ The migration is one-way: rolling back only restores the cascade — it cannot r
 
 Durable proposal contract — the cache envelope is fast but offers no revalidation surface at confirm time. AI-005 / AI-006. Added `2026_05_01_000001`.
 
-| Column             | Type         | Constraints                                            |
-| ------------------ | ------------ | ------------------------------------------------------ |
-| id                 | BIGSERIAL    | PRIMARY KEY                                            |
-| proposal_hash      | VARCHAR(64)  | NOT NULL, **UNIQUE**                                   |
-| user_id            | BIGINT       | NULLABLE, FK → users(id) ON DELETE SET NULL            |
-| action_type        | VARCHAR(30)  | NOT NULL                                               |
-| room_id            | BIGINT       | NULLABLE, FK → rooms(id) ON DELETE SET NULL            |
-| check_in           | DATE         | NULLABLE (cancellation proposals carry no triplet)     |
-| check_out          | DATE         | NULLABLE                                               |
-| quoted_price_cents | BIGINT UNSIGNED | NULLABLE                                            |
-| context_version    | VARCHAR(64)  | NOT NULL — hash of room price + availability state at proposal generation; recomputed at confirm time for drift detection |
-| proposed_params    | JSON         | NOT NULL — mirror of cached envelope; survives TTL eviction |
-| risk_assessment    | JSON         | NOT NULL                                               |
-| expires_at         | TIMESTAMP    | NOT NULL                                               |
-| shown_at           | TIMESTAMP    | NULLABLE                                               |
-| decision           | VARCHAR(20)  | NULLABLE — `confirmed` \| `declined` \| `errored`      |
-| decided_at         | TIMESTAMP    | NULLABLE                                               |
-| created_at         | TIMESTAMP    |                                                        |
-| updated_at         | TIMESTAMP    |                                                        |
+| Column             | Type            | Constraints                                                                                                               |
+| ------------------ | --------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| id                 | BIGSERIAL       | PRIMARY KEY                                                                                                               |
+| proposal_hash      | VARCHAR(64)     | NOT NULL, **UNIQUE**                                                                                                      |
+| user_id            | BIGINT          | NULLABLE, FK → users(id) ON DELETE SET NULL                                                                               |
+| action_type        | VARCHAR(30)     | NOT NULL                                                                                                                  |
+| room_id            | BIGINT          | NULLABLE, FK → rooms(id) ON DELETE SET NULL                                                                               |
+| check_in           | DATE            | NULLABLE (cancellation proposals carry no triplet)                                                                        |
+| check_out          | DATE            | NULLABLE                                                                                                                  |
+| quoted_price_cents | BIGINT UNSIGNED | NULLABLE                                                                                                                  |
+| context_version    | VARCHAR(64)     | NOT NULL — hash of room price + availability state at proposal generation; recomputed at confirm time for drift detection |
+| proposed_params    | JSON            | NOT NULL — mirror of cached envelope; survives TTL eviction                                                               |
+| risk_assessment    | JSON            | NOT NULL                                                                                                                  |
+| expires_at         | TIMESTAMP       | NOT NULL                                                                                                                  |
+| shown_at           | TIMESTAMP       | NULLABLE                                                                                                                  |
+| decision           | VARCHAR(20)     | NULLABLE — `confirmed` \| `declined` \| `errored`                                                                         |
+| decided_at         | TIMESTAMP       | NULLABLE                                                                                                                  |
+| created_at         | TIMESTAMP       |                                                                                                                           |
+| updated_at         | TIMESTAMP       |                                                                                                                           |
 
 **Indexes:** `(user_id, created_at)`, `(expires_at)`, `(proposal_hash, decision)`
 
@@ -539,19 +579,19 @@ Durable proposal contract — the cache envelope is fast but offers no revalidat
 
 Append-only audit trail for sensitive admin operations. Covers G-06, G-07, G-11. Added `2026_03_12_000001`. **Actor snapshot columns added 2026-05-01** (`2026_05_01_000003`).
 
-| Column              | Type         | Constraints                                       |
-| ------------------- | ------------ | ------------------------------------------------- |
-| id                  | BIGSERIAL    | PRIMARY KEY                                       |
-| actor_id            | BIGINT       | NULLABLE, FK → users(id) ON DELETE SET NULL       |
-| actor_email         | VARCHAR(255) | NULLABLE — denormalized actor snapshot            |
-| actor_role          | VARCHAR(50)  | NULLABLE — denormalized actor snapshot            |
-| actor_display_name  | VARCHAR(255) | NULLABLE — denormalized actor snapshot            |
-| action              | VARCHAR(100) | NOT NULL, indexed                                 |
-| resource_type       | VARCHAR(50)  | NOT NULL                                          |
-| resource_id         | BIGINT UNSIGNED | NULLABLE                                       |
-| metadata            | JSON         | NULLABLE                                          |
-| ip_address          | VARCHAR(45)  | NULLABLE                                          |
-| created_at          | TIMESTAMP    | NOT NULL, DEFAULT now()                           |
+| Column             | Type            | Constraints                                 |
+| ------------------ | --------------- | ------------------------------------------- |
+| id                 | BIGSERIAL       | PRIMARY KEY                                 |
+| actor_id           | BIGINT          | NULLABLE, FK → users(id) ON DELETE SET NULL |
+| actor_email        | VARCHAR(255)    | NULLABLE — denormalized actor snapshot      |
+| actor_role         | VARCHAR(50)     | NULLABLE — denormalized actor snapshot      |
+| actor_display_name | VARCHAR(255)    | NULLABLE — denormalized actor snapshot      |
+| action             | VARCHAR(100)    | NOT NULL, indexed                           |
+| resource_type      | VARCHAR(50)     | NOT NULL                                    |
+| resource_id        | BIGINT UNSIGNED | NULLABLE                                    |
+| metadata           | JSON            | NULLABLE                                    |
+| ip_address         | VARCHAR(45)     | NULLABLE                                    |
+| created_at         | TIMESTAMP       | NOT NULL, DEFAULT now()                     |
 
 **Indexes:** `(action)`, `(resource_type, resource_id)`, `(actor_id, created_at)`
 
@@ -561,20 +601,20 @@ Append-only audit trail for sensitive admin operations. Covers G-06, G-07, G-11.
 
 Append-only audit trail for deposit lifecycle transitions. Every `Deposit::transitionTo()` write is captured here. Added `2026_05_02_000002`.
 
-| Column         | Type            | Constraints                                       |
-| -------------- | --------------- | ------------------------------------------------- |
-| id             | BIGSERIAL       | PRIMARY KEY                                       |
-| booking_id     | BIGINT UNSIGNED | NOT NULL, FK → bookings(id) ON DELETE CASCADE     |
-| from_status    | VARCHAR(32)     | NOT NULL                                          |
-| to_status      | VARCHAR(32)     | NOT NULL                                          |
-| refund_percent | SMALLINT UNSIGNED | NOT NULL — policy-derived percentage 0..100     |
-| refund_amount  | BIGINT UNSIGNED | NULLABLE — cents (NULL when transition does not imply refund movement) |
-| reason         | VARCHAR(255)    | NULLABLE                                          |
-| actor_id       | BIGINT UNSIGNED | NULLABLE, FK → users(id) ON DELETE SET NULL       |
-| actor_email    | VARCHAR(255)    | NULLABLE — denormalized actor snapshot            |
-| actor_role     | VARCHAR(32)     | NULLABLE — denormalized actor snapshot            |
-| metadata       | JSON            | NULLABLE                                          |
-| created_at     | TIMESTAMP       | NOT NULL, DEFAULT now()                           |
+| Column         | Type              | Constraints                                                            |
+| -------------- | ----------------- | ---------------------------------------------------------------------- |
+| id             | BIGSERIAL         | PRIMARY KEY                                                            |
+| booking_id     | BIGINT UNSIGNED   | NOT NULL, FK → bookings(id) ON DELETE CASCADE                          |
+| from_status    | VARCHAR(32)       | NOT NULL                                                               |
+| to_status      | VARCHAR(32)       | NOT NULL                                                               |
+| refund_percent | SMALLINT UNSIGNED | NOT NULL — policy-derived percentage 0..100                            |
+| refund_amount  | BIGINT UNSIGNED   | NULLABLE — cents (NULL when transition does not imply refund movement) |
+| reason         | VARCHAR(255)      | NULLABLE                                                               |
+| actor_id       | BIGINT UNSIGNED   | NULLABLE, FK → users(id) ON DELETE SET NULL                            |
+| actor_email    | VARCHAR(255)      | NULLABLE — denormalized actor snapshot                                 |
+| actor_role     | VARCHAR(32)       | NULLABLE — denormalized actor snapshot                                 |
+| metadata       | JSON              | NULLABLE                                                               |
+| created_at     | TIMESTAMP         | NOT NULL, DEFAULT now()                                                |
 
 **Indexes:** `idx_deposit_events_booking_id`, `idx_deposit_events_created_at`
 
@@ -586,31 +626,40 @@ Append-only audit trail for deposit lifecycle transitions. Every `Deposit::trans
 
 Stripe webhook ingestion ledger — event-level dedupe. Added `2026_04_28_000001`.
 
-| Column           | Type         | Constraints                              |
-| ---------------- | ------------ | ---------------------------------------- |
-| id               | BIGSERIAL    | PRIMARY KEY                              |
-| stripe_event_id  | VARCHAR(255) | NOT NULL, **UNIQUE**                     |
-| type             | VARCHAR(100) | NOT NULL                                 |
-| status           | ENUM         | `processing` \| `processed` \| `failed`  |
-| payload          | JSONB        | NOT NULL                                 |
-| processed_at     | TIMESTAMP    | NULLABLE                                 |
-| created_at       | TIMESTAMP    |                                          |
-| updated_at       | TIMESTAMP    |                                          |
+| Column                | Type             | Constraints                                                                 |
+| --------------------- | ---------------- | --------------------------------------------------------------------------- |
+| id                    | BIGSERIAL        | PRIMARY KEY                                                                 |
+| stripe_event_id       | VARCHAR(255)     | NOT NULL, **UNIQUE**                                                        |
+| type                  | VARCHAR(100)     | NOT NULL                                                                    |
+| status                | ENUM             | `processing` \| `processed` \| `failed`                                     |
+| payload               | JSONB            | NOT NULL                                                                    |
+| processed_at          | TIMESTAMP        | NULLABLE                                                                    |
+| error                 | TEXT             | NULLABLE — sanitized failure context (added 2026-05-18 `2026_05_18_000001`) |
+| failed_at             | TIMESTAMP        | NULLABLE                                                                    |
+| reconcile_started_at  | TIMESTAMP        | NULLABLE — atomic claim under SELECT … FOR UPDATE                           |
+| reconcile_finished_at | TIMESTAMP        | NULLABLE                                                                    |
+| reconcile_attempts    | INTEGER UNSIGNED | NOT NULL, DEFAULT 0                                                         |
+| created_at            | TIMESTAMP        |                                                                             |
+| updated_at            | TIMESTAMP        |                                                                             |
+
+**Index:** `idx_stripe_webhook_events_status_created_at (status, created_at)` backs the
+`webhook:reconcile-stuck-events` reaper that re-drives rows stuck in `processing` (worker died
+between the INSERT and `markProcessed`/`markFailed`).
 
 ### stripe_refund_events (Stripe)
 
 Durable refund-event replay fence — replaces ephemeral `IdempotencyGuard` (which was in-memory and non-durable). Added `2026_04_29_000003`. **The UNIQUE on `stripe_refund_id` is the canonical idempotency authority.**
 
-| Column           | Type            | Constraints                                            |
-| ---------------- | --------------- | ------------------------------------------------------ |
-| id               | BIGSERIAL       | PRIMARY KEY                                            |
-| stripe_refund_id | VARCHAR(255)    | NOT NULL, **UNIQUE** (`idx_stripe_refund_events_refund_id`) |
-| stripe_event_id  | VARCHAR(255)    | NOT NULL                                               |
-| booking_id       | BIGINT UNSIGNED | NULLABLE, FK → bookings(id) ON DELETE SET NULL — decouples audit trail from booking lifecycle |
+| Column           | Type            | Constraints                                                                                       |
+| ---------------- | --------------- | ------------------------------------------------------------------------------------------------- |
+| id               | BIGSERIAL       | PRIMARY KEY                                                                                       |
+| stripe_refund_id | VARCHAR(255)    | NOT NULL, **UNIQUE** (`idx_stripe_refund_events_refund_id`)                                       |
+| stripe_event_id  | VARCHAR(255)    | NOT NULL                                                                                          |
+| booking_id       | BIGINT UNSIGNED | NULLABLE, FK → bookings(id) ON DELETE SET NULL — decouples audit trail from booking lifecycle     |
 | amount_refunded  | INTEGER         | NOT NULL — cents, **cumulative** (sourced from `charge.amount_refunded`, not `refunds[0].amount`) |
-| currency         | VARCHAR(3)      | NOT NULL                                               |
-| processed_at     | TIMESTAMP TZ    | NOT NULL, DEFAULT now()                                |
-| created_at       | TIMESTAMP TZ    | NOT NULL, DEFAULT now()                                |
+| currency         | VARCHAR(3)      | NOT NULL                                                                                          |
+| processed_at     | TIMESTAMP TZ    | NOT NULL, DEFAULT now()                                                                           |
+| created_at       | TIMESTAMP TZ    | NOT NULL, DEFAULT now()                                                                           |
 
 `StripeWebhookController::handleChargeRefunded` performs the `INSERT` **before** booking lookup. The DB UNIQUE constraint catches replays at the storage layer — the application-level state check (which had a TOCTOU window) is gone. Cumulative `amount_refunded` correctly handles partial-then-full refund event sequences.
 
@@ -618,20 +667,49 @@ Durable refund-event replay fence — replaces ephemeral `IdempotencyGuard` (whi
 
 OTP email-verification codes. Added `2026_04_03_084257`. SHA-256 `code_hash` only — raw codes never stored.
 
-| Column        | Type            | Constraints                                |
-| ------------- | --------------- | ------------------------------------------ |
-| id            | BIGSERIAL       | PRIMARY KEY                                |
-| user_id       | BIGINT UNSIGNED | NOT NULL, FK → users(id) ON DELETE CASCADE |
-| code_hash     | CHAR(64)        | NOT NULL — SHA-256 hex digest              |
-| expires_at    | TIMESTAMP TZ    | NOT NULL                                   |
-| attempts      | SMALLINT        | DEFAULT 0 — brute-force guard              |
-| max_attempts  | SMALLINT        | DEFAULT 5                                  |
-| last_sent_at  | TIMESTAMP TZ    | NOT NULL                                   |
-| consumed_at   | TIMESTAMP TZ    | NULLABLE — NULL = unused                   |
-| created_at    | TIMESTAMP TZ    |                                            |
-| updated_at    | TIMESTAMP TZ    |                                            |
+| Column       | Type            | Constraints                                |
+| ------------ | --------------- | ------------------------------------------ |
+| id           | BIGSERIAL       | PRIMARY KEY                                |
+| user_id      | BIGINT UNSIGNED | NOT NULL, FK → users(id) ON DELETE CASCADE |
+| code_hash    | CHAR(64)        | NOT NULL — SHA-256 hex digest              |
+| expires_at   | TIMESTAMP TZ    | NOT NULL                                   |
+| attempts     | SMALLINT        | DEFAULT 0 — brute-force guard              |
+| max_attempts | SMALLINT        | DEFAULT 5                                  |
+| last_sent_at | TIMESTAMP TZ    | NOT NULL                                   |
+| consumed_at  | TIMESTAMP TZ    | NULLABLE — NULL = unused                   |
+| created_at   | TIMESTAMP TZ    |                                            |
+| updated_at   | TIMESTAMP TZ    |                                            |
 
 **Indexes:** `idx_evc_user_id`, `idx_evc_expires_consumed (expires_at, consumed_at)`
+
+### payment_cancellation_tasks (PAY-03)
+
+Transactional outbox for Stripe PaymentIntent cancellations. `ExpireStaleBookings` no longer calls
+Stripe **inside** the booking `SELECT … FOR UPDATE`; it INSERTs a durable task here (atomic with the
+`CANCELLED` transition, no network I/O) and `ProcessPaymentCancellationOutbox` drains it **outside**
+any booking/room lock with a stable idempotency key and bounded retry/backoff. Added `2026_05_27_000001`.
+
+| Column            | Type             | Constraints                                        |
+| ----------------- | ---------------- | -------------------------------------------------- |
+| id                | BIGSERIAL        | PRIMARY KEY                                        |
+| booking_id        | BIGINT UNSIGNED  | NOT NULL, FK → bookings(id) ON DELETE CASCADE      |
+| payment_intent_id | VARCHAR(255)     | NOT NULL — Stripe PaymentIntent snapshot at expiry |
+| action            | VARCHAR(32)      | NOT NULL, DEFAULT 'payment_intent.cancel'          |
+| status            | VARCHAR(32)      | NOT NULL, DEFAULT 'pending'                        |
+| attempts          | INTEGER UNSIGNED | NOT NULL, DEFAULT 0                                |
+| available_at      | TIMESTAMP        | NOT NULL, DEFAULT now() — visibility / backoff     |
+| claimed_at        | TIMESTAMP        | NULLABLE — stale-claim crash recovery              |
+| processed_at      | TIMESTAMP        | NULLABLE                                           |
+| last_error_code   | VARCHAR(64)      | NULLABLE                                           |
+| last_error        | TEXT             | NULLABLE — sanitized (secrets/PII stripped)        |
+| created_at        | TIMESTAMP        |                                                    |
+| updated_at        | TIMESTAMP        |                                                    |
+
+**Unique:** `uq_payment_cancellation_tasks_booking_intent_action (booking_id, payment_intent_id, action)`
+— one active task per cancellation (idempotent enqueue via `firstOrCreate`).
+**Index:** `idx_payment_cancellation_tasks_status_available (status, available_at)` backs the drainer's
+claimable predicate.
+**CHECK (pgsql):** `chk_payment_cancellation_tasks_status` — `status IN ('pending', 'processing', 'retrying', 'succeeded', 'failed_permanent')`.
 
 ---
 
@@ -681,6 +759,13 @@ CREATE INDEX bookings_status_check_out_index ON bookings (status, check_out);
 -- Deposit lifecycle reporting
 CREATE INDEX idx_bookings_deposit_status_check_in
 ON bookings (deposit_status, check_in);
+
+-- Payment lifecycle (added 2026-05-27)
+CREATE INDEX idx_bookings_payment_status
+ON bookings (payment_status);
+
+CREATE INDEX idx_bookings_payment_policy_status
+ON bookings (payment_policy, payment_status);
 ```
 
 ### Room Indexes
@@ -844,13 +929,18 @@ ALTER TABLE reviews
 ADD CONSTRAINT fk_reviews_booking_id
 FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE RESTRICT;
 -- RESTRICT: bookings use soft-delete; CASCADE would destroy reviews.
--- Added in migration 2026_02_22_000002. Skipped on SQLite (tests).
+-- Added in migration 2026_02_22_000002. Skipped on SQLite only; the canonical pgsql test suite applies it.
+
+ALTER TABLE payment_cancellation_tasks
+ADD CONSTRAINT payment_cancellation_tasks_booking_id_foreign
+FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE;
+-- Added in migration 2026_05_27_000001. Drops the outbox task if the owning booking is hard-deleted.
 ```
 
 ### Check Constraints
 
 Enforced at DB layer (PostgreSQL). App-layer validation also exists (see `StoreBookingRequest`, `UpdateBookingRequest`, `StoreReviewRequest`, `StoreRoomRequest`).
-Added in migration `2026_02_22_000001_add_check_constraints_bookings_reviews_rooms.php`. Skipped on SQLite (tests).
+Added in migration `2026_02_22_000001_add_check_constraints_bookings_reviews_rooms.php`. Skipped on SQLite only; applied under the canonical pgsql test suite.
 
 ```sql
 -- Check-out must be after check-in
@@ -928,6 +1018,25 @@ ALTER TABLE deposit_events
 ADD CONSTRAINT chk_deposit_events_refund_percent
 CHECK (refund_percent BETWEEN 0 AND 100);
 
+-- Booking payment lifecycle (added 2026-05-27 - 2026_05_27_000002, PostgreSQL only)
+ALTER TABLE bookings
+ADD CONSTRAINT chk_bookings_payment_policy
+CHECK (payment_policy IN ('prepaid', 'authorize_then_capture', 'pay_at_property', 'not_required'));
+
+ALTER TABLE bookings
+ADD CONSTRAINT chk_bookings_payment_status
+CHECK (payment_status IN (
+    'not_required', 'offline_due', 'requires_confirmation',
+    'requires_payment_method', 'requires_action', 'processing',
+    'authorized', 'paid', 'failed', 'cancelled',
+    'capture_failed', 'refunded', 'partially_refunded'
+));
+
+-- Payment-cancellation outbox status (added 2026-05-27 - 2026_05_27_000001, PostgreSQL only)
+ALTER TABLE payment_cancellation_tasks
+ADD CONSTRAINT chk_payment_cancellation_tasks_status
+CHECK (status IN ('pending', 'processing', 'retrying', 'succeeded', 'failed_permanent'));
+
 -- Room assignment classification (added 2026-03-20)
 ALTER TABLE room_assignments
 ADD CONSTRAINT chk_room_assignments_assignment_type
@@ -991,71 +1100,76 @@ Do not paraphrase those rules here. Cite the canonical line.
 
 ## Migrations
 
-### Migration History (61 files as of HEAD `6372d7f`, 2026-05-08)
+### Migration History (66 files as of HEAD `ee9a5ba`, 2026-06-03)
 
-| Migration                                                 | Description                                       |
-| --------------------------------------------------------- | ------------------------------------------------- |
-| `0001_01_01_000000_create_users_table`                    | users, sessions, password_reset                   |
-| `0001_01_01_000001_create_cache_table`                    | cache, cache_locks                                |
-| `0001_01_01_000002_create_jobs_table`                     | jobs, job_batches, failed_jobs                    |
-| `2025_05_08_create_personal_access_tokens_table`          | Sanctum base tokens                               |
-| `2025_05_09_000000_create_rooms_table`                    | rooms base                                        |
-| `2025_05_09_create_bookings_table`                        | bookings base                                     |
-| `2025_11_18_000000_add_user_id_to_bookings`               | user_id FK + indexes                              |
-| `2025_11_18_000001_add_is_admin_to_users`                 | is_admin (deprecated)                             |
-| `2025_11_18_000002_add_booking_constraints`               | unique_room_dates constraint                      |
-| `2025_11_20_000100_add_token_expiration`                  | revoked_at, type, device_id                       |
-| `2025_11_20_100000_add_pessimistic_locking_indexes`       | idx_room_active, idx_room_dates                   |
-| `2025_11_21_add_token_security_columns`                   | token_identifier, token_hash                      |
-| `2025_11_24_create_reviews_table`                         | reviews table                                     |
-| `2025_12_05_add_nplusone_fix_indexes`                     | N+1 prevention indexes                            |
-| `2025_12_17_convert_role_to_enum`                         | ENUM user_role, drop is_admin                     |
-| `2025_12_18_000000_optimize_booking_indexes`              | idx_bookings_availability                         |
-| `2025_12_18_100000_add_soft_deletes_to_bookings`          | deleted_at, deleted_by                            |
-| `2025_12_18_200000_add_lock_version_to_rooms`             | Optimistic locking                                |
-| `2026_01_11_000001_add_payment_fields_to_bookings`        | Stripe payment fields                             |
-| `2026_01_12_add_booking_id_unique_to_reviews`             | booking_id unique on reviews                      |
-| `2026_02_09_000000_add_foreign_key_constraints`           | FK constraints                                    |
-| `2026_02_09_000001_create_locations_table`                | locations table                                   |
-| `2026_02_09_000002_add_location_id_to_rooms_table`        | location_id on rooms                              |
-| `2026_02_09_000003_add_location_id_to_bookings_table`     | location_id on bookings                           |
-| `2026_02_09_000004_seed_initial_locations`                | Seed 5 locations                                  |
-| `2026_02_09_000005_assign_rooms_to_locations`             | Assign rooms + backfill bookings                  |
-| `2026_02_09_000006_add_booking_location_trigger`          | PostgreSQL trigger                                |
-| `2026_02_10_000001_create_contact_messages_table`         | contact_messages table                            |
-| `2026_02_10_000002_make_booking_id_non_nullable`          | booking_id non-nullable on reviews                |
-| `2026_02_10_add_cancellation_reason_to_bookings`          | cancellation_reason column                        |
-| `2026_02_11_reconcile_legacy_index_ordering`              | Idempotent index reconciliation                   |
-| `2026_02_12_fix_overlapping_bookings_constraint`          | Exclusion constraint excludes soft deletes        |
-| `2026_02_22_add_check_constraints_bookings_reviews_rooms` | CHECK constraints: dates, rating, price (PG only) |
-| `2026_02_22_add_fk_reviews_booking_id`                    | FK reviews.booking_id → bookings.id (RESTRICT)    |
-| `2026_02_28_add_cashier_columns_to_users_table`           | Cashier: stripe_id, pm_type, pm_last_four, trial  |
-| `2026_03_17_000001_harden_fk_delete_policies`             | FK hardening: 4 FKs CASCADE→SET NULL/RESTRICT (PG)|
-| `2026_03_17_000002_add_check_constraint_rooms_max_guests` | CHECK (max_guests > 0) on rooms (PG only)         |
-| `2026_03_17_000003_add_check_constraint_bookings_status`  | CHECK (status IN (...)) on bookings (PG only)     |
-| `2026_03_20_000001_create_stays_table`                    | stays table + operational lifecycle indexes       |
-| `2026_03_20_000002_create_room_assignments_table`         | room assignment history + partial active index    |
-| `2026_03_20_000003_create_service_recovery_cases_table`   | incident + compensation audit trail               |
-| `2026_03_23_000001_add_room_readiness_to_rooms_table`     | room readiness status + audit fields              |
-| `2026_03_23_000002_add_room_classification_to_rooms_table`| room equivalence and upgrade comparability fields |
-| `2026_03_23_000003_add_deposit_lifecycle_to_bookings_table` | deposit / advance lifecycle tracking            |
-| `2026_03_23_000004_add_settlement_lifecycle_to_service_recovery_cases_table` | settlement tracking on recovery cases |
-| `2026_03_23_000005_fix_reviews_room_fk_delete_policy`     | correct `reviews.room_id` FK to RESTRICT          |
-| `2026_03_12_000001_create_admin_audit_logs_table`         | admin audit log (G-06/G-07/G-11) — append-only    |
-| `2026_04_03_084257_create_email_verification_codes_table` | email OTP verification (SHA-256 code_hash)        |
-| `2026_04_09_000001_create_policy_documents_table`         | AI harness policy content for FAQ grounding       |
-| `2026_04_11_000001_create_ai_proposal_events_table`       | AI proposal confirm/decline audit trail           |
-| `2026_04_24_124546_add_image_url_to_rooms_table`          | rooms.image_url column                            |
-| `2026_04_28_000001_create_stripe_webhook_events_table`    | stripe webhook ingestion ledger (event-level dedupe) |
-| `2026_04_29_000001_relax_ai_proposal_events_user_fk_and_add_actor_columns` | ai_proposal_events FK CASCADE→SET NULL + actor snapshot |
-| `2026_04_29_000002_finalize_rooms_status_deprecation`     | rooms.status CHECK ('available','unavailable') + readiness backfill |
-| `2026_04_29_000003_create_stripe_refund_events_table`     | durable refund replay fence (UNIQUE stripe_refund_id) — replaces `IdempotencyGuard` |
-| `2026_05_01_000001_create_ai_proposals_table`             | durable AI proposal contract (AI-005/006) — drift detection at confirm |
-| `2026_05_01_000002_add_cancelled_actor_snapshot_to_bookings_table` | bookings cancelled_by_email/role/display (immutable actor snapshot) |
-| `2026_05_01_000003_add_actor_snapshot_to_admin_audit_logs_table` | admin_audit_logs actor_email/role/display_name |
-| `2026_05_02_000001_extend_deposit_status_check_constraint` | chk_bookings_deposit_status += partial_refund, forfeited |
-| `2026_05_02_000002_create_deposit_events_table`           | deposit lifecycle event ledger (CONC-005, append-only) |
-| `2026_05_03_000001_allow_cancelled_stay_status`           | stays.stay_status += 'cancelled' (OPS-004 propagation) |
+| Migration                                                                    | Description                                                                          |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `0001_01_01_000000_create_users_table`                                       | users, sessions, password_reset                                                      |
+| `0001_01_01_000001_create_cache_table`                                       | cache, cache_locks                                                                   |
+| `0001_01_01_000002_create_jobs_table`                                        | jobs, job_batches, failed_jobs                                                       |
+| `2025_05_08_create_personal_access_tokens_table`                             | Sanctum base tokens                                                                  |
+| `2025_05_09_000000_create_rooms_table`                                       | rooms base                                                                           |
+| `2025_05_09_create_bookings_table`                                           | bookings base                                                                        |
+| `2025_11_18_000000_add_user_id_to_bookings`                                  | user_id FK + indexes                                                                 |
+| `2025_11_18_000001_add_is_admin_to_users`                                    | is_admin (deprecated)                                                                |
+| `2025_11_18_000002_add_booking_constraints`                                  | unique_room_dates constraint                                                         |
+| `2025_11_20_000100_add_token_expiration`                                     | revoked_at, type, device_id                                                          |
+| `2025_11_20_100000_add_pessimistic_locking_indexes`                          | idx_room_active, idx_room_dates                                                      |
+| `2025_11_21_add_token_security_columns`                                      | token_identifier, token_hash                                                         |
+| `2025_11_24_create_reviews_table`                                            | reviews table                                                                        |
+| `2025_12_05_add_nplusone_fix_indexes`                                        | N+1 prevention indexes                                                               |
+| `2025_12_17_convert_role_to_enum`                                            | ENUM user_role, drop is_admin                                                        |
+| `2025_12_18_000000_optimize_booking_indexes`                                 | idx_bookings_availability                                                            |
+| `2025_12_18_100000_add_soft_deletes_to_bookings`                             | deleted_at, deleted_by                                                               |
+| `2025_12_18_200000_add_lock_version_to_rooms`                                | Optimistic locking                                                                   |
+| `2026_01_11_000001_add_payment_fields_to_bookings`                           | Stripe payment fields                                                                |
+| `2026_01_12_add_booking_id_unique_to_reviews`                                | booking_id unique on reviews                                                         |
+| `2026_02_09_000000_add_foreign_key_constraints`                              | FK constraints                                                                       |
+| `2026_02_09_000001_create_locations_table`                                   | locations table                                                                      |
+| `2026_02_09_000002_add_location_id_to_rooms_table`                           | location_id on rooms                                                                 |
+| `2026_02_09_000003_add_location_id_to_bookings_table`                        | location_id on bookings                                                              |
+| `2026_02_09_000004_seed_initial_locations`                                   | Seed 5 locations                                                                     |
+| `2026_02_09_000005_assign_rooms_to_locations`                                | Assign rooms + backfill bookings                                                     |
+| `2026_02_09_000006_add_booking_location_trigger`                             | PostgreSQL trigger                                                                   |
+| `2026_02_10_000001_create_contact_messages_table`                            | contact_messages table                                                               |
+| `2026_02_10_000002_make_booking_id_non_nullable`                             | booking_id non-nullable on reviews                                                   |
+| `2026_02_10_add_cancellation_reason_to_bookings`                             | cancellation_reason column                                                           |
+| `2026_02_11_reconcile_legacy_index_ordering`                                 | Idempotent index reconciliation                                                      |
+| `2026_02_12_fix_overlapping_bookings_constraint`                             | Exclusion constraint excludes soft deletes                                           |
+| `2026_02_22_add_check_constraints_bookings_reviews_rooms`                    | CHECK constraints: dates, rating, price (PG only)                                    |
+| `2026_02_22_add_fk_reviews_booking_id`                                       | FK reviews.booking_id → bookings.id (RESTRICT)                                       |
+| `2026_02_28_add_cashier_columns_to_users_table`                              | Cashier: stripe_id, pm_type, pm_last_four, trial                                     |
+| `2026_03_17_000001_harden_fk_delete_policies`                                | FK hardening: 4 FKs CASCADE→SET NULL/RESTRICT (PG)                                   |
+| `2026_03_17_000002_add_check_constraint_rooms_max_guests`                    | CHECK (max_guests > 0) on rooms (PG only)                                            |
+| `2026_03_17_000003_add_check_constraint_bookings_status`                     | CHECK (status IN (...)) on bookings (PG only)                                        |
+| `2026_03_20_000001_create_stays_table`                                       | stays table + operational lifecycle indexes                                          |
+| `2026_03_20_000002_create_room_assignments_table`                            | room assignment history + partial active index                                       |
+| `2026_03_20_000003_create_service_recovery_cases_table`                      | incident + compensation audit trail                                                  |
+| `2026_03_23_000001_add_room_readiness_to_rooms_table`                        | room readiness status + audit fields                                                 |
+| `2026_03_23_000002_add_room_classification_to_rooms_table`                   | room equivalence and upgrade comparability fields                                    |
+| `2026_03_23_000003_add_deposit_lifecycle_to_bookings_table`                  | deposit / advance lifecycle tracking                                                 |
+| `2026_03_23_000004_add_settlement_lifecycle_to_service_recovery_cases_table` | settlement tracking on recovery cases                                                |
+| `2026_03_23_000005_fix_reviews_room_fk_delete_policy`                        | correct `reviews.room_id` FK to RESTRICT                                             |
+| `2026_03_12_000001_create_admin_audit_logs_table`                            | admin audit log (G-06/G-07/G-11) — append-only                                       |
+| `2026_04_03_084257_create_email_verification_codes_table`                    | email OTP verification (SHA-256 code_hash)                                           |
+| `2026_04_09_000001_create_policy_documents_table`                            | AI harness policy content for FAQ grounding                                          |
+| `2026_04_11_000001_create_ai_proposal_events_table`                          | AI proposal confirm/decline audit trail                                              |
+| `2026_04_24_124546_add_image_url_to_rooms_table`                             | rooms.image_url column                                                               |
+| `2026_04_28_000001_create_stripe_webhook_events_table`                       | stripe webhook ingestion ledger (event-level dedupe)                                 |
+| `2026_04_29_000001_relax_ai_proposal_events_user_fk_and_add_actor_columns`   | ai_proposal_events FK CASCADE→SET NULL + actor snapshot                              |
+| `2026_04_29_000002_finalize_rooms_status_deprecation`                        | rooms.status CHECK ('available','unavailable') + readiness backfill                  |
+| `2026_04_29_000003_create_stripe_refund_events_table`                        | durable refund replay fence (UNIQUE stripe_refund_id) — replaces `IdempotencyGuard`  |
+| `2026_05_01_000001_create_ai_proposals_table`                                | durable AI proposal contract (AI-005/006) — drift detection at confirm               |
+| `2026_05_01_000002_add_cancelled_actor_snapshot_to_bookings_table`           | bookings cancelled_by_email/role/display (immutable actor snapshot)                  |
+| `2026_05_01_000003_add_actor_snapshot_to_admin_audit_logs_table`             | admin_audit_logs actor_email/role/display_name                                       |
+| `2026_05_02_000001_extend_deposit_status_check_constraint`                   | chk_bookings_deposit_status += partial_refund, forfeited                             |
+| `2026_05_02_000002_create_deposit_events_table`                              | deposit lifecycle event ledger (CONC-005, append-only)                               |
+| `2026_05_03_000001_allow_cancelled_stay_status`                              | stays.stay_status += 'cancelled' (OPS-004 propagation)                               |
+| `2026_05_18_000001_add_reconciliation_fields_to_stripe_webhook_events_table` | stripe*webhook_events += error/failed_at/reconcile*\* + (status,created_at) index    |
+| `2026_05_25_000001_add_guest_contract_fields_to_bookings_table`              | bookings += number_of_guests, special_requests                                       |
+| `2026_05_27_000001_create_payment_cancellation_tasks_table`                  | Stripe cancel outbox (PAY-03) — drained outside booking lock                         |
+| `2026_05_27_000002_add_payment_state_to_bookings_table`                      | bookings payment_policy/payment_status/currency/capture fields + 2 CHECK + 2 indexes |
+| `2026_05_30_000001_set_reviews_approved_default_false`                       | reviews.approved DEFAULT TRUE→FALSE (SH-09/F-44)                                     |
 
 ### Commands
 
@@ -1077,14 +1191,14 @@ php artisan migrate:fresh --seed
 
 ## Seeders
 
-| Seeder             | Description                                     |
-| ------------------ | ----------------------------------------------- |
-| `DatabaseSeeder`   | Main seeder (calls LocationSeeder + RoomSeeder) |
-| `LocationSeeder`   | 5 Soleil brand locations (Hue, Quang Dien)      |
-| `RoomSeeder`       | Sample rooms data                               |
-| `ReviewSeeder`     | Sample reviews                                  |
-| `RoomsTableSeeder` | Legacy rooms seeder                             |
-| `PolicyDocumentSeeder` | AI harness policy content (FAQ grounding)    |
+| Seeder                 | Description                                     |
+| ---------------------- | ----------------------------------------------- |
+| `DatabaseSeeder`       | Main seeder (calls LocationSeeder + RoomSeeder) |
+| `LocationSeeder`       | 5 Soleil brand locations (Hue, Quang Dien)      |
+| `RoomSeeder`           | Sample rooms data                               |
+| `ReviewSeeder`         | Sample reviews                                  |
+| `RoomsTableSeeder`     | Legacy rooms seeder                             |
+| `PolicyDocumentSeeder` | AI harness policy content (FAQ grounding)       |
 
 ### Sample Data (RoomSeeder)
 
@@ -1108,15 +1222,15 @@ php artisan db:seed --class=RoomSeeder
 
 ## Factories
 
-| Factory           | Model    | Usage          |
-| ----------------- | -------- | -------------- |
-| `UserFactory`     | User     | Test users     |
-| `LocationFactory` | Location | Test locations |
-| `RoomFactory`     | Room     | Test rooms     |
-| `BookingFactory`  | Booking  | Test bookings  |
-| `StayFactory`     | Stay     | Operational stays |
-| `RoomAssignmentFactory` | RoomAssignment | Assignment history |
-| `ServiceRecoveryCaseFactory` | ServiceRecoveryCase | Incident audit |
+| Factory                      | Model               | Usage              |
+| ---------------------------- | ------------------- | ------------------ |
+| `UserFactory`                | User                | Test users         |
+| `LocationFactory`            | Location            | Test locations     |
+| `RoomFactory`                | Room                | Test rooms         |
+| `BookingFactory`             | Booking             | Test bookings      |
+| `StayFactory`                | Stay                | Operational stays  |
+| `RoomAssignmentFactory`      | RoomAssignment      | Assignment history |
+| `ServiceRecoveryCaseFactory` | ServiceRecoveryCase | Incident audit     |
 
 ### Factory States
 
@@ -1187,18 +1301,27 @@ DB_CONNECTION=pgsql
 DB_HOST=127.0.0.1
 DB_PORT=5432
 DB_DATABASE=soleil_hostel
-DB_USERNAME=postgres
+DB_USERNAME=soleil
 DB_PASSWORD=secret
 ```
 
-### Testing (SQLite in-memory)
+### Testing (PostgreSQL `soleil_test`)
+
+`backend/phpunit.xml` runs the suite against **PostgreSQL**, not SQLite, so the DB-layer
+CHECK / exclusion / FK constraints are exercised by `php artisan test`:
 
 ```env
-DB_CONNECTION=sqlite
-DB_DATABASE=:memory:
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_DATABASE=soleil_test
+DB_USERNAME=soleil
+DB_PASSWORD=secret
 ```
 
-**Note:** PostgreSQL supports ENUM types và exclusion constraints. SQLite dùng cho parallel testing.
+**Note:** Migrations still carry `DB::getDriverName() === 'pgsql'` guards so the schema can also
+build on SQLite for ad-hoc local runs, but SQLite is **not** the canonical test target. Bring up the
+database with `docker compose up -d db` before running the suite.
 
 ---
 
@@ -1274,6 +1397,9 @@ StripeRefundEvent
 │
 EmailVerificationCode
 ├── belongsTo → User (user_id, CASCADE)
+│
+PaymentCancellationTask
+├── belongsTo → Booking (booking_id, CASCADE)     // Stripe cancel outbox; drained outside booking lock
 ```
 
 ---

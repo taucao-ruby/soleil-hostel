@@ -1,0 +1,68 @@
+# booking-write-services.yaml
+# =============================================================================
+# DISCOVERY MANIFEST for the booking locking-coverage guard
+# (.agent/scripts/check-locking-coverage.sh).
+#
+# This file is the SINGLE SOURCE OF TRUTH for "which services perform booking
+# mutations and therefore MUST hold a pessimistic lock". It is the Laravel-
+# monolith analogue of T-6's "Kubernetes Deployment label booking-eng/write-
+# path=true": this repo has no cluster and no microservices, so the declared
+# allow-list lives here, checked in, rather than being queried from kubectl.
+#
+# THE GUARD FAILS CLOSED: if this list is empty (or unparseable), the guard
+# exits 3 and CI blocks the deploy. An empty manifest is a misconfiguration,
+# never a pass.
+#
+# WHEN YOU ADD A NEW BOOKING WRITE PATH:
+#   1. Add (or extend) an entry below.
+#   2. Make sure the service file actually calls lockForUpdate() / withLock()
+#      inside the write transaction (see .agent/rules/booking-integrity.md).
+#   3. This file is CODEOWNERS-protected; the change needs owner approval.
+#
+# FORMAT CONTRACT (strict — the parser reads a constrained YAML subset):
+#   - One service per line, written as a YAML flow map: `- { ... }`.
+#   - Required keys: name, file. Optional: writePaths, lockedVia.
+#   - `file` is repo-root-relative.
+#   - `writePaths` is a SPACE-SEPARATED bareword list (method names). It is for
+#     reporting/visibility only. NO commas, NO braces, NO quotes inside values.
+#   - `lockedVia` is `DelegateService::delegateMethod` for an entry point that
+#     holds NO in-file lock but routes its booking mutation through another
+#     enforced, in-file-locked service. The guard verifies the file actually
+#     calls `delegateMethod(` AND that DelegateService is itself locked. Use it
+#     ONLY for genuine delegation; a normal write path needs an in-file lock.
+#   - Lines starting with `#` are comments and ignored.
+# Method-level proof of correctness lives in the test suite, not in this static
+# guard (see PdoLockBlockingTest, ConcurrentBookingTest); this guard only
+# verifies that a lock primitive is present in every declared write service.
+# =============================================================================
+
+services:
+  # Guest/admin booking creation + admin edit. Locks rooms + checks overlap
+  # under FOR UPDATE (createBookingWithLocking -> lockForUpdate).
+  - { name: CreateBookingService, file: backend/app/Services/CreateBookingService.php, writePaths: create update }
+
+  # Two-phase cancellation / refund. lockForUpdate() in transitionToRefundPending
+  # and the force-cancel path serializes concurrent cancellations.
+  - { name: CancellationService, file: backend/app/Services/CancellationService.php, writePaths: cancel forceCancel }
+
+  # Booking state machine: confirm, mark-paid-and-confirm, cancel, and the
+  # soft-delete / restore / force-delete write paths. lockForUpdate() on the
+  # booking row serializes concurrent transitions.
+  - { name: BookingService, file: backend/app/Services/BookingService.php, writePaths: confirmBooking markPaidAndConfirm cancelBooking softDelete restore forceDelete }
+
+  # Stripe `payment_intent.succeeded` effect (live webhook + reconcile reaper).
+  # Holds NO in-file lock: applyToBooking() reads the booking unlocked and routes
+  # the CONFIRMED transition through BookingService::markPaidAndConfirm(), where
+  # the lockForUpdate() + status re-check actually serialize concurrent callers.
+  # Enforced via delegation — see LOCKING-GUARD.md "Delegated locking".
+  - { name: StripePaymentIntentSucceededHandler, file: backend/app/Services/Payment/StripePaymentIntentSucceededHandler.php, writePaths: applyToBooking, lockedVia: BookingService::markPaidAndConfirm }
+
+# -----------------------------------------------------------------------------
+# REVIEW CANDIDATES — holding area for booking-mutating paths a human has not
+# yet triaged. Add new candidates here, confirm how each one locks (in-file
+# lockForUpdate()/withLock(), or delegation via lockedVia), then promote into
+# `services:` above. CODEOWNERS-protected like the rest of this file.
+#
+#   (currently empty — StripePaymentIntentSucceededHandler was triaged and is
+#    now enforced above via lockedVia: BookingService::markPaidAndConfirm)
+# -----------------------------------------------------------------------------

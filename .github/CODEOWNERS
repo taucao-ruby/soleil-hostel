@@ -1,0 +1,33 @@
+# Require human review for manual edits to CI-managed files.
+#
+# coverage-thresholds.json is normally written only by coverage-ratchet-bot
+# (pushing directly to dev, which bypasses PR review). This entry guards against a
+# *human* PR quietly lowering the floor — such a PR needs the owner's approval.
+# Replace @soleil-hostel/maintainers with a real team/user that has write access
+# (a non-existent owner is ignored by GitHub and provides NO protection).
+frontend/coverage-thresholds.json @soleil-hostel/maintainers
+
+# T-6 — Booking write-path locking guard. These four files are the entire
+# trust boundary of the locking-coverage gate: the script (logic), its hash
+# pin (tamper seal), the discovery manifest (the enforced service set), and the
+# CI job (the gate itself). A change to ANY of them can silently lower booking
+# double-booking protection, so each requires owner approval.
+#
+# NOTE: T-6 specified `@security-team`, which does NOT exist in this org. A
+# non-existent owner is ignored by GitHub and provides NO protection, so we use
+# the established @soleil-hostel/maintainers team. Replace it with a dedicated
+# security team here AND in branch-protection review rules if/when one exists.
+.agent/scripts/check-locking-coverage.sh @soleil-hostel/maintainers
+.locking-guard.sha256                    @soleil-hostel/maintainers
+booking-write-services.yaml              @soleil-hostel/maintainers
+.github/workflows/locking-guard.yml      @soleil-hostel/maintainers
+
+# T-5 — ship.sh CI-mirror gate. ship.sh (orchestrator), the gate scripts, the
+# manifest (gate inventory), and the hash seal together DEFINE what "READY TO
+# SHIP" means. A change to any of them can silently weaken the local release
+# gate, so each requires owner approval. (T-5 specified @security-team, which
+# does not exist in this org — see the note above; using @soleil-hostel/maintainers.)
+scripts/ship.sh                @soleil-hostel/maintainers
+scripts/update-ship-hashes.sh  @soleil-hostel/maintainers
+ci/gates/                      @soleil-hostel/maintainers
+.ship-hashes.sha256            @soleil-hostel/maintainers

@@ -7,6 +7,7 @@ namespace Tests\Unit;
 use App\Enums\BookingStatus;
 use PHPUnit\Framework\TestCase;
 
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 final class BookingStatusTest extends TestCase
 {
     public function test_active_status_set_matches_room_blocking_invariant(): void

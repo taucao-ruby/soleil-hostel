@@ -3,6 +3,76 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import vitePluginCspNonce from './vite-plugin-csp-nonce'
 import path from 'path'
+import { existsSync, readFileSync } from 'node:fs'
+
+export interface CoverageThresholds {
+  lines: number
+  branches: number
+  functions: number
+  statements: number
+}
+
+const COVERAGE_METRICS = ['lines', 'branches', 'functions', 'statements'] as const
+
+const ZERO_THRESHOLDS: CoverageThresholds = {
+  lines: 0,
+  branches: 0,
+  functions: 0,
+  statements: 0,
+}
+
+// Ratchet state file — the single source of truth for coverage floors.
+// Resolved next to this config so it works regardless of the CI working directory.
+const THRESHOLD_FILE = path.resolve(__dirname, './coverage-thresholds.json')
+
+/**
+ * Read the ratcheted coverage floors from coverage-thresholds.json.
+ *
+ * Pure + synchronous: Vite loads its config synchronously, so this must never be
+ * async. It also never throws — on a missing, unreadable, or structurally invalid
+ * file it falls back to all-zero floors (enforcement off) and says so loudly, so
+ * the test run itself can never be broken by the state file.
+ *
+ * Integrity: every metric must be present and a finite number in [0, 100];
+ * otherwise we reset to zero. This stops a corrupted or hand-edited file from
+ * silently locking in garbage floors. We deliberately do NOT cryptographically
+ * sign the file — overkill for a P3 coverage gate. The human guardrail is
+ * CODEOWNERS review on coverage-thresholds.json (see RATCHET.md).
+ */
+export function readRatchetedThresholds(): CoverageThresholds {
+  if (!existsSync(THRESHOLD_FILE)) {
+    console.warn(
+      '[coverage-ratchet] coverage-thresholds.json not found — falling back to 0 ' +
+        '(bootstrap/first run). Coverage thresholds are NOT enforced this run.'
+    )
+    return { ...ZERO_THRESHOLDS }
+  }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(readFileSync(THRESHOLD_FILE, 'utf8'))
+  } catch {
+    console.warn('[coverage-ratchet] INVALID threshold file — resetting to 0')
+    return { ...ZERO_THRESHOLDS }
+  }
+
+  if (typeof parsed !== 'object' || parsed === null) {
+    console.warn('[coverage-ratchet] INVALID threshold file — resetting to 0')
+    return { ...ZERO_THRESHOLDS }
+  }
+
+  const record = parsed as Record<string, unknown>
+  const floors = { ...ZERO_THRESHOLDS }
+  for (const metric of COVERAGE_METRICS) {
+    const value = record[metric]
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 100) {
+      console.warn('[coverage-ratchet] INVALID threshold file — resetting to 0')
+      return { ...ZERO_THRESHOLDS }
+    }
+    floors[metric] = value
+  }
+  return floors
+}
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -56,5 +126,14 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     exclude: ['**/tests/e2e/**', '**/node_modules/**'],
+    coverage: {
+      provider: 'v8',
+      // 'json' is kept for the existing Codecov upload (coverage-final.json);
+      // 'json-summary' feeds scripts/ratchet-coverage.sh.
+      reporter: ['json', 'json-summary', 'text', 'lcov'],
+      reportsDirectory: './coverage',
+      // RATCHET: managed by CI — do not edit manually
+      thresholds: readRatchetedThresholds(),
+    },
   },
 })

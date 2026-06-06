@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class BookingRateLimitTest extends TestCase
 {
     use RefreshDatabase;

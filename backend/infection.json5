@@ -1,0 +1,100 @@
+{
+  // Infection mutation-testing config — Soleil Hostel (D-1).
+  //
+  // SCOPE: strictly the three booking-integrity handler surfaces. The mutated
+  // file set is pinned at invocation with `--filter` (centralised in the
+  // `composer mutation` script and the nightly CI job), NOT by this file alone —
+  // the files are scattered across several namespaces, so `source.directories`
+  // below only BOUNDS the universe; `--filter` selects the exact 9 files:
+  //
+  //   FSM      app/Enums/BookingStatus.php          (canTransitionTo + guards)
+  //            app/Enums/DepositStatus.php          (deposit sub-FSM)
+  //            app/Models/Booking.php               (transitionTo)
+  //            app/Models/Deposit.php               (transitionTo, resolveTargetStatus)
+  //   OVERLAP  app/Models/Booking.php               (scopeOverlappingBookings — half-open [in,out))
+  //            app/Services/CreateBookingService.php (locked overlap check on create/update)
+  //            app/Services/RoomAvailabilityService.php (availability API)
+  //            app/Repositories/EloquentBookingRepository.php (overlap repo wrappers)
+  //   REFUND   app/Models/Booking.php               (calculateRefundAmount, getRefundPercentage, cancellationPolicy)
+  //            app/Booking/CancellationPolicy.php   (policy value object + 0..100 invariant)
+  //            app/Models/Deposit.php               (computeRefundAmount — integer-division)
+  //            app/Services/CancellationService.php (eligibility + orchestration)
+  //
+  // FLOORS: deliberately omitted here (measure-then-ratchet). The baseline run
+  // is intended to REPORT the MSI, not fail. The nightly CI gate enforces the
+  // ratcheted floor via `--min-msi` / `--min-covered-msi` CLI flags fed from
+  // repository variables (see docs/mutation-testing.md once baseline lands).
+  //
+  // COVERAGE DRIVER: CI provides xdebug. Locally on Windows (no xdebug/pcov),
+  // run under phpdbg:
+  //   phpdbg -qrr -d memory_limit=-1 vendor/bin/infection --filter=... --threads=1
+  "$schema": "vendor/infection/infection/resources/schema.json",
+  "source": {
+    "directories": [
+      "app/Booking",
+      "app/Enums",
+      "app/Models",
+      "app/Repositories",
+      "app/Services"
+    ]
+  },
+  "mutators": {
+    // @default already includes every mutator the prompt enumerated
+    // (GreaterThan/LessThan/GreaterThanOrEqualTo/LessThanOrEqualTo,
+    // EqualIdentical/NotEqualIdentical, Return_, TrueValue/FalseValue,
+    // ArrayItem, UnwrapArrayFilter), so we enable the profile rather than
+    // re-listing a subset that could drift out of sync.
+    "@default": true,
+    // Config-only scope refinement (NO production edits): exclude the
+    // out-of-scope methods that live in the in-scope files (relationships,
+    // query scopes, soft-delete, cache plumbing, accessors, enum UI helpers)
+    // so MSI reflects ONLY the FSM / refund / overlap logic. Each entry is a
+    // method NOT part of a booking-integrity surface. The overlap predicate
+    // (scopeOverlappingBookings), refund math, FSM guards/transitions, and
+    // policy invariant remain mutated.
+    "global-ignore": [
+      "App\\Models\\Booking::getPurifiableFields",
+      "App\\Models\\Booking::room",
+      "App\\Models\\Booking::location",
+      "App\\Models\\Booking::user",
+      "App\\Models\\Booking::cancelledBy",
+      "App\\Models\\Booking::stay",
+      "App\\Models\\Booking::review",
+      "App\\Models\\Booking::depositEvents",
+      "App\\Models\\Booking::getDepositAttribute",
+      "App\\Models\\Booking::scopeWithCommonRelations",
+      "App\\Models\\Booking::scopeSelectColumns",
+      "App\\Models\\Booking::scopeActive",
+      "App\\Models\\Booking::scopeCancelled",
+      "App\\Models\\Booking::scopeByStatus",
+      "App\\Models\\Booking::scopeWithDeposit",
+      "App\\Models\\Booking::scopeDepositApplied",
+      "App\\Models\\Booking::scopeWithLock",
+      "App\\Models\\Booking::getNightsAttribute",
+      "App\\Models\\Booking::isExpired",
+      "App\\Models\\Booking::deletedBy",
+      "App\\Models\\Booking::softDeleteWithAudit",
+      "App\\Models\\Booking::restoreWithAudit",
+      "App\\Enums\\BookingStatus::label",
+      "App\\Enums\\BookingStatus::color",
+      "App\\Enums\\DepositStatus::label",
+      "App\\Enums\\DepositStatus::color"
+    ]
+  },
+  "testFramework": "phpunit",
+  // Per-mutant timeout (seconds). Booking tests open Postgres transactions
+  // (RefreshDatabase + FOR UPDATE); single-threaded local PCOV runs left 137
+  // mutants unevaluated at 30s. 90s lets them resolve (CI parallelises, so it
+  // can keep a tighter value).
+  "timeout": 90,
+  // NOTE: thread count is CLI-only in Infection's schema (`--threads`), not a
+  // config key. Local Windows runs pass --threads=1 (no ext-pcntl); CI passes
+  // --threads=4 (pcntl present on the ubuntu runner).
+  "tmpDir": "build/infection/tmp",
+  "logs": {
+    "text": "build/infection/infection.log",
+    "html": "build/infection/infection.html",
+    "summary": "build/infection/summary.log",
+    "perMutator": "build/infection/per-mutator.md"
+  }
+}

@@ -37,6 +37,7 @@ use Tests\TestCase;
  *
  * Reference: BL-2 in docs/FINDINGS_BACKLOG.md.
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class RefundStateOverlapTest extends TestCase
 {
     use RefreshDatabase;

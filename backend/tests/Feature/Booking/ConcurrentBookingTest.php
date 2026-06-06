@@ -32,6 +32,7 @@ use Tests\TestCase;
  * 11. API response format validation
  * 12. Database consistency after concurrent operations
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class ConcurrentBookingTest extends TestCase
 {
     use RefreshDatabase;

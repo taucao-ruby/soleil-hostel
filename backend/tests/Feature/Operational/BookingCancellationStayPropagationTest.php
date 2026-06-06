@@ -13,6 +13,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Tests\TestCase;
 
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 final class BookingCancellationStayPropagationTest extends TestCase
 {
     public function test_booking_cancelled_event_cancels_active_stay(): void

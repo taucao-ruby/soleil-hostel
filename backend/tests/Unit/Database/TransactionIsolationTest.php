@@ -17,6 +17,7 @@ use Tests\TestCase;
  * 3. Error classification (deadlock vs serialization)
  * 4. Timeout handling
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class TransactionIsolationTest extends TestCase
 {
     use RefreshDatabase;

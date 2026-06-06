@@ -21,6 +21,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 final class BookingStateMachineInvariantTest extends TestCase
 {
     public function test_booking_creation_rejects_out_of_service_room_without_persisting_booking(): void

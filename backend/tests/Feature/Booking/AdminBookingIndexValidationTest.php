@@ -21,6 +21,7 @@ use Tests\TestCase;
  * proving the existing RBAC source (route role:moderator + Gate
  * view-all-bookings) and response shape are unchanged.
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class AdminBookingIndexValidationTest extends TestCase
 {
     use RefreshDatabase;

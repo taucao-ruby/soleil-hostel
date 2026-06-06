@@ -39,6 +39,7 @@ use Tests\TestCase;
  *      bookings rejected with 403; row unchanged; BookingUpdated NOT dispatched
  *   ✅ Lifecycle gate applies to admins as well
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class BookingUpdateTest extends TestCase
 {
     use RefreshDatabase;

@@ -10,6 +10,7 @@ use App\Services\BookingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class BookingServiceSelectFieldsTest extends TestCase
 {
     use RefreshDatabase;

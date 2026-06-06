@@ -21,6 +21,7 @@ use Tests\TestCase;
  * refunds (different bookings / payment intents) MUST derive distinct keys so
  * they can never accidentally collapse into one another.
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 final class BookingRefundIdempotencyKeyTest extends TestCase
 {
     use RefreshDatabase;

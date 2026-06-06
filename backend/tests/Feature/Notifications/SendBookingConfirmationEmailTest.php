@@ -35,6 +35,7 @@ use Tests\TestCase;
  *   - The job re-hydrates the Booking in handle() and idempotency-guards on
  *     current status, so post-dispatch cancellations don't deliver stale emails.
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class SendBookingConfirmationEmailTest extends TestCase
 {
     use RefreshDatabase;

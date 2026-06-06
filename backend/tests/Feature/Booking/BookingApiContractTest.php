@@ -32,6 +32,7 @@ use Tests\TestCase;
  *   - room: only present when relationship loaded
  *   - created_at / updated_at: ISO 8601 timestamp
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class BookingApiContractTest extends TestCase
 {
     use RefreshDatabase;

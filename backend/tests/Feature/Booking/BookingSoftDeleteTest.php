@@ -30,6 +30,7 @@ use Tests\TestCase;
  * - Ensures data preservation for GDPR/SOX compliance
  * - Tests recovery workflow for accidental deletions
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class BookingSoftDeleteTest extends TestCase
 {
     use RefreshDatabase;

@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Notification;
 use Mockery\MockInterface;
 use Tests\TestCase;
 
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class BookingCancellationTest extends TestCase
 {
     use RefreshDatabase;

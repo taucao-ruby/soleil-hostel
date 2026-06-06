@@ -19,6 +19,7 @@ use Tests\TestCase;
  *
  * Covers: FU-2 (PERMISSION_MATRIX), Phase 3 (moderator activation)
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class AdminBookingCoverageTest extends TestCase
 {
     use RefreshDatabase;

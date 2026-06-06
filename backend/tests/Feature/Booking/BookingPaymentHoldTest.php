@@ -22,6 +22,7 @@ use Mockery;
 use Mockery\MockInterface;
 use Tests\TestCase;
 
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 final class BookingPaymentHoldTest extends TestCase
 {
     use RefreshDatabase;

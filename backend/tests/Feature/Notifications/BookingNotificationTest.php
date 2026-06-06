@@ -29,6 +29,7 @@ use Tests\TestCase;
  *
  * @see docs/backend/BOOKING_CONFIRMATION_NOTIFICATION_ARCHITECTURE.md
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class BookingNotificationTest extends TestCase
 {
     use RefreshDatabase;

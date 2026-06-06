@@ -32,6 +32,7 @@ use Tests\TestCase;
  * 7. Bulk response shape contains success_count + failure_count
  * 8. BookingRestoreConflictException is thrown by service (not swallowed)
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class RestoreIntegrityTest extends TestCase
 {
     use RefreshDatabase;

@@ -177,11 +177,19 @@ if ($successCount > 1) {
     exit(1);
 }
 
-// No booking succeeded — check if it's due to rate limiting or auth issues
+// No booking succeeded. T-2 removes the former silent "all 429 -> exit 0"
+// skip: an all-429 outcome means the single-winner locking invariant was
+// NEVER exercised, so a green build here proved nothing. With the built-in
+// server forking real workers (PHP_CLI_SERVER_WORKERS + --no-reload) and the
+// per-IP booking throttle (20/min) always admitting ~20 of the 50 requests on
+// a fresh CI database, an all-429 result can only mean a degraded/misconfigured
+// harness (throttle too tight, polluted cache, or workers not forking). Treat
+// it as a hard CI failure, never a pass.
 $nonRateLimited = array_filter($results, fn (array $r): bool => $r['status'] !== 429);
 if (count($nonRateLimited) === 0) {
-    echo "TEST SKIPPED: all requests were rate-limited (429). Cannot validate locking.\n";
-    exit(0);
+    echo "TEST FAILED: all {$totalRequests} requests were rate-limited (429); the single-winner locking invariant could NOT be validated.\n";
+    echo "This is a harness/configuration failure (throttle too tight, polluted cache, or the server is not forking workers), not a healthy system.\n";
+    exit(1);
 }
 
 echo "TEST FAILED: no booking succeeded.\n";

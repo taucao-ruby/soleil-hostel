@@ -16,7 +16,11 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:unit": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "flake:ingest": "node scripts/flake/ingest.mjs",
+    "flake:report": "node scripts/flake/report.mjs --ledger tests/e2e/flake-history.ndjson --out flake-report.json --html flake-report.html",
+    "flake:gate": "node scripts/flake/gate.mjs --report flake-report.json",
+    "flake:full": "pnpm run flake:report && pnpm run flake:gate"
   },
   "dependencies": {
     "@stripe/react-stripe-js": "^6.4.0",
@@ -24,7 +28,7 @@
     "axios": "^1.16.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-router-dom": "^7.9.6",
+    "react-router-dom": "^7.17.0",
     "web-vitals": "^5.1.0"
   },
   "pnpm": {

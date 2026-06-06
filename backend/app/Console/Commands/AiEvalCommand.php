@@ -185,7 +185,7 @@ class AiEvalCommand extends Command
             'faq_lookup' => TaskType::FAQ_LOOKUP,
             'admin_draft' => TaskType::ADMIN_DRAFT,
             'action_proposals' => TaskType::ROOM_DISCOVERY,
-            default => TaskType::tryFrom($dataset),
+            default => is_string($dataset) ? TaskType::tryFrom($dataset) : null,
         };
 
         if ($taskType === null) {

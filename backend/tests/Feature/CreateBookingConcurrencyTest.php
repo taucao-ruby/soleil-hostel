@@ -22,6 +22,7 @@ use Tests\TestCase;
  * 4. Concurrent requests không thể double-book (simulated qua Eloquent)
  * 5. Cancelled bookings không ảnh hưởng đến locking logic
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class CreateBookingConcurrencyTest extends TestCase
 {
     use RefreshDatabase;

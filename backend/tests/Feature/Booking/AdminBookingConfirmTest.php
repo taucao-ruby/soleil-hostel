@@ -30,6 +30,7 @@ use Tests\TestCase;
  *   ✅ Response shape on success
  *   ✅ Database updated to confirmed status
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class AdminBookingConfirmTest extends TestCase
 {
     use RefreshDatabase;

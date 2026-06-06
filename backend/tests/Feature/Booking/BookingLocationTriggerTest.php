@@ -26,6 +26,7 @@ use Tests\TestCase;
  * (phpunit.xml) runs on PostgreSQL, so the PG-only tests below execute in CI.
  * The observer-level tests are driver-independent.
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class BookingLocationTriggerTest extends TestCase
 {
     private function pgsqlOnly(): void

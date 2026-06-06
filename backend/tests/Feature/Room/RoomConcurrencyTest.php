@@ -18,6 +18,7 @@ use Tests\Traits\RoomTestAssertions;
  * These tests verify the optimistic locking implementation protects
  * against the "lost update" problem in high-concurrency environments.
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class RoomConcurrencyTest extends TestCase
 {
     use RefreshDatabase;

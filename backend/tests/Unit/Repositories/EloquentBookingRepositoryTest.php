@@ -26,6 +26,7 @@ use PHPUnit\Framework\TestCase;
  *
  * @covers \App\Repositories\EloquentBookingRepository
  */
+#[\PHPUnit\Framework\Attributes\Group('booking')]
 class EloquentBookingRepositoryTest extends TestCase
 {
     protected function tearDown(): void

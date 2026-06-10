@@ -97,6 +97,7 @@ for ($i = 0; $i < $totalRequests; $i++) {
         'request' => $i + 1,
         'status' => $httpCode,
         'response' => $response,
+        'seconds' => (float) curl_getinfo($ch, CURLINFO_TOTAL_TIME),
     ];
 
     if ($httpCode === 201) {
@@ -151,6 +152,39 @@ foreach ($statusCodes as $code => $count) {
 
 echo "\n";
 
+// Full non-429 outcome distribution: the single "first non-429" sample
+// cannot distinguish retry-exhaustion 422s from clean already-booked 422s.
+$bodyCounts = [];
+foreach ($results as $r) {
+    if ((int) $r['status'] === 429) {
+        continue;
+    }
+    $body = json_decode((string) $r['response'], true);
+    $msg = is_array($body) ? ($body['message'] ?? '(no message)') : '(no body)';
+    $key = 'HTTP '.$r['status'].' — '.$msg;
+    $bodyCounts[$key] = ($bodyCounts[$key] ?? 0) + 1;
+}
+echo "Non-429 outcome distribution:\n";
+foreach ($bodyCounts as $key => $count) {
+    echo "  {$count}x {$key}\n";
+}
+
+$durations = array_map(static fn (array $r): float => (float) $r['seconds'], $results);
+sort($durations);
+$median = $durations[(int) floor(count($durations) / 2)] ?? 0.0;
+printf(
+    "\nRequest duration: min=%.2fs median=%.2fs max=%.2fs\n",
+    $durations[0] ?? 0.0,
+    $median,
+    $durations[count($durations) - 1] ?? 0.0
+);
+
+// Authoritative end-state: HTTP-observed successes undercount when the
+// winner's response is lost to the client timeout (HTTP 0). The row count
+// is what the single-winner invariant is actually about.
+$dbCount = \App\Models\Booking::query()->where('room_id', $roomId)->count();
+echo "Committed bookings in DB for room {$roomId}: {$dbCount}\n\n";
+
 // F-03 hard gate: ANY HTTP 500 among the losers is a stop-ship leak.
 // A single winner does not absolve a 500 — that means the controller failed
 // to translate a concurrent conflict (23P01) into 409 and instead leaked
@@ -167,13 +201,19 @@ if (count($serverErrors) > 0) {
     exit(1);
 }
 
-if ($successCount === 1) {
+// DB-level double-booking is a stop-ship regardless of what HTTP reported.
+if ($dbCount > 1) {
+    echo "TEST FAILED: {$dbCount} bookings committed for one room/date range (expected 1) — DOUBLE BOOKING.\n";
+    exit(1);
+}
+
+if ($successCount === 1 && $dbCount === 1) {
     echo "TEST PASSED: exactly 1 booking succeeded — pessimistic locking is valid.\n";
     exit(0);
 }
 
 if ($successCount > 1) {
-    echo "TEST FAILED: {$successCount} bookings succeeded for one room/date range (expected 1).\n";
+    echo "TEST FAILED: {$successCount} HTTP 201 responses for one room/date range (expected 1).\n";
     exit(1);
 }
 
@@ -192,7 +232,11 @@ if (count($nonRateLimited) === 0) {
     exit(1);
 }
 
-echo "TEST FAILED: no booking succeeded.\n";
+if ($dbCount === 1) {
+    echo "TEST FAILED: the single-winner invariant HELD (exactly 1 booking committed) but the winner's HTTP 201 was never observed — response lost to the client timeout. Harness throughput failure, not a locking failure.\n";
+} else {
+    echo "TEST FAILED: no booking succeeded and none committed — contention livelock or retry exhaustion on every contender.\n";
+}
 echo "First non-429 response:\n";
 foreach ($nonRateLimited as $r) {
     echo "  Request {$r['request']}: HTTP {$r['status']} — ".substr((string) $r['response'], 0, 200)."\n";

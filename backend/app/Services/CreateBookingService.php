@@ -260,10 +260,16 @@ class CreateBookingService
      *
      * Flow:
      * 1. Begin transaction
-     * 2. SELECT from bookings FOR UPDATE (locks rows matching the overlap condition)
-     * 3. Check for overlapping bookings
-     * 4. If no conflicts, INSERT the new booking
-     * 5. Commit transaction (releases lock)
+     * 2. SELECT the room row FOR UPDATE — serializes concurrent creates for
+     *    the same room. The overlap query alone cannot do this: an empty
+     *    result set acquires no row locks, so first-bookings for a range
+     *    would otherwise race straight to the GiST exclusion constraint,
+     *    where concurrent conflicting INSERTs mutually wait and deadlock
+     *    (40P01) instead of queueing.
+     * 3. SELECT from bookings FOR UPDATE (locks rows matching the overlap condition)
+     * 4. Check for overlapping bookings
+     * 5. If no conflicts, INSERT the new booking
+     * 6. Commit transaction (releases locks)
      *
      * Key: Lock is held until the transaction commits or rolls back,
      * preventing any other transaction from creating a conflicting booking
@@ -291,9 +297,16 @@ class CreateBookingService
                 $this->assertPendingLimitNotExceeded($userId);
             }
 
-            // Step 1: Verify room exists and is bookable
+            // Step 1: Lock the room row and verify it is bookable. This is the
+            // serialization point for same-room creates: followers queue here,
+            // so the first committer is visible to every follower's overlap
+            // check below and losers fail fast with a clean conflict instead
+            // of colliding at the exclusion constraint (mutual insert-waits
+            // there deadlock under burst — see docs/FINDINGS_BACKLOG.md RCA
+            // 2026-06-10). Lock order stays globally consistent:
+            // user → room → overlapping bookings → insert.
             try {
-                $room = Room::bookable()->findOrFail($roomId);
+                $room = Room::bookable()->whereKey($roomId)->lockForUpdate()->firstOrFail();
             } catch (ModelNotFoundException) {
                 throw new RuntimeException('Room is not available for booking');
             }

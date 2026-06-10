@@ -291,6 +291,19 @@ jobs:
           php artisan key:generate --env=testing
           php artisan package:discover --ansi --env=testing
           php artisan migrate --env=testing --force
+      - name: Tune Postgres for contention diagnosis
+        # deadlock_timeout defaults to 1s, so every EXCLUDE-constraint
+        # collision round costs >=1s before the detector fires — at 4 workers
+        # x 3 retries that starves the stub's 30s client window (RCA
+        # 2026-06-10). 100ms keeps detection rounds cheap; log_lock_waits +
+        # error statements give SQLSTATE ground truth in the service log
+        # captured on failure below. Both are sighup-level: reload suffices.
+        run: |
+          PGPASSWORD=password psql -h 127.0.0.1 -U testing -d testing \
+            -c "ALTER SYSTEM SET deadlock_timeout = '100ms'" \
+            -c "ALTER SYSTEM SET log_lock_waits = 'on'" \
+            -c "ALTER SYSTEM SET log_min_error_statement = 'error'" \
+            -c "SELECT pg_reload_conf()"
       - name: Start server
         working-directory: ./backend
         # PHP_CLI_SERVER_WORKERS forks 4 built-in-server workers so the 50
@@ -345,6 +358,13 @@ jobs:
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: 6379
           REDIS_PASSWORD: ""
+      - name: Capture contention evidence (on failure)
+        if: failure()
+        run: |
+          echo "=== laravel.log (tail) ==="
+          tail -n 200 backend/storage/logs/laravel.log 2>/dev/null || echo "no laravel.log"
+          echo "=== postgres service log (tail) — SQLSTATEs, lock waits, deadlocks ==="
+          docker logs "${{ job.services.postgres.id }}" 2>&1 | tail -n 200
 
   # ========== N+1 QUERY DETECTION (merged from nplusone-detection.yml) ==========
   nplusone-detection:

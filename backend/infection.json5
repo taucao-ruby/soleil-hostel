@@ -95,6 +95,9 @@
     "text": "build/infection/infection.log",
     "html": "build/infection/infection.html",
     "summary": "build/infection/summary.log",
-    "perMutator": "build/infection/per-mutator.md"
+    "perMutator": "build/infection/per-mutator.md",
+    // Machine-readable stats — parsed by the nightly CI summary step
+    // (.github/workflows/mutation-nightly.yml) via jq.
+    "json": "build/infection/infection.json"
   }
 }

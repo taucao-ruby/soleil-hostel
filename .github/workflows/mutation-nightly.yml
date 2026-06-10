@@ -1,0 +1,183 @@
+name: "Nightly: Mutation Testing (Infection)"
+
+# D-1: mutation-testing MSI gate for the booking-integrity core (FSM /
+# overlap / refund — the 9 files pinned by `composer mutation`, scope
+# documented in backend/infection.json5).
+#
+# Nightly, not PR-blocking: a full Infection pass over the booking core costs
+# tens of minutes. PR-blocking correctness gates live in tests.yml; ship.sh
+# (T-5) intentionally does NOT mirror this job — like ai:eval and
+# flake-accumulate, it is a nightly-only surface.
+#
+# Floor semantics (measure-then-ratchet, mirrors the suggest-only coverage
+# ratchet — no bot commits, humans move the floor):
+#   - vars.MUTATION_MIN_MSI unset  -> report-only: the job records the MSI
+#     baseline in the run summary and suggests a floor; it never fails on
+#     score (it still fails on broken initial test run / config errors).
+#   - vars.MUTATION_MIN_MSI set    -> enforced via --min-msi; optional
+#     vars.MUTATION_MIN_COVERED_MSI is enforced via --min-covered-msi.
+#   Ratchet procedure: docs/mutation-testing.md.
+#
+# NOTE: the schedule fires from the workflow file on the DEFAULT branch; this
+# job checks out `dev` explicitly so the gate always measures the integration
+# branch.
+
+on:
+  schedule:
+    - cron: "30 2 * * *" # 02:30 UTC nightly
+  workflow_dispatch:
+    inputs:
+      min_msi:
+        description: "Override --min-msi for this run (blank = repo var / report-only)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation-nightly
+  cancel-in-progress: false
+
+env:
+  PHP_VERSION: "8.3"
+
+jobs:
+  mutation:
+    name: Infection MSI — booking core
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: testing
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: testing
+        options: >-
+          --health-cmd="pg_isready -U testing"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: testing
+      DB_USERNAME: testing
+      DB_PASSWORD: password
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      CACHE_DRIVER: redis
+      XDEBUG_MODE: coverage
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: redis,pdo_pgsql
+          coverage: xdebug
+
+      - name: Compute composer cache key
+        id: composer-hash
+        run: echo "hash=$(sha256sum backend/composer.lock | cut -c1-16)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore vendor
+        id: restore-vendor
+        uses: actions/cache/restore@v4
+        with:
+          path: backend/vendor
+          key: backend-vendor-${{ steps.composer-hash.outputs.hash }}
+
+      - name: Install Composer dependencies (cache miss fallback)
+        if: steps.restore-vendor.outputs.cache-hit != 'true'
+        working-directory: ./backend
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
+
+      - name: Setup environment
+        working-directory: ./backend
+        run: |
+          cp .env.example .env.testing
+          php artisan key:generate --env=testing
+          php artisan package:discover --ansi --env=testing
+          php scripts/check-test-db.php
+          php artisan migrate --env=testing --force
+
+      - name: Run Infection (booking core)
+        working-directory: ./backend
+        env:
+          # workflow_dispatch override > repo variable > report-only
+          MIN_MSI: ${{ github.event.inputs.min_msi || vars.MUTATION_MIN_MSI || '' }}
+          MIN_COVERED_MSI: ${{ vars.MUTATION_MIN_COVERED_MSI || '' }}
+        run: |
+          FLAGS=""
+          if [ -n "$MIN_MSI" ]; then
+            FLAGS="$FLAGS --min-msi=$MIN_MSI"
+            echo "Enforcing MSI floor: $MIN_MSI"
+          else
+            echo "No MUTATION_MIN_MSI set -> report-only baseline run"
+          fi
+          if [ -n "$MIN_COVERED_MSI" ]; then
+            FLAGS="$FLAGS --min-covered-msi=$MIN_COVERED_MSI"
+            echo "Enforcing covered MSI floor: $MIN_COVERED_MSI"
+          fi
+          # shellcheck disable=SC2086 -- FLAGS is deliberately word-split
+          composer mutation -- $FLAGS
+
+      - name: MSI summary
+        if: always()
+        working-directory: ./backend
+        run: |
+          JSON=build/infection/infection.json
+          {
+            echo "### Mutation testing — booking core (nightly)"
+            echo ""
+            if [ -f "$JSON" ]; then
+              MSI=$(jq -r '.stats.msi // "n/a"' "$JSON")
+              COVERED=$(jq -r '.stats.coveredCodeMsi // "n/a"' "$JSON")
+              echo "| Metric | Value |"
+              echo "|---|---|"
+              echo "| MSI | ${MSI}% |"
+              echo "| Covered-code MSI | ${COVERED}% |"
+              echo "| Mutants total | $(jq -r '.stats.totalMutantsCount // "n/a"' "$JSON") |"
+              echo "| Killed | $(jq -r '.stats.killedCount // "n/a"' "$JSON") |"
+              echo "| Escaped | $(jq -r '.stats.escapedCount // "n/a"' "$JSON") |"
+              echo "| Timed out | $(jq -r '.stats.timeOutCount // "n/a"' "$JSON") |"
+              echo "| Not covered | $(jq -r '.stats.notCoveredCount // "n/a"' "$JSON") |"
+              echo ""
+              if [ -z "${{ vars.MUTATION_MIN_MSI || '' }}" ] && [ "$MSI" != "n/a" ]; then
+                SUGGEST=$(printf '%.0f' "$(echo "$MSI - 2" | bc -l)")
+                echo "> Report-only run. Suggested floor once stable: set repo variable \`MUTATION_MIN_MSI=${SUGGEST}\` (measured ${MSI}% − 2pt jitter margin). See docs/mutation-testing.md."
+              fi
+              echo ""
+              echo "Escaped-mutant detail: \`infection.html\` in the run artifacts."
+            else
+              echo "> No infection.json produced — Infection failed before the metrics phase (initial test run or config error). Check the job log."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Infection reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: infection-report-${{ github.run_id }}
+          path: backend/build/infection/
+          if-no-files-found: warn
+          retention-days: 30

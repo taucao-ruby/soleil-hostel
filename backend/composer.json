@@ -81,11 +81,11 @@
         "lint": "vendor/bin/pint --test",
         "mutation": [
             "Composer\\Config::disableProcessTimeout",
-            "vendor/bin/infection --filter=app/Enums/BookingStatus.php,app/Enums/DepositStatus.php,app/Booking/CancellationPolicy.php,app/Models/Booking.php,app/Models/Deposit.php,app/Services/CancellationService.php,app/Services/CreateBookingService.php --threads=4 --no-progress"
+            "vendor/bin/infection --filter=app/Enums/BookingStatus.php,app/Enums/DepositStatus.php,app/Booking/CancellationPolicy.php,app/Models/Booking.php,app/Models/Deposit.php,app/Services/CancellationService.php,app/Services/CreateBookingService.php,app/Services/RoomAvailabilityService.php,app/Repositories/EloquentBookingRepository.php --threads=4 --no-progress"
         ],
         "mutation:phpdbg": [
             "Composer\\Config::disableProcessTimeout",
-            "phpdbg -qrr -d memory_limit=-1 vendor/infection/infection/bin/infection --filter=app/Enums/BookingStatus.php,app/Enums/DepositStatus.php,app/Booking/CancellationPolicy.php,app/Models/Booking.php,app/Models/Deposit.php,app/Services/CancellationService.php,app/Services/CreateBookingService.php --threads=1 --no-progress"
+            "phpdbg -qrr -d memory_limit=-1 vendor/infection/infection/bin/infection --filter=app/Enums/BookingStatus.php,app/Enums/DepositStatus.php,app/Booking/CancellationPolicy.php,app/Models/Booking.php,app/Models/Deposit.php,app/Services/CancellationService.php,app/Services/CreateBookingService.php,app/Services/RoomAvailabilityService.php,app/Repositories/EloquentBookingRepository.php --threads=1 --no-progress"
         ]
     },
     "extra": {

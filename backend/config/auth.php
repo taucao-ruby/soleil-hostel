@@ -130,11 +130,19 @@ return [
     |     pessimistic lock (AUTH-004) — two concurrent resends cannot
     |     both bypass this window.
     | otp_ttl_minutes: how long an issued code remains redeemable.
+    | otp_pepper: server-side secret key for the keyed code hash
+    |     (hash_hmac sha256). Deliberately has NO default: when unset the
+    |     service fails closed (refuses to issue/verify) rather than fall
+    |     back to an unkeyed hash that a DB-read attacker could reverse
+    |     over the 10^6 code keyspace (F-82). Must be a high-entropy
+    |     secret held outside the database.
     |
     */
 
     'otp_cooldown_seconds' => env('OTP_COOLDOWN_SECONDS', 60),
 
     'otp_ttl_minutes' => env('OTP_TTL_MINUTES', 15),
+
+    'otp_pepper' => env('OTP_PEPPER'),
 
 ];

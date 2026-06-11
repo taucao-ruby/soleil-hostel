@@ -47,6 +47,7 @@
         <env name="DB_USERNAME" value="soleil"/>
         <env name="DB_PASSWORD" value="secret"/>
         <env name="MAIL_MAILER" value="array"/>
+        <env name="OTP_PEPPER" value="phpunit-test-otp-pepper-not-a-production-secret"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

@@ -225,4 +225,83 @@ class CheckConstraintTest extends TestCase
             'Exactly one booking must survive for the contested room/date range'
         );
     }
+
+    // ===== money CHECK constraints (F-81 / P0-2, migration 2026_06_11_000001) =====
+
+    #[\PHPUnit\Framework\Attributes\Test]
+    public function test_money_check_constraints_have_correct_definitions(): void
+    {
+        if (! $this->isPgsql()) {
+            $this->markTestSkipped('CHECK constraints require PostgreSQL');
+        }
+
+        // Catalog-normalized definitions, verified against the live catalog.
+        // NULL-tolerant where the column is nullable (NULL = "not applicable").
+        $expected = [
+            ['bookings', 'chk_bookings_amount_nonneg', 'CHECK (((amount IS NULL) OR (amount >= 0)))'],
+            ['bookings', 'chk_bookings_refund_amount_nonneg', 'CHECK (((refund_amount IS NULL) OR (refund_amount >= 0)))'],
+            ['bookings', 'chk_bookings_deposit_amount_nonneg', 'CHECK (((deposit_amount IS NULL) OR (deposit_amount >= 0)))'],
+            ['bookings', 'chk_bookings_amount_capturable_nonneg', 'CHECK ((amount_capturable >= 0))'],
+            ['bookings', 'chk_bookings_amount_received_nonneg', 'CHECK ((amount_received >= 0))'],
+            ['bookings', 'chk_bookings_refund_le_amount', 'CHECK (((refund_amount IS NULL) OR (amount IS NULL) OR (refund_amount <= amount)))'],
+            ['bookings', 'chk_bookings_deposit_le_amount', 'CHECK (((deposit_amount IS NULL) OR (amount IS NULL) OR (deposit_amount <= amount)))'],
+            ['deposit_events', 'chk_deposit_events_refund_amount_nonneg', 'CHECK (((refund_amount IS NULL) OR (refund_amount >= 0)))'],
+            ['service_recovery_cases', 'chk_src_refund_amount_nonneg', 'CHECK (((refund_amount IS NULL) OR (refund_amount >= 0)))'],
+            ['service_recovery_cases', 'chk_src_voucher_amount_nonneg', 'CHECK (((voucher_amount IS NULL) OR (voucher_amount >= 0)))'],
+            ['service_recovery_cases', 'chk_src_cost_delta_absorbed_nonneg', 'CHECK (((cost_delta_absorbed IS NULL) OR (cost_delta_absorbed >= 0)))'],
+            ['stripe_refund_events', 'chk_stripe_refund_events_amount_refunded_nonneg', 'CHECK ((amount_refunded >= 0))'],
+        ];
+
+        foreach ($expected as [$table, $constraint, $definition]) {
+            $this->assertSame(
+                $definition,
+                $this->constraintDef($table, $constraint),
+                "{$table}.{$constraint} is missing or has the wrong definition"
+            );
+        }
+
+        // [OUT OF SCOPE — UNPROVEN, needs PaymentStatus review, see F-81]:
+        // intentionally NO cross-column capture-state constraints
+        // (amount_received vs amount_capturable vs PaymentStatus phases).
+        $this->assertNull(
+            $this->constraintDef('bookings', 'chk_bookings_received_le_capturable'),
+            'Capture-state cross-column constraint must not exist until the PaymentStatus review lands'
+        );
+    }
+
+    #[\PHPUnit\Framework\Attributes\Test]
+    public function test_negative_booking_amount_rejected_at_db_layer(): void
+    {
+        if (! $this->isPgsql()) {
+            $this->markTestSkipped('CHECK constraints require PostgreSQL');
+        }
+
+        $room = Room::factory()->create();
+
+        $this->expectException(QueryException::class);
+
+        DB::insert(
+            'INSERT INTO bookings (room_id, check_in, check_out, guest_name, guest_email, status, amount, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())',
+            [$room->id, now()->addDays(20)->toDateString(), now()->addDays(22)->toDateString(), 'Guest', 'g@example.com', 'pending', -1]
+        );
+    }
+
+    #[\PHPUnit\Framework\Attributes\Test]
+    public function test_refund_exceeding_amount_rejected_at_db_layer(): void
+    {
+        if (! $this->isPgsql()) {
+            $this->markTestSkipped('CHECK constraints require PostgreSQL');
+        }
+
+        $room = Room::factory()->create();
+
+        $this->expectException(QueryException::class);
+
+        DB::insert(
+            'INSERT INTO bookings (room_id, check_in, check_out, guest_name, guest_email, status, amount, refund_amount, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())',
+            [$room->id, now()->addDays(30)->toDateString(), now()->addDays(32)->toDateString(), 'Guest', 'g@example.com', 'pending', 1000, 1001]
+        );
+    }
 }

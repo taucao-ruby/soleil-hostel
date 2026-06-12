@@ -64,6 +64,17 @@ Schedule::job(new ProcessPaymentCancellationOutbox)
     ->onOneServer()
     ->name('process-payment-cancellation-outbox');
 
+// F-85: daily money-drift detection (alert, don't block) at off-peak 04:10,
+// clear of horizon:clear (02:00) and ai:eval (03:00). Read-only — queries the
+// reconciliation_refund_drift view and emits reconciliation_drift.* log
+// metrics; the command always exits 0 so a drift finding (or even a checker
+// failure) can never break the scheduler chain.
+Schedule::command('reconciliation:check-drift')
+    ->dailyAt('04:10')
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->name('reconciliation-check-drift');
+
 // Horizon monitoring: Persist queue metrics for dashboard (every 5 minutes)
 Schedule::command('horizon:snapshot')
     ->everyFiveMinutes()

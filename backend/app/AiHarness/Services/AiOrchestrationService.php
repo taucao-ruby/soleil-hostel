@@ -17,6 +17,7 @@ use App\AiHarness\Providers\RawModelResponse;
 use App\Models\AiProposal;
 use App\Models\Room;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 /**
  * L0 — AI Orchestration Service.
@@ -270,25 +271,49 @@ class AiOrchestrationService
                 continue;
             }
 
-            // Store proposal in cache for confirmation flow (30 min TTL).
-            // F-06: persist proposer_user_id inside the cache envelope so the
-            // confirmation controller can reject cross-user decide() attempts.
-            // The field is stripped from the client-facing proposal array below.
-            Cache::put(
-                "ai_proposal:{$proposal->proposalHash}",
-                $proposal->toArray() + ['proposer_user_id' => $proposerUserId],
-                self::PROPOSAL_TTL_SECONDS,
-            );
-
-            // AI-005 / AI-006: durable record used at confirm time to
-            // revalidate room availability, price, and expiry, and to
-            // gate confirm on a prior shown event.
-            $this->persistDurableProposal($proposal, $proposerUserId);
+            $this->storeProposal($proposal, $proposerUserId);
 
             $validatedProposals[] = $proposal->toArray();
         }
 
         return $validatedProposals;
+    }
+
+    /**
+     * Store an accepted proposal: durable row FIRST, cache envelope second.
+     *
+     * F-86 ordering contract — the ai_proposals row is the source of truth
+     * the confirmation flow revalidates against (and, since the cold-cache
+     * fallback in ProposalConfirmationController, the authority on whether a
+     * proposal exists at all). Writing the cache first opened two windows:
+     *
+     *  1. decide() could consume an envelope whose durable row did not exist
+     *     yet → spurious 404 on confirm.
+     *  2. a failed durable write left a confirmable-looking cache envelope
+     *     with no revalidation surface behind it.
+     *
+     * DB::afterCommit defers the cache populate until the surrounding
+     * transaction (if any) commits; with no active transaction the callback
+     * runs immediately. Regression net: ProposalStoreOrderingTest.
+     *
+     * F-06: proposer_user_id rides inside the cache envelope so the
+     * confirmation controller can reject cross-user decide() attempts; the
+     * field is stripped from the client-facing proposal array.
+     */
+    public function storeProposal(BookingActionProposal $proposal, int $proposerUserId): void
+    {
+        // AI-005 / AI-006: durable record used at confirm time to revalidate
+        // room availability, price, and expiry, and to gate confirm on a
+        // prior shown event.
+        $this->persistDurableProposal($proposal, $proposerUserId);
+
+        DB::afterCommit(function () use ($proposal, $proposerUserId): void {
+            Cache::put(
+                "ai_proposal:{$proposal->proposalHash}",
+                $proposal->toArray() + ['proposer_user_id' => $proposerUserId],
+                self::PROPOSAL_TTL_SECONDS,
+            );
+        });
     }
 
     /**

@@ -32,6 +32,7 @@ This document captures important architectural decisions made during the develop
 | [ADR-011](#adr-011-form-request-validation-classes)                       | Form Request Validation Classes               | Accepted | Jan 2026  |
 | [ADR-012](#adr-012-url-path-api-versioning-apiv1)                         | URL Path API Versioning (/api/v1/)            | Accepted | Dec 2025  |
 | [ADR-013](#adr-013-multi-location-architecture)                           | Multi-Location Architecture                   | Accepted | Feb 2026  |
+| [ADR-014](DECISION_LEDGER_IMMUTABILITY_FK.md)                              | Ledger Immutability Triggers + FK Semantics (standalone memo) | Accepted | Jun 2026  |
 
 ---
 

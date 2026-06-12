@@ -1,5 +1,14 @@
 # WORKLOG — Soleil Hostel (Append-only)
 
+## 2026-06-12
+
+- Change: **P1-5 index prune — data-gate executed, DEFERRED by design.** No code/migration change; ledger updates only (this entry + F-84 status). The task is gated on a prod `pg_stat_user_indexes` snapshot (≥14 days, spanning month-end); that input does not exist on this machine, so no DROP was recommended or staged.
+- Catalog rebuild (live local chain — `soleil_test` after full migration run): 25 indexes on `bookings`. All six F-84 candidates present (`bookings_room_id_index`, `bookings_status_index`, `bookings_user_id_index`, `idx_bookings_deleted_at`, `idx_bookings_location_id`, `idx_bookings_active_overlap`). Constraint-backing confirmed via `pg_constraint`: `bookings_pkey` (contype `p`) and `no_overlapping_bookings` (contype `x`, GiST) — never prunable. Every candidate is a strict prefix of (or functionally overlapped by) a surviving composite; the status family alone has 5 indexes (`bookings_status_index` ⊂ `status_check_in_check_out` / `status_check_out` / `idx_bookings_status_period` / `idx_bookings_cancellation`).
+- Correction to the C-3 analysis input: `bookings_room_id_check_in_check_out_index` is NOT gone on the current migration chain — `2025_12_18_optimize_booking_indexes` dropped it as a duplicate, but `2026_02_11_000000_reconcile_legacy_index_ordering.php:32` deliberately re-creates it (documented in DB_FACTS §"Legacy index reconciliation (intentional, idempotent)"). The other two C-3 indexes (`idx_room_dates_overlap`, `idx_room_active_bookings`) are confirmed absent. Whether prod has it depends on whether prod ran 2026_02_11 — the prod snapshot will settle it.
+- Why deferred: prod DB is reachable only via `secrets.PROD_DB_HOST` (`.github/workflows/deploy.yml:400`); the local container holds only `soleil_test` + 8 ParaTest shards (no prod/dev DB). Local `pg_stat_user_indexes` is test-runner traffic (16–32 kB indexes) and may not be cited for usage decisions per the task's abort condition.
+- Next: run on prod and re-invoke P1-5 with output pasted — `SELECT now(), stats_reset FROM pg_stat_database WHERE datname = current_database();` (window start), `pg_stat_user_indexes WHERE relname = 'bookings'`, `pg_indexes WHERE tablename = 'bookings'`.
+- Scope: docs-only (WORKLOG + FINDINGS_BACKLOG F-84 status cell). No production symbol touched — soleil-ai-review-engine impact/detect N/A.
+
 ## 2026-06-04
 
 - Change: **T-3 — v1 overlap matrix parametrization** — new test-only file `backend/tests/Feature/Booking/BookingOverlapMatrixTest.php`. Parametrises the overlap / double-book / half-open / cancel-frees-room / concurrent matrix over a `{endpoint, version}` data provider so the SAME scenarios run against legacy `/api/bookings` and versioned `/api/v1/bookings` from one implementation. Tagged `#[Group('booking')]` to inherit T-8 group #3.

@@ -223,6 +223,26 @@ return [
 
         /*
         |--------------------------------------------------------------------------
+        | Money Drift Tolerance (cents) — F-85
+        |--------------------------------------------------------------------------
+        |
+        | Absolute difference (in cents) below which the
+        | reconciliation_refund_drift view treats a money mismatch as noise
+        | rather than drift. All amounts in this schema are integer cents, so
+        | the default of 1 cent is the smallest representable money unit
+        | (">0.01 currency unit").
+        |
+        | NOTE: the value is baked into the view definition when the
+        | 2026_06_12_000003 migration runs. Changing it later requires
+        | re-running that migration (php artisan migrate:rollback --path=...
+        | then migrate), because a SQL view cannot read Laravel config.
+        | Default: 1
+        |
+        */
+        'drift_tolerance_cents' => (int) env('BOOKING_RECONCILE_DRIFT_TOLERANCE_CENTS', 1),
+
+        /*
+        |--------------------------------------------------------------------------
         | Stripe PaymentIntent Cancellation Outbox (PAY-03)
         |--------------------------------------------------------------------------
         |

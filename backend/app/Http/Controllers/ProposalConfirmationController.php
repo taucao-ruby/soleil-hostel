@@ -49,8 +49,16 @@ class ProposalConfirmationController extends Controller
         $userId = (int) $request->user()->id;
         $decision = $request->validated('decision');
 
-        // Retrieve cached proposal
+        // Retrieve cached proposal (fast path). F-86: the durable
+        // ai_proposals row — not the cache — is authoritative for whether a
+        // proposal exists. On a cache miss (eviction, Redis restart, TTL
+        // race) rebuild the envelope from the durable row before concluding
+        // the proposal is gone.
         $proposalData = Cache::get("ai_proposal:{$hash}");
+        if ($proposalData === null) {
+            $proposalData = $this->envelopeFromDurableRow($hash, $userId);
+        }
+
         if ($proposalData === null) {
             return ApiResponse::notFound('Proposal not found or expired.');
         }
@@ -89,11 +97,60 @@ class ProposalConfirmationController extends Controller
         return $this->handleConfirm($userId, $hash, $actionType, $proposalData, $now);
     }
 
+    /**
+     * F-86: rebuild the decision envelope from the durable ai_proposals row
+     * when the cache misses. The WHERE clauses reproduce every guarantee the
+     * cache fast path provided implicitly:
+     *
+     *  - user_id = decider   → F-06 proposer binding (404, not 403, on any
+     *                          mismatch — same anti-probing shape as the
+     *                          cache path)
+     *  - decision IS NULL    → decided proposals stay consumed; no replay
+     *  - expires_at > now()  → equivalent of the cache TTL (PROPOSAL_TTL_SECONDS
+     *                          and expires_at are written from the same clock)
+     *
+     * No cache repopulation happens here: every decide() outcome forgets the
+     * key, so a put would be dead within the same request. The durable row IS
+     * the read-through source.
+     *
+     * @return array{action_type: string, proposed_params: array<string, mixed>, proposer_user_id: int}|null
+     */
+    private function envelopeFromDurableRow(string $hash, int $userId): ?array
+    {
+        $proposal = AiProposal::query()
+            ->where('proposal_hash', $hash)
+            ->where('user_id', $userId)
+            ->whereNull('decision')
+            ->where('expires_at', '>', now())
+            ->first();
+
+        if ($proposal === null) {
+            return null;
+        }
+
+        return [
+            'action_type' => $proposal->action_type,
+            'proposed_params' => $proposal->proposed_params,
+            'proposer_user_id' => (int) $proposal->user_id,
+        ];
+    }
+
     private function handleDecline(int $userId, string $hash, string $actionType, string $now): JsonResponse
     {
         $this->recordEvent($userId, $hash, $actionType, 'declined', null, $now);
 
         Cache::forget("ai_proposal:{$hash}");
+
+        // F-86: keep the durable row in lockstep with the decision. Without
+        // this, a declined proposal whose cache entry is gone would remain
+        // decidable through the DB-authoritative fallback (replay window).
+        // Cache-only proposals (no durable row) make this a no-op 0-row
+        // update, preserving the legacy decline path.
+        AiProposal::query()
+            ->where('proposal_hash', $hash)
+            ->where('user_id', $userId)
+            ->whereNull('decision')
+            ->update(['decision' => 'declined', 'decided_at' => now()]);
 
         return ApiResponse::success([
             'proposal_hash' => $hash,

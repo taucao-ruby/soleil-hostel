@@ -32,6 +32,10 @@ class EmailVerificationTest extends TestCase
     /**
      * Create a verification code record directly in the database
      * and return the raw plaintext code.
+     *
+     * Mirrors EmailVerificationCodeService::hashCode(): keyed HMAC with the
+     * OTP pepper (F-82). The pepper comes from the test env (phpunit.xml
+     * sets OTP_PEPPER) — never an unkeyed hash('sha256', ...).
      */
     private function createCodeForUser(User $user): string
     {
@@ -39,7 +43,7 @@ class EmailVerificationTest extends TestCase
 
         EmailVerificationCode::create([
             'user_id' => $user->id,
-            'code_hash' => hash('sha256', $rawCode),
+            'code_hash' => hash_hmac('sha256', $rawCode, (string) config('auth.otp_pepper')),
             'expires_at' => now()->addMinutes(15),
             'attempts' => 0,
             'max_attempts' => 5,
@@ -631,6 +635,62 @@ class EmailVerificationTest extends TestCase
             'EmailVerificationCodeNotification must implement ShouldQueue for production queue delivery. '.
             'Ensure QUEUE_CONNECTION=sync for local dev or run php artisan queue:work.'
         );
+    }
+
+    // ========== OTP PEPPER FAIL-CLOSED TESTS (F-82) ==========
+
+    /** @test */
+    public function issue_fails_closed_when_otp_pepper_is_unset()
+    {
+        Notification::fake();
+
+        config(['auth.otp_pepper' => null]);
+
+        $user = User::factory()->unverified()->create();
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('auth.otp_pepper is not configured');
+
+        app(\App\Services\EmailVerificationCodeService::class)->issue($user);
+    }
+
+    /** @test */
+    public function verify_fails_closed_when_otp_pepper_is_unset()
+    {
+        // Code is created while the pepper IS configured (test env)...
+        $user = User::factory()->unverified()->create();
+        $rawCode = $this->createCodeForUser($user);
+
+        // ...then the pepper disappears (misconfigured deploy). Verification
+        // must refuse outright — not fall back to an unkeyed comparison.
+        config(['auth.otp_pepper' => '']);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('auth.otp_pepper is not configured');
+
+        app(\App\Services\EmailVerificationCodeService::class)->verify($user, $rawCode);
+    }
+
+    /** @test */
+    public function issued_code_hash_is_peppered_hmac_not_plain_sha256()
+    {
+        Notification::fake();
+
+        $user = User::factory()->unverified()->create();
+
+        app(\App\Services\EmailVerificationCodeService::class)->issue($user);
+
+        $record = EmailVerificationCode::where('user_id', $user->id)->firstOrFail();
+
+        // A plain (unkeyed) sha256 of any 6-digit code must never match the
+        // stored hash — that would mean the pepper is not being applied.
+        for ($code = 0; $code < 1000000; $code += 111111) {
+            $this->assertNotSame(
+                hash('sha256', str_pad((string) $code, 6, '0', STR_PAD_LEFT)),
+                $record->code_hash
+            );
+        }
+        $this->assertSame(64, strlen($record->code_hash));
     }
 
     // ========== UNAUTHENTICATED ACCESS TESTS ==========

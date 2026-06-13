@@ -11,6 +11,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 class EmailVerificationCodeService
 {
@@ -66,7 +67,7 @@ class EmailVerificationCodeService
             $now = $this->nowUtc();
             EmailVerificationCode::create([
                 'user_id' => $user->id,
-                'code_hash' => hash('sha256', $rawCode),
+                'code_hash' => $this->hashCode($rawCode),
                 'expires_at' => $now->addMinutes($ttlMinutes),
                 'attempts' => 0,
                 'max_attempts' => self::MAX_ATTEMPTS,
@@ -123,7 +124,7 @@ class EmailVerificationCodeService
             }
 
             // Hash-compare
-            $submittedHash = hash('sha256', $rawCode);
+            $submittedHash = $this->hashCode($rawCode);
             if (! hash_equals($record->code_hash, $submittedHash)) {
                 $remaining = $record->max_attempts - $record->attempts;
 
@@ -185,5 +186,31 @@ class EmailVerificationCodeService
     private function generateCode(): string
     {
         return str_pad((string) random_int(0, 999999), self::CODE_LENGTH, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Keyed hash of a verification code (F-82).
+     *
+     * The 6-digit keyspace (10^6) makes an unkeyed sha256 trivially
+     * reversible for anyone with read access to the DB, so the hash is
+     * keyed with a server-side pepper that never touches the database.
+     *
+     * FAIL CLOSED: a missing/empty pepper throws instead of degrading to
+     * an unkeyed hash — a misconfigured deployment must not silently
+     * persist reversible code hashes.
+     */
+    private function hashCode(string $rawCode): string
+    {
+        $pepper = config('auth.otp_pepper');
+
+        if (! is_string($pepper) || $pepper === '') {
+            throw new RuntimeException(
+                'auth.otp_pepper is not configured. Set the OTP_PEPPER environment '
+                .'variable to a high-entropy secret; OTP issuance/verification is '
+                .'disabled until it is.'
+            );
+        }
+
+        return hash_hmac('sha256', $rawCode, $pepper);
     }
 }

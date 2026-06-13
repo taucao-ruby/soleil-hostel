@@ -19,8 +19,8 @@ Source of truth for migrations: `backend/database/migrations/*`.
 - `email_verification_codes`: OTP email-verification codes (added 2026-04-03, migration `2026_04_03_084257`). Stores SHA-256 `code_hash` (never raw code), `attempts`/`max_attempts` (brute-force guard), `expires_at`, `consumed_at` (NULL = unused), `last_sent_at`. FK `user_id → users.id` CASCADE. Indexes: `idx_evc_user_id`, `idx_evc_expires_consumed`.
 
 Audit & integrity tables:
-- `admin_audit_logs`: Append-only audit trail for sensitive admin operations (added 2026-03-12, migration `2026_03_12_000001`; actor snapshot columns added 2026-05-01 via `2026_05_01_000003`). Columns: `actor_id` FK→`users` SET NULL, `actor_email`/`actor_role`/`actor_display_name` (denormalized snapshot to survive user deletion), `action`, `resource_type`/`resource_id`, `metadata` JSON, `ip_address`, `created_at`. Indexes: `(action)`, `(resource_type, resource_id)`, `(actor_id, created_at)`. **DB user must NOT be granted UPDATE/DELETE on this table in production.**
-- `deposit_events`: Append-only audit trail for deposit lifecycle transitions (CONC-005, added 2026-05-02, migration `2026_05_02_000002`). Columns: `booking_id` FK→`bookings` CASCADE, `from_status`/`to_status`, `refund_percent` (0..100), `refund_amount` (cents, nullable), `reason`, `actor_id` FK→`users` SET NULL, `actor_email`/`actor_role`, `metadata` JSON, `created_at`. **No `updated_at`, no UPDATE/DELETE path** — every `Deposit::transitionTo()` is a new row. CHECKs (pgsql): `chk_deposit_events_from_status`, `chk_deposit_events_to_status`, `chk_deposit_events_refund_percent BETWEEN 0 AND 100`.
+- `admin_audit_logs`: Append-only audit trail for sensitive admin operations (added 2026-03-12, migration `2026_03_12_000001`; actor snapshot columns added 2026-05-01 via `2026_05_01_000003`). Columns: `actor_id` FK→`users` SET NULL, `actor_email`/`actor_role`/`actor_display_name` (denormalized snapshot to survive user deletion), `action`, `resource_type`/`resource_id`, `metadata` JSON, `ip_address`, `created_at`. Indexes: `(action)`, `(resource_type, resource_id)`, `(actor_id, created_at)`. **DB user must NOT be granted UPDATE/DELETE on this table in production.** Append-only is also trigger-enforced since 2026-06-12 (`trg_admin_audit_logs_append_only`, migration `2026_06_12_000002`): UPDATE/DELETE raise SQLSTATE `P0001` except the sanctioned `actor_id → NULL`-only update fired by user deletion.
+- `deposit_events`: Append-only audit trail for deposit lifecycle transitions (CONC-005, added 2026-05-02, migration `2026_05_02_000002`). Columns: `booking_id` FK→`bookings` **RESTRICT** (CASCADE until 2026-06-12; swapped by `2026_06_12_000001` per F-89 so booking hard-delete can no longer erase the deposit ledger), `from_status`/`to_status`, `refund_percent` (0..100), `refund_amount` (cents, nullable), `reason`, `actor_id` FK→`users` SET NULL, `actor_email`/`actor_role`, `metadata` JSON, `created_at`. **No `updated_at`, no UPDATE/DELETE path** — every `Deposit::transitionTo()` is a new row; trigger-enforced since 2026-06-12 (`trg_deposit_events_append_only`, `2026_06_12_000002`): UPDATE/DELETE raise SQLSTATE `P0001` except the `actor_id → NULL`-only update. CHECKs (pgsql): `chk_deposit_events_from_status`, `chk_deposit_events_to_status`, `chk_deposit_events_refund_percent BETWEEN 0 AND 100`.
 
 Stripe integration tables:
 - `stripe_webhook_events`: Stripe webhook ingestion ledger (added 2026-04-28, migration `2026_04_28_000001`). Columns: `stripe_event_id` UNIQUE, `type`, `status` (enum `processing`/`processed`/`failed`), `payload` JSONB, `processed_at`. Used to dedupe webhook deliveries at the event level.
@@ -81,15 +81,15 @@ Other framework tables exist (`sessions`, `cache`, `cache_locks`, `jobs`, `job_b
   - [APP] `StripeWebhookController::handleChargeRefunded` sources `amount_refunded` from `charge.amount_refunded` (cumulative), not `refunds[0].amount` — correctly handles partial-then-full refund sequences.
 - AI proposal durability:
   - [DB] `ai_proposals.proposal_hash` UNIQUE (added 2026-05-01) — durable contract that survives Cache TTL; `context_version` enables drift detection at confirm time.
-  - [DB] `ai_proposal_events.user_id` FK→`users` is **SET NULL** (was CASCADE before 2026-04-29) so the audit trail is preserved across user deletion. Denormalized actor snapshot: `actor_email`, `actor_role`, `actor_display_name`.
+  - [DB] `ai_proposal_events.user_id` FK→`users` is **SET NULL** (was CASCADE before 2026-04-29) so the audit trail is preserved across user deletion. Denormalized actor snapshot: `actor_email`, `actor_role`, `actor_display_name`. Append-only trigger-enforced since 2026-06-12 (`trg_ai_proposal_events_append_only`, `2026_06_12_000002`; sanctioned mutation: only `user_id → NULL`).
 - Admin audit log integrity:
   - [DB] `admin_audit_logs.actor_id` FK→`users` SET NULL.
   - [DB] **immutable actor snapshot** (added 2026-05-01, `2026_05_01_000003`): `actor_email`, `actor_role`, `actor_display_name`.
-  - [DB user] **MUST NOT** have UPDATE/DELETE on `admin_audit_logs` in production. Append-only by convention; integrity depends on this DB-grant constraint.
+  - [DB user] **MUST NOT** have UPDATE/DELETE on `admin_audit_logs` in production. Append-only is trigger-enforced since 2026-06-12 (`2026_06_12_000002`); the grant restriction remains as defense in depth.
 - Deposit / settlement semantics:
   - [APP] `deposit_amount` is unearned revenue / liability until stay fulfillment; not recognized revenue at collection time.
   - [DB/APP] `settlement_status` is operational financial tracking only; not authoritative accounting / GL.
-  - [DB] `deposit_events` (added 2026-05-02) is the append-only ledger for every deposit-status transition (CONC-005). One row per `Deposit::transitionTo()` call. **No `updated_at`.**
+  - [DB] `deposit_events` (added 2026-05-02) is the append-only ledger for every deposit-status transition (CONC-005). One row per `Deposit::transitionTo()` call. **No `updated_at`.** `booking_id` FK is RESTRICT and the table carries an append-only trigger (both 2026-06-12; see §3).
 
 ## 3) PostgreSQL Guarantees (defense in depth)
 
@@ -116,6 +116,10 @@ WHERE (status IN ('pending', 'confirmed') AND deleted_at IS NULL);
 - PostgreSQL trigger safety net for booking location denormalization:
   - Function: `set_booking_location()`
   - Trigger: `trg_booking_set_location` on insert/update of `bookings.room_id`.
+- PostgreSQL append-only triggers on the audit ledgers (added 2026-06-12, migration `2026_06_12_000002`, per `docs/DECISION_LEDGER_IMMUTABILITY_FK.md`):
+  - Function: `enforce_ledger_append_only()` — rejects every UPDATE/DELETE with SQLSTATE `P0001` unless only the actor-reference column (`TG_ARGV[0]`) changes and its new value is NULL (exactly the row image `ON DELETE SET NULL` produces, so user hard-delete still works).
+  - Triggers: `trg_deposit_events_append_only` (`actor_id`), `trg_admin_audit_logs_append_only` (`actor_id`), `trg_ai_proposal_events_append_only` (`user_id`).
+  - Predicate guard: `tests/Feature/Database/LedgerImmutabilityTriggerTest.php` pins the live definitions.
 - SQLite/test fallback:
   - Exclusion constraints and PostgreSQL triggers are not available.
   - Migration `2026_02_09_000000_add_foreign_key_constraints.php` intentionally skips FK adds when default DB is SQLite.

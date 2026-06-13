@@ -5,5 +5,11 @@
     "policy": "Renew quarterly. Past-expiry entries are treated as new findings and fail the gate.",
     "introduced_in": "Batch 4 / 3C"
   },
-  "exceptions": {}
+  "exceptions": {
+    "GHSA-gv7w-rqvm-qjhr": {
+      "severity": "high",
+      "justification": "esbuild 0.25.12 (transitive via vite 6.4.2, dev-only toolchain). Advisory targets esbuild's Deno-specific binary-download shim, which fetches the platform binary via NPM_CONFIG_REGISTRY without integrity verification. This repo is npm/pnpm + Node only (no Deno anywhere in the toolchain), so esbuild resolves its binary through the standard @esbuild/* npm packages and the vulnerable Deno install path is never executed. No non-breaking upgrade exists: vite 6.x and 7.x both pin esbuild ^0.25.0 (cannot reach patched >=0.28.1); only a vite 8 major bump (cascading @vitejs/plugin-react 4.x->6.x) would move it. Time-boxed pending a vite release that bumps its esbuild range to ^0.28.",
+      "expiry": "2026-09-11"
+    }
+  }
 }

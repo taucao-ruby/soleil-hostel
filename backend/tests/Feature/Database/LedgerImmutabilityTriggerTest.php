@@ -374,7 +374,7 @@ class LedgerImmutabilityTriggerTest extends TestCase
         );
 
         $this->assertNotNull($fn, 'enforce_ledger_append_only() is missing');
-        $this->assertStringContainsString("(to_jsonb(NEW) ->> actor_col) IS NULL", $fn->def);
+        $this->assertStringContainsString('(to_jsonb(NEW) ->> actor_col) IS NULL', $fn->def);
         $this->assertStringContainsString('(to_jsonb(NEW) - actor_col) = (to_jsonb(OLD) - actor_col)', $fn->def);
     }
 }

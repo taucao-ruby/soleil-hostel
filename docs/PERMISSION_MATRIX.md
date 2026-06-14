@@ -29,7 +29,7 @@ Quick-reference for UI conditional rendering. Derived from Tables A–E below.
 | Guest Dashboard (`/dashboard`) | ✅ | ✅ | ❌ (sees Admin Dashboard) |
 | Admin Dashboard (`/dashboard` for admin) | ❌ | ❌ | ✅ |
 | Admin Bookings (`/admin/bookings`) | ❌ | ✅ read-only | ✅ full |
-| Admin Trashed Bookings (`/admin/bookings/trashed`) | ❌ | ❌ | ✅ |
+| Admin Trashed Bookings (`/admin/bookings/trashed`) | ❌ | ✅ read-only | ✅ full |
 | Restore Booking | ❌ | ❌ | ✅ |
 | Force-Delete Booking | ❌ | ❌ | ✅ |
 | Admin Customers (`/admin/customers`) | ❌ | ✅ read-only | ✅ |
@@ -122,7 +122,7 @@ Owner: Security Lead (see [CONTROL_PLANE_OWNERSHIP.md](./agents/CONTROL_PLANE_OW
 | booking:cancel-own | DENIED-EXPLICIT | CURRENT | CURRENT (UNRESOLVED INTENT) | CURRENT | BR-1, BR-2, BR-3 | OPUS-03R |
 | booking:cancel-any | DENIED-EXPLICIT | DENIED-SIDE-EFFECT | DENIED-SIDE-EFFECT | CURRENT | BR-1 | OPUS-03R |
 | booking:view-all | DENIED-EXPLICIT | DENIED-SIDE-EFFECT | ROUTE-ACCESSIBLE | CURRENT | — | OPUS-VERIFY-01 |
-| booking:view-trashed | DENIED-EXPLICIT | DENIED-SIDE-EFFECT | DENIED-SIDE-EFFECT | CURRENT | — | OPUS-VERIFY-01 |
+| booking:view-trashed | DENIED-EXPLICIT | DENIED-SIDE-EFFECT | ROUTE-ACCESSIBLE | CURRENT | — | OPUS-VERIFY-01 |
 | booking:restore | DENIED-EXPLICIT | DENIED-SIDE-EFFECT | DENIED-SIDE-EFFECT | CURRENT | — | OPUS-VERIFY-01 |
 | booking:force-delete | DENIED-EXPLICIT | DENIED-SIDE-EFFECT | DENIED-SIDE-EFFECT | CURRENT | — | OPUS-VERIFY-01 |
 | contact-message:view | DENIED-EXPLICIT | DENIED-SIDE-EFFECT | DENIED-SIDE-EFFECT | CURRENT | Admin-only guest communications access | RBAC-001 |

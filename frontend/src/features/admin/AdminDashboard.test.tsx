@@ -197,7 +197,8 @@ describe('AdminDashboard', () => {
     expect(screen.getByRole('tab', { name: 'Liên hệ' })).toBeInTheDocument()
   })
 
-  it('renders only the bookings tab for moderator users', async () => {
+  it('gives moderators a read-only trashed tab but no contacts tab or actions', async () => {
+    const user = userEvent.setup()
     mockUseAuth.mockReturnValue({
       user: { id: 2, name: 'Moderator', email: 'moderator@example.com', role: 'moderator' },
     })
@@ -205,11 +206,21 @@ describe('AdminDashboard', () => {
     renderDashboard()
 
     expect(await screen.findByText('ĐP #101')).toBeInTheDocument()
+    // Moderator may view trashed bookings (backend role:moderator on the trashed route)
+    // but contact messages stay admin-only.
     expect(screen.getByRole('tab', { name: 'Đặt phòng' })).toBeInTheDocument()
-    expect(screen.queryByRole('tab', { name: 'Đã xóa' })).not.toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Đã xóa' })).toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Liên hệ' })).not.toBeInTheDocument()
-    expect(mockFetchTrashedBookings).not.toHaveBeenCalled()
+
+    await waitFor(() => expect(mockFetchTrashedBookings).toHaveBeenCalled())
     expect(mockFetchContactMessages).not.toHaveBeenCalled()
+
+    // The trashed view is read-only for moderators: no restore / force-delete actions.
+    await user.click(screen.getByRole('tab', { name: 'Đã xóa' }))
+
+    expect(await screen.findByText('Pham Van D')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Khôi phục' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Xóa vĩnh viễn' })).not.toBeInTheDocument()
   })
 
   it('supports booking pagination in the recent bookings tab', async () => {

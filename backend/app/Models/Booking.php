@@ -512,7 +512,10 @@ class Booking extends Model
      */
     public function getNightsAttribute(): int
     {
-        return $this->check_out->diffInDays($this->check_in);
+        // check_in -> check_out yields a positive count. Carbon 3's diffInDays()
+        // is signed by default (unlike Carbon 2), so the operands must be ordered
+        // earliest-first or nights come back negative. Matches CreateBookingService.
+        return $this->check_in->diffInDays($this->check_out);
     }
 
     /**

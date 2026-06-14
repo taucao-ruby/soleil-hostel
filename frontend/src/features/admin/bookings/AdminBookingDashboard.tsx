@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import type { BookingDetailRaw, BookingStatus } from '@/shared/types/booking.types'
 import AdminBookingTable from './AdminBookingTable'
 import type { AdminBookingFilters } from './adminBooking.api'
@@ -148,7 +149,15 @@ const AdminBookingDashboard: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
         <h1 className="text-[20px] font-semibold text-gray-950">Đặt phòng</h1>
-        <p className="text-sm text-gray-500">Tổng quan / Đặt phòng</p>
+        <div className="flex items-center gap-4">
+          <Link
+            to="/admin/bookings/trashed"
+            className="text-sm font-medium text-amber-700 transition hover:text-amber-800"
+          >
+            Đã xóa
+          </Link>
+          <p className="text-sm text-gray-500">Tổng quan / Đặt phòng</p>
+        </div>
       </div>
 
       <section className="rounded-xl border border-gray-200 bg-gray-50 p-4">

@@ -22,6 +22,7 @@ function getAdminBreadcrumb(pathname: string, state?: unknown): string {
   if (pathname === '/admin') return 'Tổng quan'
   if (pathname.startsWith('/admin/bookings/calendar')) return 'Đặt phòng / Lịch'
   if (pathname.startsWith('/admin/bookings/today')) return 'Đặt phòng / Hôm nay'
+  if (pathname.startsWith('/admin/bookings/trashed')) return 'Đặt phòng / Đã xóa'
   if (/^\/admin\/bookings\/[^/]+/.test(pathname)) return 'Đặt phòng / Chi tiết'
   if (pathname.startsWith('/admin/bookings')) return 'Đặt phòng'
   if (pathname.startsWith('/admin/rooms/new')) return 'Phòng / Thêm phòng mới'

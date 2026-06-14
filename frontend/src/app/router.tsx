@@ -33,6 +33,7 @@ const RoomForm = lazy(() => import('@/features/admin/rooms/RoomForm'))
 const AdminBookingDashboard = lazy(() => import('@/features/admin/bookings/AdminBookingDashboard'))
 const BookingCalendar = lazy(() => import('@/features/admin/bookings/BookingCalendar'))
 const TodayOperations = lazy(() => import('@/features/admin/bookings/TodayOperations'))
+const TrashedBookings = lazy(() => import('@/features/admin/bookings/TrashedBookings'))
 const CustomerList = lazy(() => import('@/features/admin/customers/CustomerList'))
 const CustomerProfile = lazy(() => import('@/features/admin/customers/CustomerProfile'))
 
@@ -249,6 +250,13 @@ export const router = createBrowserRouter([
           {
             path: 'bookings/today',
             element: withSuspense(TodayOperations),
+          },
+          // Static `bookings/trashed` MUST precede the dynamic `bookings/:id`
+          // below, otherwise React Router matches `:id="trashed"` and renders
+          // the booking detail modal instead of this page.
+          {
+            path: 'bookings/trashed',
+            element: withSuspense(TrashedBookings),
           },
           {
             path: 'bookings/:id',

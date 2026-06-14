@@ -29,3 +29,14 @@ These directories are archived in classification only — their files remain at 
 - `docs/AUDIT_2026_03_12_STRUCTURE.md` — structure snapshot, 2026-03-12
 
 These are dated and remain at root for direct citation; do not overwrite.
+
+## Deleted (superseded, no archive copy)
+
+Files removed outright because a canonical successor already carries their content. No archive copy is kept — git history is the record.
+
+| File | Reason | Date |
+|---|---|---|
+| `docs/DEVELOPMENT_HOOKS.md` | 3-line redirect stub; superseded by `docs/HOOKS.md` | 2026-06-15 |
+| `.claude/output-styles/audit.md` | Narrower duplicate; superseded by `.claude/output-styles/audit-report.md` (the only audit style named in CLAUDE.md) | 2026-06-15 |
+
+Removed in Batch 1 of `docs/DOCS_RESTRUCTURE_PLAN.md`.

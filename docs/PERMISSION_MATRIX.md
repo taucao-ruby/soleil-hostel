@@ -29,7 +29,7 @@ Quick-reference for UI conditional rendering. Derived from Tables A–E below.
 | Guest Dashboard (`/dashboard`) | ✅ | ✅ | ❌ (sees Admin Dashboard) |
 | Admin Dashboard (`/dashboard` for admin) | ❌ | ❌ | ✅ |
 | Admin Bookings (`/admin/bookings`) | ❌ | ✅ read-only | ✅ full |
-| Admin Trashed Bookings (`/admin/bookings/trashed`) | ❌ | ❌ | ✅ |
+| Admin Trashed Bookings (`/admin/bookings/trashed`) | ❌ | ✅ read-only | ✅ full |
 | Restore Booking | ❌ | ❌ | ✅ |
 | Force-Delete Booking | ❌ | ❌ | ✅ |
 | Admin Customers (`/admin/customers`) | ❌ | ✅ read-only | ✅ |

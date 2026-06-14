@@ -40,3 +40,19 @@ Files removed outright because a canonical successor already carries their conte
 | `.claude/output-styles/audit.md` | Narrower duplicate; superseded by `.claude/output-styles/audit-report.md` (the only audit style named in CLAUDE.md) | 2026-06-15 |
 
 Removed in Batch 1 of `docs/DOCS_RESTRUCTURE_PLAN.md`.
+
+## Executed one-off prompts
+
+Executed task / audit / review prompts that previously accumulated at repo root. Moved to `docs/archive/prompts/` so the root stays clean; kept for provenance, not active guidance.
+
+| File | Origin |
+|---|---|
+| `prompts/T1_opus4_prompt.md` | T-1 in-suite PDO lock blocking test |
+| `prompts/PROMPT_AUDIT_FIX.md` | 2026-02-23 audit-fix prompt set |
+| `prompts/REVIEW_PROMPT_booking-system.md` | Booking-system pre-release review |
+| `prompts/PROMPT_concurrent_booking_stress_failure.md` | Concurrent-booking RCA |
+| `prompts/SYNC_DOCS_opus48_prompt.md` | Docs sync `f5ffa02..edadbf5` |
+| `prompts/DOCS_RESTRUCTURE_AUDIT_opus48_prompt.md` | Docs restructure Phase 1 audit |
+| `prompts/DOCS_RESTRUCTURE_BATCH1_opus48_prompt.md` | Docs restructure Phase 2 Batch 1 |
+
+Moved in Batch 2 of `docs/DOCS_RESTRUCTURE_PLAN.md`.

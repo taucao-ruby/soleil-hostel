@@ -359,9 +359,10 @@ class BookingController extends Controller
     private function buildCancellationMessage(Booking $booking): string
     {
         if ($booking->refund_amount && $booking->refund_amount > 0) {
-            $formattedAmount = number_format($booking->refund_amount / 100, 2);
+            // refund_amount is whole VND (no minor units); format to match formatVND.
+            $formattedAmount = number_format((int) $booking->refund_amount, 0, ',', '.').'₫';
 
-            return (string) __('booking.cancel_with_refund', ['amount' => '$'.$formattedAmount]);
+            return (string) __('booking.cancel_with_refund', ['amount' => $formattedAmount]);
         }
 
         if ($booking->payment_intent_id && $booking->refund_amount === 0) {

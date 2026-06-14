@@ -185,9 +185,10 @@ class BookingApiContractTest extends TestCase
 
     public function test_show_nights_field_is_present_and_is_integer(): void
     {
-        // Note: getNightsAttribute() uses Carbon::diffInDays() which is signed in Carbon 3.
-        // The sign behaviour is tracked as a model bug in FINDINGS_BACKLOG.
-        // This test asserts the field CONTRACT (present, integer type) only.
+        // getNightsAttribute() returns check_in->diffInDays(check_out). Carbon 3's
+        // diffInDays() is signed, so the accessor orders operands earliest-first to
+        // keep nights positive. Regression guard for the Carbon 2->3 sign flip (F-93):
+        // assert the exact positive count, not merely that the field is an integer.
         $checkIn = Carbon::now()->addDays(5)->startOfDay();
         $checkOut = $checkIn->clone()->addDays(3);
 
@@ -204,7 +205,7 @@ class BookingApiContractTest extends TestCase
         $nights = $response->json('data.nights');
         $this->assertArrayHasKey('nights', $response->json('data'));
         $this->assertIsInt($nights);
-        $this->assertNotSame(0, $nights); // duration > 0 nights booked
+        $this->assertSame(3, $nights); // check_out is 3 days after check_in
     }
 
     public function test_show_amount_absent_when_no_payment(): void

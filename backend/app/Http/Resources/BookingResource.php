@@ -54,7 +54,9 @@ class BookingResource extends JsonResource
             ),
             'amount_formatted' => $this->when(
                 $this->amount !== null,
-                fn () => '$'.number_format($this->amount / 100, 2)
+                // amount is stored in whole VND (no minor units); format to match
+                // the frontend formatVND (vi-VN): dot thousands separator + ₫.
+                fn () => number_format((int) $this->amount, 0, ',', '.').'₫'
             ),
 
             // ===== REFUND INFO (visible when cancelled with refund) =====
@@ -64,7 +66,7 @@ class BookingResource extends JsonResource
             ),
             'refund_amount_formatted' => $this->when(
                 $this->status === BookingStatus::CANCELLED && $this->refund_amount,
-                fn () => '$'.number_format($this->refund_amount / 100, 2)
+                fn () => number_format((int) $this->refund_amount, 0, ',', '.').'₫'
             ),
             'refund_status' => $this->when(
                 $this->refund_status !== null,

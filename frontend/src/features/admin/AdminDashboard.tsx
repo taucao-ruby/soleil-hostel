@@ -107,6 +107,10 @@ const trendClassNames: Record<MetricCard['trendTone'], string> = {
 const AdminDashboard: React.FC = () => {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
+  // Trashed bookings are viewable by moderator+ (backend GET /v1/admin/bookings/trashed
+  // is role:moderator — PERMISSION_MATRIX Table A, row A8). Restore/force-delete stay
+  // admin-only (A10/A11), and contact messages stay admin-only (A16/A17).
+  const canViewTrashed = isAdmin || user?.role === 'moderator'
 
   const [activeTab, setActiveTab] = useState<DashboardTab>('bookings')
   const [bookingPage, setBookingPage] = useState(1)
@@ -117,7 +121,7 @@ const AdminDashboard: React.FC = () => {
   const [bookingsError, setBookingsError] = useState<string | null>(null)
 
   const [trashedBookings, setTrashedBookings] = useState<AdminBookingRaw[]>([])
-  const [trashedLoading, setTrashedLoading] = useState(isAdmin)
+  const [trashedLoading, setTrashedLoading] = useState(canViewTrashed)
   const [trashedError, setTrashedError] = useState<string | null>(null)
 
   const [contactMessages, setContactMessages] = useState<ContactMessageRaw[]>([])
@@ -155,15 +159,13 @@ const AdminDashboard: React.FC = () => {
     }
   }, [bookingPage])
 
+  // Trashed bookings: moderator+ may view (admin-only restore/force-delete are gated
+  // separately at the action buttons below). Mirrors the dedicated TrashedBookings page.
   useEffect(() => {
-    if (!isAdmin) {
-      setActiveTab('bookings')
+    if (!canViewTrashed) {
       setTrashedBookings([])
-      setContactMessages([])
       setTrashedLoading(false)
-      setContactsLoading(false)
       setTrashedError(null)
-      setContactsError(null)
       return
     }
 
@@ -171,33 +173,59 @@ const AdminDashboard: React.FC = () => {
     let active = true
 
     setTrashedLoading(true)
-    setContactsLoading(true)
     setTrashedError(null)
+
+    void fetchTrashedBookings(controller.signal)
+      .then(result => {
+        if (!active) return
+        setTrashedBookings(result.bookings)
+      })
+      .catch((error: unknown) => {
+        if (!active || isAbortError(error)) return
+        setTrashedError('Không thể tải danh sách đặt phòng đã xóa.')
+      })
+      .finally(() => {
+        if (active) {
+          setTrashedLoading(false)
+        }
+      })
+
+    return () => {
+      active = false
+      controller.abort()
+    }
+  }, [canViewTrashed])
+
+  // Contact messages: admin-only (PERMISSION_MATRIX rows A16/A17).
+  useEffect(() => {
+    if (!isAdmin) {
+      setActiveTab(tab => (tab === 'contacts' ? 'bookings' : tab))
+      setContactMessages([])
+      setContactsLoading(false)
+      setContactsError(null)
+      return
+    }
+
+    const controller = new AbortController()
+    let active = true
+
+    setContactsLoading(true)
     setContactsError(null)
 
-    void Promise.allSettled([
-      fetchTrashedBookings(controller.signal),
-      fetchContactMessages(controller.signal),
-    ]).then(results => {
-      if (!active) return
-
-      const [trashedResult, contactsResult] = results
-
-      if (trashedResult.status === 'fulfilled') {
-        setTrashedBookings(trashedResult.value.bookings)
-      } else if (!isAbortError(trashedResult.reason)) {
-        setTrashedError('Không thể tải danh sách đặt phòng đã xóa.')
-      }
-
-      if (contactsResult.status === 'fulfilled') {
-        setContactMessages(contactsResult.value)
-      } else if (!isAbortError(contactsResult.reason)) {
+    void fetchContactMessages(controller.signal)
+      .then(result => {
+        if (!active) return
+        setContactMessages(result)
+      })
+      .catch((error: unknown) => {
+        if (!active || isAbortError(error)) return
         setContactsError('Không thể tải tin nhắn liên hệ.')
-      }
-
-      setTrashedLoading(false)
-      setContactsLoading(false)
-    })
+      })
+      .finally(() => {
+        if (active) {
+          setContactsLoading(false)
+        }
+      })
 
     return () => {
       active = false
@@ -207,12 +235,8 @@ const AdminDashboard: React.FC = () => {
 
   const tabs: Array<{ id: DashboardTab; label: string }> = [
     { id: 'bookings', label: 'Đặt phòng' },
-    ...(isAdmin
-      ? [
-          { id: 'trashed' as const, label: 'Đã xóa' },
-          { id: 'contacts' as const, label: 'Liên hệ' },
-        ]
-      : []),
+    ...(canViewTrashed ? [{ id: 'trashed' as const, label: 'Đã xóa' }] : []),
+    ...(isAdmin ? [{ id: 'contacts' as const, label: 'Liên hệ' }] : []),
   ]
 
   const handleRestore = async (bookingId: number) => {
@@ -429,24 +453,26 @@ const AdminDashboard: React.FC = () => {
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleRestore(booking.id)}
-                  disabled={processingBookingId === booking.id}
-                  className="rounded-lg border border-emerald-600 px-3 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Khôi phục
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleForceDelete(booking.id)}
-                  disabled={processingBookingId === booking.id}
-                  className="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Xóa vĩnh viễn
-                </button>
-              </div>
+              {isAdmin && (
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleRestore(booking.id)}
+                    disabled={processingBookingId === booking.id}
+                    className="rounded-lg border border-emerald-600 px-3 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Khôi phục
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleForceDelete(booking.id)}
+                    disabled={processingBookingId === booking.id}
+                    className="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Xóa vĩnh viễn
+                  </button>
+                </div>
+              )}
             </div>
           </article>
         ))}
@@ -565,7 +591,7 @@ const AdminDashboard: React.FC = () => {
           className="pt-4"
         >
           {activeTab === 'bookings' && renderBookingsPanel()}
-          {activeTab === 'trashed' && isAdmin && renderTrashedPanel()}
+          {activeTab === 'trashed' && canViewTrashed && renderTrashedPanel()}
           {activeTab === 'contacts' && isAdmin && renderContactsPanel()}
         </div>
       </section>

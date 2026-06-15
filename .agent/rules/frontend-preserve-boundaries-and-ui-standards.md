@@ -2,7 +2,7 @@
 verified-against: CLAUDE.md
 secondary-source: docs/frontend/SERVICES_LAYER.md
 section: "Non-negotiable constraints"
-last-verified: 2026-03-25
+last-verified: 2026-06-14
 maintained-by: docs-sync
 ---
 

@@ -5,9 +5,9 @@ It governs when to read entries, when to write entries, how to reject bad entrie
 and how to maintain the system over time.
 
 Cross-references:
-- Entry schema: `AGENT_LEARNINGS_SCHEMA.md`
+- Entry schema: `AGENT_LEARNINGS_REFERENCE.md` (Part 1)
 - Active entries: `AGENT_LEARNINGS.md`
-- Format examples: `AGENT_LEARNINGS_EXAMPLES.md` (illustrative only — do NOT cite as real failures)
+- Format examples: `AGENT_LEARNINGS_REFERENCE.md` (Part 2; illustrative only — do NOT cite as real failures)
 
 ---
 
@@ -325,11 +325,11 @@ target environment count as evidence.
 
 ---
 
-**G-06** AGENT_LEARNINGS_EXAMPLES.md must never be read as operational learnings.
+**G-06** The Examples part (Part 2) of AGENT_LEARNINGS_REFERENCE.md (formerly AGENT_LEARNINGS_EXAMPLES.md) must never be read as operational learnings.
 Agents must not cite example entries as historical failures.
 The examples file is for schema training only.
 
-> SOLEIL example: An agent reads SL-EX-03 from AGENT_LEARNINGS_EXAMPLES.md and cites it
+> SOLEIL example: An agent reads SL-EX-03 from AGENT_LEARNINGS_REFERENCE.md (Part 2) and cites it
 > as "a prior case where RBAC was verified only at the React layer." → G-06 violation.
 > The examples file header states these are NOT historical facts. The agent must not
 > treat any SL-EX-NNN entry as a real failure.

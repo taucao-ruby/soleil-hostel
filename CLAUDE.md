@@ -80,10 +80,10 @@ All agents must read `.claude/memory/global-invariants.md` and `.claude/memory/r
 - Session and ledger surfaces: `docs/COMPACT.md`, `docs/WORKLOG.md`, `PROJECT_STATUS.md`, `BACKLOG.md`
 - Governance and onboarding: `docs/AI_GOVERNANCE.md`, `AGENTS.md`
 - Findings: `docs/FINDINGS_BACKLOG.md`
-- Archived process history (do NOT cite as current truth): `docs/archive/README.md` — index for `docs/cleanup/`, `docs/gates/`, `docs/decisions/`, `docs/governance/`, `docs/audit/`, `docs/validation/` (each carries an `ARCHIVED.md` marker)
+- Archived process history (do NOT cite as current truth): `docs/archive/README.md` — index for the relocated `docs/archive/legacy/{cleanup,gates,decisions,governance,audit,validation}/` dirs (each carries an `ARCHIVED.md` marker)
 - Agent self-learning: `docs/agents/AGENT_LEARNINGS_OPERATING_RULES.md` — read/write rules for booking, migration, RBAC, and API contract tasks.
 - Active failure patterns: `docs/agents/AGENT_LEARNINGS.md` — tag-scoped reads only (see R-01–R-04 in operating rules).
-- Schema examples: `docs/agents/AGENT_LEARNINGS_EXAMPLES.md` — illustrative entries only; do not cite as historical facts (G-06).
+- Learnings reference: `docs/agents/AGENT_LEARNINGS_REFERENCE.md` — schema (Part 1) + illustrative entries (Part 2); the Examples part is illustrative only, do not cite as historical facts (G-06).
 
 ## Escalation rules
 

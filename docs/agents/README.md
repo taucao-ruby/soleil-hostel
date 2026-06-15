@@ -11,8 +11,7 @@ This directory contains the structured governance framework for AI coding agents
 | [COMMANDS.md](./COMMANDS.md) | Verified command reference |
 | [AGENT_LEARNINGS.md](./AGENT_LEARNINGS.md) | Operational failure patterns (active entries + proposed staging) |
 | [AGENT_LEARNINGS_OPERATING_RULES.md](./AGENT_LEARNINGS_OPERATING_RULES.md) | Read/write/rejection rules for the learning system |
-| [AGENT_LEARNINGS_SCHEMA.md](./AGENT_LEARNINGS_SCHEMA.md) | Field definitions and entry format |
-| [AGENT_LEARNINGS_EXAMPLES.md](./AGENT_LEARNINGS_EXAMPLES.md) | Illustrative entries for schema training (do not cite as real failures) |
+| [AGENT_LEARNINGS_REFERENCE.md](./AGENT_LEARNINGS_REFERENCE.md) | Schema (Part 1: field definitions and entry format) + illustrative entries (Part 2) — Examples part is illustrative only, do not cite as real failures (G-06) |
 
 ## How to Use (agent workflow)
 

@@ -1,8 +1,10 @@
 # Soleil Hostel - Project Status
 
-**Last Updated:** June 1, 2026
+**Last Updated:** June 14, 2026
 **Current Branch:** `dev`
-**Latest Commit:** `b7d9d28` — chore(docs): merge dev → main (booking-domain docs sync); last feature commit `fcd323f` — room readiness endpoint + RefundStatus enum + reviews approved default (HEAD as of 2026-05-31)
+**Latest Commit:** `edadbf5` — docs(infra): refresh soleil-ai-review-engine index counts (7345 nodes, 21657 edges) — `dev` HEAD as of 2026-06-14. Prior promote-to-`main` baseline was `b7d9d28` (booking-domain docs sync, HEAD 2026-05-31).
+
+> **Suite/gate figures below are as of June 1, 2026 at `6d7b75b` and have NOT been re-run since.** [NEEDS RUNTIME CONFIRMATION] — the 2026-06-12 wave (P1-5 index-prune deferral, P1-6/P1-7 reconciliation + proposal cold-cache, `f5ffa02`) and the 2026-06-14 wave (VND currency default `0307e95`/`f703452`, admin trashed-bookings route `7f7fd3b`, nights-sign fix `ee2f6a8`, RBAC reconciliation `37e4120`/`952b38a`/`cfa0673`) all landed after this verification point. Re-run `php artisan test` + `npx tsc --noEmit` + `npx vitest run` at `edadbf5` before the next merge to `main`.
 
 ## Current Status: Repo Health Green
 

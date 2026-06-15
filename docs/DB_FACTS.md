@@ -272,7 +272,7 @@ Availability overlap check while updating an existing booking:
 Revenue per location (pseudo SQL, date-bounded):
 
 ```sql
-SELECT location_id, SUM(amount) AS gross_amount_cents
+SELECT location_id, SUM(amount) AS gross_amount_vnd
 FROM bookings
 WHERE location_id = :location_id
   AND check_in >= :from_date

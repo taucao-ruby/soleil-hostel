@@ -10,20 +10,20 @@ Index of historical documentation that is preserved for audit purposes but is **
 - `BACKLOG.md` — current actionable queue
 - `scripts/ship.sh` — canonical gates
 
-## Archived content (still located in their original folders)
+## Archived content (relocated under `docs/archive/legacy/`)
 
-These directories are archived in classification only — their files remain at the original paths so that internal cross-references resolve. Each folder carries an `ARCHIVED.md` marker.
+These directories were relocated under `docs/archive/legacy/` (restructure Batch 7); they remain archived-in-classification. Each folder carries an `ARCHIVED.md` marker. (A pre-move survey confirmed these dirs have no outward relative links, so nothing breaks.)
 
 | Folder | Role | Why archived |
 |---|---|---|
-| `docs/cleanup/` | Reports from the 2026-Q1 doc cleanup waves (00–08, unresolved-registry) | Historical batch outputs; superseded by current `docs/agents/` + `docs/PERMISSION_MATRIX.md` |
-| `docs/gates/` | Gate result snapshots (gate-a/b/c/rc1) | Point-in-time results; live gates run via `scripts/ship.sh` |
-| `docs/decisions/` | wave-0 decision lock | One-shot decision; folded into current rules |
-| `docs/governance/` | Pipeline closure / instruction-system-maintenance / post-execution-audit-verdict | Process artifacts; live governance is `docs/AI_GOVERNANCE.md` + `docs/agents/CONTROL_PLANE_OWNERSHIP.md` |
-| `docs/audit/` | Post-execution audit report + remediation plan + findings summary | Historical audit; current findings live in `docs/FINDINGS_BACKLOG.md` |
-| `docs/validation/` | Structural / boundary / drift checklists from cleanup waves | Snapshot validation; superseded by canonical fact docs |
+| `docs/archive/legacy/cleanup/` | Reports from the 2026-Q1 doc cleanup waves (00–08, unresolved-registry) | Historical batch outputs; superseded by current `docs/agents/` + `docs/PERMISSION_MATRIX.md` |
+| `docs/archive/legacy/gates/` | Gate result snapshots (gate-a/b/c/rc1) | Point-in-time results; live gates run via `scripts/ship.sh` |
+| `docs/archive/legacy/decisions/` | wave-0 decision lock | One-shot decision; folded into current rules |
+| `docs/archive/legacy/governance/` | Pipeline closure / instruction-system-maintenance / post-execution-audit-verdict | Process artifacts; live governance is `docs/AI_GOVERNANCE.md` + `docs/agents/CONTROL_PLANE_OWNERSHIP.md` |
+| `docs/archive/legacy/audit/` | Post-execution audit report + remediation plan + findings summary | Historical audit; current findings live in `docs/FINDINGS_BACKLOG.md` |
+| `docs/archive/legacy/validation/` | Structural / boundary / drift checklists from cleanup waves | Snapshot validation; superseded by canonical fact docs |
 
-> **Note (2026-06-15):** `docs/cleanup/unresolved-registry.md` still has 2 OPEN items (`UNRESOLVED-B3-1`, `UNRESOLVED-REM-1`), now promoted to `docs/FINDINGS_BACKLOG.md` for live tracking (restructure Batch 3). The cleanup directory is archived-in-classification but **not yet fully reconciled** until those two are decided.
+> **Note (2026-06-15):** `docs/archive/legacy/cleanup/unresolved-registry.md` still has 2 OPEN items (`UNRESOLVED-B3-1`, `UNRESOLVED-REM-1`), now promoted to `docs/FINDINGS_BACKLOG.md` for live tracking (restructure Batch 3). The cleanup directory is archived-in-classification but **not yet fully reconciled** until those two are decided.
 
 ## Older snapshot audits at root
 

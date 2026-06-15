@@ -32,6 +32,7 @@ open_count: 2
 > **RC1 remediation applied on 2026-03-24 — 15 items targeted, 14 closed (12 resolved + 1 waived + 1 partial), 1 deferred.**
 > **Governance correction applied on 2026-03-24 — strict taxonomy: 14 CLOSED + 3 DEFERRED + 2 OPEN = 19.**
 > **FFP-S3 closure on 2026-03-24 — RESIDUAL-1 appended (resolved): 15 CLOSED + 3 DEFERRED + 2 OPEN = 20.**
+> **2026-06-15 (docs restructure Batch 3):** the 2 still-OPEN items (`UNRESOLVED-B3-1`, `UNRESOLVED-REM-1`) were promoted to `docs/FINDINGS_BACKLOG.md` for live tracking. They remain OPEN pending human decisions (OQ-2 / OQ-3 in `docs/DOCS_RESTRUCTURE_PLAN.md`); this registry is archived-in-classification but **not yet fully reconciled**.
 
 ---
 

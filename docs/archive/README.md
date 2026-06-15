@@ -23,6 +23,8 @@ These directories are archived in classification only — their files remain at 
 | `docs/audit/` | Post-execution audit report + remediation plan + findings summary | Historical audit; current findings live in `docs/FINDINGS_BACKLOG.md` |
 | `docs/validation/` | Structural / boundary / drift checklists from cleanup waves | Snapshot validation; superseded by canonical fact docs |
 
+> **Note (2026-06-15):** `docs/cleanup/unresolved-registry.md` still has 2 OPEN items (`UNRESOLVED-B3-1`, `UNRESOLVED-REM-1`), now promoted to `docs/FINDINGS_BACKLOG.md` for live tracking (restructure Batch 3). The cleanup directory is archived-in-classification but **not yet fully reconciled** until those two are decided.
+
 ## Older snapshot audits at root
 
 - `docs/AUDIT_2026_02_21.md` — full repo audit snapshot, 2026-02-21

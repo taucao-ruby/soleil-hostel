@@ -9,6 +9,29 @@
 > `[UNPROVEN]`, `[ACTION]`. No existing file is moved, edited, merged, or deleted by this
 > document — it only proposes Phase 2+ work.
 
+## Execution Status (updated 2026-06-15)
+
+**All seven batches executed** on `dev` (Phase 2). This document is now a historical charter;
+the migration table below lists the *pre-move* paths it planned against. Commits:
+
+| Batch | Commit | Status |
+|---|---|---|
+| Plan (charter) | `98cb146` | committed |
+| 1 — orphan removal | `4f9f1f3` | done — deleted `DEVELOPMENT_HOOKS.md`, `output-styles/audit.md` |
+| 2 — prompt archive | `773ed56` | done — 7 prompts → `docs/archive/prompts/` |
+| 3 — registry close-out | `ce3f47a` | done — B3-1 + REM-1 surfaced to `FINDINGS_BACKLOG.md` (still OPEN) |
+| 4a — SubAgent relocate | `bbeaa15` | done — 4 RFCs → `docs/design/subagent-chat/` |
+| 4b — SubAgent decision | `f79abb0` | done — kept as-is, no consolidation (OQ-1 closed "not pursued") |
+| 5a — RBAC_UX_AUDIT | `b5ce911` | done — archived to `docs/archive/` |
+| 5b — deploy relocate | `2d21039` | done — → `docs/ops/PRODUCTION_DEPLOYMENT.md` (new `docs/ops/`) |
+| 6 — learnings fold | `6b2e7dc` | done — SCHEMA+EXAMPLES → `AGENT_LEARNINGS_REFERENCE.md` |
+| 7a — archive relocate | `a9a2ffb` | done — cleanup/gates/decisions → `docs/archive/legacy/` |
+| 7b — archive relocate | `d373a90` | done — governance/audit/validation → `docs/archive/legacy/` + reindex |
+
+**Still open (human):** OQ-2 (UNRESOLVED-B3-1 soleil-block policy) and OQ-3 (UNRESOLVED-REM-1
+countersign) — both tracked live in `FINDINGS_BACKLOG.md`. Pre-existing working-tree drift was
+left untouched throughout. Commits are local on `dev` — not pushed.
+
 ## Decision
 
 Whether to adopt a single-canonical-home documentation layout — adding `docs/design/` for

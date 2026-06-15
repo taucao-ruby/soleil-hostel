@@ -20,13 +20,10 @@ inbound references anywhere in the repo.
 | `SUBAGENT_ARCHITECTURE_R3_CONTRACTS.md` | "Round 3 Final Implementation Contracts" (1184) — vFinal tool matrix, source baseline `d42211b` |
 | `SUBAGENT_ARCHITECTURE_V3.md` | "V3" full restatement (1888) with `[PROPOSED]`/`[CONFIRMED]` labels |
 
-## Pending — NOT done in this batch
+## Decision (2026-06-15) — kept as-is, no consolidation
 
-Batch 4 performed **relocation only** (non-destructive). The consolidation is still gated:
-
-- **OQ-1 — canonical choice (unresolved, needs human decision):** which of
-  `SUBAGENT_ARCHITECTURE_V3.md` (full rewrite) or `SUBAGENT_ARCHITECTURE_R3_CONTRACTS.md`
-  ("Round 3 Final") is the canonical base? Both claim finality; none is marked superseded.
-- **Content preservation (before any merge/dedup):** `DELTA_R2`'s Output-7 operational-default
-  thresholds + baseline-data-collection plan, and any v1-only content, must be folded into the
-  chosen canonical doc first. **No content has been merged or deleted — only moved.**
+Batch 4 was **relocation only**. The owner elected to **keep all four files unchanged** — no
+merge, dedup, or deletion. These are unimplemented, zero-reference design RFCs; consolidating
+them into a single canonical doc was judged low-value. This folder stands as a documented
+design archive, and OQ-1 (V3 vs R3_CONTRACTS canonical) is **closed as "not pursued"** rather
+than decided. The version lineage above is the map; read whichever round you need.

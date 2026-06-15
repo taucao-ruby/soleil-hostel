@@ -15,9 +15,9 @@ in this repository. Its sole purpose is to prevent recurring agent execution fai
 
 ## References
 
-- **Schema**: see `AGENT_LEARNINGS_SCHEMA.md` for field definitions and entry format.
+- **Schema**: see `AGENT_LEARNINGS_REFERENCE.md` (Part 1) for field definitions and entry format.
 - **Write and read rules**: see `AGENT_LEARNINGS_OPERATING_RULES.md` before writing any entry.
-- **Format examples**: see `AGENT_LEARNINGS_EXAMPLES.md` for illustrative entries (schema training only — do NOT cite them as real failures).
+- **Format examples**: see `AGENT_LEARNINGS_REFERENCE.md` (Part 2) for illustrative entries (schema training only — do NOT cite them as real failures).
 
 ## Scope
 
@@ -39,7 +39,7 @@ Mandatory reads apply to these four task domains only (see operating rules R-01�
 
 <!-- Agent-proposed entries go here first.
      Do not treat as ACTIVE until reviewed and moved above.
-     Format must match AGENT_LEARNINGS_SCHEMA.md exactly.
+     Format must match AGENT_LEARNINGS_REFERENCE.md (Part 1) exactly.
      Agent: set review_status: SELF_RECORDED on all proposed entries.
      Human: move to Active Entries section after verifying evidence,
      corrected_pattern, and invariant alignment. Then commit with:

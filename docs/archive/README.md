@@ -58,3 +58,11 @@ Executed task / audit / review prompts that previously accumulated at repo root.
 | `prompts/DOCS_RESTRUCTURE_BATCH1_opus48_prompt.md` | Docs restructure Phase 2 Batch 1 |
 
 Moved in Batch 2 of `docs/DOCS_RESTRUCTURE_PLAN.md`.
+
+## Relocated snapshots
+
+| File | Origin | Date |
+|---|---|---|
+| `RBAC_UX_AUDIT.md` | Frontend RBAC UX audit (2026-03-09, refreshed 2026-03-31) — self-superseded snapshot moved out of `docs/frontend/` so it stops cluttering the live layer reference | 2026-06-15 |
+
+Moved in Batch 5a of `docs/DOCS_RESTRUCTURE_PLAN.md`.

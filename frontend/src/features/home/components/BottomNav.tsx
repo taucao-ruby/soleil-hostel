@@ -139,7 +139,7 @@ const BottomNav: React.FC = () => {
 
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#FDFAF3] border-t border-[#E2D5C3]"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-cream-warm border-t border-line"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       aria-label="Điều hướng chính"
     >
@@ -157,15 +157,15 @@ const BottomNav: React.FC = () => {
                 'relative flex flex-col items-center justify-center gap-0.5',
                 'text-xs font-sans font-medium',
                 'transition-colors duration-150',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#D4622A]',
-                isActive ? 'text-[#D4622A]' : 'text-[#5C3D1E]/40 hover:text-[#5C3D1E]',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold',
+                isActive ? 'text-gold' : 'text-bark/40 hover:text-bark',
               ].join(' ')}
             >
               {/* Active indicator — top edge bar */}
               {isActive && (
                 <span
                   aria-hidden="true"
-                  className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#D4622A] rounded-full"
+                  className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-gold rounded-full"
                 />
               )}
               {tab.icon}

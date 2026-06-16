@@ -124,10 +124,10 @@ const ReviewCardLight: React.FC<{ review: HomeReview }> = ({ review }) => (
     <p className="italic text-sm text-[#1C1A17]/80 leading-relaxed flex-1 mb-5">"{review.quote}"</p>
 
     <div className="flex flex-wrap gap-2">
-      <span className="px-3 py-1 bg-[#F5EFE3] text-[#504534] text-[10px] font-bold rounded-full">
+      <span className="px-3 py-1 bg-cream text-ink text-[10px] font-bold rounded-full">
         {review.guestLocation}
       </span>
-      <span className="px-3 py-1 bg-[#FAE5D8] text-[#D4622A] text-[10px] font-bold rounded-full">
+      <span className="px-3 py-1 bg-cream-beige text-gold-hover text-[10px] font-bold rounded-full">
         {review.roomName}
       </span>
     </div>

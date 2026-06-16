@@ -25,7 +25,7 @@ import { MOCK_REVIEWS } from '@/features/home/home.mock'
  */
 const HomePage: React.FC = () => {
   return (
-    <main className="bg-[#F5EFE0]">
+    <main className="bg-cream">
       {/* 02. Hero — full-bleed */}
       <Hero />
 

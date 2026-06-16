@@ -27,11 +27,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   // Show loading spinner while checking authentication
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-cream via-cream-warm to-cream">
         <div className="text-center">
           {/* Spinner */}
-          <div className="inline-block w-16 h-16 mb-4 border-4 border-blue-200 rounded-full border-t-blue-600 animate-spin"></div>
-          <p className="font-medium text-gray-600">Đang kiểm tra phiên đăng nhập...</p>
+          <div className="inline-block w-16 h-16 mb-4 border-4 border-gold/25 rounded-full border-t-gold animate-spin"></div>
+          <p className="font-medium text-ink-soft">Đang kiểm tra phiên đăng nhập...</p>
         </div>
       </div>
     )

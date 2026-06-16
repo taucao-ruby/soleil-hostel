@@ -64,7 +64,7 @@ export default function ProposalConfirmationModal({
         <h2 className="mb-4 text-lg font-semibold text-gray-900">{actionLabel}</h2>
 
         {/* Summary */}
-        <div className="mb-4 rounded-md bg-blue-50 p-4">
+        <div className="mb-4 rounded-md bg-cream-paper p-4">
           <p className="text-sm text-gray-800">{proposal.human_readable_summary}</p>
         </div>
 
@@ -112,7 +112,7 @@ export default function ProposalConfirmationModal({
             type="button"
             onClick={() => handleDecision('confirmed')}
             disabled={loading}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="rounded-md bg-gold px-4 py-2 text-sm font-medium text-white hover:bg-gold-hover disabled:opacity-50"
           >
             {loading ? 'Đang xử lý...' : 'Xác nhận'}
           </button>

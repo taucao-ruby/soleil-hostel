@@ -110,7 +110,7 @@ const CustomerList: React.FC = () => {
             id="search"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="block w-full pl-3 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            className="block w-full pl-3 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-gold focus:border-gold sm:text-sm"
             placeholder="Tìm theo tên hoặc email khách hàng..."
           />
         </div>
@@ -136,13 +136,13 @@ const CustomerList: React.FC = () => {
                   <div className="flex items-center px-4 py-4 sm:px-6">
                     <div className="min-w-0 flex-1 flex items-center">
                       <div className="flex-shrink-0">
-                        <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xl">
+                        <div className="h-12 w-12 rounded-full bg-cream-beige flex items-center justify-center text-gold font-bold text-xl">
                           {c.name.charAt(0).toUpperCase()}
                         </div>
                       </div>
                       <div className="min-w-0 flex-1 px-4 md:grid md:grid-cols-2 md:gap-4">
                         <div>
-                          <p className="text-sm font-medium text-blue-600 truncate">{c.name}</p>
+                          <p className="text-sm font-medium text-bark truncate">{c.name}</p>
                           <p className="mt-2 flex items-center text-sm text-gray-500">
                             <span className="truncate">{c.email}</span>
                           </p>

@@ -82,7 +82,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   render(): React.ReactNode {
     if (this.state.hasError) {
       return (
-        <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-to-br from-blue-50 via-white to-blue-50">
+        <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-to-br from-cream via-cream-warm to-cream">
           <div className="w-full max-w-2xl p-8 bg-white shadow-2xl rounded-2xl md:p-12">
             {/* Error Icon */}
             <div className="flex justify-center mb-6">
@@ -135,7 +135,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
             <div className="flex flex-col justify-center gap-4 sm:flex-row">
               <button
                 onClick={this.handleReset}
-                className="px-6 py-3 font-semibold text-white transition-colors bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 hover:shadow-lg"
+                className="px-6 py-3 font-semibold text-white transition-colors bg-gold rounded-lg shadow-md hover:bg-gold-hover hover:shadow-lg"
               >
                 Thử lại
               </button>

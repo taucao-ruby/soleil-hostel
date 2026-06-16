@@ -134,7 +134,7 @@ export default function DraftAssistantPanel() {
           onClick={() => setDraftType('message')}
           className={`px-4 py-2 rounded text-sm font-medium ${
             draftType === 'message'
-              ? 'bg-indigo-600 text-white'
+              ? 'bg-gold text-white'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
@@ -144,7 +144,7 @@ export default function DraftAssistantPanel() {
           onClick={() => setDraftType('cancellation')}
           className={`px-4 py-2 rounded text-sm font-medium ${
             draftType === 'cancellation'
-              ? 'bg-indigo-600 text-white'
+              ? 'bg-gold text-white'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
@@ -163,7 +163,7 @@ export default function DraftAssistantPanel() {
             value={bookingId}
             onChange={e => setBookingId(e.target.value)}
             placeholder="VD: 123"
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500"
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-gold focus:border-gold"
           />
         </div>
         {draftType === 'message' && (
@@ -174,7 +174,7 @@ export default function DraftAssistantPanel() {
               onChange={e => setContext(e.target.value)}
               rows={3}
               placeholder="Mô tả yêu cầu của khách hoặc nội dung cần phản hồi..."
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded resize-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded resize-none focus:ring-gold focus:border-gold"
             />
           </div>
         )}
@@ -187,7 +187,7 @@ export default function DraftAssistantPanel() {
           (draftType === 'message' && !context) ||
           (draftType === 'cancellation' && !bookingId)
         }
-        className="w-full px-4 py-2 mb-4 text-sm font-medium text-white bg-indigo-600 rounded hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full px-4 py-2 mb-4 text-sm font-medium text-white bg-gold rounded hover:bg-gold-hover disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {loading ? 'Đang tạo bản nháp...' : 'Tạo bản nháp AI'}
       </button>
@@ -196,9 +196,9 @@ export default function DraftAssistantPanel() {
 
       {/* Draft display */}
       {draft && !sent && (
-        <div className="p-4 mb-4 border border-indigo-200 rounded bg-indigo-50">
+        <div className="p-4 mb-4 border border-line rounded bg-cream-paper">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-indigo-700">
+            <span className="text-xs font-medium text-gold">
               Bản nháp AI · Giọng văn: {draft.suggested_tone}
             </span>
             <span className="px-2 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded">
@@ -210,7 +210,7 @@ export default function DraftAssistantPanel() {
             value={editedText}
             onChange={e => setEditedText(e.target.value)}
             rows={6}
-            className="w-full p-3 mb-3 text-sm border border-gray-300 rounded resize-y focus:ring-indigo-500 focus:border-indigo-500"
+            className="w-full p-3 mb-3 text-sm border border-gray-300 rounded resize-y focus:ring-gold focus:border-gold"
           />
 
           {/* Context used */}

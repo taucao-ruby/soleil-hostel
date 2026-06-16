@@ -512,7 +512,7 @@ const AdminDashboard: React.FC = () => {
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   {!message.read_at && (
-                    <span className="inline-flex items-center rounded-full bg-sky-100 px-2.5 py-1 text-xs font-medium text-sky-700">
+                    <span className="inline-flex items-center rounded-full bg-gold/15 px-2.5 py-1 text-xs font-medium text-gold-hover">
                       Mới
                     </span>
                   )}

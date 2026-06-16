@@ -1,16 +1,168 @@
 /**
- * Global Styles
- * 
+ * Global Styles — Soleil Hostel "Modern Archivist Edition"
+ *
  * Includes:
- * - Google Fonts (Inter for body, Playfair Display for headings)
+ * - Google Fonts (Newsreader italic display + Plus Jakarta Sans body + Material Symbols)
+ * - Design tokens (:root) ported from the Claude Design handoff (colors_and_type.css)
  * - Tailwind CSS base, components, utilities
- * - Custom animations
- * - Global utility classes
+ * - Custom animations + utility classes
  */
 
-/* Import Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Newsreader:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600&family=Playfair+Display:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+/* Import Google Fonts — display serif (Newsreader italic) + body sans + icons */
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap');
+
+/* ═══ DESIGN TOKENS ═══════════════════════════════════════════════════ */
+
+:root {
+  /* ── Color: Core brand ─────────────────────────────────────────── */
+  --color-gold: #c9920a; /* primary accent — every CTA, link, brand mark */
+  --color-gold-hover: #a87808; /* gold on hover */
+  --color-gold-soft: #c9973a; /* warmer, friendlier gold used on room cards */
+  --color-gold-soft-hover: #b8872a; /* soft gold on hover */
+  --color-gold-pale: #f9bc3d; /* bright star / decorative glyph */
+
+  /* ── Color: Neutral warm scale ─────────────────────────────────── */
+  --color-bark: #1c1a17; /* primary foreground, dark sections */
+  --color-bark-deep: #151311; /* deepest — footer bg */
+  --color-bark-soft: #1a1612; /* legacy, same family */
+  --color-ink: #504534; /* secondary copy on cream */
+  --color-ink-soft: #6b6760; /* muted copy, labels */
+  --color-outline: #827562; /* form outline */
+
+  --color-cream: #f5efe3; /* primary page cream */
+  --color-cream-warm: #fff8f4; /* brightest surface */
+  --color-cream-low: #fcf2eb; /* below-cream container */
+  --color-cream-high: #f0e6df; /* above-cream container (trust bar) */
+  --color-cream-tint: #f6ece5; /* reviews section tint */
+  --color-cream-beige: #f0e8dc; /* trust bar bg */
+  --color-cream-paper: #f7f3ee; /* form field fill */
+
+  --color-border: #e2ddd6; /* hairline border on light */
+  --color-border-warm: #d4c4ae; /* warmer hairline on auth cards */
+  --color-border-soft: #e2d5c3; /* legacy border */
+
+  /* ── Color: Semantic ───────────────────────────────────────────── */
+  --color-success-bg: #dcfce7;
+  --color-success-fg: #166534;
+  --color-success-border: #bbf7d0;
+
+  --color-warning-bg: #fef3c7;
+  --color-warning-fg: #92400e;
+
+  --color-danger-bg: #fef2f2;
+  --color-danger-fg: #991b1b;
+  --color-danger-border: #fecaca;
+
+  --color-popular-bg: #fecaca; /* "Phổ biến" tag */
+  --color-popular-fg: #dc2626;
+
+  /* ── Color: Alphas for dark surfaces ───────────────────────────── */
+  --color-white-05: rgba(255, 255, 255, 0.05);
+  --color-white-08: rgba(255, 255, 255, 0.08);
+  --color-white-10: rgba(255, 255, 255, 0.1);
+  --color-white-15: rgba(255, 255, 255, 0.15);
+  --color-white-30: rgba(255, 255, 255, 0.3);
+  --color-white-55: rgba(255, 255, 255, 0.55);
+  --color-white-70: rgba(255, 255, 255, 0.7);
+
+  /* ── Gradients ─────────────────────────────────────────────────── */
+  --gradient-gold: linear-gradient(135deg, #c9920a 0%, #a87808 100%);
+  --gradient-hero-mobile: linear-gradient(
+    to top,
+    rgba(26, 22, 18, 0.82) 0%,
+    rgba(26, 22, 18, 0.28) 55%,
+    transparent 100%
+  );
+  --gradient-hero-desktop: linear-gradient(
+    to right,
+    rgba(26, 22, 18, 0.8) 0%,
+    rgba(26, 22, 18, 0.4) 55%,
+    transparent 100%
+  );
+
+  /* ── Typography: Families ──────────────────────────────────────── */
+  --font-serif: 'Newsreader', 'Playfair Display', Georgia, serif;
+  --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  --font-icon: 'Material Symbols Outlined';
+
+  /* ── Typography: Scale ─────────────────────────────────────────── */
+  --text-hero: clamp(36px, 6vw, 72px);
+  --text-display: clamp(32px, 4vw, 48px);
+  --text-h1: clamp(28px, 3vw, 36px);
+  --text-h2: clamp(22px, 2.4vw, 30px);
+  --text-h3: 20px;
+  --text-h4: 16px;
+  --text-body-lg: 17px;
+  --text-body: 15px;
+  --text-body-sm: 14px;
+  --text-caption: 13px;
+  --text-micro: 11px;
+  --text-eyebrow: 10px;
+
+  /* ── Typography: Weights ───────────────────────────────────────── */
+  --weight-light: 300;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-extrabold: 800;
+
+  /* ── Typography: Tracking ──────────────────────────────────────── */
+  --tracking-tight: -0.01em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.05em;
+  --tracking-wider: 0.15em;
+  --tracking-widest: 0.25em;
+
+  /* ── Typography: Line heights ──────────────────────────────────── */
+  --leading-display: 1.1;
+  --leading-heading: 1.25;
+  --leading-body: 1.55;
+  --leading-relaxed: 1.7;
+
+  /* ── Spacing (4px grid) ────────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* ── Layout ────────────────────────────────────────────────────── */
+  --container: 1280px;
+  --header-h: 56px;
+  --bottom-nav-h: 56px;
+
+  /* ── Radius ────────────────────────────────────────────────────── */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* ── Shadow (editorial, warm-black) ────────────────────────────── */
+  --shadow-search-mobile: 0 8px 32px rgba(0, 0, 0, 0.14);
+  --shadow-search-desktop: 0 8px 40px rgba(0, 0, 0, 0.16);
+  --shadow-card: 0 20px 40px rgba(26, 22, 18, 0.06);
+  --shadow-card-hover: 0 20px 40px rgba(26, 22, 18, 0.08);
+  --shadow-drawer: 0 20px 60px rgba(0, 0, 0, 0.35);
+
+  /* ── Motion ────────────────────────────────────────────────────── */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast: 150ms;
+  --dur-base: 200ms;
+  --dur-slow: 300ms;
+  --dur-image: 700ms;
+  --dur-ken-burns: 12000ms;
+}
 
 /* Tailwind CSS */
 @tailwind base;
@@ -42,7 +194,8 @@
 /* Base Styles */
 @layer base {
   body {
-    @apply font-sans text-gray-900 antialiased;
+    @apply font-sans antialiased;
+    color: var(--color-bark);
   }
 
   h1,
@@ -54,34 +207,39 @@
     @apply font-serif;
   }
 
-  /* Custom scrollbar */
+  /* Custom scrollbar — warm cream track, bark thumb, gold on hover */
   ::-webkit-scrollbar {
     width: 10px;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-gray-100;
+    background: var(--color-cream-paper);
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-blue-500 rounded-full;
+    background: var(--color-border);
+    border-radius: var(--radius-full);
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-blue-600;
+    background: var(--color-gold);
   }
 }
 
 /* Custom Component Styles */
 @layer components {
-  /* Focus ring utility */
+  /* Focus ring utility — gold accent */
   .focus-ring {
-    @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+    --tw-ring-color: var(--color-gold);
   }
 
   /* Card hover effect */
   .card-hover {
-    @apply transition-all duration-300 hover:shadow-xl hover:-translate-y-1;
+    @apply transition-all duration-300 hover:-translate-y-1;
+  }
+  .card-hover:hover {
+    box-shadow: var(--shadow-card-hover);
   }
 
   /* Button loading state */
@@ -167,14 +325,15 @@
     animation: scale-in 0.4s ease-out;
   }
 
-  /* Glass morphism effect */
+  /* Glass morphism effect — dark glass bar / hero pills */
   .glass {
     @apply bg-white/10 backdrop-blur-md border border-white/20;
   }
 
-  /* Gradient text */
+  /* Gradient text — gold accent */
   .gradient-text {
-    @apply text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-pink-600;
+    @apply text-transparent bg-clip-text;
+    background-image: var(--gradient-gold);
   }
 
   /* Text truncation with ellipsis */
@@ -199,17 +358,17 @@
     overflow: hidden;
   }
 
-  /* Shadow utilities */
+  /* Shadow utilities — editorial warm-black elevations */
   .shadow-soft {
-    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--shadow-card);
   }
 
   .shadow-medium {
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--shadow-search-mobile);
   }
 
   .shadow-hard {
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow-search-desktop);
   }
 
   /* Transition utilities */

@@ -113,7 +113,7 @@ const BookingList: React.FC = () => {
             onClick={() => setFilter(f)}
             className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap ${
               filter === f
-                ? 'bg-blue-600 text-white'
+                ? 'bg-gold text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
             }`}
           >
@@ -154,7 +154,7 @@ const BookingList: React.FC = () => {
           </svg>
           <p className="text-lg font-medium">Bạn chưa có đặt phòng nào ở mục này</p>
           <div className="mt-6">
-            <Link to="/rooms" className="text-blue-600 hover:text-blue-800 font-medium">
+            <Link to="/rooms" className="text-gold hover:text-gold-hover font-medium">
               Xem danh sách phòng và đặt ngay &rarr;
             </Link>
           </div>
@@ -166,7 +166,7 @@ const BookingList: React.FC = () => {
               <li key={booking.id}>
                 <div className="px-4 py-4 sm:px-6 hover:bg-gray-50">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-blue-600 truncate">
+                    <p className="text-sm font-medium text-gold truncate">
                       Mã đặt phòng: #{booking.id}
                     </p>
                     <div className="ml-2 flex-shrink-0 flex">{getStatusBadge(booking.status)}</div>
@@ -205,7 +205,7 @@ const BookingList: React.FC = () => {
                       </span>
                       <Link
                         to={`/my-bookings/${booking.id}`}
-                        className="text-blue-600 hover:text-blue-900"
+                        className="text-gold hover:text-gold-hover"
                       >
                         Xem chi tiết
                       </Link>

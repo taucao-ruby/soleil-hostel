@@ -140,7 +140,7 @@ const BookingCalendar: React.FC = () => {
           <select
             value={selectedLocationId}
             onChange={e => setSelectedLocationId(Number(e.target.value))}
-            className="block w-full md:w-64 pl-3 pr-10 py-2 border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md sm:text-sm"
+            className="block w-full md:w-64 pl-3 pr-10 py-2 border-gray-300 focus:outline-none focus:ring-gold focus:border-gold rounded-md sm:text-sm"
           >
             <option value="">-- Chọn cơ sở --</option>
             {locations.map(loc => (

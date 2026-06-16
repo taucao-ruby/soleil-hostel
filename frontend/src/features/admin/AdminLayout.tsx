@@ -135,7 +135,7 @@ const AdminLayout: React.FC = () => {
             className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${
               user?.role === 'admin'
                 ? 'border-amber-200 bg-amber-50 text-amber-800'
-                : 'border-sky-200 bg-sky-50 text-sky-700'
+                : 'border-stone-200 bg-stone-100 text-stone-600'
             }`}
           >
             {roleLabel}

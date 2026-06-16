@@ -29,7 +29,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           className={`w-full px-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 ${
             error
               ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-              : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+              : 'border-gray-300 focus:ring-gold focus:border-gold'
           } disabled:bg-gray-50 disabled:cursor-not-allowed ${className}`}
           aria-invalid={!!error}
           aria-describedby={error ? `${inputId}-error` : undefined}

@@ -5,13 +5,30 @@ import { getHostelToday, getHostelTomorrow } from '@/shared/lib/hostelDate'
 import type { Location } from '@/shared/types/location.types'
 
 /**
- * SearchCard — responsive search form per PROMPT_1A spec.
+ * SearchCard — responsive search form per PROMPT_1A spec + "Modern Archivist" design system.
  *
  * Mobile  (<md): Vertical stacked card with shadow
  * Tablet+ (≥md): Horizontal inline bar — location | check-in | check-out | button
  *
  * H-02 regression: "Tìm phòng trống" appears exactly once on the page.
  */
+const SearchIcon: React.FC = () => (
+  <svg
+    viewBox="0 0 24 24"
+    width={16}
+    height={16}
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <circle cx={11} cy={11} r={7} />
+    <path d="M20 20l-3.5-3.5" />
+  </svg>
+)
+
 const SearchCard: React.FC = () => {
   const navigate = useNavigate()
   const today = getHostelToday()
@@ -75,7 +92,7 @@ const SearchCard: React.FC = () => {
 
         {/* Chi nhánh */}
         <label className="block mb-3">
-          <span className="text-xs font-medium text-[#6B6760] uppercase tracking-wide mb-1.5 block">
+          <span className="text-[11px] font-bold text-gold uppercase tracking-widest mb-1.5 block">
             Chi nhánh
           </span>
           {locationsLoading ? (
@@ -112,7 +129,7 @@ const SearchCard: React.FC = () => {
         {/* Dates */}
         <div className="grid grid-cols-2 gap-3 mb-3">
           <label>
-            <span className="text-xs font-medium text-[#6B6760] uppercase tracking-wide mb-1.5 block">
+            <span className="text-[11px] font-bold text-gold uppercase tracking-widest mb-1.5 block">
               Nhận phòng
             </span>
             <input
@@ -124,7 +141,7 @@ const SearchCard: React.FC = () => {
             />
           </label>
           <label>
-            <span className="text-xs font-medium text-[#6B6760] uppercase tracking-wide mb-1.5 block">
+            <span className="text-[11px] font-bold text-gold uppercase tracking-widest mb-1.5 block">
               Trả phòng
             </span>
             <input
@@ -146,9 +163,10 @@ const SearchCard: React.FC = () => {
         <button
           type="submit"
           disabled={locationsLoading || locationsError || locations.length === 0}
-          className="w-full h-11 bg-[#C9973A] hover:bg-[#B8872A] text-white font-semibold text-sm rounded-xl transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9973A] focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full h-11 inline-flex items-center justify-center gap-2 bg-gradient-gold text-white font-bold text-sm rounded-xl shadow-[0_6px_16px_rgba(201,146,10,0.25)] transition-transform duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Tìm kiếm →
+          <SearchIcon />
+          Tìm kiếm
         </button>
       </div>
 
@@ -159,7 +177,7 @@ const SearchCard: React.FC = () => {
 
         {/* Chi nhánh */}
         <div className="flex flex-col px-5 py-3 min-w-0 flex-[2]">
-          <span className="text-[11px] font-semibold text-[#6B6760] uppercase tracking-widest mb-1">
+          <span className="text-[11px] font-semibold text-gold uppercase tracking-widest mb-1">
             Chi nhánh
           </span>
           {locationsLoading ? (
@@ -195,7 +213,7 @@ const SearchCard: React.FC = () => {
 
         {/* Nhận phòng */}
         <div className="flex flex-col px-5 py-3 min-w-0 flex-1">
-          <span className="text-[11px] font-semibold text-[#6B6760] uppercase tracking-widest mb-1">
+          <span className="text-[11px] font-semibold text-gold uppercase tracking-widest mb-1">
             Nhận phòng
           </span>
           <input
@@ -212,7 +230,7 @@ const SearchCard: React.FC = () => {
 
         {/* Trả phòng */}
         <div className="flex flex-col px-5 py-3 min-w-0 flex-1">
-          <span className="text-[11px] font-semibold text-[#6B6760] uppercase tracking-widest mb-1">
+          <span className="text-[11px] font-semibold text-gold uppercase tracking-widest mb-1">
             Trả phòng
           </span>
           <input
@@ -228,9 +246,10 @@ const SearchCard: React.FC = () => {
         <button
           type="submit"
           disabled={locationsLoading || locationsError || locations.length === 0}
-          className="shrink-0 m-2 px-8 bg-[#C9973A] hover:bg-[#B8872A] text-white font-semibold text-sm rounded-xl transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9973A] focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+          className="shrink-0 m-2 px-8 inline-flex items-center justify-center gap-2 bg-gradient-gold text-white font-bold text-sm rounded-xl shadow-[0_6px_16px_rgba(201,146,10,0.25)] transition-transform duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
         >
-          Tìm kiếm →
+          <SearchIcon />
+          Tìm kiếm
         </button>
       </div>
 

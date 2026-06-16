@@ -143,7 +143,7 @@ const TodayOperations: React.FC = () => {
           id="loc"
           value={selectedLocationId}
           onChange={e => setSelectedLocationId(Number(e.target.value))}
-          className="md:w-64 pl-3 pr-10 py-2 border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md sm:text-sm inline-block"
+          className="md:w-64 pl-3 pr-10 py-2 border-gray-300 focus:outline-none focus:ring-gold focus:border-gold rounded-md sm:text-sm inline-block"
         >
           <option value="">-- Chọn --</option>
           {locations.map(loc => (
@@ -166,9 +166,9 @@ const TodayOperations: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Arrivals Column (Check-in) */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <div className="bg-blue-50 px-6 py-4 border-b border-blue-100 flex justify-between items-center">
-              <h2 className="text-lg font-bold text-blue-900">Khách nhận phòng</h2>
-              <span className="bg-blue-200 text-blue-800 py-1 px-3 rounded-full text-xs font-bold">
+            <div className="bg-cream-paper px-6 py-4 border-b border-line flex justify-between items-center">
+              <h2 className="text-lg font-bold text-bark">Khách nhận phòng</h2>
+              <span className="bg-gold/20 text-gold-hover py-1 px-3 rounded-full text-xs font-bold">
                 {arrivals.length}
               </span>
             </div>
@@ -191,10 +191,7 @@ const TodayOperations: React.FC = () => {
                       </div>
                       <div className="text-sm text-gray-500">
                         <span className="inline-block w-20 font-medium">Mã ĐP:</span>{' '}
-                        <Link
-                          to={`/admin/bookings/${b.id}`}
-                          className="text-blue-600 hover:underline"
-                        >
+                        <Link to={`/admin/bookings/${b.id}`} className="text-gold hover:underline">
                           #{b.id}
                         </Link>
                       </div>
@@ -203,7 +200,7 @@ const TodayOperations: React.FC = () => {
                       <button
                         disabled={isProcessing === b.id}
                         onClick={() => handleCheckIn(b.id, b.room_id)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded shadow-sm disabled:opacity-50"
+                        className="bg-gold hover:bg-gold-hover text-white font-medium py-2 px-4 rounded shadow-sm disabled:opacity-50"
                       >
                         {isProcessing === b.id ? 'Đang...' : 'Nhận phòng (đã đến)'}
                       </button>
@@ -241,10 +238,7 @@ const TodayOperations: React.FC = () => {
                       </div>
                       <div className="text-sm text-gray-500">
                         <span className="inline-block w-20 font-medium">Mã ĐP:</span>{' '}
-                        <Link
-                          to={`/admin/bookings/${b.id}`}
-                          className="text-blue-600 hover:underline"
-                        >
+                        <Link to={`/admin/bookings/${b.id}`} className="text-gold hover:underline">
                           #{b.id}
                         </Link>
                       </div>

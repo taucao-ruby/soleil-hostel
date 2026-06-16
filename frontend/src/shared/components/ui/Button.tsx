@@ -1,56 +1,92 @@
 import React from 'react'
 
 /**
- * Button Component
+ * Button — Soleil "Modern Archivist" design-system primitive.
  *
- * Reusable button with multiple variants and sizes.
- * Inspired by shadcn/ui design patterns.
+ * Design source: Claude Design handoff (components/Button). Gold is the single
+ * chromatic accent; CTA labels are never UPPERCASE and never wrap; press = scale(0.95).
+ *
+ * Variants:
+ *  - primary   gold gradient fill (default CTA)
+ *  - soft      warmer solid gold (room-card actions)
+ *  - ghost     transparent + hairline border, bark text
+ *  - link      inline gold text link (no padding/radius)
+ *  - darkGhost transparent on dark surfaces, white text
+ *  - danger    functional red (destructive actions only)
+ *  - secondary / outline  legacy aliases (→ soft / ghost) kept for back-compat
  */
 
+export type ButtonVariant =
+  | 'primary'
+  | 'soft'
+  | 'ghost'
+  | 'link'
+  | 'darkGhost'
+  | 'danger'
+  | 'secondary' // legacy alias → soft
+  | 'outline' // legacy alias → ghost
+
+export type ButtonSize = 'sm' | 'md' | 'lg'
+
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger'
-  size?: 'sm' | 'md' | 'lg'
+  variant?: ButtonVariant
+  size?: ButtonSize
   loading?: boolean
+  fullWidth?: boolean
   children: React.ReactNode
 }
+
+const SIZE_STYLES: Record<ButtonSize, string> = {
+  sm: 'px-4 py-2 text-[13px] rounded-[10px]',
+  md: 'px-6 py-3 text-sm rounded-xl',
+  lg: 'px-7 py-3.5 text-[15px] rounded-xl',
+}
+
+const VARIANT_STYLES: Record<ButtonVariant, string> = {
+  primary:
+    'bg-gradient-gold text-white font-bold shadow-[0_6px_16px_rgba(201,146,10,0.25)] hover:bg-[linear-gradient(135deg,#b8830a_0%,#966b08_100%)]',
+  soft: 'bg-gold-soft text-white font-bold hover:bg-gold-soft-hover',
+  secondary: 'bg-gold-soft text-white font-bold hover:bg-gold-soft-hover',
+  ghost: 'bg-transparent text-bark border border-line font-semibold hover:bg-cream-paper',
+  outline: 'bg-transparent text-bark border border-line font-semibold hover:bg-cream-paper',
+  link: 'bg-transparent text-gold font-bold hover:text-gold-hover',
+  darkGhost: 'bg-transparent text-white border border-white/20 font-semibold hover:bg-white/5',
+  danger: 'bg-red-600 text-white font-bold shadow-md hover:bg-red-700',
+}
+
+const BASE_STYLES =
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap font-sans tracking-[0.02em] ' +
+  'transition-[background,color,transform] duration-150 ease-[cubic-bezier(0.4,0,0.2,1)] active:scale-95 ' +
+  'focus:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2'
+
+const DISABLED_STYLES = 'bg-none !bg-line text-[#9E958B] border-0 shadow-none cursor-not-allowed'
 
 const Button: React.FC<ButtonProps> = ({
   variant = 'primary',
   size = 'md',
   loading = false,
+  fullWidth = false,
   disabled,
   className = '',
   children,
   ...props
 }) => {
-  const baseStyles =
-    'inline-flex items-center justify-center font-semibold rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed'
+  const isDisabled = disabled || loading
+  const isLink = variant === 'link'
 
-  const variantStyles = {
-    primary:
-      'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 shadow-md hover:shadow-lg',
-    secondary:
-      'bg-yellow-400 text-gray-900 hover:bg-yellow-500 focus:ring-yellow-400 shadow-md hover:shadow-lg',
-    outline: 'border-2 border-blue-600 text-blue-600 hover:bg-blue-50 focus:ring-blue-500',
-    ghost: 'text-gray-700 hover:bg-gray-100 focus:ring-gray-400',
-    danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 shadow-md hover:shadow-lg',
-  }
-
-  const sizeStyles = {
-    sm: 'px-3 py-1.5 text-sm',
-    md: 'px-5 py-2.5 text-base',
-    lg: 'px-8 py-3.5 text-lg',
-  }
+  const sizeCls = isLink ? 'text-[13px]' : SIZE_STYLES[size]
+  const variantCls = isDisabled ? DISABLED_STYLES : VARIANT_STYLES[variant]
+  const widthCls = fullWidth ? 'w-full' : ''
 
   return (
     <button
-      className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
-      disabled={disabled || loading}
+      className={`${BASE_STYLES} ${sizeCls} ${variantCls} ${widthCls} ${className}`}
+      disabled={isDisabled}
       {...props}
     >
       {loading && (
         <svg
-          className="w-5 h-5 mr-2 -ml-1 animate-spin"
+          className="w-5 h-5 -ml-1 animate-spin"
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"

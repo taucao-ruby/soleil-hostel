@@ -7,6 +7,20 @@ export default {
         sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
         serif: ['Newsreader', 'Playfair Display', 'Georgia', 'serif'],
       },
+      backgroundImage: {
+        // Primary CTA fill + hero protection gradients (token-backed).
+        'gradient-gold': 'var(--gradient-gold)',
+        'hero-mobile': 'var(--gradient-hero-mobile)',
+        'hero-desktop': 'var(--gradient-hero-desktop)',
+      },
+      boxShadow: {
+        // Editorial, warm-black elevations.
+        card: 'var(--shadow-card)',
+        'card-hover': 'var(--shadow-card-hover)',
+        'search-mobile': 'var(--shadow-search-mobile)',
+        'search-desktop': 'var(--shadow-search-desktop)',
+        drawer: 'var(--shadow-drawer)',
+      },
       animation: {
         'spin-slow': 'spin 20s linear infinite',
         'fade-in': 'fade-in 0.6s ease-out',
@@ -27,7 +41,6 @@ export default {
       },
       colors: {
         // Soleil brand tokens (legacy — kept for non-home components)
-        cream: '#F5EFE0',
         warmWhite: '#FDFAF3',
         orangeCTA: '#D4622A',
         orangeHover: '#E8845A',
@@ -36,12 +49,47 @@ export default {
         brandGold: '#F5A623',
         navy: '#1A2744',
         soleilBorder: '#E2D5C3',
-        // PROMPT_0 design system tokens
+        // PROMPT_0 design system tokens (legacy aliases)
         brandAmber: '#C9973A',
         hueSurface: '#F7F3EE',
         hueBlack: '#1C1A17',
         hueMuted: '#6B6760',
         hueBorder: '#E2DDD6',
+        // ── "Modern Archivist" design-system palette (canonical) ──
+        // Gold is the single chromatic accent — every CTA, link, brand mark.
+        gold: {
+          DEFAULT: '#C9920A',
+          hover: '#A87808',
+          soft: '#C9973A',
+          'soft-hover': '#B8872A',
+          pale: '#F9BC3D',
+        },
+        // Warm bark — foreground + dark sections (footer).
+        bark: {
+          DEFAULT: '#1C1A17',
+          deep: '#151311',
+          soft: '#1A1612',
+        },
+        // Secondary copy on cream.
+        ink: {
+          DEFAULT: '#504534',
+          soft: '#6B6760',
+        },
+        // Tonal cream surface stack (page cream → warm white).
+        cream: {
+          DEFAULT: '#F5EFE3', // primary page cream
+          warm: '#FFF8F4', // brightest surface
+          low: '#FCF2EB', // below-cream container
+          high: '#F0E6DF', // above-cream container (trust bar)
+          tint: '#F6ECE5', // reviews section tint
+          beige: '#F0E8DC', // trust bar bg
+          paper: '#F7F3EE', // form field fill
+        },
+        // Hairline borders.
+        line: {
+          DEFAULT: '#E2DDD6',
+          warm: '#D4C4AE',
+        },
         primary: {
           50: '#f0f9ff',
           100: '#e0f2fe',

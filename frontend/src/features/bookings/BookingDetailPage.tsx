@@ -306,7 +306,7 @@ const BookingDetailPage: React.FC = () => {
               </dl>
 
               {booking.refund_amount_formatted && (
-                <div className="mt-6 rounded-2xl border border-blue-100 bg-blue-50 px-5 py-4 text-sm text-blue-900">
+                <div className="mt-6 rounded-2xl border border-line bg-cream-paper px-5 py-4 text-sm text-ink">
                   <span className="font-medium">Hoàn tiền:</span>{' '}
                   {booking.refund_amount_formatted.replace(/\s?₫/, 'đ')}
                 </div>

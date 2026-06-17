@@ -37,25 +37,11 @@ const Hero: React.FC = () => {
         aria-hidden="true"
       />
 
-      {/* Mobile: bottom-to-top gradient */}
-      <div
-        className="absolute inset-0 md:hidden"
-        style={{
-          background:
-            'linear-gradient(to top, rgba(26,22,18,0.82) 0%, rgba(26,22,18,0.28) 55%, transparent 100%)',
-        }}
-        aria-hidden="true"
-      />
+      {/* Mobile: bottom-to-top protection gradient (token: --gradient-hero-mobile) */}
+      <div className="absolute inset-0 md:hidden bg-hero-mobile" aria-hidden="true" />
 
-      {/* Desktop: left-to-right gradient */}
-      <div
-        className="absolute inset-0 hidden md:block"
-        style={{
-          background:
-            'linear-gradient(to right, rgba(26,22,18,0.80) 0%, rgba(26,22,18,0.40) 55%, transparent 100%)',
-        }}
-        aria-hidden="true"
-      />
+      {/* Desktop: left-to-right protection gradient (token: --gradient-hero-desktop) */}
+      <div className="absolute inset-0 hidden md:block bg-hero-desktop" aria-hidden="true" />
 
       {/* Content — bottom-left anchored, pb-28 to clear SearchCard overlap */}
       <div className="absolute bottom-0 left-0 z-10 px-5 md:px-12 lg:px-20 pb-28 md:pb-24 max-w-xs sm:max-w-sm md:max-w-[540px] lg:max-w-[680px]">

@@ -216,7 +216,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
               required
               disabled={isLoading}
               placeholder="Ngắn gọn trải nghiệm của bạn"
-              className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+              className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold disabled:bg-gray-50"
             />
           </div>
         )}
@@ -240,7 +240,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
             disabled={isLoading}
             placeholder="Chia sẻ trải nghiệm của bạn..."
             className={`w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 disabled:bg-gray-50 ${
-              isDetail ? 'resize-y focus:ring-amber-400' : 'resize-none focus:ring-blue-500'
+              isDetail ? 'resize-y focus:ring-gold' : 'resize-none focus:ring-gold'
             }`}
           />
         </div>

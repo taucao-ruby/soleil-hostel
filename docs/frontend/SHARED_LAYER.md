@@ -15,6 +15,7 @@ src/shared/
 │   │   └── Footer.tsx          # Site footer
 │   └── ui/
 │       ├── Button.tsx          # Button with variants (+test)
+│       ├── Badge.tsx           # Design-system badge (7 variants)
 │       ├── Card.tsx            # Card container
 │       ├── Input.tsx           # Form input (+test)
 │       ├── Label.tsx           # Form label
@@ -36,16 +37,35 @@ src/shared/
 
 ```typescript
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger'
+  variant?: 'primary' | 'soft' | 'ghost' | 'link' | 'darkGhost' | 'secondary' | 'outline' | 'danger'
   size?: 'sm' | 'md' | 'lg'
   loading?: boolean
+  fullWidth?: boolean
   children: React.ReactNode
 }
 ```
 
-- 5 variants with distinct Tailwind styles
-- Loading state with inline SVG spinner
-- Disabled state management
+- "Modern Archivist" design-system variants: `primary` (gold gradient), `soft`
+  (solid gold), `ghost` (hairline border), `link` (inline gold), `darkGhost`
+  (on dark surfaces). `secondary`/`outline` are back-compat aliases for
+  `soft`/`ghost`; `danger` stays functional red.
+- Labels never UPPERCASE; press = `active:scale-95`; `fullWidth` spans the row.
+- Loading state with inline SVG spinner; disabled state management.
+
+### Badge
+
+```typescript
+interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
+  variant?:
+    | 'available' | 'unavailable' | 'popular' | 'premium'
+    | 'location' | 'eyebrowPill' | 'typeChip'
+  children: React.ReactNode
+}
+```
+
+- Design-system pill/chip primitive. `typeChip` is the only square (4px)
+  variant; `location`/`eyebrowPill` are translucent for use over imagery / dark
+  surfaces. Consumed by the homepage room card (availability / location / type).
 
 ### Input
 
@@ -154,4 +174,4 @@ XSS sanitization and URL validation utilities:
 - **No clsx/tailwind-merge**: Class concatenation uses template literals
 - **No lucide-react**: SVG icons are inline
 - **No date-fns**: Not installed; date handling is in feature-level code
-- **Component tests**: Button (12 tests) and Input (10 tests) have dedicated test files
+- **Component tests**: Button (13 tests) and Input (10 tests) have dedicated test files

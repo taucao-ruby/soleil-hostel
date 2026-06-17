@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import FilterChips from './FilterChips'
+import Badge from '@/shared/components/ui/Badge'
+import Button from '@/shared/components/ui/Button'
 import { getRooms } from '@/features/rooms/room.api'
 import type { Room } from '@/features/rooms/room.types'
 import { FILTER_CHIPS } from '../home.mock'
@@ -204,31 +206,27 @@ const RoomCard: React.FC<{ room: Room }> = ({ room }) => {
 
         {/* Location badge */}
         {locationName && (
-          <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 bg-black/50 backdrop-blur-sm text-white text-[11px] px-2 py-0.5 rounded-full">
+          <Badge variant="location" className="absolute bottom-2 left-2">
             📍 {locationName}
-          </span>
+          </Badge>
         )}
 
         {/* Status badge */}
-        <span
-          className={[
-            'absolute top-2 right-2 text-[11px] font-medium px-2 py-0.5 rounded-full border',
-            isAvailable
-              ? 'bg-green-100 text-green-800 border-green-200'
-              : 'bg-gray-100 text-gray-600 border-gray-200',
-          ].join(' ')}
+        <Badge
+          variant={isAvailable ? 'available' : 'unavailable'}
+          className="absolute top-2 right-2"
         >
           {isAvailable ? 'Còn phòng' : 'Hết phòng'}
-        </span>
+        </Badge>
       </div>
 
       {/* Card body */}
       <div className="p-4">
         {/* Room type chip */}
         {typeLabel && (
-          <span className="inline-block bg-[#F0EDE8] text-[#504534] text-[11px] font-bold uppercase tracking-wide px-2.5 py-0.5 rounded mb-2">
-            {typeLabel}
-          </span>
+          <div className="mb-2">
+            <Badge variant="typeChip">{typeLabel}</Badge>
+          </div>
         )}
 
         <h3 className="font-serif italic text-[16px] text-[#1C1A17] leading-snug mb-2 line-clamp-2">
@@ -249,13 +247,14 @@ const RoomCard: React.FC<{ room: Room }> = ({ room }) => {
             Xem chi tiết →
           </Link>
           {isAvailable ? (
-            <button
+            <Button
+              variant="soft"
+              size="sm"
               aria-label="Đặt ngay"
               onClick={() => navigate('/booking')}
-              className="h-8 px-4 bg-[#C9920A] hover:bg-[#a87808] text-white text-[12px] font-bold rounded-lg transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9920A] focus-visible:ring-offset-1 active:scale-95"
             >
               Đặt ngay
-            </button>
+            </Button>
           ) : (
             <span className="text-xs text-[#6B6760]">Hết phòng</span>
           )}

@@ -12,19 +12,23 @@ describe('Button Component', () => {
   it('applies primary variant by default', () => {
     render(<Button>Primary</Button>)
     const button = screen.getByRole('button')
-    expect(button.className).toContain('bg-blue-600')
+    expect(button.className).toContain('bg-gradient-gold')
   })
 
-  it('applies secondary variant', () => {
-    render(<Button variant="secondary">Secondary</Button>)
-    const button = screen.getByRole('button')
-    expect(button.className).toContain('bg-yellow-400')
+  it('applies soft variant (and secondary alias)', () => {
+    const { rerender } = render(<Button variant="soft">Soft</Button>)
+    expect(screen.getByRole('button').className).toContain('bg-gold-soft')
+
+    rerender(<Button variant="secondary">Secondary</Button>)
+    expect(screen.getByRole('button').className).toContain('bg-gold-soft')
   })
 
-  it('applies outline variant', () => {
-    render(<Button variant="outline">Outline</Button>)
-    const button = screen.getByRole('button')
-    expect(button.className).toContain('border-blue-600')
+  it('applies ghost variant (and outline alias)', () => {
+    const { rerender } = render(<Button variant="ghost">Ghost</Button>)
+    expect(screen.getByRole('button').className).toContain('text-bark')
+
+    rerender(<Button variant="outline">Outline</Button>)
+    expect(screen.getByRole('button').className).toContain('border-line')
   })
 
   it('applies danger variant', () => {
@@ -33,21 +37,26 @@ describe('Button Component', () => {
     expect(button.className).toContain('bg-red-600')
   })
 
-  it('applies ghost variant', () => {
-    render(<Button variant="ghost">Ghost</Button>)
+  it('applies link variant', () => {
+    render(<Button variant="link">Link</Button>)
     const button = screen.getByRole('button')
-    expect(button.className).toContain('text-gray-700')
+    expect(button.className).toContain('text-gold')
   })
 
   it('applies size classes (sm, md, lg)', () => {
     const { rerender } = render(<Button size="sm">Small</Button>)
-    expect(screen.getByRole('button').className).toContain('px-3')
+    expect(screen.getByRole('button').className).toContain('px-4')
 
     rerender(<Button size="md">Medium</Button>)
-    expect(screen.getByRole('button').className).toContain('px-5')
+    expect(screen.getByRole('button').className).toContain('px-6')
 
     rerender(<Button size="lg">Large</Button>)
-    expect(screen.getByRole('button').className).toContain('px-8')
+    expect(screen.getByRole('button').className).toContain('px-7')
+  })
+
+  it('applies full width when fullWidth is set', () => {
+    render(<Button fullWidth>Wide</Button>)
+    expect(screen.getByRole('button').className).toContain('w-full')
   })
 
   it('is disabled when disabled prop is true', () => {

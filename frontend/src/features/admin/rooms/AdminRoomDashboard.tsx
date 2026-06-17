@@ -51,7 +51,7 @@ const RoomDashboardVariant: React.FC<RoomDashboardVariantProps> = ({
           <div className="space-y-2">
             <span
               className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${
-                isAdminVariant ? 'bg-amber-100 text-amber-900' : 'bg-sky-100 text-sky-800'
+                isAdminVariant ? 'bg-amber-100 text-amber-900' : 'bg-stone-100 text-stone-700'
               }`}
             >
               {isAdminVariant ? 'Admin · Toàn quyền CUD' : 'Moderator · Chỉ xem'}

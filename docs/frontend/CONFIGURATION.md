@@ -168,22 +168,37 @@ rules: {
 
 ```javascript
 export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
+      // "Modern Archivist" design system (Claude Design handoff).
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
+        serif: ['Newsreader', 'Playfair Display', 'Georgia', 'serif'],
       },
+      colors: {
+        // Gold is the single chromatic brand accent.
+        gold: { DEFAULT: '#C9920A', hover: '#A87808', soft: '#C9973A', 'soft-hover': '#B8872A', pale: '#F9BC3D' },
+        bark: { DEFAULT: '#1C1A17', deep: '#151311' },
+        ink: { DEFAULT: '#504534', soft: '#6B6760' },
+        cream: { DEFAULT: '#F5EFE3', warm: '#FFF8F4', paper: '#F7F3EE', beige: '#F0E8DC' /* …low/high/tint */ },
+        line: { DEFAULT: '#E2DDD6', warm: '#D4C4AE' },
+        // …legacy aliases kept for non-migrated surfaces (hueBlack, brandAmber, navy, …)
+      },
+      backgroundImage: {
+        'gradient-gold': 'var(--gradient-gold)',
+        'hero-mobile': 'var(--gradient-hero-mobile)',
+        'hero-desktop': 'var(--gradient-hero-desktop)',
+      },
+      boxShadow: { card: 'var(--shadow-card)', 'card-hover': 'var(--shadow-card-hover)' /* …search-* */ },
+      animation: { 'ken-burns': 'ken-burns 12s ease-in-out infinite alternate' /* …fade/slide/scale */ },
     },
   },
   plugins: [],
 }
 ```
 
-**Note:** No Tailwind plugins installed (`@tailwindcss/forms`, `@tailwindcss/typography`, etc.).
+**Note:** No Tailwind plugins installed (`@tailwindcss/forms`, `@tailwindcss/typography`, etc.). The raw token values (full color/cream scale, type scale, spacing, radius, shadow, motion) live as CSS variables in `src/shared/styles/index.css` `:root`; the `var(--…)`-backed `backgroundImage`/`boxShadow` utilities reference them.
 
 ---
 

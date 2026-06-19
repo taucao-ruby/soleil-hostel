@@ -379,6 +379,31 @@ jobs:
           elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             echo "environment=production" >> $GITHUB_OUTPUT
           fi
+      # GitHub Actions does not allow the `secrets` context inside step `if:`
+      # conditions — doing so is a workflow-validation error that fails the run
+      # at parse time before any step executes. Resolve secret *presence* into
+      # plain string outputs here, then gate provider deploy steps on
+      # steps.providers.outputs.* (same convention as the deploy-target gates).
+      - name: Detect configured deploy providers
+        id: providers
+        env:
+          FORGE_API_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          set -euo pipefail
+          forge=false; render=false; coolify=false; ssh_host=false
+          if [ -n "${FORGE_API_TOKEN}" ]; then forge=true; fi
+          if [ -n "${RENDER_DEPLOY_HOOK}" ]; then render=true; fi
+          if [ -n "${COOLIFY_API_TOKEN}" ]; then coolify=true; fi
+          if [ -n "${DEPLOY_HOST}" ]; then ssh_host=true; fi
+          {
+            echo "forge=${forge}"
+            echo "render=${render}"
+            echo "coolify=${coolify}"
+            echo "ssh_host=${ssh_host}"
+          } >> "$GITHUB_OUTPUT"
       - name: Production runtime gate prerequisites
         if: steps.deploy-target.outputs.environment == 'production'
         env:
@@ -402,20 +427,20 @@ jobs:
           DB_USERNAME: ${{ secrets.PROD_DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.PROD_DB_PASSWORD }}
       - name: Deploy to Forge
-        if: ${{ secrets.FORGE_API_TOKEN != '' }}
+        if: steps.providers.outputs.forge == 'true'
         run: |
           curl -X POST https://forge.laravel.com/api/v1/servers/${{ secrets.FORGE_SERVER_ID }}/sites/${{ secrets.FORGE_SITE_ID }}/deployment/trigger \
             -H "Authorization: Bearer ${{ secrets.FORGE_API_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{"commit": "${{ github.sha }}", "branch": "${{ github.ref_name }}"}'
       - name: Deploy to Render
-        if: ${{ secrets.RENDER_DEPLOY_HOOK != '' }}
+        if: steps.providers.outputs.render == 'true'
         run: |
           curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}" \
             -H "Content-Type: application/json" \
             -d '{"commit": "${{ github.sha }}", "branch": "${{ github.ref_name }}"}'
       - name: Deploy to Coolify
-        if: ${{ secrets.COOLIFY_API_TOKEN != '' }}
+        if: steps.providers.outputs.coolify == 'true'
         run: |
           curl -X POST https://coolify.io/api/v1/applications/${{ secrets.COOLIFY_APP_ID }}/deploy \
             -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}" \
@@ -425,7 +450,7 @@ jobs:
       # Otherwise Forge/Render/Coolify already deployed the same commit above
       # and a second deploy would overwrite with the same ref or race the provider.
       - name: Deploy via SSH
-        if: ${{ secrets.DEPLOY_HOST != '' && secrets.FORGE_API_TOKEN == '' && secrets.RENDER_DEPLOY_HOOK == '' && secrets.COOLIFY_API_TOKEN == '' }}
+        if: steps.providers.outputs.ssh_host == 'true' && steps.providers.outputs.forge == 'false' && steps.providers.outputs.render == 'false' && steps.providers.outputs.coolify == 'false'
         env:
           DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
@@ -528,7 +553,7 @@ jobs:
       # "no SSH" branch is unreachable for tagged deploys.
       # ─────────────────────────────────────────────────────────────────────
       - name: Run database migrations
-        if: startsWith(github.ref, 'refs/tags/v') && secrets.DEPLOY_HOST != ''
+        if: startsWith(github.ref, 'refs/tags/v') && steps.providers.outputs.ssh_host == 'true'
         env:
           DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}

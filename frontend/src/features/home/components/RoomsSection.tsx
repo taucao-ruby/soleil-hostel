@@ -229,13 +229,16 @@ const RoomCard: React.FC<{ room: Room }> = ({ room }) => {
           </div>
         )}
 
-        <h3 className="font-serif italic text-[16px] text-[#1C1A17] leading-snug mb-2 line-clamp-2">
+        {/* DS RoomCard: italic serif name 24px / gold price 22px (responsive down for the tight 2-col mobile grid) */}
+        <h3 className="font-serif italic font-medium text-[20px] md:text-[24px] text-[#1C1A17] leading-tight mb-2 line-clamp-2">
           {room.name}
         </h3>
 
-        <p className="text-[13px] mb-3">
-          <span className="text-[#C9920A] font-bold text-[16px]">{VND.format(room.price)}₫</span>
-          <span className="text-[#6B6760] text-[12px]"> / đêm</span>
+        <p className="mb-3">
+          <span className="text-[#C9920A] font-extrabold text-[20px] md:text-[22px] tracking-[-0.01em]">
+            {VND.format(room.price)}₫
+          </span>
+          <span className="text-[#6B6760] text-[12px] font-medium"> / đêm</span>
         </p>
 
         {/* Actions row */}

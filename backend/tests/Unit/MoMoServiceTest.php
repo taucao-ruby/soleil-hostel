@@ -54,7 +54,12 @@ final class MoMoServiceTest extends TestCase
      */
     public function test_sign_ipn_matches_canonical_ordered_hmac(): void
     {
-        config(['services.momo.secret_key' => self::SANDBOX_SECRET]);
+        // signIpn() sources accessKey from config (single source of truth), so the
+        // config value — not the $fields entry — drives the signed accessKey segment.
+        config([
+            'services.momo.secret_key' => self::SANDBOX_SECRET,
+            'services.momo.access_key' => 'F8BBA842ECF85',
+        ]);
 
         $fields = [
             'accessKey' => 'F8BBA842ECF85',
@@ -78,6 +83,47 @@ final class MoMoServiceTest extends TestCase
         $expected = hash_hmac('sha256', $expectedRaw, self::SANDBOX_SECRET);
 
         $this->assertSame($expected, app(MoMoService::class)->signIpn($fields));
+    }
+
+    /**
+     * Regression guard for the IPN sign↔verify contract — the asymmetry that returned
+     * 400 for every valid IPN whenever config access_key was non-empty (e.g. CI's
+     * .env.testing). A payload signed by signIpn — which omits accessKey, exactly as
+     * MoMo's inbound IPN body does — MUST verify, and tampering any signed field MUST
+     * flip it to false. Pins the contract one assertion away, not three HTTP layers.
+     */
+    public function test_verify_ipn_accepts_a_payload_signed_by_sign_ipn(): void
+    {
+        config([
+            'services.momo.secret_key' => 'test-momo-secret',
+            'services.momo.access_key' => 'F8BBA842ECF85',
+        ]);
+
+        $svc = app(MoMoService::class);
+
+        // The inbound IPN fields MoMo actually sends — NO accessKey.
+        $payload = [
+            'partnerCode' => 'MOMO',
+            'orderId' => 'soleil-1-abc',
+            'requestId' => 'req-1',
+            'amount' => '50000',
+            'orderInfo' => 'Soleil #1',
+            'orderType' => 'momo_wallet',
+            'transId' => '2588653829',
+            'resultCode' => 0,
+            'message' => 'Successful.',
+            'payType' => 'qr',
+            'responseTime' => '1700000000000',
+            'extraData' => '',
+        ];
+        $payload['signature'] = $svc->signIpn($payload);
+
+        $this->assertTrue($svc->verifyIpnSignature($payload));
+
+        // Negative: tampering any signed field must flip verification to false.
+        $tampered = $payload;
+        $tampered['amount'] = '999999';
+        $this->assertFalse($svc->verifyIpnSignature($tampered));
     }
 
     public function test_order_id_round_trips_and_rejects_malformed(): void

@@ -19,8 +19,13 @@ fi
 # Audit log path
 audit_log="$(dirname "$0")/../hook-audit.log"
 
-# Block edits to secret/credential files
+# Block edits to secret/credential files.
+# .env.example is a tracked template (public placeholders, no real credentials),
+# so it is exempted to match the documented policy in docs/HOOKS.md, which blocks
+# ".env* (except .env.example)". The exempt arm must precede the *.env* arm below.
 case "$path" in
+  *.env.example)
+    exit 0 ;;
   *.env*|*.key|*.pem|*.secret|*id_rsa*)
     echo '{"decision":"block","reason":"Editing sensitive file blocked by hook: '"$path"'"}' >&2
     echo "{\"event\":\"block\",\"hook\":\"guard-sensitive-files\",\"path\":\"$(echo "$path" | head -c 200)\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" >> "$audit_log" 2>/dev/null

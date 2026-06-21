@@ -129,6 +129,17 @@ final class MoMoIpnTest extends TestCase
         $this->assertDatabaseCount('momo_webhook_events', 0);
     }
 
+    public function test_ipn_route_is_rate_limited(): void
+    {
+        // Finding 1 (hardening): the public IPN route MUST declare an explicit
+        // throttle — the `api` group carries no default one, so an unauthenticated
+        // flood would otherwise be bounded only by the (cheap) signature rejection.
+        $route = app('router')->getRoutes()->getByName('v1.payments.momo.ipn');
+
+        $this->assertNotNull($route, 'MoMo IPN route is not registered.');
+        $this->assertContains('throttle:120,1', $route->middleware());
+    }
+
     private function pendingPrepaidBooking(int $amount = 50000): Booking
     {
         return Booking::factory()->for($this->user)->for($this->room)->create([

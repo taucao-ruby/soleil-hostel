@@ -110,8 +110,11 @@ Route::middleware(['check_token_valid', 'verified'])->group(function () {
 // No auth middleware by design: the MoMo HMAC signature IS the authentication, verified fail-closed in
 // MoMoPaymentController::ipn. This route MUST NOT carry check_token_valid / verified / role:* — MoMo's
 // servers cannot present a Sanctum token. It is server→server (not a SANCTUM_STATEFUL_DOMAIN), so no
-// session/CSRF applies; the global `api` group (throttle:api, bindings) is the only middleware.
-Route::post('/payments/momo/ipn', [MoMoPaymentController::class, 'ipn'])->name('v1.payments.momo.ipn');
+// session/CSRF applies. The `api` group carries NO default throttle, so an explicit, generous rate
+// limit caps an unauthenticated flood — forged IPNs are still rejected pre-DB at the signature check,
+// and 120/min sits far above MoMo's real retry cadence so a legitimate callback is never dropped.
+Route::post('/payments/momo/ipn', [MoMoPaymentController::class, 'ipn'])
+    ->name('v1.payments.momo.ipn')->middleware('throttle:120,1');
 
 // ========== AI HARNESS ENDPOINTS (v1) ==========
 // Gated by AI_HARNESS_ENABLED feature flag. See config/ai_harness.php.

@@ -8,6 +8,7 @@ use App\Enums\BookingStatus;
 use App\Enums\PaymentPolicy;
 use App\Enums\PaymentStatus;
 use App\Models\Booking;
+use App\Models\MoMoPayment;
 use App\Models\Room;
 use App\Models\User;
 use App\Services\MoMoService;
@@ -55,6 +56,10 @@ final class MoMoIpnTest extends TestCase
         $this->assertDatabaseHas('momo_webhook_events', [
             'order_id' => $payload['orderId'],
             'status' => 'processed',
+        ]);
+        $this->assertDatabaseHas('momo_payments', [
+            'order_id' => $payload['orderId'],
+            'status' => 'paid',
         ]);
     }
 
@@ -105,7 +110,7 @@ final class MoMoIpnTest extends TestCase
     public function test_ipn_for_unknown_order_is_handled_without_crash(): void
     {
         $booking = $this->pendingPrepaidBooking();
-        $payload = $this->signedIpn($booking, ['orderId' => 'soleil-99999999-x']);
+        $payload = $this->signedIpn($booking, ['orderId' => 'soleil-99999999-x'], persistPayment: false);
 
         $this->postJson(route('v1.payments.momo.ipn'), $payload)->assertNoContent();
 
@@ -140,6 +145,26 @@ final class MoMoIpnTest extends TestCase
         $this->assertContains('throttle:120,1', $route->middleware());
     }
 
+    public function test_create_persists_an_authoritative_order_record(): void
+    {
+        // Blank secret ⇒ MoMoService fake mode: deterministic order, no network call.
+        config(['services.momo.secret_key' => null]);
+
+        $booking = $this->pendingPrepaidBooking(50000);
+
+        $this->actingAs($this->user, 'sanctum')
+            ->postJson(route('v1.bookings.momo.create', $booking))
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertDatabaseHas('momo_payments', [
+            'booking_id' => $booking->id,
+            'expected_amount' => 50000,
+            'currency' => 'vnd',
+            'status' => 'pending',
+        ]);
+    }
+
     private function pendingPrepaidBooking(int $amount = 50000): Booking
     {
         return Booking::factory()->for($this->user)->for($this->room)->create([
@@ -152,17 +177,33 @@ final class MoMoIpnTest extends TestCase
     }
 
     /**
-     * Build a MoMo IPN payload for a booking and sign it with the configured
-     * secret, so verifyIpnSignature passes unless an override deliberately breaks it.
+     * Build a MoMo IPN payload for a booking and sign it with the configured secret,
+     * so verifyIpnSignature passes unless an override deliberately breaks it. Also
+     * mints the authoritative momo_payments record the handler resolves through (what
+     * create() does in production); pass persistPayment: false to simulate an IPN for
+     * an order we never started.
      *
      * @param  array<string, mixed>  $overrides
      * @return array<string, mixed>
      */
-    private function signedIpn(Booking $booking, array $overrides = []): array
+    private function signedIpn(Booking $booking, array $overrides = [], bool $persistPayment = true): array
     {
+        $orderId = (string) ($overrides['orderId'] ?? 'soleil-'.$booking->id.'-'.uniqid());
+
+        if ($persistPayment) {
+            MoMoPayment::create([
+                'booking_id' => $booking->id,
+                'order_id' => $orderId,
+                'request_id' => (string) Str::uuid(),
+                'expected_amount' => (int) $booking->amount,
+                'currency' => 'vnd',
+                'status' => 'pending',
+            ]);
+        }
+
         $payload = array_merge([
             'partnerCode' => 'MOMO',
-            'orderId' => 'soleil-'.$booking->id.'-'.uniqid(),
+            'orderId' => $orderId,
             'requestId' => (string) Str::uuid(),
             'amount' => (string) $booking->amount,
             'orderInfo' => 'Soleil #'.$booking->id,
@@ -175,6 +216,7 @@ final class MoMoIpnTest extends TestCase
             'extraData' => '',
         ], $overrides);
 
+        $payload['orderId'] = $orderId;
         $payload['signature'] = app(MoMoService::class)->signIpn($payload);
 
         return $payload;

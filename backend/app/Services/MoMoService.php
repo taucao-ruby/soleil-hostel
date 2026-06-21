@@ -180,10 +180,17 @@ class MoMoService
     /**
      * HMAC-SHA256 (lowercase hex) of the canonical IPN raw string (S1/S2).
      *
+     * accessKey is part of the IPN signing string but is NEVER carried in MoMo's
+     * inbound IPN body. It is therefore sourced from config here — the single source
+     * of truth — so this signer and verifyIpnSignature are provably symmetric and a
+     * payload-supplied (or absent) accessKey can never dictate the signature.
+     *
      * @param  array<string, mixed>  $fields
      */
     public function signIpn(array $fields): string
     {
+        $fields['accessKey'] = (string) config('services.momo.access_key');
+
         return $this->hmac($this->rawSignature($fields, self::IPN_SIGNATURE_FIELDS));
     }
 
@@ -194,10 +201,10 @@ class MoMoService
      * - blank/non-string provided signature ⇒ false.
      * - constant-time hash_equals compare, never === / ==.
      *
-     * MoMo does NOT transmit accessKey in the IPN body, yet it is part of the
-     * signing string — so we inject our OWN accessKey from config rather than trust
-     * the payload to supply it. This both matches MoMo's signature and prevents the
-     * attacker-controlled payload from dictating accessKey.
+     * MoMo does NOT transmit accessKey in the IPN body, yet it is part of the signing
+     * string. signIpn() sources accessKey from config (its single source of truth), so
+     * re-signing the inbound payload here recomputes the SAME base MoMo signed and an
+     * attacker-controlled payload can never dictate accessKey.
      *
      * @param  array<string, mixed>  $payload
      */
@@ -215,10 +222,7 @@ class MoMoService
             return false;
         }
 
-        $fields = $payload;
-        $fields['accessKey'] = (string) config('services.momo.access_key');
-
-        return hash_equals($this->signIpn($fields), $provided);
+        return hash_equals($this->signIpn($payload), $provided);
     }
 
     /**

@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Payment;
 use App\Enums\BookingStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\MoMoPayment;
 use App\Models\MoMoWebhookEvent;
 use App\Services\MoMoService;
 use App\Services\Payment\MoMoIpnHandler;
@@ -54,6 +55,21 @@ final class MoMoPaymentController extends Controller
         }
 
         $started = $this->momoService->createPayment($booking);
+
+        // Finding 3 (hardening): persist the authoritative order record so the IPN
+        // can only confirm an order we actually minted — and against the amount
+        // pinned here, immune to a later booking.amount change. firstOrCreate keeps
+        // the fake-mode deterministic orderId from colliding on a repeat call.
+        MoMoPayment::firstOrCreate(
+            ['order_id' => $started->orderId],
+            [
+                'booking_id' => $booking->id,
+                'request_id' => $started->requestId,
+                'expected_amount' => $started->amount,
+                'currency' => $started->currency,
+                'status' => 'pending',
+            ],
+        );
 
         return response()->json([
             'success' => true,

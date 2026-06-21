@@ -7,6 +7,7 @@ namespace App\Services\Payment;
 use App\Enums\BookingStatus;
 use App\Enums\PaymentStatus;
 use App\Models\Booking;
+use App\Models\MoMoPayment;
 use App\Services\BookingService;
 use App\Services\MoMoService;
 
@@ -36,13 +37,31 @@ final class MoMoIpnHandler
 
     public function applyToBooking(array $payload): MoMoIpnOutcome
     {
-        $bookingId = $this->momoService->bookingIdFromOrderId((string) data_get($payload, 'orderId', ''));
+        $orderId = (string) data_get($payload, 'orderId', '');
 
-        if ($bookingId === null) {
+        // Cheap structural guard before any DB lookup — rejects malformed orderIds.
+        $parsedBookingId = $this->momoService->bookingIdFromOrderId($orderId);
+
+        if ($parsedBookingId === null) {
             return MoMoIpnOutcome::BookingNotFound;
         }
 
-        $booking = Booking::query()->whereKey($bookingId)->first();
+        // Finding 3: the order MUST be one we minted at create() time. No record ⇒
+        // an unknown/forged order ⇒ never confirm. This row is the authoritative
+        // source for BOTH the target booking and the pinned expected amount.
+        $payment = MoMoPayment::query()->where('order_id', $orderId)->first();
+
+        if ($payment === null) {
+            return MoMoIpnOutcome::BookingNotFound;
+        }
+
+        // Defense in depth: the signed orderId encodes the booking id and must agree
+        // with the persisted record; a mismatch means corrupted/forged linkage.
+        if ((int) $payment->booking_id !== $parsedBookingId) {
+            return MoMoIpnOutcome::BookingNotFound;
+        }
+
+        $booking = Booking::query()->whereKey($payment->booking_id)->first();
 
         if ($booking === null) {
             return MoMoIpnOutcome::BookingNotFound;
@@ -58,20 +77,16 @@ final class MoMoIpnHandler
             return MoMoIpnOutcome::InvalidState;
         }
 
-        // C1: defense-in-depth amount/currency guard. Unlike Stripe's
-        // assertPaymentIntentMatchesBooking (which throws), this RETURNS
-        // AmountMismatch and does NOT confirm, so the controller can record the
-        // event and ack without a 500.
-        $expectedAmount = (int) $booking->amount;
-        $currency = (string) $booking->payment_currency;
-        $expectedCurrency = $currency !== ''
-            ? strtolower($currency)
-            : strtolower((string) config('cashier.currency', 'vnd'));
+        // C1: amount/currency guard against the PINNED order record, not the mutable
+        // live booking — so a booking.amount edited after order creation can neither
+        // block a legitimately-paid IPN nor let a stale amount through. Returns
+        // AmountMismatch (no throw) so the controller records + acks without a 500.
+        // MoMo IPN carries no currency field (VND-only channel), so the currency
+        // half asserts the order was minted in the VND MoMo settles.
+        $expectedAmount = (int) $payment->expected_amount;
         $notifiedAmount = (int) data_get($payload, 'amount');
 
-        // MoMo IPN carries no currency field (it is a VND-only channel), so the
-        // currency half asserts the booking expects the VND that MoMo settles.
-        if ($notifiedAmount !== $expectedAmount || $expectedCurrency !== 'vnd') {
+        if ($notifiedAmount !== $expectedAmount || strtolower((string) $payment->currency) !== 'vnd') {
             return MoMoIpnOutcome::AmountMismatch;
         }
 
@@ -85,6 +100,8 @@ final class MoMoIpnHandler
                 'paid_at' => $booking->paid_at ?? now(),
                 'payment_failed_reason' => null,
             ])->save();
+
+            $payment->markPaid();
 
             return MoMoIpnOutcome::AlreadyConfirmed;
         }
@@ -101,6 +118,8 @@ final class MoMoIpnHandler
         // we deliberately do NOT wrap this in an outer transaction. 0 capturable:
         // MoMo captureWallet is a full capture, never an authorize-then-capture hold.
         $this->bookingService->markPaidAndConfirm($booking, $expectedAmount, 0);
+
+        $payment->markPaid();
 
         return MoMoIpnOutcome::Confirmed;
     }

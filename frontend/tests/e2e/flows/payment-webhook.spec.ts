@@ -5,6 +5,7 @@ import {
   type APIRequestContext,
 } from '@playwright/test'
 import { signStripeWebhookPayload } from '../helpers/stripeWebhook'
+import { projectDayOffset } from '../helpers/projectWindow'
 
 /**
  * Flow 2 — Payment webhook → booking confirmed.
@@ -54,10 +55,13 @@ test.describe('Payment webhook @smoke', () => {
 
       // 2. Create a pending booking through the REAL booking API. Dates sit far
       //    past both the seeded preview bookings (≤ +22d) and the guest-booking
-      //    flow (+45d) so the booking exclusion constraint never bites this
-      //    room/window. The availability filter guarantees the room is bookable.
-      const checkIn = isoDate(120)
-      const checkOut = isoDate(122)
+      //    flow so the booking exclusion constraint never bites this room/window.
+      //    The per-project offset keeps the 4 nightly projects from exhausting the
+      //    3 seeded rooms on the same window. The availability filter guarantees
+      //    the room is bookable.
+      const base = 120 + projectDayOffset()
+      const checkIn = isoDate(base)
+      const checkOut = isoDate(base + 2)
 
       const roomsResp = await ctx.get(url('/v1/rooms'), {
         params: { check_in: checkIn, check_out: checkOut },

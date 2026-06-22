@@ -6,6 +6,7 @@ import {
 } from '@playwright/test'
 import { AdminDashboardPage } from '../pages/AdminDashboardPage'
 import { LoginPage } from '../pages/LoginPage'
+import { projectDayOffset } from '../helpers/projectWindow'
 
 /**
  * Flow 4 — Admin soft-deletes a booking, then restores it from the trashed view.
@@ -70,9 +71,12 @@ async function seedTrashedBooking(apiBase: string): Promise<number> {
     const authHeaders = { authorization: `Bearer ${token}` }
 
     // Far past the seeded preview bookings (≤ +22d) and the other flows
-    // (+45d, +120d) so the exclusion constraint never bites this room/window.
-    const checkIn = isoDate(150)
-    const checkOut = isoDate(152)
+    // (guest-booking +45d, payment-webhook +120d) so the exclusion constraint
+    // never bites this room/window. The per-project offset keeps the 4 nightly
+    // projects on disjoint windows.
+    const base = 200 + projectDayOffset()
+    const checkIn = isoDate(base)
+    const checkOut = isoDate(base + 2)
 
     const roomsResp = await ctx.get(url('/v1/rooms'), {
       params: { check_in: checkIn, check_out: checkOut },

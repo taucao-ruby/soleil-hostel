@@ -17,11 +17,15 @@ const ACTION_TIMEOUT = 15_000
  *
  * The room is pre-selected from the room_id query param, so the guest only
  * supplies stay dates + contact details. Submitting ("Giữ phòng và thanh toán")
- * creates a HELD (pending) booking and advances to the secure payment step
- * (data-testid="payment-step", "Đã giữ phòng tạm thời"). Completing the Stripe
- * payment — and the resulting confirmation — is owned at the API/webhook layer
- * by payment-webhook.spec.ts, so this UI flow asserts the room-held state only
- * (CI runs without a real Stripe card iframe).
+ * creates the booking (POST /v1/bookings) and then moves to the Stripe payment
+ * step.
+ *
+ * The smoke flow asserts the booking was CREATED (the real "guest can book"
+ * guarantee), not that the Stripe payment UI rendered: the testing-mode backend
+ * returns a fake PaymentIntent whose client_secret is not Stripe's required
+ * `${id}_secret_${secret}` format, so real Stripe Elements throws on mount.
+ * Payment confirmation is owned by payment-webhook.spec.ts at the API/webhook
+ * layer.
  */
 export class BookingFormPage {
   constructor(private readonly page: Page) {}
@@ -46,19 +50,25 @@ export class BookingFormPage {
       .fill(details.email, { timeout: ACTION_TIMEOUT })
   }
 
-  async submit(): Promise<void> {
-    await this.page
-      .getByRole('button', { name: /giữ phòng và thanh toán/i })
-      .click({ timeout: ACTION_TIMEOUT })
-  }
-
   /**
-   * The booking was created and the room is held: the form advances to the
-   * secure payment step. We assert the held state rather than a completed
-   * payment because CI runs without a real Stripe card iframe.
+   * Click "Giữ phòng và thanh toán" and assert the booking was created
+   * server-side. Waiting on the POST /v1/bookings response (rather than a
+   * post-submit UI state) keeps the assertion deterministic and independent of
+   * the Stripe payment step, which cannot render against the testing fake.
    */
-  async expectRoomHeld(): Promise<void> {
-    await expect(this.page.getByTestId('payment-step')).toBeVisible({ timeout: ACTION_TIMEOUT })
-    await expect(this.page.getByText('Đã giữ phòng tạm thời')).toBeVisible()
+  async submitExpectingBookingCreated(): Promise<void> {
+    const [response] = await Promise.all([
+      this.page.waitForResponse(
+        response =>
+          /\/v1\/bookings(\?|$)/.test(response.url()) && response.request().method() === 'POST',
+        { timeout: ACTION_TIMEOUT }
+      ),
+      this.page
+        .getByRole('button', { name: /giữ phòng và thanh toán/i })
+        .click({ timeout: ACTION_TIMEOUT }),
+    ])
+    expect(response.status(), `booking creation must return 201, got ${response.status()}`).toBe(
+      201
+    )
   }
 }

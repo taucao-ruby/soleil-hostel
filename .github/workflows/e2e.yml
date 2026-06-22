@@ -162,14 +162,14 @@ jobs:
           # localhost (same site as the http://localhost:4173 preview) so the
           # SameSite=Strict auth cookie flows during the authenticated booking flow.
           VITE_API_URL: "http://localhost:8000/api"
-          # A Stripe *publishable* test key (public by design — NOT a secret) so the
-          # booking form initializes Stripe Elements and advances to the held
-          # "payment-step" the guest-booking @smoke flow asserts. Without it
-          # BookingForm short-circuits to a "payment gateway not configured" error
-          # and never holds the room. Completing the card payment is NOT exercised
-          # in the UI — payment-webhook.spec.ts owns confirmation at the API layer,
-          # so a placeholder key that only needs to render the step is sufficient.
-          VITE_STRIPE_PUBLISHABLE_KEY: "pk_test_e2eSmokeRenderOnly00000000"
+          # No VITE_STRIPE_PUBLISHABLE_KEY on purpose: the testing-mode backend
+          # returns a deterministic fake PaymentIntent whose client_secret
+          # (pi_test_{id}_{hash}_secret_test) is NOT Stripe's required
+          # ${id}_secret_${secret} format, so real Stripe Elements throws on mount
+          # and crashes the booking page. Without the key BookingForm stops at a
+          # graceful "payment gateway not configured" state AFTER the booking is
+          # created — and guest-booking.spec.ts asserts that booking-created step.
+          # Payment confirmation is owned by payment-webhook.spec.ts (API layer).
           NODE_ENV: production
         run: pnpm run build
 
@@ -342,10 +342,9 @@ jobs:
           # localhost (same site as the http://localhost:4173 preview) so the
           # SameSite=Strict auth cookie flows during the authenticated booking flow.
           VITE_API_URL: "http://localhost:8000/api"
-          # Stripe *publishable* test key (public, NOT a secret) — lets the booking
-          # form reach the held "payment-step" the guest-booking flow asserts.
-          # See the smoke job's build step for the full rationale.
-          VITE_STRIPE_PUBLISHABLE_KEY: "pk_test_e2eSmokeRenderOnly00000000"
+          # No VITE_STRIPE_PUBLISHABLE_KEY on purpose — see the smoke job's build
+          # step: the testing-mode fake client_secret is not Stripe-format-valid,
+          # so real Stripe Elements would crash the booking page on mount.
           NODE_ENV: production
         run: pnpm run build
       - name: Install Playwright (all browsers)

@@ -31,9 +31,10 @@ const TEST_USER = {
 // happy-path: any regression here is a hard merge blocker.
 test.describe('Guest booking @smoke', () => {
   test('logs in → picks room → completes form → booking created @smoke', async ({ page }) => {
-    // Bound the run so a missing element fails fast (~90s) instead of burning
-    // the 25-minute global timeout in playwright.config.ts.
-    test.setTimeout(90_000)
+    // Bound the run so a missing element fails fast instead of burning the
+    // 25-minute global timeout in playwright.config.ts. 120s leaves headroom for
+    // the one-shot reload recovery in BookingFormPage.waitUntilReady on mobile.
+    test.setTimeout(120_000)
 
     const login = new LoginPage(page)
     const rooms = new RoomsPage(page)

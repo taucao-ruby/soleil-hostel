@@ -101,6 +101,11 @@ jobs:
           # + 20/min-per-IP login limits. Honored only when not production —
           # RateLimiterServiceProvider double-gates; `php artisan test` never sets it.
           DISABLE_RATE_LIMITING: "true"
+          # Raise the per-user pending-booking cap (config bookings.max_pending_per_user,
+          # default 2): the smoke flows create several pending bookings as the single
+          # seeded user across projects + retries without paying, so the default trips a
+          # PENDING_LIMIT_EXCEEDED 422 on the 3rd. `php artisan test` overrides this per-test.
+          BOOKING_MAX_PENDING_PER_USER: "1000"
         run: |
           cp .env.example .env
           php artisan key:generate
@@ -137,6 +142,11 @@ jobs:
           # + 20/min-per-IP login limits. Honored only when not production —
           # RateLimiterServiceProvider double-gates; `php artisan test` never sets it.
           DISABLE_RATE_LIMITING: "true"
+          # Raise the per-user pending-booking cap (config bookings.max_pending_per_user,
+          # default 2): the smoke flows create several pending bookings as the single
+          # seeded user across projects + retries without paying, so the default trips a
+          # PENDING_LIMIT_EXCEEDED 422 on the 3rd. `php artisan test` overrides this per-test.
+          BOOKING_MAX_PENDING_PER_USER: "1000"
         run: |
           # Fork 4 built-in-server workers so the SPA's parallel API calls and
           # the payment-webhook POST are served concurrently (like prod php-fpm)
@@ -322,6 +332,11 @@ jobs:
           # + 20/min-per-IP login limits. Honored only when not production —
           # RateLimiterServiceProvider double-gates; `php artisan test` never sets it.
           DISABLE_RATE_LIMITING: "true"
+          # Raise the per-user pending-booking cap (config bookings.max_pending_per_user,
+          # default 2): the smoke flows create several pending bookings as the single
+          # seeded user across projects + retries without paying, so the default trips a
+          # PENDING_LIMIT_EXCEEDED 422 on the 3rd. `php artisan test` overrides this per-test.
+          BOOKING_MAX_PENDING_PER_USER: "1000"
         run: |
           cp .env.example .env
           php artisan key:generate

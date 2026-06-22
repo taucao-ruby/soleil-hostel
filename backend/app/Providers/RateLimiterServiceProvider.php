@@ -27,6 +27,10 @@ class RateLimiterServiceProvider extends RouteServiceProvider
         // Strategy: 5 requests per minute per normalized email+IP + 20 per minute per IP
         // Purpose: Prevent brute force attacks
         RateLimiter::for('login', function (Request $request) {
+            if ($this->rateLimitingDisabled()) {
+                return Limit::none();
+            }
+
             $email = strtolower(trim((string) $request->input('email')));
             $ip = $this->requestIp($request);
 
@@ -57,6 +61,10 @@ class RateLimiterServiceProvider extends RouteServiceProvider
         // Strategy: 5 requests per minute per actor+IP + 20 per minute per IP
         // Purpose: Prevent spam bookings
         RateLimiter::for('booking', function (Request $request) {
+            if ($this->rateLimitingDisabled()) {
+                return Limit::none();
+            }
+
             $ip = $this->requestIp($request);
             $actor = $request->user()?->getAuthIdentifier()
                 ? 'user:'.$request->user()->getAuthIdentifier()
@@ -89,6 +97,10 @@ class RateLimiterServiceProvider extends RouteServiceProvider
         // Strategy: 5 requests per minute per token-derived actor + 20 per minute per IP
         // Purpose: Prevent abuse of token refresh endpoint
         RateLimiter::for('refresh-token', function (Request $request) {
+            if ($this->rateLimitingDisabled()) {
+                return Limit::none();
+            }
+
             $ip = $this->requestIp($request);
 
             return [
@@ -116,6 +128,10 @@ class RateLimiterServiceProvider extends RouteServiceProvider
         // Strategy: 5 requests per minute per authenticated user
         // Purpose: Secondary abuse control for the authenticated supplementary token endpoint
         RateLimiter::for('csrf-token', function (Request $request) {
+            if ($this->rateLimitingDisabled()) {
+                return Limit::none();
+            }
+
             $user = $request->user();
 
             return Limit::perMinute(5)
@@ -237,6 +253,23 @@ class RateLimiterServiceProvider extends RouteServiceProvider
         }
 
         return null;
+    }
+
+    /**
+     * E2E-only bypass for the auth/booking limiters.
+     *
+     * The nightly Playwright run executes every flow across 4 browser projects
+     * sharing one runner IP and the single seeded user@soleil.test, which trips
+     * the 5/min-per-email + 20/min-per-IP login limits. The E2E backend bootstrap
+     * sets DISABLE_RATE_LIMITING (config ratelimit.disable); the `php artisan test`
+     * suite does not, so its rate-limit feature tests keep their limits.
+     *
+     * Double-gated on app()->isProduction() so a leaked production env var can
+     * never disable brute-force protection.
+     */
+    private function rateLimitingDisabled(): bool
+    {
+        return ! app()->isProduction() && (bool) config('ratelimit.disable', false);
     }
 
     private function requestIp(Request $request): string

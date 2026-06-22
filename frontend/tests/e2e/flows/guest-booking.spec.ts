@@ -2,6 +2,7 @@ import { test } from '@playwright/test'
 import { LoginPage } from '../pages/LoginPage'
 import { RoomsPage } from '../pages/RoomsPage'
 import { BookingFormPage } from '../pages/BookingFormPage'
+import { projectDayOffset } from '../helpers/projectWindow'
 
 /**
  * Flow 1 — Guest booking happy path (authenticated).
@@ -16,7 +17,10 @@ import { BookingFormPage } from '../pages/BookingFormPage'
  * Assertions:
  *   - Login redirects to the dashboard.
  *   - /rooms exposes a bookable room card whose CTA opens the booking form.
- *   - Submitting the form surfaces the success confirmation + booking ref.
+ *   - Submitting ("Giữ phòng và thanh toán") creates the booking server-side
+ *     (POST /v1/bookings -> 201). Payment + confirmation are owned by
+ *     payment-webhook.spec.ts; this UI flow stops at booking-created because the
+ *     testing-mode fake client_secret cannot mount real Stripe Elements.
  */
 const TEST_USER = {
   email: 'user@soleil.test',
@@ -26,10 +30,11 @@ const TEST_USER = {
 // @smoke — gates every PR via .github/workflows/e2e.yml. Owns the booking
 // happy-path: any regression here is a hard merge blocker.
 test.describe('Guest booking @smoke', () => {
-  test('logs in → picks room → completes form → sees confirmation @smoke', async ({ page }) => {
-    // Bound the run so a missing element fails fast (~90s) instead of burning
-    // the 25-minute global timeout in playwright.config.ts.
-    test.setTimeout(90_000)
+  test('logs in → picks room → completes form → booking created @smoke', async ({ page }) => {
+    // Bound the run so a missing element fails fast instead of burning the
+    // 25-minute global timeout in playwright.config.ts. 120s leaves headroom for
+    // the one-shot reload recovery in BookingFormPage.waitUntilReady on mobile.
+    test.setTimeout(120_000)
 
     const login = new LoginPage(page)
     const rooms = new RoomsPage(page)
@@ -38,19 +43,25 @@ test.describe('Guest booking @smoke', () => {
     await login.goto()
     await login.login(TEST_USER.email, TEST_USER.password)
 
-    await rooms.goto()
+    // Navigate CLIENT-SIDE from here on: the only full page load is /login
+    // (pre-auth, no session check). Staying in the SPA after login keeps the
+    // resolved auth state, so /booking never re-runs the /me-httponly check that
+    // intermittently hangs on the CI built-in server (see RoomsPage.gotoViaNav).
+    await rooms.gotoViaNav()
     await rooms.bookFirstAvailableRoom()
+    await form.waitUntilReady()
 
     // Dates well past the seeded preview bookings (which sit within ~3 weeks of
-    // today) to avoid the booking exclusion constraint biting this flow.
+    // today), plus a per-project offset so the 4 nightly projects book disjoint
+    // windows on the same room instead of colliding on the exclusion constraint.
     const today = new Date()
-    const checkIn = addDays(today, 45)
-    const checkOut = addDays(today, 47)
+    const base = 45 + projectDayOffset()
+    const checkIn = addDays(today, base)
+    const checkOut = addDays(today, base + 2)
 
     await form.fillStayDates(checkIn, checkOut)
     await form.fillGuestDetails({ name: 'E2E Guest', email: 'e2e-guest@example.com' })
-    await form.submit()
-    await form.expectConfirmation()
+    await form.submitExpectingBookingCreated()
   })
 })
 

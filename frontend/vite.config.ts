@@ -74,6 +74,24 @@ export function readRatchetedThresholds(): CoverageThresholds {
   return floors
 }
 
+// Shared backend proxy: keeps the SPA same-origin with the API in BOTH `vite`
+// (dev, :5173) and `vite preview` (E2E, :4173). Same-origin is what lets the
+// httpOnly SameSite auth cookie flow reliably — a cross-port setup (:4173 ->
+// :8000) makes the cookie flaky, notably under Chrome mobile-device emulation.
+const apiProxy = {
+  '/api': {
+    target: process.env.VITE_PROXY_TARGET || 'http://127.0.0.1:8000',
+    changeOrigin: true,
+    secure: false,
+    // Strip the backend's `Domain=localhost` from Set-Cookie so the auth cookie
+    // is host-only (scoped to the preview origin). Chrome/Firefox tolerate an
+    // explicit Domain=localhost, but webkit/Safari rejects it — the cookie is
+    // never stored and the next authenticated request 401s. Host-only is
+    // accepted everywhere and is exactly what a same-origin SPA needs.
+    cookieDomainRewrite: '',
+  },
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -107,19 +125,20 @@ export default defineConfig({
     // when running inside containers or headless environments.
     host: '0.0.0.0',
     port: 5173,
-    proxy: {
-      '/api': {
-        target: process.env.VITE_PROXY_TARGET || 'http://127.0.0.1:8000',
-        changeOrigin: true,
-        secure: false,
-      },
-    },
+    proxy: apiProxy,
 
     open: false,
     cors: true,
     hmr: {
       overlay: true,
     },
+  },
+  // `vite preview` serves the production build for the Playwright E2E suite.
+  // Proxy /api to the backend so the SPA stays same-origin (see apiProxy), which
+  // is what makes the httpOnly auth cookie work across every browser/project.
+  preview: {
+    port: 4173,
+    proxy: apiProxy,
   },
   test: {
     globals: true,

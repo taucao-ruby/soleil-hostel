@@ -55,4 +55,30 @@ return [
         'max_network_retries' => (int) env('STRIPE_MAX_NETWORK_RETRIES', 2),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | MoMo (sandbox) HTTP client policy + credentials
+    |--------------------------------------------------------------------------
+    |
+    | Additive, parallel sandbox payment path (MOMO_SANDBOX_EXECUTION_PLAN T1).
+    | Same bounded-timeout posture as the Stripe block: a MoMo create/query call
+    | must never hang a worker near a booking/room lock. Credentials and URLs read
+    | from env and default to null when unset, so the block is intentionally
+    | nullable — AssertProductionConfig requires none of these keys.
+    |
+    */
+
+    'momo' => [
+        'endpoint' => env('MOMO_ENDPOINT'),
+        'partner_code' => env('MOMO_PARTNER_CODE'),
+        'access_key' => env('MOMO_ACCESS_KEY'),
+        'secret_key' => env('MOMO_SECRET_KEY'),
+        'ipn_url' => env('MOMO_IPN_URL'),
+        'redirect_url' => env('MOMO_REDIRECT_URL'),
+        'store_id' => env('MOMO_STORE_ID'),
+        'request_type' => env('MOMO_REQUEST_TYPE', 'captureWallet'),
+        'connect_timeout' => (int) env('MOMO_CONNECT_TIMEOUT', 2),
+        'read_timeout' => (int) env('MOMO_READ_TIMEOUT', 5),
+    ],
+
 ];

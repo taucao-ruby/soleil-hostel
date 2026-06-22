@@ -96,6 +96,16 @@ jobs:
           # it to the log driver so the placeholder SMTP transport in .env.example
           # can't throw and turn a confirmed booking into a 500 webhook response.
           MAIL_MAILER: log
+          # E2E-only: disable auth/booking rate limiting so the 4-project nightly
+          # (one runner IP + the single seeded user) doesn't trip the 5/min-per-email
+          # + 20/min-per-IP login limits. Honored only when not production —
+          # RateLimiterServiceProvider double-gates; `php artisan test` never sets it.
+          DISABLE_RATE_LIMITING: "true"
+          # Raise the per-user pending-booking cap (config bookings.max_pending_per_user,
+          # default 2): the smoke flows create several pending bookings as the single
+          # seeded user across projects + retries without paying, so the default trips a
+          # PENDING_LIMIT_EXCEEDED 422 on the 3rd. `php artisan test` overrides this per-test.
+          BOOKING_MAX_PENDING_PER_USER: "1000"
         run: |
           cp .env.example .env
           php artisan key:generate
@@ -127,6 +137,16 @@ jobs:
           # it to the log driver so the placeholder SMTP transport in .env.example
           # can't throw and turn a confirmed booking into a 500 webhook response.
           MAIL_MAILER: log
+          # E2E-only: disable auth/booking rate limiting so the 4-project nightly
+          # (one runner IP + the single seeded user) doesn't trip the 5/min-per-email
+          # + 20/min-per-IP login limits. Honored only when not production —
+          # RateLimiterServiceProvider double-gates; `php artisan test` never sets it.
+          DISABLE_RATE_LIMITING: "true"
+          # Raise the per-user pending-booking cap (config bookings.max_pending_per_user,
+          # default 2): the smoke flows create several pending bookings as the single
+          # seeded user across projects + retries without paying, so the default trips a
+          # PENDING_LIMIT_EXCEEDED 422 on the 3rd. `php artisan test` overrides this per-test.
+          BOOKING_MAX_PENDING_PER_USER: "1000"
         run: |
           # Fork 4 built-in-server workers so the SPA's parallel API calls and
           # the payment-webhook POST are served concurrently (like prod php-fpm)
@@ -159,9 +179,19 @@ jobs:
       - name: Build frontend (preview-mode artifact)
         working-directory: ./frontend
         env:
-          # localhost (same site as the http://localhost:4173 preview) so the
-          # SameSite=Strict auth cookie flows during the authenticated booking flow.
-          VITE_API_URL: "http://localhost:8000/api"
+          # Relative /api so the built SPA is SAME-ORIGIN with the API: `vite
+          # preview` proxies /api -> the backend (frontend/vite.config.ts
+          # preview.proxy). A cross-port absolute URL (:4173 -> :8000) made the
+          # httpOnly auth cookie flaky, notably under Chrome mobile emulation.
+          VITE_API_URL: "/api"
+          # No VITE_STRIPE_PUBLISHABLE_KEY on purpose: the testing-mode backend
+          # returns a deterministic fake PaymentIntent whose client_secret
+          # (pi_test_{id}_{hash}_secret_test) is NOT Stripe's required
+          # ${id}_secret_${secret} format, so real Stripe Elements throws on mount
+          # and crashes the booking page. Without the key BookingForm stops at a
+          # graceful "payment gateway not configured" state AFTER the booking is
+          # created — and guest-booking.spec.ts asserts that booking-created step.
+          # Payment confirmation is owned by payment-webhook.spec.ts (API layer).
           NODE_ENV: production
         run: pnpm run build
 
@@ -299,6 +329,16 @@ jobs:
           # it to the log driver so the placeholder SMTP transport in .env.example
           # can't throw and turn a confirmed booking into a 500 webhook response.
           MAIL_MAILER: log
+          # E2E-only: disable auth/booking rate limiting so the 4-project nightly
+          # (one runner IP + the single seeded user) doesn't trip the 5/min-per-email
+          # + 20/min-per-IP login limits. Honored only when not production —
+          # RateLimiterServiceProvider double-gates; `php artisan test` never sets it.
+          DISABLE_RATE_LIMITING: "true"
+          # Raise the per-user pending-booking cap (config bookings.max_pending_per_user,
+          # default 2): the smoke flows create several pending bookings as the single
+          # seeded user across projects + retries without paying, so the default trips a
+          # PENDING_LIMIT_EXCEEDED 422 on the 3rd. `php artisan test` overrides this per-test.
+          BOOKING_MAX_PENDING_PER_USER: "1000"
         run: |
           cp .env.example .env
           php artisan key:generate
@@ -331,9 +371,14 @@ jobs:
       - name: Build frontend
         working-directory: ./frontend
         env:
-          # localhost (same site as the http://localhost:4173 preview) so the
-          # SameSite=Strict auth cookie flows during the authenticated booking flow.
-          VITE_API_URL: "http://localhost:8000/api"
+          # Relative /api so the built SPA is SAME-ORIGIN with the API: `vite
+          # preview` proxies /api -> the backend (frontend/vite.config.ts
+          # preview.proxy). A cross-port absolute URL (:4173 -> :8000) made the
+          # httpOnly auth cookie flaky, notably under Chrome mobile emulation.
+          VITE_API_URL: "/api"
+          # No VITE_STRIPE_PUBLISHABLE_KEY on purpose — see the smoke job's build
+          # step: the testing-mode fake client_secret is not Stripe-format-valid,
+          # so real Stripe Elements would crash the booking page on mount.
           NODE_ENV: production
         run: pnpm run build
       - name: Install Playwright (all browsers)

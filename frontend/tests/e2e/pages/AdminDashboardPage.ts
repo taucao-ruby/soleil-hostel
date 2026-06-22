@@ -1,65 +1,66 @@
 import { Page, Locator, expect } from '@playwright/test'
 
+const ACTION_TIMEOUT = 15_000
+
 /**
- * Admin dashboard — lives at `/admin` (router index of the admin section).
+ * Admin bookings — the dashboard was redesigned from one tabbed page into a
+ * sidebar layout with dedicated sub-routes (the old role="tab" / role="tabpanel"
+ * selectors no longer exist):
  *
- * Real DOM (see src/features/admin/AdminDashboard.tsx):
- *   - Tabs are `role="tab"` buttons with Vietnamese labels: "Đặt phòng"
- *     (bookings — shows ALL bookings incl. trashed), "Đã xóa" (trashed,
- *     admin-only), "Liên hệ" (contacts). Only the active tab's panel is
- *     mounted (`role="tabpanel"`).
- *   - Each booking renders in an `<article>` whose text contains "ĐP #{id}"
- *     immediately followed by the status label (e.g. "ĐP #9Chờ xác nhận").
- *   - The trashed tab exposes a "Khôi phục" (restore) button per row; restore
- *     is immediate (no confirmation dialog).
+ *   - /admin/bookings          active bookings (AdminBookingTable). On desktop the
+ *                              row is a <tr> carrying a "Xem" link to
+ *                              /admin/bookings/{id} — a stable, id-based anchor.
+ *   - /admin/bookings/trashed  soft-deleted bookings (TrashedBookings). Each row is
+ *                              an <article> "ĐP #{id}" with an admin-only "Khôi
+ *                              phục" (restore) button; restore is immediate.
+ *
+ * Navigation is by route; rows are matched by booking id (stable) rather than by
+ * reference/label text that drifts with redesigns.
  */
 export class AdminDashboardPage {
   constructor(private readonly page: Page) {}
 
-  async goto(): Promise<void> {
-    await this.page.goto('/admin')
+  async gotoTrashed(): Promise<void> {
+    await this.page.goto('/admin/bookings/trashed')
+    await expect(this.page.getByRole('heading', { name: 'Đặt phòng đã xóa' })).toBeVisible({
+      timeout: ACTION_TIMEOUT,
+    })
   }
 
   async gotoBookings(): Promise<void> {
-    await this.selectTab('Đặt phòng')
+    await this.page.goto('/admin/bookings')
+    // exact:true so this heading ("Đặt phòng") is not satisfied by the trashed
+    // page's "Đặt phòng đã xóa".
+    await expect(this.page.getByRole('heading', { name: 'Đặt phòng', exact: true })).toBeVisible({
+      timeout: ACTION_TIMEOUT,
+    })
   }
 
-  async gotoTrashed(): Promise<void> {
-    await this.selectTab('Đã xóa')
+  /** Trashed row: an <article> whose "ĐP #{id}" is not a prefix of a longer id. */
+  private trashedRow(bookingId: number): Locator {
+    return this.page.locator('article').filter({ hasText: new RegExp(`ĐP #${bookingId}(?!\\d)`) })
   }
 
-  /** Navigate to /admin and switch to a tab, waiting until it is selected. */
-  private async selectTab(name: string): Promise<void> {
-    await this.goto()
-    const tab = this.page.getByRole('tab', { name })
-    await tab.click()
-    // Guard against a click that lands before React wires the handler: the
-    // assertion retries until aria-selected flips, so the panel is mounted
-    // before callers query it.
-    await expect(tab).toHaveAttribute('aria-selected', 'true')
-  }
-
-  /**
-   * The booking card for `bookingId`, scoped to the active tab panel (only one
-   * panel is mounted at a time). `(?!\d)` stops "ĐP #9" from matching "ĐP #90";
-   * a plain `\b` fails because the id is glued to the status word ("#9Chờ…").
-   */
-  private bookingRow(bookingId: number): Locator {
-    return this.page
-      .getByRole('tabpanel')
-      .locator('article')
-      .filter({ hasText: new RegExp(`ĐP #${bookingId}(?!\\d)`) })
+  /** Active-list anchor: the per-row "Xem" detail link → /admin/bookings/{id}. */
+  private activeRowLink(bookingId: number): Locator {
+    return this.page.locator(`a[href="/admin/bookings/${bookingId}"]`)
   }
 
   async restoreBooking(bookingId: number): Promise<void> {
-    await this.bookingRow(bookingId).getByRole('button', { name: 'Khôi phục' }).click()
+    await this.trashedRow(bookingId)
+      .getByRole('button', { name: 'Khôi phục' })
+      .click({ timeout: ACTION_TIMEOUT })
   }
 
-  async expectBookingPresent(bookingId: number): Promise<void> {
-    await expect(this.bookingRow(bookingId)).toBeVisible({ timeout: 10_000 })
+  async expectBookingInTrashed(bookingId: number): Promise<void> {
+    await expect(this.trashedRow(bookingId)).toBeVisible({ timeout: ACTION_TIMEOUT })
   }
 
-  async expectBookingAbsent(bookingId: number): Promise<void> {
-    await expect(this.bookingRow(bookingId)).toHaveCount(0)
+  async expectBookingNotInTrashed(bookingId: number): Promise<void> {
+    await expect(this.trashedRow(bookingId)).toHaveCount(0)
+  }
+
+  async expectBookingInActiveList(bookingId: number): Promise<void> {
+    await expect(this.activeRowLink(bookingId)).toBeVisible({ timeout: ACTION_TIMEOUT })
   }
 }

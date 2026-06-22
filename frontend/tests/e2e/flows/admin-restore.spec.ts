@@ -45,16 +45,16 @@ test.describe('Admin restore', () => {
 
     const dash = new AdminDashboardPage(page)
     await dash.gotoTrashed()
-    await dash.expectBookingPresent(bookingId)
+    await dash.expectBookingInTrashed(bookingId)
     await dash.restoreBooking(bookingId)
 
-    // After restore: gone from trashed…
+    // After restore: gone from the trashed list…
     await dash.gotoTrashed()
-    await dash.expectBookingAbsent(bookingId)
+    await dash.expectBookingNotInTrashed(bookingId)
 
     // …and back in the active bookings list.
     await dash.gotoBookings()
-    await dash.expectBookingPresent(bookingId)
+    await dash.expectBookingInActiveList(bookingId)
   })
 })
 

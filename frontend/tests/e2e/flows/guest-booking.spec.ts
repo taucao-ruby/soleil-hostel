@@ -16,7 +16,10 @@ import { BookingFormPage } from '../pages/BookingFormPage'
  * Assertions:
  *   - Login redirects to the dashboard.
  *   - /rooms exposes a bookable room card whose CTA opens the booking form.
- *   - Submitting the form surfaces the success confirmation + booking ref.
+ *   - Submitting ("Giữ phòng và thanh toán") holds the room and advances to the
+ *     secure payment step. Payment completion + booking confirmation are owned
+ *     by payment-webhook.spec.ts (API/webhook layer); this UI flow stops at the
+ *     room-held state because CI has no real Stripe card iframe.
  */
 const TEST_USER = {
   email: 'user@soleil.test',
@@ -26,7 +29,7 @@ const TEST_USER = {
 // @smoke — gates every PR via .github/workflows/e2e.yml. Owns the booking
 // happy-path: any regression here is a hard merge blocker.
 test.describe('Guest booking @smoke', () => {
-  test('logs in → picks room → completes form → sees confirmation @smoke', async ({ page }) => {
+  test('logs in → picks room → completes form → room held for payment @smoke', async ({ page }) => {
     // Bound the run so a missing element fails fast (~90s) instead of burning
     // the 25-minute global timeout in playwright.config.ts.
     test.setTimeout(90_000)
@@ -50,7 +53,7 @@ test.describe('Guest booking @smoke', () => {
     await form.fillStayDates(checkIn, checkOut)
     await form.fillGuestDetails({ name: 'E2E Guest', email: 'e2e-guest@example.com' })
     await form.submit()
-    await form.expectConfirmation()
+    await form.expectRoomHeld()
   })
 })
 

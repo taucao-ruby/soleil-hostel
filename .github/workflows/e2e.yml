@@ -162,6 +162,14 @@ jobs:
           # localhost (same site as the http://localhost:4173 preview) so the
           # SameSite=Strict auth cookie flows during the authenticated booking flow.
           VITE_API_URL: "http://localhost:8000/api"
+          # A Stripe *publishable* test key (public by design — NOT a secret) so the
+          # booking form initializes Stripe Elements and advances to the held
+          # "payment-step" the guest-booking @smoke flow asserts. Without it
+          # BookingForm short-circuits to a "payment gateway not configured" error
+          # and never holds the room. Completing the card payment is NOT exercised
+          # in the UI — payment-webhook.spec.ts owns confirmation at the API layer,
+          # so a placeholder key that only needs to render the step is sufficient.
+          VITE_STRIPE_PUBLISHABLE_KEY: "pk_test_e2eSmokeRenderOnly00000000"
           NODE_ENV: production
         run: pnpm run build
 
@@ -334,6 +342,10 @@ jobs:
           # localhost (same site as the http://localhost:4173 preview) so the
           # SameSite=Strict auth cookie flows during the authenticated booking flow.
           VITE_API_URL: "http://localhost:8000/api"
+          # Stripe *publishable* test key (public, NOT a secret) — lets the booking
+          # form reach the held "payment-step" the guest-booking flow asserts.
+          # See the smoke job's build step for the full rationale.
+          VITE_STRIPE_PUBLISHABLE_KEY: "pk_test_e2eSmokeRenderOnly00000000"
           NODE_ENV: production
         run: pnpm run build
       - name: Install Playwright (all browsers)

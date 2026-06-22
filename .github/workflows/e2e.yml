@@ -179,9 +179,11 @@ jobs:
       - name: Build frontend (preview-mode artifact)
         working-directory: ./frontend
         env:
-          # localhost (same site as the http://localhost:4173 preview) so the
-          # SameSite=Strict auth cookie flows during the authenticated booking flow.
-          VITE_API_URL: "http://localhost:8000/api"
+          # Relative /api so the built SPA is SAME-ORIGIN with the API: `vite
+          # preview` proxies /api -> the backend (frontend/vite.config.ts
+          # preview.proxy). A cross-port absolute URL (:4173 -> :8000) made the
+          # httpOnly auth cookie flaky, notably under Chrome mobile emulation.
+          VITE_API_URL: "/api"
           # No VITE_STRIPE_PUBLISHABLE_KEY on purpose: the testing-mode backend
           # returns a deterministic fake PaymentIntent whose client_secret
           # (pi_test_{id}_{hash}_secret_test) is NOT Stripe's required
@@ -369,9 +371,11 @@ jobs:
       - name: Build frontend
         working-directory: ./frontend
         env:
-          # localhost (same site as the http://localhost:4173 preview) so the
-          # SameSite=Strict auth cookie flows during the authenticated booking flow.
-          VITE_API_URL: "http://localhost:8000/api"
+          # Relative /api so the built SPA is SAME-ORIGIN with the API: `vite
+          # preview` proxies /api -> the backend (frontend/vite.config.ts
+          # preview.proxy). A cross-port absolute URL (:4173 -> :8000) made the
+          # httpOnly auth cookie flaky, notably under Chrome mobile emulation.
+          VITE_API_URL: "/api"
           # No VITE_STRIPE_PUBLISHABLE_KEY on purpose — see the smoke job's build
           # step: the testing-mode fake client_secret is not Stripe-format-valid,
           # so real Stripe Elements would crash the booking page on mount.

@@ -4,8 +4,8 @@ import {
   request as playwrightRequest,
   type APIRequestContext,
 } from '@playwright/test'
-import crypto from 'node:crypto'
 import { signStripeWebhookPayload } from '../helpers/stripeWebhook'
+import { projectDayOffset } from '../helpers/projectWindow'
 
 /**
  * Flow 2 — Payment webhook → booking confirmed.
@@ -55,10 +55,13 @@ test.describe('Payment webhook @smoke', () => {
 
       // 2. Create a pending booking through the REAL booking API. Dates sit far
       //    past both the seeded preview bookings (≤ +22d) and the guest-booking
-      //    flow (+45d) so the booking exclusion constraint never bites this
-      //    room/window. The availability filter guarantees the room is bookable.
-      const checkIn = isoDate(120)
-      const checkOut = isoDate(122)
+      //    flow so the booking exclusion constraint never bites this room/window.
+      //    The per-project offset keeps the 4 nightly projects from exhausting the
+      //    3 seeded rooms on the same window. The availability filter guarantees
+      //    the room is bookable.
+      const base = 120 + projectDayOffset()
+      const checkIn = isoDate(base)
+      const checkOut = isoDate(base + 2)
 
       const roomsResp = await ctx.get(url('/v1/rooms'), {
         params: { check_in: checkIn, check_out: checkOut },
@@ -82,10 +85,34 @@ test.describe('Payment webhook @smoke', () => {
       const bookingId = created.id as number
       expect(created.status, 'a fresh booking starts pending').toBe('pending')
 
-      // In APP_ENV=testing the booking flow attaches a deterministic fake
-      // PaymentIntent id rather than calling Stripe, so we can derive the id
-      // the create flow stored on the booking and address the webhook to it.
-      const paymentIntentId = fakePaymentIntentId(bookingId)
+      // 2b. Attach a PaymentIntent through the REAL payment endpoint so the
+      //     booking carries the payment_intent_id the webhook addresses. In
+      //     APP_ENV=testing StripeService returns a deterministic fake intent
+      //     whose client_secret is `${id}_secret_test`; recovering the id from
+      //     that response keeps the test decoupled from the backend's internal
+      //     idempotency-key hashing. (Re-deriving the id here is exactly how
+      //     this flow first rotted: the key format changed from
+      //     `booking_payment_intent_{id}` to `booking:{id}:payment_intent:create:v1`.)
+      const intentResp = await ctx.post(url(`/v1/bookings/${bookingId}/payment-intent`), {
+        headers: authHeaders,
+      })
+      expect(
+        intentResp.ok(),
+        `payment-intent creation must succeed (got ${intentResp.status()}): ${await intentResp.text()}`
+      ).toBeTruthy()
+      const clientSecret = (await intentResp.json()).data?.client_secret as string | undefined
+      expect(clientSecret, 'payment-intent response must carry a client_secret').toBeTruthy()
+      const paymentIntentId = (clientSecret as string).replace(/_secret_test$/, '')
+
+      // Read the booking back so the webhook payload mirrors the amount +
+      // currency the handler validates against. assertPaymentIntentMatchesBooking
+      // is strict — amount, currency, and metadata.booking_id all must match the
+      // booking — so a bare { id, status } payload is rejected with a 500.
+      const payableResp = await ctx.get(url(`/v1/bookings/${bookingId}`), { headers: authHeaders })
+      expect(payableResp.ok(), 'owner can read their own booking').toBeTruthy()
+      const payable = (await payableResp.json()).data
+      const amount = payable.amount as number
+      const currency = payable.payment_currency as string
 
       // 3. POST a signed payment_intent.succeeded event to our own webhook.
       //    Sign the EXACT raw body string we transmit: Playwright sends a string
@@ -95,7 +122,15 @@ test.describe('Payment webhook @smoke', () => {
       const rawPayload = JSON.stringify({
         id: `evt_e2e_${Date.now()}`,
         type: 'payment_intent.succeeded',
-        data: { object: { id: paymentIntentId, status: 'succeeded' } },
+        data: {
+          object: {
+            id: paymentIntentId,
+            status: 'succeeded',
+            amount,
+            currency,
+            metadata: { booking_id: String(bookingId) },
+          },
+        },
       })
       const stripeSignature = signStripeWebhookPayload(rawPayload, webhookSecret)
 
@@ -136,19 +171,6 @@ async function loginBearer(
   const token = (await resp.json()).data?.token as string | undefined
   expect(token, 'login response must carry a bearer token').toBeTruthy()
   return token as string
-}
-
-/**
- * Mirror of StripeService::createPaymentIntent's testing fake:
- *   pi_test_{id}_{first 12 hex of sha256("booking_payment_intent_{id}")}
- * Kept in sync with backend/app/Services/StripeService.php. If that fake or its
- * idempotency-key format changes, the final assertion fails loudly (the webhook
- * would target a non-existent PaymentIntent and the booking stays pending).
- */
-function fakePaymentIntentId(bookingId: number): string {
-  const idempotencyKey = `booking_payment_intent_${bookingId}`
-  const suffix = crypto.createHash('sha256').update(idempotencyKey).digest('hex').slice(0, 12)
-  return `pi_test_${bookingId}_${suffix}`
 }
 
 /** YYYY-MM-DD `daysFromToday` days out, in UTC. */

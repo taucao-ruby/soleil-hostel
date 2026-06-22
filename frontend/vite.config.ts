@@ -83,6 +83,12 @@ const apiProxy = {
     target: process.env.VITE_PROXY_TARGET || 'http://127.0.0.1:8000',
     changeOrigin: true,
     secure: false,
+    // Strip the backend's `Domain=localhost` from Set-Cookie so the auth cookie
+    // is host-only (scoped to the preview origin). Chrome/Firefox tolerate an
+    // explicit Domain=localhost, but webkit/Safari rejects it — the cookie is
+    // never stored and the next authenticated request 401s. Host-only is
+    // accepted everywhere and is exactly what a same-origin SPA needs.
+    cookieDomainRewrite: '',
   },
 }
 

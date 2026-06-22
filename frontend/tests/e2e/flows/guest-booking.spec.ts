@@ -45,6 +45,11 @@ test.describe('Guest booking @smoke', () => {
     await rooms.goto()
     await rooms.bookFirstAvailableRoom()
 
+    // Let the form finish mounting before filling — the Pixel-5 emulation can
+    // leave /booking on the auth-check/rooms-load state for a few seconds after
+    // navigation, which otherwise raced the first date-field fill.
+    await form.waitUntilReady()
+
     // Dates well past the seeded preview bookings (which sit within ~3 weeks of
     // today), plus a per-project offset so the 4 nightly projects book disjoint
     // windows on the same room instead of colliding on the exclusion constraint.

@@ -11,6 +11,11 @@ export interface GuestDetails {
 // và thanh toán") previously burned the full 90s as a `timedOut` with no signal
 // about which step broke.
 const ACTION_TIMEOUT = 15_000
+// Form mount can lag well past navigation on the slow Pixel-5 emulation: the
+// ProtectedRoute auth check ("Đang kiểm tra phiên đăng nhập...") plus the rooms
+// fetch occasionally leave /booking on a loading state for several seconds, so a
+// date-field fill races an unmounted form. Gate readiness with a longer budget.
+const READY_TIMEOUT = 30_000
 
 /**
  * Booking form (/booking, behind ProtectedRoute).
@@ -29,6 +34,21 @@ const ACTION_TIMEOUT = 15_000
  */
 export class BookingFormPage {
   constructor(private readonly page: Page) {}
+
+  /**
+   * Wait for the booking form to finish mounting before interacting. The submit
+   * button renders with the form (even while disabled during the rooms load), so
+   * its visibility is a reliable "form is up, fields are fillable" signal that
+   * absorbs the intermittent slow auth-check + rooms-fetch on mobile emulation.
+   */
+  async waitUntilReady(): Promise<void> {
+    await expect(this.page.getByRole('button', { name: /giữ phòng và thanh toán/i })).toBeVisible({
+      timeout: READY_TIMEOUT,
+    })
+    await expect(this.page.getByLabel('Ngày nhận phòng', { exact: true })).toBeVisible({
+      timeout: READY_TIMEOUT,
+    })
+  }
 
   async fillStayDates(checkIn: string, checkOut: string): Promise<void> {
     // check_in first: BookingForm auto-nudges check_out forward when it is

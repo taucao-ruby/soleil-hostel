@@ -96,6 +96,11 @@ jobs:
           # it to the log driver so the placeholder SMTP transport in .env.example
           # can't throw and turn a confirmed booking into a 500 webhook response.
           MAIL_MAILER: log
+          # E2E-only: disable auth/booking rate limiting so the 4-project nightly
+          # (one runner IP + the single seeded user) doesn't trip the 5/min-per-email
+          # + 20/min-per-IP login limits. Honored only when not production —
+          # RateLimiterServiceProvider double-gates; `php artisan test` never sets it.
+          DISABLE_RATE_LIMITING: "true"
         run: |
           cp .env.example .env
           php artisan key:generate
@@ -127,6 +132,11 @@ jobs:
           # it to the log driver so the placeholder SMTP transport in .env.example
           # can't throw and turn a confirmed booking into a 500 webhook response.
           MAIL_MAILER: log
+          # E2E-only: disable auth/booking rate limiting so the 4-project nightly
+          # (one runner IP + the single seeded user) doesn't trip the 5/min-per-email
+          # + 20/min-per-IP login limits. Honored only when not production —
+          # RateLimiterServiceProvider double-gates; `php artisan test` never sets it.
+          DISABLE_RATE_LIMITING: "true"
         run: |
           # Fork 4 built-in-server workers so the SPA's parallel API calls and
           # the payment-webhook POST are served concurrently (like prod php-fpm)
@@ -307,6 +317,11 @@ jobs:
           # it to the log driver so the placeholder SMTP transport in .env.example
           # can't throw and turn a confirmed booking into a 500 webhook response.
           MAIL_MAILER: log
+          # E2E-only: disable auth/booking rate limiting so the 4-project nightly
+          # (one runner IP + the single seeded user) doesn't trip the 5/min-per-email
+          # + 20/min-per-IP login limits. Honored only when not production —
+          # RateLimiterServiceProvider double-gates; `php artisan test` never sets it.
+          DISABLE_RATE_LIMITING: "true"
         run: |
           cp .env.example .env
           php artisan key:generate

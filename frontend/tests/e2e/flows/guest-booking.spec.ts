@@ -43,12 +43,12 @@ test.describe('Guest booking @smoke', () => {
     await login.goto()
     await login.login(TEST_USER.email, TEST_USER.password)
 
-    await rooms.goto()
+    // Navigate CLIENT-SIDE from here on: the only full page load is /login
+    // (pre-auth, no session check). Staying in the SPA after login keeps the
+    // resolved auth state, so /booking never re-runs the /me-httponly check that
+    // intermittently hangs on the CI built-in server (see RoomsPage.gotoViaNav).
+    await rooms.gotoViaNav()
     await rooms.bookFirstAvailableRoom()
-
-    // Let the form finish mounting before filling — the Pixel-5 emulation can
-    // leave /booking on the auth-check/rooms-load state for a few seconds after
-    // navigation, which otherwise raced the first date-field fill.
     await form.waitUntilReady()
 
     // Dates well past the seeded preview bookings (which sit within ~3 weeks of

@@ -16,9 +16,6 @@ const ACTION_TIMEOUT = 15_000
 // fetch occasionally leave /booking on a loading state for several seconds, so a
 // date-field fill races an unmounted form. Gate readiness with a longer budget.
 const READY_TIMEOUT = 30_000
-// Shorter first probe before the reload-retry in waitUntilReady, so the recovery
-// path still fits inside the test budget.
-const READY_PROBE_TIMEOUT = 15_000
 
 /**
  * Booking form (/booking, behind ProtectedRoute).
@@ -41,22 +38,17 @@ export class BookingFormPage {
   /**
    * Wait for the booking form to finish mounting before interacting. The submit
    * button renders with the form (even while disabled during the rooms load), so
-   * its visibility is a reliable "form is up, fields are fillable" signal.
+   * its visibility is a reliable "form is up, fields are fillable" signal that
+   * absorbs the rooms-fetch latency before the first date-field fill.
    *
-   * On the Pixel-5 emulation the /booking ProtectedRoute auth-check
-   * intermittently does not resolve on first mount (the page sits on "Đang kiểm
-   * tra phiên đăng nhập..."), so the form never renders. The cookie is already
-   * set by then, so a single reload re-runs the check and recovers — retry once
-   * before giving up.
+   * No reload-retry here: the flow now reaches /booking via client-side
+   * navigation (see RoomsPage.gotoViaNav), so a reload would re-introduce the
+   * very full-load /me-httponly re-check we are avoiding.
    */
   async waitUntilReady(): Promise<void> {
-    const submitButton = this.page.getByRole('button', { name: /giữ phòng và thanh toán/i })
-    try {
-      await expect(submitButton).toBeVisible({ timeout: READY_PROBE_TIMEOUT })
-    } catch {
-      await this.page.reload()
-      await expect(submitButton).toBeVisible({ timeout: READY_TIMEOUT })
-    }
+    await expect(this.page.getByRole('button', { name: /giữ phòng và thanh toán/i })).toBeVisible({
+      timeout: READY_TIMEOUT,
+    })
     await expect(this.page.getByLabel('Ngày nhận phòng', { exact: true })).toBeVisible({
       timeout: READY_TIMEOUT,
     })

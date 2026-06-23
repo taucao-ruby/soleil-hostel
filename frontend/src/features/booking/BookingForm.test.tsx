@@ -10,6 +10,8 @@ const {
   mockGetRooms,
   mockCreateBooking,
   mockCreateBookingPaymentIntent,
+  mockCreateMoMoPayment,
+  mockGetBookingById,
   mockVerifyBookingPayment,
   mockConfirmPayment,
   mockValidateBookingForm,
@@ -26,6 +28,8 @@ const {
     mockGetRooms: vi.fn(),
     mockCreateBooking: vi.fn(),
     mockCreateBookingPaymentIntent: vi.fn(),
+    mockCreateMoMoPayment: vi.fn(),
+    mockGetBookingById: vi.fn(),
     mockVerifyBookingPayment: vi.fn(),
     mockConfirmPayment: vi.fn(),
     mockValidateBookingForm: vi.fn(),
@@ -48,7 +52,13 @@ vi.mock('../rooms/room.api', () => ({
 vi.mock('./booking.api', () => ({
   createBooking: (...args: unknown[]) => mockCreateBooking(...args),
   createBookingPaymentIntent: (...args: unknown[]) => mockCreateBookingPaymentIntent(...args),
+  createMoMoPayment: (...args: unknown[]) => mockCreateMoMoPayment(...args),
+  getBookingById: (...args: unknown[]) => mockGetBookingById(...args),
   verifyBookingPayment: (...args: unknown[]) => mockVerifyBookingPayment(...args),
+}))
+
+vi.mock('qrcode.react', () => ({
+  QRCodeSVG: ({ value }: { value: string }) => <div data-testid="qr-svg" data-value={value} />,
 }))
 
 vi.mock('@stripe/stripe-js', () => ({
@@ -184,6 +194,13 @@ describe('BookingForm', () => {
       payment_policy: 'prepaid',
       payment_status: 'requires_payment_method',
     })
+    mockCreateMoMoPayment.mockResolvedValue({
+      payUrl: 'https://test-payment.momo.vn/pay/soleil-42-abc123',
+      qrCodeUrl: 'https://test-payment.momo.vn/qr/soleil-42-abc123',
+      deeplink: 'momo://app?action=payment&orderId=soleil-42-abc123',
+      orderId: 'soleil-42-abc123',
+    })
+    mockGetBookingById.mockResolvedValue(makeBooking())
     mockConfirmPayment.mockResolvedValue({})
     mockVerifyBookingPayment.mockResolvedValue(
       makeBooking({
@@ -476,6 +493,74 @@ describe('BookingForm', () => {
       'Thanh toán chưa hoàn tất. Vui lòng kiểm tra thông tin thẻ và thử lại.'
     )
     expect(mockVerifyBookingPayment).not.toHaveBeenCalled()
+  })
+
+  it('offers the MoMo option and shows an in-app QR when chosen', async () => {
+    render(<BookingForm />)
+    await fillValidBookingAndSubmit()
+
+    expect(await screen.findByTestId('payment-step')).toBeInTheDocument()
+
+    const momoButton = screen.getByRole('button', { name: 'Thanh toán qua ví MoMo' })
+    expect(momoButton).toBeInTheDocument()
+
+    fireEvent.click(momoButton)
+
+    expect(await screen.findByTestId('momo-qr')).toBeInTheDocument()
+    expect(mockCreateMoMoPayment).toHaveBeenCalledWith(42)
+    // QR encodes the qrCodeUrl payload, and the deeplink button is present.
+    expect(screen.getByTestId('qr-svg')).toHaveAttribute(
+      'data-value',
+      'https://test-payment.momo.vn/qr/soleil-42-abc123'
+    )
+    expect(screen.getByTestId('momo-deeplink')).toHaveAttribute(
+      'href',
+      'momo://app?action=payment&orderId=soleil-42-abc123'
+    )
+  })
+
+  it('confirms the booking when the post-QR status check returns paid', async () => {
+    mockGetBookingById.mockResolvedValueOnce(
+      makeBooking({ status: 'confirmed', payment_status: 'paid' })
+    )
+
+    render(<BookingForm />)
+    await fillValidBookingAndSubmit()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Thanh toán qua ví MoMo' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Tôi đã thanh toán — Kiểm tra' }))
+
+    expect(await screen.findByTestId('success-message')).toBeInTheDocument()
+    expect(mockGetBookingById).toHaveBeenCalledWith(42)
+  })
+
+  it('shows a wait notice when the status check finds no payment yet', async () => {
+    render(<BookingForm />)
+    await fillValidBookingAndSubmit()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Thanh toán qua ví MoMo' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Tôi đã thanh toán — Kiểm tra' }))
+
+    expect(await screen.findByTestId('momo-payment-info')).toHaveTextContent(
+      'Chưa nhận được xác nhận thanh toán'
+    )
+    expect(screen.queryByTestId('success-message')).not.toBeInTheDocument()
+  })
+
+  it('shows a Vietnamese error when MoMo creation fails', async () => {
+    mockCreateMoMoPayment.mockRejectedValueOnce(makeAxiosError({ status: 500 }))
+
+    render(<BookingForm />)
+    await fillValidBookingAndSubmit()
+
+    expect(await screen.findByTestId('payment-step')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Thanh toán qua ví MoMo' }))
+
+    expect(await screen.findByTestId('momo-payment-error')).toHaveTextContent(
+      'Không thể xử lý thanh toán lúc này. Vui lòng thử lại sau.'
+    )
+    expect(screen.queryByTestId('momo-qr')).not.toBeInTheDocument()
   })
 
   it('does not render Stripe checkout for explicit pay-at-property bookings', async () => {

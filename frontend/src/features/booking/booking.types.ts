@@ -60,6 +60,16 @@ export interface BookingPaymentVerifyResponse {
   data: BookingDetailRaw
 }
 
+export interface MoMoPaymentStartResponse {
+  success: boolean
+  data: {
+    payUrl: string
+    qrCodeUrl: string | null
+    deeplink: string | null
+    orderId: string
+  }
+}
+
 export interface BookingsListResponse {
   success: boolean
   data: BookingApiRaw[]

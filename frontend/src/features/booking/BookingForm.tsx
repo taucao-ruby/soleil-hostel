@@ -2,11 +2,18 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
 import { loadStripe } from '@stripe/stripe-js'
-import { createBooking, createBookingPaymentIntent, verifyBookingPayment } from './booking.api'
+import { QRCodeSVG } from 'qrcode.react'
+import {
+  createBooking,
+  createBookingPaymentIntent,
+  createMoMoPayment,
+  getBookingById,
+  verifyBookingPayment,
+} from './booking.api'
 import { getRooms } from '../rooms/room.api'
 import type { Room } from '../rooms/room.types'
 import type { Booking } from '@/shared/types/booking.types'
-import type { BookingFormData } from './booking.types'
+import type { BookingFormData, MoMoPaymentStartResponse } from './booking.types'
 import {
   MAX_STAY_DAYS,
   type ValidationErrors,
@@ -32,8 +39,6 @@ const BOOKING_VALIDATION_FALLBACK_MESSAGE =
   'Thông tin đặt phòng không hợp lệ. Vui lòng kiểm tra lại.'
 
 const BOOKING_GENERIC_ERROR_MESSAGE = 'Không thể tạo đặt phòng lúc này. Vui lòng thử lại sau.'
-const PAYMENT_SETUP_ERROR_MESSAGE =
-  'Cổng thanh toán chưa được cấu hình. Vui lòng liên hệ lễ tân để được hỗ trợ.'
 const PAYMENT_GENERIC_ERROR_MESSAGE = 'Không thể xử lý thanh toán lúc này. Vui lòng thử lại sau.'
 const PAYMENT_INCOMPLETE_MESSAGE =
   'Thanh toán chưa hoàn tất. Vui lòng kiểm tra thông tin thẻ và thử lại.'
@@ -252,6 +257,168 @@ function BookingPaymentStep({
   )
 }
 
+function MoMoPaymentOption({
+  booking,
+  onVerified,
+}: {
+  booking: Booking
+  onVerified: (booking: Booking) => void
+}) {
+  const [momoError, setMomoError] = useState<string | null>(null)
+  const [momoInfo, setMomoInfo] = useState<string | null>(null)
+  const [isStarting, setIsStarting] = useState(false)
+  const [isChecking, setIsChecking] = useState(false)
+  const [payment, setPayment] = useState<MoMoPaymentStartResponse['data'] | null>(null)
+
+  const handleStart = async () => {
+    setMomoError(null)
+    setMomoInfo(null)
+    setIsStarting(true)
+
+    try {
+      const result = await createMoMoPayment(booking.id)
+
+      // Need at least a QR payload or a hosted-page URL to show the user.
+      if (!result.qrCodeUrl && !result.payUrl) {
+        setMomoError(PAYMENT_GENERIC_ERROR_MESSAGE)
+        return
+      }
+
+      setPayment(result)
+    } catch (error) {
+      setMomoError(resolvePaymentErrorMessage(error))
+    } finally {
+      setIsStarting(false)
+    }
+  }
+
+  // The booking is confirmed server-side by the MoMo IPN once the QR is paid.
+  // This pulls the latest status so the SPA can flip to the success screen.
+  const handleCheckStatus = async () => {
+    setMomoError(null)
+    setMomoInfo(null)
+    setIsChecking(true)
+
+    try {
+      const updated = await getBookingById(booking.id)
+
+      if (updated.status === 'confirmed' && updated.payment_status === 'paid') {
+        onVerified(updated)
+        return
+      }
+
+      setMomoInfo(
+        'Chưa nhận được xác nhận thanh toán. Vui lòng hoàn tất trên ứng dụng MoMo rồi thử lại.'
+      )
+    } catch (error) {
+      setMomoError(resolvePaymentErrorMessage(error))
+    } finally {
+      setIsChecking(false)
+    }
+  }
+
+  return (
+    <div data-testid="momo-payment-option" className="mt-6 border-t border-hueBorder pt-6">
+      <p className="text-sm font-semibold text-hueBlack">Ví điện tử MoMo</p>
+
+      {!payment ? (
+        <>
+          <p className="mt-1 text-sm text-hueMuted">
+            Quét mã QR bằng ứng dụng MoMo để thanh toán nhanh, không cần nhập thẻ.
+          </p>
+
+          {momoError && (
+            <div
+              data-testid="momo-payment-error"
+              className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3"
+              role="alert"
+            >
+              <p className="text-sm font-medium leading-6 text-red-800">{momoError}</p>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleStart}
+            disabled={isStarting}
+            aria-busy={isStarting}
+            className="mt-5 flex w-full items-center justify-center rounded-xl bg-[#a50064] px-4 py-3 text-sm font-medium text-white transition hover:bg-[#8a0054] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a50064]/40 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {isStarting ? 'Đang tạo mã thanh toán...' : 'Thanh toán qua ví MoMo'}
+          </button>
+        </>
+      ) : (
+        <div data-testid="momo-qr">
+          <p className="mt-1 text-sm text-hueMuted">
+            Mở ứng dụng MoMo và quét mã QR dưới đây để hoàn tất thanh toán.
+          </p>
+
+          <div className="mt-4 flex flex-col items-center gap-4">
+            <div className="rounded-2xl border border-hueBorder bg-white p-4">
+              <QRCodeSVG value={payment.qrCodeUrl ?? payment.payUrl} size={196} level="M" />
+            </div>
+
+            {payment.deeplink && (
+              <a
+                href={payment.deeplink}
+                data-testid="momo-deeplink"
+                className="flex w-full items-center justify-center rounded-xl bg-[#a50064] px-4 py-3 text-sm font-medium text-white transition hover:bg-[#8a0054] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a50064]/40"
+              >
+                Mở ứng dụng MoMo
+              </a>
+            )}
+
+            {payment.payUrl && (
+              <a
+                href={payment.payUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm font-medium text-brandAmber underline-offset-4 hover:underline"
+              >
+                Hoặc mở trang thanh toán MoMo
+              </a>
+            )}
+          </div>
+
+          {momoError && (
+            <div
+              data-testid="momo-payment-error"
+              className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3"
+              role="alert"
+            >
+              <p className="text-sm font-medium leading-6 text-red-800">{momoError}</p>
+            </div>
+          )}
+
+          {momoInfo && (
+            <div
+              data-testid="momo-payment-info"
+              className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
+              role="status"
+            >
+              <p className="text-sm font-medium leading-6 text-amber-800">{momoInfo}</p>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleCheckStatus}
+            disabled={isChecking}
+            aria-busy={isChecking}
+            className="mt-5 flex w-full items-center justify-center rounded-xl border border-hueBorder bg-white px-4 py-3 text-sm font-medium text-hueBlack transition hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandAmber/30 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {isChecking ? 'Đang kiểm tra...' : 'Tôi đã thanh toán — Kiểm tra'}
+          </button>
+
+          <p className="mt-3 text-center text-xs text-hueMuted">
+            Đơn sẽ tự xác nhận sau khi MoMo báo thanh toán thành công.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function getFieldClass(hasError: boolean, disabled = false): string {
   return `w-full rounded-xl border bg-white px-4 py-3 text-sm text-hueBlack outline-none transition focus:ring-2 ${
     hasError
@@ -283,6 +450,7 @@ const BookingForm: React.FC = () => {
   const [bookingReference, setBookingReference] = useState<string | null>(null)
   const [pendingBooking, setPendingBooking] = useState<Booking | null>(null)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [requiresOnlinePayment, setRequiresOnlinePayment] = useState(false)
   const [redirectCountdown, setRedirectCountdown] = useState(2)
 
   useEffect(() => {
@@ -350,7 +518,7 @@ const BookingForm: React.FC = () => {
     formData.check_in && formData.check_out
       ? `${formatDateDisplay(formData.check_in)} → ${formatDateDisplay(formData.check_out)}`
       : 'Chọn ngày nhận phòng và ngày trả phòng'
-  const hasPaymentStep = Boolean(pendingBooking && clientSecret)
+  const hasPaymentStep = Boolean(pendingBooking && requiresOnlinePayment)
   const canSubmit = !isSubmitting && !loadingRooms && rooms.length > 0 && !hasPaymentStep
 
   const clearFieldError = (fieldName: keyof ValidationErrors) => {
@@ -429,6 +597,7 @@ const BookingForm: React.FC = () => {
     setSubmitError(null)
     setPendingBooking(null)
     setClientSecret(null)
+    setRequiresOnlinePayment(false)
     setIsSubmitting(true)
 
     try {
@@ -457,18 +626,20 @@ const BookingForm: React.FC = () => {
         return
       }
 
-      if (!stripePromise) {
-        setSubmitError(PAYMENT_SETUP_ERROR_MESSAGE)
-        return
-      }
+      // The booking requires online payment. MoMo is always offered; Stripe is an
+      // optional add-on shown only when a publishable key + payment intent exist.
+      setRequiresOnlinePayment(true)
 
-      const paymentIntent = await createBookingPaymentIntent(booking.id)
-      if (!paymentIntent.client_secret) {
-        setSubmitError(PAYMENT_GENERIC_ERROR_MESSAGE)
-        return
+      if (stripePromise) {
+        try {
+          const paymentIntent = await createBookingPaymentIntent(booking.id)
+          if (paymentIntent.client_secret) {
+            setClientSecret(paymentIntent.client_secret)
+          }
+        } catch {
+          // Stripe is unavailable for this booking — MoMo remains available below.
+        }
       }
-
-      setClientSecret(paymentIntent.client_secret)
     } catch (error) {
       setSubmitError(
         createdBookingForPayment
@@ -543,14 +714,19 @@ const BookingForm: React.FC = () => {
               </div>
             )}
 
-            {pendingBooking && clientSecret && stripePromise ? (
-              <Elements stripe={stripePromise} options={{ clientSecret }}>
-                <BookingPaymentStep
-                  booking={pendingBooking}
-                  bookingReference={bookingReference ?? buildBookingReference(pendingBooking)}
-                  onVerified={handlePaymentVerified}
-                />
-              </Elements>
+            {pendingBooking && requiresOnlinePayment ? (
+              <div data-testid="payment-region">
+                {clientSecret && stripePromise && (
+                  <Elements stripe={stripePromise} options={{ clientSecret }}>
+                    <BookingPaymentStep
+                      booking={pendingBooking}
+                      bookingReference={bookingReference ?? buildBookingReference(pendingBooking)}
+                      onVerified={handlePaymentVerified}
+                    />
+                  </Elements>
+                )}
+                <MoMoPaymentOption booking={pendingBooking} onVerified={handlePaymentVerified} />
+              </div>
             ) : (
               <form className="mt-6 space-y-6" noValidate onSubmit={handleSubmit}>
                 <div>

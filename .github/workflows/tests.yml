@@ -100,11 +100,6 @@ jobs:
       - name: Install dependencies
         working-directory: ./frontend
         run: pnpm install --frozen-lockfile
-      - name: Cache node_modules
-        uses: actions/cache/save@v4
-        with:
-          path: frontend/node_modules
-          key: frontend-node-${{ needs.setup.outputs.pnpm-hash }}
 
   # ========== BACKEND TESTS (Pest + Coverage) ==========
   backend-tests:
@@ -665,11 +660,15 @@ jobs:
         uses: pnpm/action-setup@v2
         with:
           version: ${{ env.PNPM_VERSION }}
-      - name: Restore node_modules
+      - name: Restore pnpm store
         uses: actions/cache/restore@v4
         with:
-          path: frontend/node_modules
-          key: frontend-node-${{ needs.setup.outputs.pnpm-hash }}
+          path: ~/.pnpm-store
+          key: pnpm-${{ runner.os }}-${{ needs.setup.outputs.pnpm-hash }}
+          restore-keys: pnpm-${{ runner.os }}-
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: pnpm install --frozen-lockfile
       - name: Audit NPM dependencies (with allowlist)
         working-directory: ./frontend
         run: node ../scripts/audit-with-exceptions.mjs
@@ -708,11 +707,15 @@ jobs:
         uses: pnpm/action-setup@v2
         with:
           version: ${{ env.PNPM_VERSION }}
-      - name: Restore node_modules
+      - name: Restore pnpm store
         uses: actions/cache/restore@v4
         with:
-          path: frontend/node_modules
-          key: frontend-node-${{ needs.setup.outputs.pnpm-hash }}
+          path: ~/.pnpm-store
+          key: pnpm-${{ runner.os }}-${{ needs.setup.outputs.pnpm-hash }}
+          restore-keys: pnpm-${{ runner.os }}-
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: pnpm install --frozen-lockfile
       - name: Run TypeScript type check
         working-directory: ./frontend
         run: npx tsc --noEmit
@@ -733,11 +736,15 @@ jobs:
         uses: pnpm/action-setup@v2
         with:
           version: ${{ env.PNPM_VERSION }}
-      - name: Restore node_modules
+      - name: Restore pnpm store
         uses: actions/cache/restore@v4
         with:
-          path: frontend/node_modules
-          key: frontend-node-${{ needs.setup.outputs.pnpm-hash }}
+          path: ~/.pnpm-store
+          key: pnpm-${{ runner.os }}-${{ needs.setup.outputs.pnpm-hash }}
+          restore-keys: pnpm-${{ runner.os }}-
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: pnpm install --frozen-lockfile
       - name: Run Vitest unit tests
         working-directory: ./frontend
         run: pnpm test:unit --coverage
@@ -828,11 +835,15 @@ jobs:
         uses: pnpm/action-setup@v2
         with:
           version: ${{ env.PNPM_VERSION }}
-      - name: Restore node_modules
+      - name: Restore pnpm store
         uses: actions/cache/restore@v4
         with:
-          path: frontend/node_modules
-          key: frontend-node-${{ needs.setup.outputs.pnpm-hash }}
+          path: ~/.pnpm-store
+          key: pnpm-${{ runner.os }}-${{ needs.setup.outputs.pnpm-hash }}
+          restore-keys: pnpm-${{ runner.os }}-
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: pnpm install --frozen-lockfile
       - name: Build
         working-directory: ./frontend
         env:

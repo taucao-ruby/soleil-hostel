@@ -11,6 +11,7 @@ import type {
   BookingResponse,
   BookingsListResponse,
   CancelBookingResponse,
+  MoMoPaymentStartResponse,
   ReviewSubmitData,
   ReviewSubmitResponse,
 } from './booking.types'
@@ -66,6 +67,20 @@ export async function verifyBookingPayment(bookingId: number): Promise<BookingDe
     `/v1/bookings/${bookingId}/payment/verify`
   )
   return parseBookingStatusPayload(response.data.data)
+}
+
+/**
+ * Start a MoMo payment for a payable booking.
+ *
+ * POST /v1/bookings/:id/momo/create
+ * Returns the MoMo QR/deeplink/redirect channels; the caller renders the QR in
+ * the booking page. Confirmation happens server-side via the MoMo IPN callback.
+ */
+export async function createMoMoPayment(
+  bookingId: number
+): Promise<MoMoPaymentStartResponse['data']> {
+  const response = await api.post<MoMoPaymentStartResponse>(`/v1/bookings/${bookingId}/momo/create`)
+  return response.data.data
 }
 
 /**

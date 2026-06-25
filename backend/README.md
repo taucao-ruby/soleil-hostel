@@ -1,6 +1,6 @@
 # 🖥️ Soleil Hostel Backend (Laravel 12)
 
-> **Last Updated:** May 8, 2026 | **Laravel:** 12.x | **PHP:** 8.2+ (platform pinned to 8.3 in `composer.json`)
+> **Last Updated:** June 24, 2026 | **Laravel:** 12.x | **PHP:** 8.2+ (platform pinned to 8.3 in `composer.json`)
 
 ## 🎯 Overview
 
@@ -14,7 +14,7 @@ The Soleil Hostel backend is a REST API built with Laravel 12, implementing clea
 - ✅ **Repository Pattern**: Data access abstraction with focused unit tests
 - ✅ **RBAC**: Enum-based role system (USER, MODERATOR, ADMIN); see [`docs/PERMISSION_MATRIX.md`](../docs/PERMISSION_MATRIX.md)
 - ✅ **AI Harness (Phases 0–4)**: 7-layer safety pipeline, kill switch, canary routing, proposal-confirmation flow under `app/AiHarness/`; eval gate `php artisan ai:eval --all-phases`
-- ✅ **Stripe Payments**: Cashier integration; signed-webhook idempotency via `stripe_refund_events` UNIQUE
+- ✅ **Payments**: Stripe Cashier (signed-webhook idempotency via `stripe_refund_events` UNIQUE) and MoMo wallet (VN e-wallet, sandbox AIO v2; in-app QR; IPN-confirmed via `momo_payments` authoritative order + `momo_webhook_events` idempotency ledger)
 - ✅ **Booking Notifications**: Event-driven queued emails (confirm, update, cancel)
 - ✅ **Security**: XSS (HTML Purifier), CSRF (Sanctum), security headers, multi-tier rate limiting, PII redaction across log channels + Sentry
 - ✅ **Performance**: Redis caching with event-driven invalidation, N+1 prevention, parallel testing
@@ -197,6 +197,7 @@ php artisan test --coverage --min=80
 | DELETE | /api/v1/bookings/{booking}              | Cancel booking               | Yes (throttle 10/m) |
 | POST   | /api/v1/bookings/{booking}/confirm      | Admin confirm                | Admin               |
 | POST   | /api/v1/bookings/{booking}/cancel       | Cancel (owner or admin)      | Yes                 |
+| POST   | /api/v1/bookings/{booking}/momo/create  | Start MoMo wallet payment    | Yes (throttle 10/m) |
 
 ### Admin (v1)
 
@@ -247,6 +248,7 @@ php artisan test --coverage --min=80
 | Method | Endpoint                | Description                                          |
 | ------ | ----------------------- | ---------------------------------------------------- |
 | POST   | /api/webhooks/stripe    | Cashier-signed webhook; replay-fenced via `stripe_refund_events` UNIQUE (`stripe_refund_id`) |
+| POST   | /api/v1/payments/momo/ipn | Public MoMo IPN (server→server); HMAC-signed (fail-closed), rate-limited 120/min; replay-deduped via `momo_webhook_events` (`order_id`+`trans_id`) UNIQUE |
 | POST   | /api/csp-violation-report | CSP report endpoint                                |
 
 ---
@@ -379,6 +381,10 @@ php artisan route:clear
 
 # View routes
 php artisan route:list
+
+# Dev-only: simulate a completed MoMo payment by firing a locally-signed IPN
+php artisan momo:simulate-ipn                 # latest pending prepaid booking
+php artisan momo:simulate-ipn 42 --replay     # target booking #42; prove idempotent dedup ack
 ```
 
 ### Cache Warmup

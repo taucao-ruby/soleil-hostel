@@ -250,6 +250,9 @@ class CheckConstraintTest extends TestCase
             ['service_recovery_cases', 'chk_src_voucher_amount_nonneg', 'CHECK (((voucher_amount IS NULL) OR (voucher_amount >= 0)))'],
             ['service_recovery_cases', 'chk_src_cost_delta_absorbed_nonneg', 'CHECK (((cost_delta_absorbed IS NULL) OR (cost_delta_absorbed >= 0)))'],
             ['stripe_refund_events', 'chk_stripe_refund_events_amount_refunded_nonneg', 'CHECK ((amount_refunded >= 0))'],
+            // F-81 successor (migration 2026_06_24_000001): momo_payments arrived after the
+            // F-81 pass and re-opened the class; expected_amount is NOT NULL so no NULL tolerance.
+            ['momo_payments', 'chk_momo_payments_expected_amount_nonneg', 'CHECK ((expected_amount >= 0))'],
         ];
 
         foreach ($expected as [$table, $constraint, $definition]) {
@@ -302,6 +305,24 @@ class CheckConstraintTest extends TestCase
             'INSERT INTO bookings (room_id, check_in, check_out, guest_name, guest_email, status, amount, refund_amount, created_at, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())',
             [$room->id, now()->addDays(30)->toDateString(), now()->addDays(32)->toDateString(), 'Guest', 'g@example.com', 'pending', 1000, 1001]
+        );
+    }
+
+    #[\PHPUnit\Framework\Attributes\Test]
+    public function test_negative_momo_payment_expected_amount_rejected_at_db_layer(): void
+    {
+        if (! $this->isPgsql()) {
+            $this->markTestSkipped('CHECK constraints require PostgreSQL');
+        }
+
+        // momo_payments is loosely coupled (no FK on booking_id), so a raw insert
+        // with an arbitrary booking_id exercises only the money CHECK (F-81 successor).
+        $this->expectException(QueryException::class);
+
+        DB::insert(
+            'INSERT INTO momo_payments (booking_id, order_id, expected_amount, currency, status, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, NOW(), NOW())',
+            [999999, 'order-neg-amount-'.uniqid(), -1, 'vnd', 'pending']
         );
     }
 }

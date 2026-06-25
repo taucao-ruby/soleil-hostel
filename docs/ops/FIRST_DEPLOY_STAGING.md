@@ -23,6 +23,50 @@ Staging gives a **public HTTPS URL**, which is exactly what the remaining proof 
   own sign/verify is internally symmetric).
 - A real Stripe **test-mode** payment exercises the webhook path against a live endpoint.
 
+## Where to host — zero-cost ($0) options
+
+The deploy is the same; only *where* the stack runs differs. Every option below uses a **free
+platform subdomain with HTTPS** — no domain purchase needed. Point `MOMO_IPN_URL` at that subdomain.
+
+> **Vercel/Netlify alone cannot run the backend.** Laravel here is stateful (Postgres + Redis + queue
+> worker + scheduler), not serverless — those hosts are for the static frontend only.
+
+### A. Just prove MoMo (no deploy, $0) — fastest
+Run the stack locally (`docker compose -f docker-compose.prod.yml up -d`, `DOMAIN=localhost`) and
+expose it with a free **Cloudflare Tunnel**: `cloudflared tunnel --url http://localhost:80` →
+`https://<random>.trycloudflare.com`. Set `MOMO_IPN_URL=https://<that>/api/v1/payments/momo/ipn`, fire
+a real sandbox IPN, retire the last `[UNPROVEN]`. Machine must stay on. No VPS, no domain.
+
+### B. Always-on staging, $0 — reuses this compose (recommended)
+**Oracle Cloud Always Free** ARM VM (Ampere A1, free forever) ≈ a free VPS.
+1. Create an **Ampere A1** instance (Ubuntu 24.04). Open ingress **22/80/443** in the OCI security
+   list, **and** on the VM open the OS firewall (Oracle images block these by default):
+   `sudo iptables -I INPUT -p tcp --dport 80 -j ACCEPT && sudo iptables -I INPUT -p tcp --dport 443 -j ACCEPT && sudo netfilter-persistent save`.
+2. Install Docker + the compose plugin; `git clone` the repo.
+3. Register a free subdomain at **duckdns.org** (e.g. `soleil.duckdns.org`) → point it at the VM's public IP.
+4. Env:
+   - root **`.env`** (compose): `DB_PASSWORD=…`, `REDIS_PASSWORD=…`, `DOMAIN=soleil.duckdns.org`, and
+     **`FRONTEND_PORT=8081`** — with `--profile proxy`, Caddy owns host `80`/`443`, so move the
+     frontend's published port off `80` to avoid a clash.
+   - **`backend/.env.production`** (the F-98 file): `APP_KEY`, payment keys,
+     `APP_URL=https://soleil.duckdns.org`, `SANCTUM_STATEFUL_DOMAINS=soleil.duckdns.org`,
+     `MOMO_IPN_URL=https://soleil.duckdns.org/api/v1/payments/momo/ipn`.
+5. Bring up **with the proxy** (Caddy auto-issues Let's Encrypt for the DuckDNS name via HTTP-01):
+   `docker compose -f docker-compose.prod.yml --profile proxy up -d --build`.
+6. Migrate + cache (checklist steps 2–3). Caddy already routes `/api/*`→`backend:8080`, `/`→`frontend:8080`.
+
+Always-on → scheduler, queue, and MoMo IPN are all reliable. The `Caddyfile` CSP already allows Stripe;
+if the MoMo QR/redirect ever needs an external origin, add it there.
+
+### C. No VM to manage, $0 — but cold starts
+Frontend → **Cloudflare Pages** (`*.pages.dev`, no commercial restriction unlike Vercel Hobby);
+backend → **Render free** (`*.onrender.com`, already wired via `RENDER_DEPLOY_HOOK` in `deploy.yml`);
+Postgres → **Neon** free (do **not** use Render's free Postgres — it expires); Redis → **Upstash** free.
+Render free **spins down** after ~15 min idle (30–60 s cold start) and won't run the scheduler while
+asleep — fine to prove DE-01/MoMo, not for real traffic.
+
+**Pick:** **A** to prove MoMo today; **B** for an always-on $0 staging that reuses everything you built.
+
 ## Prerequisites
 
 ### P1 — Complete the prod env template (F-98) — *human task*

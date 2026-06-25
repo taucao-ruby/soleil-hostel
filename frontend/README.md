@@ -1,6 +1,6 @@
 # 🎨 Soleil Hostel Frontend
 
-> **Last Updated:** May 8, 2026 | **React:** 19.0.0 | **TypeScript:** ~5.7 | **Vite:** 6.4.2 | **Vitest:** ^4.1 | **Axios:** ^1.16 | **Package Manager:** pnpm 9.x
+> **Last Updated:** June 24, 2026 | **React:** 19.0.0 | **TypeScript:** ~5.7 | **Vite:** 6.4.2 | **Vitest:** ^4.1 | **Axios:** ^1.16 | **Package Manager:** pnpm 9.x
 
 ## 🎯 Overview
 
@@ -13,6 +13,8 @@ The Soleil Hostel frontend is a React 19 + TypeScript SPA on a feature-sliced ar
 - ✅ **Authentication**: Dual-mode (Bearer Token + HttpOnly Cookie) with CSRF (`X-XSRF-TOKEN` from `sessionStorage`)
 - ✅ **Routing**: React Router v7 with lazy loading; `ProtectedRoute` + `AdminRoute` (`minRole` prop) for RBAC
 - ✅ **Mobile-First**: TailwindCSS 3, Core Web Vitals tracked via `web-vitals`
+- ✅ **Design System**: "Modern Archivist" (cream/bark/gold) tokens + `Button`/`Badge` primitives in `shared/components/ui`
+- ✅ **Payments**: MoMo wallet (ví điện tử VN) with in-app QR in the booking flow (`createMoMoPayment` → `/v1/bookings/:id/momo/create`); server-confirmed via MoMo IPN
 - ✅ **Type Safety**: TypeScript strict — `npx tsc --noEmit` is a pre-push gate
 - ✅ **Code-Splitting**: `React.lazy` + `Suspense` for routes
 - ✅ **Testing**: Vitest unit/integration (39 test files); Playwright E2E scaffolded under `tests/e2e/`

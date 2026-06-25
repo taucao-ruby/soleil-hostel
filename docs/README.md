@@ -1,6 +1,6 @@
 # Soleil Hostel Documentation
 
-> **Last Updated:** May 5, 2026 | **Tests:** see [PROJECT_STATUS.md](../PROJECT_STATUS.md) (single source of truth — Mar 31 baseline 1047 backend / 261 frontend; re-verification required after Apr–May AI proposal lifecycle, OPS-004 stay cancellation, CONC-005/006 deposit FSM, AUTH-004 OTP race, and Stripe webhook idempotency work) | **Status:** AI Harness Phases 0–4 + Stay Domain + Operational Completion + Payment Hold + Kill-Switch Hardening
+> **Last Updated:** June 24, 2026 | **Tests:** see [PROJECT_STATUS.md](../PROJECT_STATUS.md) (single source of truth — Mar 31 baseline 1047 backend / 261 frontend; re-verification required after Apr–May AI proposal lifecycle, OPS-004 stay cancellation, CONC-005/006 deposit FSM, AUTH-004 OTP race, Stripe webhook idempotency, and the post-`edadbf5` MoMo wallet payment + Modern Archivist design-system wave) | **Status:** AI Harness Phases 0–4 + Stay Domain + Operational Completion + Payment Hold + MoMo Wallet Payment + Modern Archivist Design System + Kill-Switch Hardening
 
 ## Quick Navigation
 
@@ -126,7 +126,7 @@ docs/
 
 See [PROJECT_STATUS.md](../PROJECT_STATUS.md) for full status snapshot with gate results and roadmap.
 
-**Current baselines** (Mar 31, 2026 — last verified before Apr–May feature batches): 1047 backend tests, 261 frontend tests (39 test files now), 283 Pint files, PHPStan Level 5 0 errors. Re-verification required for May 2026; see [PROJECT_STATUS.md](../PROJECT_STATUS.md) for live counts.
+**Current baselines** ([NEEDS RUNTIME CONFIRMATION] — Mar 31, 2026 numbers, last verified before the Apr–Jun feature batches): 1047 backend tests, 261 frontend tests (39 test files), 283 Pint files, PHPStan Level 5 0 errors. Re-verification required — the post-`edadbf5` MoMo wallet payment + Modern Archivist design-system wave landed after this point. See [PROJECT_STATUS.md](../PROJECT_STATUS.md) (single source of truth) for live counts.
 
 ## Tech Stack
 
@@ -148,7 +148,7 @@ See [PROJECT_STATUS.md](../PROJECT_STATUS.md) for full status snapshot with gate
 - **Room Management**: Optimistic locking, real-time availability cache
 - **RBAC**: 3 roles (USER, MODERATOR, ADMIN), type-safe enum, 7 authorization gates
 - **AI Harness**: Phases 0–4 — 7 endpoints under `/api/v1/ai/*`, 7-layer safety pipeline, kill switch, canary routing, proposal-confirmation flow, eval gate (`php artisan ai:eval --all-phases`)
-- **Payments**: Stripe Cashier integration, signed-webhook idempotency via `stripe_refund_events` UNIQUE constraint, payment-hold on booking creation
+- **Payments**: Stripe Cashier (signed-webhook idempotency via `stripe_refund_events` UNIQUE, payment-hold on booking creation) and MoMo wallet (VN e-wallet, sandbox; in-app QR; IPN-confirmed via `momo_payments` + `momo_webhook_events` idempotency ledger)
 - **Security**: A+ security headers, HTML Purifier XSS, multi-tier rate limiting, CSRF, PII redaction across log channels + Sentry
 - **Performance**: Redis caching with event-driven invalidation, N+1 prevention, parallel testing
 - **Monitoring**: Correlation ID tracing, health probes (admin-gated detail per OBS-002), Sentry, structured JSON logging

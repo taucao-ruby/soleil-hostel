@@ -56,6 +56,7 @@ Dự án được xây dựng như một hệ thống có thể sống lâu dài
 - Tự động kiểm tra phòng trống
 - Ngăn **double-booking** ở tầng business logic
 - Tối ưu quy trình **check-in / check-out**
+- Thanh toán đặt phòng qua **Stripe** và **MoMo** (ví điện tử VN, QR trong ứng dụng)
 
 ---
 
@@ -111,6 +112,7 @@ Dự án được xây dựng như một hệ thống có thể sống lâu dài
   - Repository Pattern
 - Authentication: **Laravel Sanctum**
 - RESTful API
+- Payments: **Stripe Cashier** + **MoMo** (ví điện tử VN, sandbox)
 - Comprehensive automated tests (Feature + Unit) + frontend tests
 - Security & performance-focused design
 
@@ -309,6 +311,7 @@ Sau đó mở Pull Request trên GitHub.
 - AI Harness Phases 0–4 — 7 endpoints, 7-layer safety pipeline, kill switch, canary routing, eval framework, proposal confirmation (April 2026)
 - AI proposal lifecycle — durable proposal store, drift detection, proposer-binding (F-06), HMAC audit, PII hard-block (April 2026)
 - Stripe payment-hold on booking creation + signed-webhook idempotency via `stripe_refund_events` UNIQUE (April 2026)
+- MoMo wallet payment (VN e-wallet) — in-app QR in booking flow, IPN-confirmed via `momo_payments` + `momo_webhook_events` idempotency ledger (June 2026)
 - Stay cancellation propagation (OPS-004) and immutable actor snapshots on bookings + admin_audit_logs (May 2026)
 - Deposit FSM lifecycle + null-user reconciliation (CONC-005/006) (May 2026)
 - OTP resend race hardened against concurrent requests (AUTH-004) + AI kill-switch hardening + E2E smoke gate + CI manifests (May 2026)

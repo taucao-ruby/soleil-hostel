@@ -63,9 +63,15 @@ class CacheWarmupCommand extends Command
     {
         $this->startTime = microtime(true);
 
-        // Set timeout
+        // Set timeout — skipped under tests (F-96): this command shares the phpunit
+        // process, and set_time_limit() re-imposes a wall-clock cap on the WHOLE suite
+        // and restarts the timer. On Windows that cap counts blocking DB I/O, fatally
+        // killing later tests on a contended test DB. Production warmup keeps its timeout.
         $timeout = (int) $this->option('timeout');
-        set_time_limit($timeout);
+
+        if (! $this->getLaravel()->runningUnitTests()) {
+            set_time_limit($timeout);
+        }
 
         // Header
         $this->displayHeader();

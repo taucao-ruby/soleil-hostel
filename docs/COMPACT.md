@@ -15,20 +15,22 @@
 
 ## 1) Current Snapshot (keep under 12 lines)
 
-- Date updated: 2026-06-14 (docs-sync); branch `dev`, HEAD=`edadbf5`
+- Date updated: 2026-07-02 (harness audit); branch `dev`, HEAD=`10a265e`
+- **Two-layer harness audit landed (2026-07-02)**: `docs/AUDIT_2026_07_02_HARNESS.md` (16 findings: 0 Critical / 5 High, + same-day runtime addendum — AiHarness suite 193 passed/705 assertions on pgsql; live kill-switch drill <2s to 404; local dev Redis flag was ON as-found, restored). F-99–F-102 promoted to FINDINGS_BACKLOG. Top High: kill-switch runbooks document the dead env-var procedure (real mechanism is `php artisan feature:toggle ai_harness.enabled on|off` — Redis sticky-off, see `docs/FEATURE_FLAGS.md`).
+- soleil index (2026-07-02): 7494 nodes / 22036 edges / 300 flows.
 - Docs restructure Batch 1/7 (2026-06-15): removed 2 orphaned files — `docs/DEVELOPMENT_HOOKS.md` (redirect stub) + `.claude/output-styles/audit.md` (superseded by `audit-report.md`); see `docs/DOCS_RESTRUCTURE_PLAN.md`
 - Latest landed (2026-06-14, `f5ffa02..edadbf5`): **VND currency default** — `backend/config/cashier.php` → `env('CASHIER_CURRENCY','vnd')`; `BookingResource`/`BookingController` now render whole VND + `₫` (`0307e95`/`f703452`). **Admin trashed-bookings route + page** — static `bookings/trashed` before dynamic `bookings/:id`; moderator+admin view, admin-only restore/force-delete (`7f7fd3b`). **Nights-sign fix** — `Booking::getNightsAttribute` earliest-first for Carbon 3 (`ee2f6a8`). **F-92 Fixed, F-93 Fixed.**
 - RBAC reconciliation (2026-06-14): PERMISSION_MATRIX Tables F + B mark the trashed **view** moderator read-only to match backend `role:moderator` (`37e4120`/`952b38a`); embedded `AdminDashboard` trashed tab opened to moderators read-only (`cfa0673`); restore/force-delete stay admin-only.
 - Prior wave (2026-06-12, `f5ffa02`): P1-5 index-prune DEFERRED (needs prod `pg_stat_user_indexes`); P1-6 `reconciliation_refund_drift` view + `reconciliation:check-drift` (F-85); P1-7 `decide()` DB-authoritative cold-cache + write ordering (F-86). **F-85/F-86 Fixed.**
 - soleil-ai-review-engine index: **7345 symbols / 21657 relationships / 300 flows** (`edadbf5`).
 - Archived → git history + WORKLOG: the 2026-05-19→2026-06-04 working-tree entries (NEW-5/6/7, A-1, A-2, SEC-deps, CI-audit-transport, L3 null-user refund, L1/SEC-01 rate-limiters, DATE-01 hostel-local dates, CONTRACT-02, AI-eval-gate integrity, Track-4 A/B/C, T-8 booking group, T-3 overlap matrix) all landed on `dev`.
-- Open findings: F-23, F-45–F-47, F-75, F-91 (Open); F-67 + T-13 Mitigated; F-68 Fixed.
+- Open findings: F-23, F-45–F-47, F-75, F-91, F-98, F-99–F-102 (Open); F-67 + T-13 Mitigated; F-68 Fixed.
 - **H-06**: `phpunit.xml` defaults to PostgreSQL — run `docker compose up -d db` before `php artisan test`.
 - Test accounts (`soleil_test`): user@ / admin@ / moderator@soleil.test — `P@ssworD123`.
 
 ## 2) Invariants
 
-Canonical detail: `docs/agents/ARCHITECTURE_FACTS.md` (auto-loaded via CLAUDE.md).
+Canonical detail: `docs/agents/ARCHITECTURE_FACTS.md` (read it explicitly — CLAUDE.md has no auto-import mechanism; see AUDIT_2026_07_02_HARNESS.md Finding 6).
 This section intentionally left as a pointer — do not duplicate invariants here.
 
 ## 3) Active work (Now / Next)
@@ -68,7 +70,7 @@ Latest OPS-004 verification (2026-05-03): `vendor\bin\pint.bat --test <touched b
 - PHPUnit doc-comment metadata deprecation warnings can appear; treat as non-blocking when `php artisan test` is PASS.
 - Vitest can emit `act(...)` and non-boolean DOM attribute warnings; treat as non-blocking when `npx vitest run` is PASS.
 - Any new warning pattern or warning volume increase should be treated as a change signal and reviewed.
-- `bash scripts/verify-control-plane.sh` is currently blocked in this Windows environment (`/bin/bash` unavailable after WSL access-denied fallback); rerun in a WSL/Git Bash-capable shell before release.
+- `bash scripts/verify-control-plane.sh` runs cleanly on this Windows/Git-Bash environment as of 2026-07-02 (PASS WITH WARNINGS 21/4/0 — the earlier "blocked" note is obsolete). Known WARNs: 3 rules past 90-day freshness + `rooms.status` legacy references. Separate gotcha: `scripts/ship.sh` dies SHIP_TAMPERED on Windows checkouts — CRLF false positive, see F-101.
 - Test accounts (soleil_test DB): user@soleil.test / admin@soleil.test / moderator@soleil.test — `P@ssworD123`
 - Pint 8 residual violations (email-verification cluster) are non-blocking for dev but will fail CI gate. Fix before next merge to main.
 

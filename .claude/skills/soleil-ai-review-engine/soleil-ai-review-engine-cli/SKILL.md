@@ -12,7 +12,7 @@ All commands work via `npx` — no global install required.
 ### analyze — Build or refresh the index
 
 ```bash
-npx -p soleil-engine-cli soleil analyze
+npx soleil-ai-review-engine analyze
 ```
 
 Run from the project root. This parses all source files, builds the knowledge graph, writes it to `.soleil-ai-review-engine/`, and generates CLAUDE.md / AGENTS.md context files.
@@ -27,7 +27,7 @@ Run from the project root. This parses all source files, builds the knowledge gr
 ### status — Check index freshness
 
 ```bash
-npx -p soleil-engine-cli soleil status
+npx soleil-ai-review-engine status
 ```
 
 Shows whether the current repo has a soleil-ai-review-engine index, when it was last updated, and symbol/relationship counts. Use this to check if re-indexing is needed.
@@ -35,7 +35,7 @@ Shows whether the current repo has a soleil-ai-review-engine index, when it was 
 ### clean — Delete the index
 
 ```bash
-npx -p soleil-engine-cli soleil clean
+npx soleil-ai-review-engine clean
 ```
 
 Deletes the `.soleil-ai-review-engine/` directory and unregisters the repo from the global registry. Use before re-indexing if the index is corrupt or after removing soleil-ai-review-engine from a project.
@@ -48,7 +48,7 @@ Deletes the `.soleil-ai-review-engine/` directory and unregisters the repo from 
 ### wiki — Generate documentation from the graph
 
 ```bash
-npx -p soleil-engine-cli soleil wiki
+npx soleil-ai-review-engine wiki
 ```
 
 Generates repository documentation from the knowledge graph using an LLM. Requires an API key (saved to `~/.soleil-ai-review-engine/config.json` on first use).
@@ -65,7 +65,7 @@ Generates repository documentation from the knowledge graph using an LLM. Requir
 ### list — Show all indexed repos
 
 ```bash
-npx -p soleil-engine-cli soleil list
+npx soleil-ai-review-engine list
 ```
 
 Lists all repositories registered in `~/.soleil-ai-review-engine/registry.json`. The MCP `list_repos` tool provides the same information.

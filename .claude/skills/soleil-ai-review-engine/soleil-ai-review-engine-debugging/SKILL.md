@@ -22,7 +22,7 @@ description: "Use when the user is debugging a bug, tracing an error, or asking 
 4. soleil-ai-review-engine_cypher({query: "MATCH path..."})                 → Custom traces if needed
 ```
 
-> If "Index is stale" → run `npx -p soleil-engine-cli soleil analyze` in terminal.
+> If "Index is stale" → run `npx soleil-ai-review-engine analyze` in terminal.
 
 ## Checklist
 

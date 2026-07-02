@@ -156,4 +156,42 @@ Conditions: (a) do not enable any production canary until Finding 1's runbook re
 - **Latent secret-leak channels.** Finding 8 (audit-log verbatim arm) and Finding 9 (settings.local.json blind spot) are both currently clean but structurally open; nothing detects the day they stop being clean.
 - **Guard blind spots until F-101 lands.** New booking-write entry points demonstrably outpace the manifest (16-day precedent, MoMo batch); until the manifest is repaired and the process enforced, the locking guard's assurance overstates its coverage.
 - **Memory-freshness loop remains manual.** Even after a one-time docs-sync of `.claude/memory/**` (Finding 3), no mechanism prevents recurrence until Finding 4's gate extension exists.
-- **Test-suite execution was out of scope** — all "tests exist" claims are inventory-level; assertion depth and pass state were not runtime-verified in this session (per audit scope; `PROJECT_STATUS.md` carries the last recorded gate results).
+- **Test-suite execution was out of scope** — all "tests exist" claims are inventory-level; assertion depth and pass state were not runtime-verified in this session (per audit scope; `PROJECT_STATUS.md` carries the last recorded gate results). *Partially retired same day — see Addendum.*
+
+---
+
+### Addendum — Same-Day Runtime Verification (2026-07-02, post-report)
+
+Follow-up session upgraded several `[UNPROVEN]` rows to runtime-verified. Environment: local dev, `docker compose` db + redis both up/healthy, GATE-0 preflight PASS (`pgsql://soleil@127.0.0.1:5432/soleil_test`).
+
+**1. AiHarness test subset executed** `[CONFIRMED — runtime]`
+`php artisan test tests/Feature/AiHarness tests/Unit/AiHarness` → **193 passed / 705 assertions / 0 failures / 57.98s** on PostgreSQL. This retires the Unproven-table row "DoD items each catch regressions" for assertion depth on the items spot-read:
+
+- Context-assembly RBAC: `AdminDraftTest.php:259-271` asserts `contact_messages` is **absent from assembled source ids** for non-admin *and* moderator; `:130`/`:177` assert orchestration-layer denial for regular user and moderator. Passing.
+- Injection containment: `ContextAssemblyUntrustedSourceTest.php:44-98` asserts every source type is wrapped `trust="untrusted"` with `instruction_policy: data_only_do_not_execute`, JSON-escaped breakout prevention (`</source><system>` cannot appear), and instructions confined to untrusted blocks. Passing.
+- Tool gating: `ToolRegistryTest` — "unknown tool defaults to blocked", "blocked tools include all mutation operations", "classify returns blocked for empty string". Passing.
+- Kill switch: `AiHarnessDisabledTest.php:39-55` asserts 404 for health **and for every task type** when the flag is off. Passing.
+- Observability: `TraceTest`/`RequestTraceTest` — 17 trace fields + "to log context masks sensitive user data". Passing.
+
+**2. Live kill-switch drill executed** `[CONFIRMED — runtime]`
+`php artisan serve` (port 8123) + real HTTP against `/api/v1/ai/health`:
+
+- **As-found state: flag ON in local dev Redis** (`{"status":"ok","enabled":true}`) — the Residual-Risk question "is the harness enabled anywhere?" is answered for local dev: yes, it was live. Middleware attachment verified via `route:list -v` (`App\AiHarness\Middleware\AiHarnessEnabled` present).
+- `php artisan feature:toggle ai_harness.enabled off` at 19:39:48.7 → **HTTP 404 by first poll ~1.3s later**. `FeatureFlag::set` purges the local cache key (`FeatureFlag.php:149-152`); cross-process worst case remains `LOCAL_CACHE_TTL_SECONDS` (30s) per its docblock. The runbook's <30s recovery target is achievable — **via `feature:toggle`, confirming Finding 1's fix direction** (the documented `.env` procedure remains dead).
+- Flag restored to as-found ON and re-verified 200. Toggle command writes `admin_audit_logs` entries for both flips (`FeatureToggleCommand.php:34-84`).
+- Direct Redis inspection was blocked by the repo's own credential hooks (`NOAUTH` + `REDIS_PASSWORD` deny patterns) — the drill used the operator path (artisan + HTTP) instead, which is the more representative test anyway.
+
+**3. Domain-truth four-cluster comparison — made explicit** (implicit in the original body)
+
+| Cluster | CLAUDE.md | ARCHITECTURE_FACTS | `.agent/rules/` | `.claude/memory/` | Verdict |
+|---|---|---|---|---|---|
+| Booking overlap | half-open `[)`, pending+confirmed block, `deleted_at IS NULL` | same + SQL at `:18-26` | `booking-integrity.md:14-17` same | `global-invariants.md:7-19` same | **Agree** (only line-cites stale — Finding 3) |
+| Auth/token | dual Sanctum, `token_identifier→token_hash`, `revoked_at`/`expires_at`, sessionStorage CSRF | §Authentication same | `auth-token-safety.md:14-18` same | `global-invariants.md:57-62` same | **Agree** |
+| RBAC | PERMISSION_MATRIX is source of truth; validation in `*Request.php` | §RBAC baseline, PASS WITH FOLLOW-UPS (5) | `backend-preserve-rbac…md` same | `global-invariants.md:51-55` same | **Agree** (FU count current) |
+| Migrations | exclusion constraint semantics; escalation on constraint changes | §Migrations/§DB Hardening (driver-gated) | `migration-safety.md:16-20` same | `repo-truth.md:35` same | **Agree** |
+
+The only cross-layer contradictions remain those already filed (F-33 open-vs-fixed, kill-switch mechanism, auto-load claim).
+
+**4. Correction to this report's own meta-description**: this file is 159 lines (16 finding rows), not "~600" as informally stated in session discussion; the 601-insertion commit spanned two files.
+
+**Still unproven after addendum** (unchanged): production Redis flag state, nightly `ai:eval` execution + alerting in production, canary distribution under real traffic, PG exclusion-constraint behavior under the concurrency stress suite (not run — `booking-stress` is a delta-only CI gate).

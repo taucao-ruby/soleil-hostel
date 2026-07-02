@@ -1,0 +1,72 @@
+# =============================================================================
+# Soleil Hostel — Nginx vhost TEMPLATE (Giai doan 1, reference only)
+# Replicates the security headers / CSP from the repo Caddyfile.
+# Place at /etc/nginx/sites-available/soleil, symlink into sites-enabled,
+# then run:  sudo nginx -t && sudo certbot --nginx -d soleil.duckdns.org
+# Certbot will inject the listen 443 ssl + cert lines automatically.
+# Replace soleil.duckdns.org with your domain.
+# =============================================================================
+
+# ---- Shared security headers (mirror of Caddyfile) --------------------------
+# (kept in a map-free snippet so both topologies reuse it)
+# add_header lines must be repeated per server block in Nginx.
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name soleil.duckdns.org;
+
+    # Let's Encrypt HTTP-01 webroot (certbot --nginx handles this too)
+    location /.well-known/acme-challenge/ { root /var/www/html; }
+
+    # After cert issuance, certbot adds a 301 -> https here.
+    # For first issuance, leave this server serving the challenge.
+
+    # ---------------- TOPOLOGY A: Docker + host Nginx (DEFAULT) --------------
+    # Containers published on loopback only (see compose override in GIAI_DOAN_1_NEXT.md):
+    #   frontend -> 127.0.0.1:8081 , backend -> 127.0.0.1:8080
+    location /api/ {
+        proxy_pass         http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+    }
+    location / {
+        proxy_pass         http://127.0.0.1:8081;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+    }
+
+    # ---------------- TOPOLOGY B: Native (php-fpm + static SPA) --------------
+    # Comment out Topology A above and uncomment below if RUNTIME_MODE=native.
+    # root /var/www/soleil/frontend/dist;
+    # index index.html;
+    # location /api/ {
+    #     # Laravel public/ served by php-fpm
+    #     root /var/www/soleil/backend/public;
+    #     try_files $uri /index.php?$query_string;
+    # }
+    # location ~ \.php$ {
+    #     root /var/www/soleil/backend/public;
+    #     include snippets/fastcgi-php.conf;
+    #     fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+    # }
+    # location / { try_files $uri $uri/ /index.html; }   # SPA fallback
+
+    # ---------------- Security headers (from Caddyfile) ---------------------
+    add_header X-Content-Type-Options    "nosniff" always;
+    add_header X-Frame-Options           "DENY" always;
+    add_header Referrer-Policy           "strict-origin-when-cross-origin" always;
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+    add_header Content-Security-Policy    "default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: https://q.stripe.com; font-src 'self' data:; connect-src 'self' https://api.stripe.com; frame-src 'self' https://js.stripe.com https://hooks.stripe.com; frame-ancestors 'none'" always;
+    add_header Permissions-Policy        "camera=(), microphone=(), geolocation=()" always;
+    add_header X-XSS-Protection          "1; mode=block" always;
+    server_tokens off;
+
+    client_max_body_size 25m;     # adjust for review/photo uploads
+    gzip on; gzip_types application/json application/javascript text/css image/svg+xml;
+}

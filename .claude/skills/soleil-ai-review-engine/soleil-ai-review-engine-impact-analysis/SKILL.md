@@ -23,7 +23,7 @@ description: "Use when the user wants to know what will break if they change som
 4. Assess risk and report to user
 ```
 
-> If "Index is stale" → run `npx soleil-ai-review-engine analyze` in terminal.
+> If "Index is stale" → run `npx -p soleil-engine-cli soleil analyze` in terminal.
 
 ## Checklist
 

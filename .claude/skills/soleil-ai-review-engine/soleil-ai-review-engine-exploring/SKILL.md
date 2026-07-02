@@ -23,7 +23,7 @@ description: "Use when the user asks how code works, wants to understand archite
 5. READ soleil-ai-review-engine://repo/{name}/process/{name}      → Trace full execution flow
 ```
 
-> If step 2 says "Index is stale" → run `npx soleil-ai-review-engine analyze` in terminal.
+> If step 2 says "Index is stale" → run `npx -p soleil-engine-cli soleil analyze` in terminal.
 
 ## Checklist
 

@@ -36,9 +36,9 @@ Locations, Rooms, Bookings, Reviews, Contact Messages, Authentication.
 <!-- soleil-ai-review-engine:start -->
 # soleil-ai-review-engine — Code Intelligence
 
-This project is indexed by soleil-ai-review-engine as **soleil-hostel** (7487 symbols, 22025 relationships, 300 execution flows). Use the soleil-ai-review-engine MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by soleil-ai-review-engine as **soleil-hostel** (7497 symbols, 22034 relationships, 300 execution flows). Use the soleil-ai-review-engine MCP tools to understand code, assess impact, and navigate safely.
 
-> If any soleil-ai-review-engine tool warns the index is stale, run `npx soleil-engine-cli analyze` in terminal first.
+> If any soleil-ai-review-engine tool warns the index is stale, run `npx -p soleil-engine-cli soleil analyze` in terminal first.
 
 ## Always Do
 
@@ -109,13 +109,13 @@ Before completing any code modification task, verify:
 After committing code changes, the soleil-ai-review-engine index becomes stale. Re-run analyze to update it:
 
 ```bash
-npx soleil-engine-cli analyze
+npx -p soleil-engine-cli soleil analyze
 ```
 
 If the index previously included embeddings, preserve them by adding `--embeddings`:
 
 ```bash
-npx soleil-engine-cli analyze --embeddings
+npx -p soleil-engine-cli soleil analyze --embeddings
 ```
 
 To check whether embeddings exist, inspect `.soleil-ai-review-engine/meta.json` — the `stats.embeddings` field shows the count (0 means no embeddings). **Running analyze without `--embeddings` will delete any previously generated embeddings.**
@@ -130,6 +130,7 @@ To check whether embeddings exist, inspect `.soleil-ai-review-engine/meta.json` 
 | Blast radius / "What breaks if I change X?" | `.claude/skills/soleil-ai-review-engine/soleil-ai-review-engine-impact-analysis/SKILL.md` |
 | Trace bugs / "Why is X failing?" | `.claude/skills/soleil-ai-review-engine/soleil-ai-review-engine-debugging/SKILL.md` |
 | Rename / extract / split / refactor | `.claude/skills/soleil-ai-review-engine/soleil-ai-review-engine-refactoring/SKILL.md` |
+| Review a PR / assess merge risk / missing test coverage | `.claude/skills/soleil-ai-review-engine/soleil-ai-review-engine-pr-review/SKILL.md` |
 | Tools, resources, schema reference | `.claude/skills/soleil-ai-review-engine/soleil-ai-review-engine-guide/SKILL.md` |
 | Index, status, clean, wiki CLI commands | `.claude/skills/soleil-ai-review-engine/soleil-ai-review-engine-cli/SKILL.md` |
 
